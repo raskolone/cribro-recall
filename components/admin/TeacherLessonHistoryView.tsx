@@ -5,6 +5,7 @@ import { getDisplayLessonTopic, formatLessonDateDDMMYYYY } from '../../utils/les
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { auth } from '../../firebase';
+import { confirmAsync } from '../../utils/appAlert';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import {
@@ -105,9 +106,9 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const handleCleanupDuplicates = async () => {
     if (!onCleanupDuplicatePendingLessons || duplicatePendingLessons.length === 0) return;
     if (
-      !window.confirm(
+      !(await confirmAsync(
         `Usunąć ${duplicatePendingLessons.length} zdublowanych wpisów „Weryfikacja”, dla których kursant ma już potwierdzoną lekcję tego samego dnia?`
-      )
+      ))
     ) {
       return;
     }
@@ -859,7 +860,7 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                               type="button"
                               onClick={async () => {
                                 if (
-                                  window.confirm(
+                                  await confirmAsync(
                                     `Czy na pewno chcesz usunąć lekcję „${lessonTopicLabel}” z dnia ${formatDateLabel(lesson.date)}?`
                                   )
                                 ) {
@@ -1031,7 +1032,7 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                           variant="secondary"
                           onClick={async () => {
                             if (
-                              window.confirm(
+                              await confirmAsync(
                                 `Czy na pewno chcesz usunąć lekcję „${getDisplayLessonTopic(previewLesson)}” z dnia ${formatDateLabel(previewLesson.date)}?`
                               )
                             ) {

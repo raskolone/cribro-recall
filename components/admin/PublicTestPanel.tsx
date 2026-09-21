@@ -18,6 +18,7 @@ import {
   setPublicTestActive,
 } from '../../services/publicTest';
 import { buildPublicTestUrl, formatAccessCode } from '../../utils/accessCode';
+import { confirmAsync } from '../../utils/appAlert';
 import { gradeTest } from '../../services/geminiService';
 
 /**
@@ -108,7 +109,7 @@ const PublicTestPanel: React.FC<PublicTestPanelProps> = ({ teacherId }) => {
     const warning = count > 0
       ? `Test „${test.title}" ma ${count} podejść. Usunięcie skasuje je razem z testem. Na pewno?`
       : `Usunąć test „${test.title}"?`;
-    if (!window.confirm(warning)) return;
+    if (!(await confirmAsync(warning))) return;
 
     try {
       await deletePublicTest(test.id);

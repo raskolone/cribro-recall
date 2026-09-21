@@ -28,6 +28,7 @@ import {
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import Button from '../ui/Button';
 import { openScratchpadTab } from '../../services/scratchpadService';
+import { confirmAsync } from '../../utils/appAlert';
 
 interface GroupManagementModalProps {
   isOpen: boolean;
@@ -150,7 +151,7 @@ export const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
   };
 
   const handleDelete = async (groupId: string) => {
-    if (!window.confirm('Czy na pewno chcesz usunąć tę grupę? Notatnik i historia zostaną zachowane.')) return;
+    if (!(await confirmAsync('Czy na pewno chcesz usunąć tę grupę? Notatnik i historia zostaną zachowane.'))) return;
     try {
       await deleteGroup(groupId);
       await loadGroups();

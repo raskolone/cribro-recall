@@ -86,6 +86,7 @@ import { LessonPresentationView } from './presentation/LessonPresentationView';
 import { formatAIModelName } from '../../services/geminiService';
 import { extractLessonBlocks } from '../../utils/lessonBlocks';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
+import { confirmAsync } from '../../utils/appAlert';
 import { LessonPlannerStudio as BlockLessonPlanner } from '../planner/LessonPlannerStudio';
 import { ListOrdered as PlannerBlocksIcon } from 'lucide-react';
 
@@ -832,7 +833,7 @@ export const LessonPlannerStudio: React.FC<LessonPlannerStudioProps> = ({
 
   const handleDeleteScenario = async (scenarioId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Czy na pewno chcesz usunąć ten scenariusz z bazy?')) return;
+    if (!(await confirmAsync('Czy na pewno chcesz usunąć ten scenariusz z bazy?'))) return;
     try {
       await deleteGeneratedScenario(scenarioId);
       setSavedScenariosList(prev => prev.filter(s => s.id !== scenarioId));
@@ -1216,7 +1217,7 @@ Zwróć WYŁĄCZNIE poprawny obiekt JSON:
 
   const handleDeleteSavedDeck = async (deckId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Czy na pewno chcesz usunąć tę prezentację?')) return;
+    if (!(await confirmAsync('Czy na pewno chcesz usunąć tę prezentację?'))) return;
     try {
       await deleteSavedPresentation(deckId, selectedUser?.id);
       await refreshStudentPresentations();

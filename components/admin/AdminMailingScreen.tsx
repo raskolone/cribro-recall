@@ -44,6 +44,7 @@ import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { formatTaskDateTime } from '../dashboard/HomeworkScreen';
 import { formatPolishGreeting, inflectPolishVerb } from '../../utils/polishVocative';
 import { buildWelcomeEmail, INSTRUCTOR_CARD_HTML } from '../../services/homeworkEmail';
+import { confirmAsync } from '../../utils/appAlert';
 
 interface AdminMailingScreenProps {
   onBack?: () => void;
@@ -624,7 +625,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
 
   const handleDeleteInboundMessage = async (msg: InboundMessage) => {
     if (!msg.id) return;
-    if (!confirm('Czy na pewno chcesz usunąć tę wiadomość z monitoringu skrzynki?')) return;
+    if (!(await confirmAsync('Czy na pewno chcesz usunąć tę wiadomość z monitoringu skrzynki?'))) return;
     try {
       setInboundMessages((prev) => prev.filter((m) => m.id !== msg.id));
       if (selectedInboundMsg?.id === msg.id) {

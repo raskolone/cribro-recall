@@ -5028,3 +5028,71 @@ Zmiany dotyczą wyłącznie UI/logiki frontendu (StudentDatabaseScreen.tsx,
 AdminPanel.tsx, StudentOperationalHub.tsx, TodayScreen.tsx).
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
 build (przechodzi).
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Higiena Notatnika A4 — angielski, profesjonalny szablon wklejania
+lekcji bez rainbow-kolorów nagłówków; weryfikacja logiki przełączania
+kursanta pod kątem niechcianego doklejania brudnopisu; globalna likwidacja
+window.confirm()/window.alert() na rzecz modala in-app.
+Zrobione:
+- utils/lessonTemplate.ts: LESSON_SECTIONS przepisane na angielskie
+  nagłówki (Warm-up & Review / Main Focus & Practice / Lesson Summary /
+  Key Language & Corrections / Homework & Action Items), usunięty system
+  colorKey/rainbow, nowe helpery lessonTitleStyle()/sectionHeadingStyle()
+  (jeden stonowany kolor + typografia zamiast pięciu barw).
+- components/scratchpad/ScratchpadEditor.tsx: zduplikowana kopia szablonu
+  w handleInsertAsStructuredLesson zaktualizowana identycznie (tytuły,
+  helpery stylu), etykiety przycisków "wstaw do sekcji" i prompt
+  systemowy Asystenta AI notatnika zaktualizowane pod nowe nazwy sekcji.
+- index.css: .badge-error/.badge-success/.badge-vocab (pigułki AI w
+  sekcji Key Language) z płaskich, nasyconych wypełnień na dyskretne
+  warianty z cienką obwódką.
+- utils/notebookPalette.ts: BEZ ZMIAN — NOTEBOOK_COLORS/
+  sanitizeFrozenHeadingContrast zostają wyłącznie dla wpisów sprzed tej
+  zmiany (nikt nie przepisuje za lektorem treści już w dokumencie).
+- Przełączanie kursanta: ScratchpadStudentPicker.tsx już dziś tylko
+  ładuje dokument, bez doklejania — nie był to bug. Jedyne "doklejanie"
+  to świadoma, udokumentowana funkcja human-in-the-loop w
+  handleAssignStudent (TeacherScratchpadScreen.tsx) — przypisanie
+  ŚWIEŻEGO notatnika roboczego do kursanta z istniejącymi notatkami.
+  Zapytany wprost, Maciej potwierdził zachowanie logiki dopisywania —
+  zmieniony wyłącznie window.confirm() na confirmAsync().
+- utils/appAlert.ts: nowa funkcja confirmAsync(message, options) →
+  Promise<boolean>, domyślny tone 'danger'. window.alert() był już
+  globalnie przechwycony wcześniej (AppAlertModal.tsx montowany w
+  App.tsx) — nie wymagał zmian.
+- 18 plików (components/admin/*, components/dashboard/*,
+  components/scratchpad/TeacherScratchpadScreen.tsx,
+  components/settings/SettingsScreen.tsx): wszystkie 30 wystąpień
+  window.confirm()/confirm() zamienione na await confirmAsync(...),
+  z dodaniem async do otaczających handlerów tam gdzie brakowało.
+  Część tej pracy wykonał subagent (mechaniczna, dobrze zweryfikowana
+  zamiana) — sprawdzone ręcznie na kilku plikach (AdminPanel.tsx,
+  LessonScenarioAccordion.tsx, HomeworkScreen.tsx, PresenterPanel.tsx,
+  LessonPresentationView.tsx, DirectHomeworkScreen.tsx).
+Nie dokończone / do sprawdzenia:
+- Wizualna weryfikacja w przeglądarce — brak dostępu do działającej
+  aplikacji w tej sesji: (a) nowy szablon lekcji w obu motywach papieru
+  (jasny/ciemny), (b) modal potwierdzenia po kliknięciu dowolnej akcji
+  kasującej.
+- Literalne kryterium "zero wystąpień alert(" w kodzie NIE spełnione
+  dosłownie — window.alert jest przechwycony globalnie w runtime (każde
+  wywołanie pokazuje już stylizowany modal), więc przepisanie ~150
+  pojedynczych wywołań `alert(...)` na `showAppAlert(...)` byłoby czystym
+  powtórzeniem pracy, którą mechanizm w utils/appAlert.ts już wykonuje.
+  Zostawione świadomie — do decyzji, jeśli jednak potrzebne dosłownie.
+Decyzje architektoniczne:
+- confirmAsync() jako osobna funkcja Promise-owa obok istniejącego
+  showAppConfirm() (callbackowego) — pozwala zamienić
+  `if (window.confirm(x))` na `if (await confirmAsync(x))` bez
+  przepisywania każdego call site na callbacki.
+- Domyślny tone: 'danger' w confirmAsync — większość zastanych confirmów
+  to potwierdzenia kasowania (czerwony przycisk), wyjątek: dopisanie do
+  notatnika kursanta (TeacherScratchpadScreen.tsx) dostał jawnie
+  tone: 'warn' (nieniszcząca operacja, przycisk primary/emerald).
+Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
+server.ts ani ścieżek tokenowych bez logowania. Zmiany wyłącznie w
+warstwie UI/frontend.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), grep po
+repo na window\.confirm|confirm( poza utils/appAlert.ts — zero trafień.

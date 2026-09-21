@@ -104,6 +104,28 @@ export const showAppConfirm = (
   });
 };
 
+/**
+ * Wersja `showAppConfirm` jako Promise — pozwala zastąpić
+ * `if (window.confirm(msg)) { ... }` przez `if (await confirmAsync(msg)) { ... }`
+ * bez przepisywania każdego wywołania na callbacki.
+ */
+export const confirmAsync = (
+  message: string,
+  options?: { title?: string; tone?: AlertTone; confirmText?: string; cancelText?: string }
+): Promise<boolean> =>
+  new Promise((resolve) => {
+    showAppAlert({
+      title: options?.title ?? 'Wymagane potwierdzenie',
+      message,
+      tone: options?.tone ?? 'danger',
+      isConfirm: true,
+      buttonText: options?.confirmText ?? 'Tak, potwierdzam',
+      cancelText: options?.cancelText ?? 'Anuluj',
+      onConfirm: () => resolve(true),
+      onCancel: () => resolve(false),
+    });
+  });
+
 export const hideAppAlert = () => {
   listeners.forEach((listener) => {
     try {

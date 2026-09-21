@@ -36,6 +36,7 @@ import MenuDropdown, { MenuChevron } from '../../ui/MenuDropdown';
 import CoachMarks from '../../ui/CoachMarks';
 import { buildPresentationCoachSteps } from './presentationCoachSteps';
 import { openScratchpadTab } from '../../../services/scratchpadService';
+import { confirmAsync } from '../../../utils/appAlert';
 
 /**
  * Przycisk paska narzędzi — jeden kształt dla wszystkich narzędzi na żywo.
@@ -789,7 +790,7 @@ export const LessonPresentationView: React.FC<LessonPresentationViewProps> = ({
                     <button
                       onClick={async (e) => {
                         e.stopPropagation();
-                        if (confirm(`Czy na pewno chcesz usunąć prezentację "${deck.title}"?`)) {
+                        if (await confirmAsync(`Czy na pewno chcesz usunąć prezentację "${deck.title}"?`)) {
                           await deleteSavedPresentation(deck.id, selectedUser?.id);
                           refreshSavedDecks();
                           showToast('Usunięto prezentację');

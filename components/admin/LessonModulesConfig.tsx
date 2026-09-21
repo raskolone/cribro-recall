@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { LessonModuleConfig, LessonPlanPreset, LessonPlannerCustomSettings } from '../../types';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
+import { confirmAsync } from '../../utils/appAlert';
 import { 
   DEFAULT_LESSON_MODULES, 
   SAMPLE_MODULES_CATALOG, 
@@ -214,8 +215,8 @@ export const LessonModulesConfig: React.FC<LessonModulesConfigProps> = ({
     setShowAddCustomModal(false);
   };
 
-  const handleResetToDefault = () => {
-    if (window.confirm('Czy na pewno chcesz przywrócić domyślne 5 modułów ze zdjęcia?')) {
+  const handleResetToDefault = async () => {
+    if (await confirmAsync('Czy na pewno chcesz przywrócić domyślne 5 modułów ze zdjęcia?')) {
       onChangeModules(DEFAULT_LESSON_MODULES);
     }
   };

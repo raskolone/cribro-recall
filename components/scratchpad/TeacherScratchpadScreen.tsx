@@ -15,6 +15,7 @@ import {
   wouldAppendToExistingNotes,
 } from '../../services/scratchpadService';
 import ScratchpadEditor from './ScratchpadEditor';
+import { confirmAsync } from '../../utils/appAlert';
 
 /**
  * Notatnik lektora jako WŁASNY EKRAN, nie okno nad panelem.
@@ -346,8 +347,9 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
         name: teacherName,
       });
       if (wouldAppend) {
-        const confirmed = window.confirm(
-          `${picked.name} ma już własne notatki. Treść z notatnika roboczego zostanie DOPISANA na końcu (istniejące notatki zostaną zachowane, nic nie zostanie nadpisane).\n\nKontynuować?`
+        const confirmed = await confirmAsync(
+          `${picked.name} ma już własne notatki. Treść z notatnika roboczego zostanie DOPISANA na końcu (istniejące notatki zostaną zachowane, nic nie zostanie nadpisane).\n\nKontynuować?`,
+          { tone: 'warn', title: 'Dopisać do istniejących notatek?' }
         );
         if (!confirmed) return;
       }

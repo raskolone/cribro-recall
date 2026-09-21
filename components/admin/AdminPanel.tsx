@@ -57,6 +57,7 @@ import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import LessonDuplicatesPanel from './LessonDuplicatesPanel';
 import { sortChronologically } from '../../utils/lessonDuplicates';
+import { confirmAsync } from '../../utils/appAlert';
 import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import { openScratchpadTab } from '../../services/scratchpadService';
@@ -1020,7 +1021,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
 
   const handleDeleteLessonRecord = async (record: LessonRecord) => {
     if (!selectedUser) return;
-    if (!window.confirm(`Czy na pewno chcesz usunąć lekcję "${record.topic}" z dnia ${record.date}? Operacja jest nieodwracalna.`)) {
+    if (!(await confirmAsync(`Czy na pewno chcesz usunąć lekcję "${record.topic}" z dnia ${record.date}? Operacja jest nieodwracalna.`))) {
       return;
     }
     try {
@@ -1039,7 +1040,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     const studentId = studentIdOverride || selectedUser?.id;
     if (!studentId) return;
     const confirmMsg = `Czy na pewno chcesz odrzucić lekcję „${record.topic}”?\n\nZostanie ona trwale usunięta z widoku i dodana do listy odrzuconych wpisów Notion, aby kolejne synchronizacje już jej nie importowały.`;
-    if (!window.confirm(confirmMsg)) return;
+    if (!(await confirmAsync(confirmMsg))) return;
 
     setIsRejectingLessonId(record.id);
 
@@ -3756,7 +3757,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             <button
                               onClick={async (e) => {
                                 e.stopPropagation();
-                                if (!window.confirm(i18n.t("Czy na pewno chcesz usunąć to zadanie specjalne? Kursant nie będzie go już widział."))) return;
+                                if (!(await confirmAsync(i18n.t("Czy na pewno chcesz usunąć to zadanie specjalne? Kursant nie będzie go już widział.")))) return;
                                 try {
                                   await deleteDoc(doc(db, 'specialTasks', task.id));
                                   setSpecialTasks(prev => prev.filter(t => t.id !== task.id));
@@ -4460,8 +4461,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       variant="secondary" 
                       size="sm" 
                       className="bg-danger/20 text-danger hover:bg-danger/30 border-danger/30 cursor-pointer text-xs"
-                      onClick={() => {
-                        if (confirm('Czy na pewno chcesz usunąć to konto? Tej operacji nie można cofnąć.')) {
+                      onClick={async () => {
+                        if (await confirmAsync('Czy na pewno chcesz usunąć to konto? Tej operacji nie można cofnąć.')) {
                           handleDeleteUser(selectedUser.id);
                         }
                       }}
@@ -5250,7 +5251,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                   return;
                                 }
 
-                                if (!window.confirm(`Czy chcesz bezpośrednio zaimportować ${selectedItems.length} lekcji jako osobne wpisy dla wybranych kursantów? Każda lekcja zachowa swoją oryginalną datę.`)) {
+                                if (!(await confirmAsync(`Czy chcesz bezpośrednio zaimportować ${selectedItems.length} lekcji jako osobne wpisy dla wybranych kursantów? Każda lekcja zachowa swoją oryginalną datę.`))) {
                                   return;
                                 }
 

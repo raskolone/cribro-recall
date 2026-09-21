@@ -8,6 +8,7 @@ import { GeneratedLessonScenario, User } from '../../types';
 import { getGeneratedScenarios, deleteGeneratedScenario } from '../../services/scenarioService';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
+import { confirmAsync } from '../../utils/appAlert';
 import { ScenarioPreviewModal } from './ScenarioPreviewModal';
 
 interface GeneratedScenariosSectionProps {
@@ -56,7 +57,7 @@ export const GeneratedScenariosSection: React.FC<GeneratedScenariosSectionProps>
 
   const handleDelete = async (scenario: GeneratedLessonScenario, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`Czy na pewno chcesz usunąć scenariusz: "${scenario.topic || scenario.title}"?`)) {
+    if (await confirmAsync(`Czy na pewno chcesz usunąć scenariusz: "${scenario.topic || scenario.title}"?`)) {
       try {
         await deleteGeneratedScenario(scenario.id);
         setScenarios(prev => prev.filter(s => s.id !== scenario.id));

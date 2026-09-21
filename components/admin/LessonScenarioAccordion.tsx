@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { SAMPLE_MODULES_CATALOG } from './lessonPlannerPresets';
+import { confirmAsync } from '../../utils/appAlert';
 
 interface ScenarioBlock {
   id: string;
@@ -262,12 +263,12 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
   };
 
   // Delete a single module/block from the generated scenario
-  const handleDeleteBlock = (blockId: string, blockTitle: string, e?: React.MouseEvent) => {
+  const handleDeleteBlock = async (blockId: string, blockTitle: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     if (!onUpdateContent) return;
 
     if (parsedScenario.blocks.length <= 1) {
-      if (window.confirm('To jest jedyny moduł w tym scenariuszu. Usunięcie go usunie cały scenariusz. Czy na pewno chcesz to zrobić?')) {
+      if (await confirmAsync('To jest jedyny moduł w tym scenariuszu. Usunięcie go usunie cały scenariusz. Czy na pewno chcesz to zrobić?')) {
         if (onDeleteScenario) {
           onDeleteScenario();
         } else {
@@ -277,7 +278,7 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
       return;
     }
 
-    if (window.confirm(`Czy na pewno chcesz usunąć moduł "${blockTitle}" ze scenariusza?`)) {
+    if (await confirmAsync(`Czy na pewno chcesz usunąć moduł "${blockTitle}" ze scenariusza?`)) {
       const updatedBlocks = parsedScenario.blocks.filter(b => b.id !== blockId);
       const newMd = reconstructMarkdown(parsedScenario.title, updatedBlocks);
       onUpdateContent(newMd);
@@ -397,9 +398,9 @@ export const LessonScenarioAccordion: React.FC<LessonScenarioAccordionProps> = (
   };
 
   // Delete entire scenario
-  const handleDeleteWholeScenario = (e: React.MouseEvent) => {
+  const handleDeleteWholeScenario = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm('Czy na pewno chcesz usunąć ten wygenerowany scenariusz lekcji?')) {
+    if (await confirmAsync('Czy na pewno chcesz usunąć ten wygenerowany scenariusz lekcji?')) {
       if (onDeleteScenario) {
         onDeleteScenario();
       } else if (onUpdateContent) {

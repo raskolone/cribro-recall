@@ -6,6 +6,7 @@ import { Bug, CheckCircle, Clock, Trash2, ArrowLeft } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import i18n from "i18next";
+import { confirmAsync } from '../../utils/appAlert';
 
 interface AdminDebuggingScreenProps {
   onBack: () => void;
@@ -42,7 +43,7 @@ const AdminDebuggingScreen: React.FC<AdminDebuggingScreenProps> = ({ onBack }) =
   };
 
   const deleteReport = async (id: string) => {
-    if (!window.confirm("Czy na pewno chcesz usunąć to zgłoszenie?")) return;
+    if (!(await confirmAsync("Czy na pewno chcesz usunąć to zgłoszenie?"))) return;
     try {
       await deleteDoc(doc(db, 'bug_reports', id));
       if (selectedReport?.id === id) {

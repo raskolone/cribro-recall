@@ -7,6 +7,7 @@ import {
   FolderPlus, Wand2
 } from 'lucide-react';
 import Markdown from 'react-markdown';
+import { confirmAsync } from '../../utils/appAlert';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { generateLessonPlannerAI } from '../../services/geminiService';
@@ -239,8 +240,8 @@ Kluczowe zwroty z polskim tłumaczeniem:
     setSelectedPresetId(newPreset.id);
   };
 
-  const handleDeleteCustomPreset = (presetId: string) => {
-    if (window.confirm('Czy na pewno chcesz usunąć ten własny szablon?')) {
+  const handleDeleteCustomPreset = async (presetId: string) => {
+    if (await confirmAsync('Czy na pewno chcesz usunąć ten własny szablon?')) {
       setCustomPresets(prev => prev.filter(p => p.id !== presetId));
       if (selectedPresetId === presetId) {
         setSelectedPresetId('preset-standard');
@@ -525,8 +526,8 @@ ${rawPrompt || 'Dostosuj powyższy scenariusz pod profil wybranego kursanta, zac
     setTimeout(() => setCopiedId(null), 2500);
   };
 
-  const handleClearChat = () => {
-    if (window.confirm('Czy na pewno chcesz wyczyścić historię czatu w planerze?')) {
+  const handleClearChat = async () => {
+    if (await confirmAsync('Czy na pewno chcesz wyczyścić historię czatu w planerze?')) {
       setMessages([
         {
           id: `welcome-${Date.now()}`,

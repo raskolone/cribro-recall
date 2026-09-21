@@ -13,6 +13,7 @@ import {
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
+import { confirmAsync } from '../../utils/appAlert';
 
 interface StandaloneLessonScenariosScreenProps {
   onBack: () => void;
@@ -92,7 +93,7 @@ export const StandaloneLessonScenariosScreen: React.FC<StandaloneLessonScenarios
 
   const handleDelete = async (scenario: GeneratedLessonScenario, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (window.confirm(`Czy na pewno chcesz usunąć scenariusz: "${scenario.topic || scenario.title}"?`)) {
+    if (await confirmAsync(`Czy na pewno chcesz usunąć scenariusz: "${scenario.topic || scenario.title}"?`)) {
       await deleteGeneratedScenario(scenario.id);
       setGeneratedList(prev => prev.filter(s => s.id !== scenario.id));
     }

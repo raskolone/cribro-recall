@@ -30,6 +30,7 @@ import { TestPreviewModal } from '../admin/TestPreviewModal';
 import { exportTestToPDF } from '../../utils/pdfExport';
 import { recordExerciseResults } from '../../services/learningProfile';
 import { normalizeLevel } from '../../utils/learningCurve';
+import { confirmAsync } from '../../utils/appAlert';
 import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { useIsDesktop } from '../../hooks/useMediaQuery';
@@ -439,14 +440,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   useEscapeModal(showBulkAddModal, () => setShowBulkAddModal(false));
   useEscapeModal(!!taskToDelete, () => setTaskToDelete(null), 10);
 
-  const handleHomeworkTypeChange = (type: HomeworkType) => {
+  const handleHomeworkTypeChange = async (type: HomeworkType) => {
     if (
       (homeworkType === 'translation' && translationItems.length > 0 && type !== 'translation') ||
       ((homeworkType === 'find_errors' || homeworkType === 'fill_in_the_blank') && errorCorrectionItems.length > 0 && type !== 'find_errors')
     ) {
-      if (window.confirm(
-        language === 'pl' 
-          ? "Uwaga: zmiana typu pracy domowej spowoduje ukrycie wprowadzonych wcześniej zdań. Kontynuować?" 
+      if (await confirmAsync(
+        language === 'pl'
+          ? "Uwaga: zmiana typu pracy domowej spowoduje ukrycie wprowadzonych wcześniej zdań. Kontynuować?"
           : "Warning: changing the homework type will hide the sentences you've entered. Continue?"
       )) {
         setHomeworkType(type);
@@ -1096,7 +1097,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     }).length;
 
     if (answeredCount < sentenceCount) {
-      if (!confirm(`Wypełniłeś ${answeredCount} z ${sentenceCount} zdań. Czy na pewno chcesz wysłać pracę domową w takim stanie?`)) {
+      if (!(await confirmAsync(`Wypełniłeś ${answeredCount} z ${sentenceCount} zdań. Czy na pewno chcesz wysłać pracę domową w takim stanie?`))) {
         return;
       }
     }
@@ -1689,11 +1690,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => {
-                const msg = language === 'pl' 
-                  ? 'Czy na pewno chcesz zakończyć to zadanie i wrócić do głównego panelu zadań? Twój niezapisany postęp zostanie utracony.' 
+              onClick={async () => {
+                const msg = language === 'pl'
+                  ? 'Czy na pewno chcesz zakończyć to zadanie i wrócić do głównego panelu zadań? Twój niezapisany postęp zostanie utracony.'
                   : 'Are you sure you want to end this task and return to the main homework panel? Your unsaved progress will be lost.';
-                if (window.confirm(msg)) {
+                if (await confirmAsync(msg)) {
                   setActiveTask(null);
                 }
               }}

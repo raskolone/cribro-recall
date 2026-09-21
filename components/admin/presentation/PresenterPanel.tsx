@@ -20,6 +20,7 @@ import {
   buildLiveSessionUrl 
 } from '../../../services/liveSessionService';
 import { formatAccessCode } from '../../../utils/accessCode';
+import { confirmAsync } from '../../../utils/appAlert';
 import { EMPTY_SLIDE_INTERACTION, SlideInteraction } from './SlideCard';
 import type { Shape } from './whiteboardShapes';
 import SlideTimer from './SlideTimer';
@@ -204,7 +205,7 @@ const PresenterPanel: React.FC<PresenterPanelProps> = ({
 
   const handleEndLiveSession = async () => {
     if (!activeLiveSession?.pin) return;
-    if (confirm('Czy na pewno chcesz zakończyć sesję na żywo? Kursanci zostaną powiadomieni.')) {
+    if (await confirmAsync('Czy na pewno chcesz zakończyć sesję na żywo? Kursanci zostaną powiadomieni.')) {
       try {
         await endLiveSession(activeLiveSession.pin);
         setActiveLiveSession(null);

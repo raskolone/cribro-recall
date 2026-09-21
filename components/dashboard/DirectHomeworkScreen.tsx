@@ -22,6 +22,7 @@ import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import ConstellationBackground from '../ui/ConstellationBackground';
 import { toPolishVocative } from '../../utils/polishVocative';
 import { formatStudentDisplayName, isRawId } from '../../utils/studentFormat';
+import { confirmAsync } from '../../utils/appAlert';
 
 interface DirectTaskSentence {
   id: string;
@@ -160,7 +161,7 @@ export const DirectHomeworkScreen: React.FC = () => {
 
     const total = task.sentences.length;
     if (answeredCount < total) {
-      const confirmSubmit = window.confirm(
+      const confirmSubmit = await confirmAsync(
         `Wypełniłeś ${answeredCount} z ${total} ćwiczeń. Czy na pewno chcesz przesłać pracę w obecnym stanie?`
       );
       if (!confirmSubmit) return;

@@ -8,6 +8,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { createLessonRecordWithVocabularySet, getAllLessonRecordsForTeacher } from '../../services/lessonRecord';
 import { parseStudentDocument, SUPPORTED_STUDENT_IMPORT_EXTENSIONS } from '../../services/studentImportService';
+import { confirmAsync } from '../../utils/appAlert';
 import { StudentImportAnalysis } from '../../types/studentImport';
 import CreateGroupModal from './CreateGroupModal';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
@@ -318,9 +319,9 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const handleBulkDelete = async () => {
     if (!selectedUserIds.length) return;
     if (
-      !window.confirm(
+      !(await confirmAsync(
         `Czy na pewno chcesz bezpowrotnie usunąć ${selectedUserIds.length} zaznaczonych kont?`
-      )
+      ))
     ) {
       return;
     }
@@ -351,7 +352,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   // Single user operations
   const handleDeleteSingleUser = async (user: User) => {
     const sName = user.displayName || user.name || user.username;
-    if (!window.confirm(`Czy na pewno chcesz usunąć konto ${sName}?`)) return;
+    if (!(await confirmAsync(`Czy na pewno chcesz usunąć konto ${sName}?`))) return;
 
     try {
       if (user.id) {

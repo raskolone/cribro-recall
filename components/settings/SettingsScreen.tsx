@@ -17,6 +17,7 @@ import { LogOut, Volume2, Play, CheckCircle2, VolumeX, Sparkles, Sliders, Check,
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
 import { useEscapeModal } from '../../hooks/useEscapeModal';
+import { confirmAsync } from '../../utils/appAlert';
 
 function cleanNotionId(val: string): string {
     if (!val || typeof val !== 'string') return '';
@@ -211,9 +212,9 @@ const SettingsScreen: React.FC = () => {
     };
 
     const handleClearNotionConfig = async () => {
-        if (!window.confirm(language === 'pl'
+        if (!(await confirmAsync(language === 'pl'
             ? 'Czy na pewno chcesz rozłączyć integrację Notion i wyczyścić zapisane tokeny oraz ID baz danych?'
-            : 'Are you sure you want to disconnect Notion integration and wipe stored tokens and database IDs?')) {
+            : 'Are you sure you want to disconnect Notion integration and wipe stored tokens and database IDs?'))) {
             return;
         }
         setIsClearingNotion(true);
