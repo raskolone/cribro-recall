@@ -4180,3 +4180,96 @@ devDependencies (jsdom, @testing-library/react) używane wyłącznie w nowym
 pliku testowym — zweryfikowano npm run build bez wpływu na dist/.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (495/495), npm run build
 (przechodzi).
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Etap 1 pakietu stabilizacyjnego P0 (zlecenie: lifecycle rozgrzewki,
+klawiatura iOS, higiena kolorystyczna + ikona zgłaszania błędów, likwidacja
+mocka generatora, szablon e-maila, whitespace/toasty w panelu lektora,
+naprawa uprawnień Firestore przy odrzucaniu lekcji). Przed startem
+sprawdzono AGENT_LOG.md i git log — punkty 1, 2, 4, 5 i większość 6 były już
+zrobione w poprzedniej sesji (commity c3b47db…1c728e1); to zadanie
+domyka resztę i weryfikuje całość od nowa.
+
+Zrobione:
+- Firestore (punkt 7, realna dziura, nie kosmetyka): `rejectedNotionLessons`
+  (subkolekcja użytkownika, zapisywana przez `rejectNotionLesson()` /
+  `restoreRejectedNotionLesson()` w services/lessonRecord.ts) nie miała W
+  OGÓLE reguły w firestore.rules — stąd "Missing or insufficient
+  permissions" przy odrzucaniu sugerowanej lekcji z Notion w AdminPanel.tsx
+  (handleRejectNotionLesson). Dodano `isValidRejectedNotionItem()` i blok
+  `match /rejectedNotionLessons/{rejectedId}` (read: właściciel/admin,
+  create/update/delete: tylko admin/lektor — pisze tylko AdminPanel).
+  Sprawdzono `npm run test:rules` na emulatorze: 44/44 zielone, żadna
+  istniejąca reguła się nie zepsuła.
+- AdminPanel.tsx `handleRejectNotionLesson`: optymistyczna aktualizacja UI
+  (lekcja znika z listy i trafia na listę odrzuconych ZANIM zapis w
+  Firestore się zakończy), z rollbackiem obu list przy błędzie — zgodnie z
+  wymogiem zlecenia p. 7.3.
+- Ikona zgłaszania błędu (components/ui/BugReporter.tsx): przeniesiona z
+  fixed bottom-right (kolidowała z przyciskami "Dalej"/"Wstecz"/"Odeślij"
+  na dole ekranów zadań na telefonie) na fixed top-16 right-4 (pod stałym
+  nagłówkiem `TopBar`, h-14). Rozmiar ikony zmniejszony do w-7 h-7,
+  `opacity-30 hover:opacity-100`. Skorygowano system kolejkowania dolnego
+  rogu w index.css (`--rail-bug` z 60px na 0px, klasa `.rail-bug` usunięta
+  całkowicie) — bug nie zajmuje już miejsca w tej kolejce, więc `.rail-notice`
+  (toasty, powiadomienia o pracach domowych) nie ma już sztucznego odstępu
+  po nieistniejącym już elemencie.
+- `canvas-confetti`: kryterium akceptacji zlecenia mówiło wprost "zero
+  wystąpień w projekcie", nie tylko w rozgrzewce/homework (jak sugerował
+  punkt 1 opisu). Usunięto import i wywołania z całej reszty aplikacji, gdzie
+  jeszcze zostały — components/practice/{FlashcardExercise,
+  FillInBlankExercise,MatchExercise,QuizExercise}.tsx (ogólny tryb praktyki
+  słownictwa, nieużywany w ścieżce prac domowych) — oraz usunięto
+  `canvas-confetti`/`@types/canvas-confetti` z package.json i odświeżono
+  package-lock.json przez `npm install`.
+- Zweryfikowano od nowa (statyczna lektura kodu, bez przeglądarki) punkty
+  1, 2, 3 (poza ikoną błędu), 4, 5 z opisu zlecenia — wszystkie już
+  zaimplementowane w poprzedniej sesji i zgodne z literą zlecenia:
+  HomeworkWarmupScrambler.tsx ma synchroniczny reset w handleNext,
+  transitionLockRef, guard `if (!item) return null`, completeOnceRef,
+  brak canvas-confetti, przyciski "Następne zdanie" aktywne przy
+  correct/close. DirectHomeworkScreen.tsx ma `min-h-[100dvh]` + `pb-36`;
+  StudentHomeworkScreen/HomeworkExercise renderują się już w przewijalnej
+  powłoce Dashboard.tsx, więc nie potrzebowały zmiany. Etykiety "Wskazówka
+  lektora"/"Zdanie z błędem" w HomeworkExercise.tsx używają tokenów motywu
+  (primary/content/text-hi), zero amber/yellow/orange. homeworkGenerator.ts
+  nie ma żadnego hardkodowanego zdania w catch. buildStaticHomeworkNote ma
+  dokładnie te wzorce PL/EN i fallbacki, o które prosiło zlecenie.
+
+Nie dokończone / do sprawdzenia:
+- Punkt 6.1 zlecenia ("zbędna pusta przestrzeń przed listą odesłanych prac
+  lektora") — jak w poprzedniej sesji, NIE znaleziono w statycznej lekturze
+  HomeworkScreen.tsx (modal przeglądu ma `max-h-[50vh] overflow-y-auto`,
+  karty odpowiedzi są kompaktowe) ani HomeworkV2ReviewScreen.tsx. Wymaga
+  weryfikacji wzrokowej na koncie testowym lektora z realnymi odesłanymi
+  pracami — możliwe, że problem jest widoczny tylko w danym stanie/układzie
+  ekranu, którego nie odtworzono z samego kodu.
+- Nowe top-16/right-4 umiejscowienie BugReporter.tsx NIE sprawdzone
+  wzrokowo na telefonie — zmiana pozycji z dolnego prawego rogu (gdzie
+  kolidowała z przyciskami akcji) na górny prawy, pod TopBar. Zakładam
+  wysokość nagłówka h-14 (56px) + margines; jeśli któryś ekran ma inny/
+  brak TopBar, może wymagać korekty offsetu.
+
+Decyzje architektoniczne:
+- DoD zlecenia ("Zero wystąpień canvas-confetti w projekcie") czytane
+  literalnie, mimo że opis problemu w punkcie 1 mówił tylko o rozgrzewce/
+  homework — usunięto bibliotekę całkowicie, nie tylko z zadań domowych.
+- rejectedNotionLessons: create/update ograniczone do isAdmin() (lektor),
+  nie isOwner() kursanta — bo w całym przepływie tylko AdminPanel.tsx
+  (panel lektora) zapisuje ten dokument; kursant nigdy nie inicjuje
+  odrzucenia własnej lekcji z Notion.
+- BugReporter: zamiast poprawiać kolizję przez z-index/kolejkę (rozwiązanie
+  istniejące dla stosu dolnego prawego rogu — monitor/bug/toast), przeniesiono
+  cały komponent poza tę kolejkę na górny prawy róg, bo problem nie był
+  kolizją MIĘDZY elementami floating (to już było rozwiązane), a kolizją
+  z przyciskami akcji w treści strony, które nie są częścią tego systemu.
+
+Ryzyka: Dotknięto firestore.rules (obszar wysokiego ryzyka z CLAUDE.md §3) —
+dodano WYŁĄCZNIE nowy blok `match /rejectedNotionLessons/{rejectedId}` +
+nową funkcję walidacyjną, zero zmian w istniejących regułach. Przetestowano
+na emulatorze (`npm run test:rules`, 44/44 zielone) przed commitem, zgodnie
+z zasadą "zatrzymaj się i opisz problem" — opisane tutaj, zmiana jest
+addytywna i nie zmienia dostępu do żadnej innej kolekcji.
+Weryfikacja całości: npx tsc --noEmit (0 błędów), npm test (495/495),
+npm run test:rules (44/44), npm run build (przechodzi).
