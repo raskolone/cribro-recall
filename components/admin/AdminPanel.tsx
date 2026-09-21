@@ -66,6 +66,9 @@ import { StandaloneStudentDatabaseScreen } from './StandaloneStudentDatabaseScre
 import TeacherAssistant from './TeacherAssistant';
 import { LessonDraftProposal } from '../../services/teacherAssistant';
 import TeacherTodayCockpit from './TeacherTodayCockpit';
+import TeacherMobileHub from './TeacherMobileHub';
+import DesktopOnlyNotice from '../ui/DesktopOnlyNotice';
+import { useIsDesktop } from '../../hooks/useMediaQuery';
 import StudentOperationalHub from './StudentOperationalHub';
 import { StudentRecallHub } from '../recall/StudentRecallHub';
 import GSAPModuleTransition from '../ui/GSAPModuleTransition';
@@ -123,6 +126,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const { createUser, deleteUser, changeUserRole: updateRoleApi, changeUserPassword, changeUserEmail } = useFirebaseAdminApi();
   const { user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'admin';
+  /** Próg `md` (768px) — poniżej niego pulpit lektora zamienia się w Pocket Companion. */
+  const isDesktopUI = useIsDesktop();
+  const [mobileAssistantOpen, setMobileAssistantOpen] = useState(false);
   /** Druga listwa narzędzi — zwinięta, bo to wejścia „raz na tydzień". */
   const [showMoreTools, setShowMoreTools] = useState(false);
   const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
@@ -1938,6 +1944,108 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     await handleRoleChangeForUser(selectedUser, newRole);
   };
 
+  /*
+   * Uchwyty Asystenta AI wyciągnięte poza JSX, bo w wersji mobilnej ten sam
+   * czat wyświetlamy w pełnoekranowej nakładce po kliknięciu paska w stopce
+   * (patrz `mobileAssistantOpen` niżej) — bez wydzielenia trzeba by je
+   * powielić w dwóch miejscach i pielić dwa razy przy każdej zmianie.
+   */
+  const handleAssistantNavigate = (mod: string, extra?: any) => {
+    if (mod === 'scratchpad') {
+      openScratchpadTab(extra?.studentId ? `sp_${extra.studentId}` : undefined);
+    } else if (
+      mod === 'students' ||
+      mod === 'lesson-history' ||
+      mod === 'mailing' ||
+      mod === 'lesson-planner' ||
+      (mod === 'admin' && extra?.tab === 'lesson-planner')
+    ) {
+      const targetTab = mod === 'admin' && extra?.tab ? extra.tab : mod;
+      setActiveTab(targetTab);
+      if (extra?.initialScenario) {
+        setPlannerInitialScenario(extra.initialScenario);
+      }
+      const sId = extra?.studentId || extra?.userId;
+      if (sId) {
+        const u = users.find((x) => x.id === sId);
+        if (u) setSelectedUser(u as UserWithId);
+      }
+      setMobileAssistantOpen(false);
+      setTimeout(() => {
+        tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    } else if (onViewChange) {
+      onViewChange(mod, extra);
+    }
+  };
+
+  const handleAssistantSelectStudent = (studentId: string) => {
+    const u = users.find((x) => x.id === studentId);
+    if (u) {
+      handleSelectUser(u as UserWithId, 'profile');
+      setMobileAssistantOpen(false);
+    }
+  };
+
+  const handleAssistantCreateLessonRecord = (lessonDraft: LessonDraftProposal) => {
+    setEditingRecordId(null);
+    setViewingRecord(null);
+    const targetStudent = (lessonDraft.studentId ? users.find((x) => x.id === lessonDraft.studentId) : null) || selectedUser;
+    if (targetStudent) {
+      setSelectedUser(targetStudent as UserWithId);
+    }
+    const sId = targetStudent?.id || '';
+    setLessonFormStudentId(sId);
+    setLessonFormStudentIds(sId ? [sId] : []);
+    setLessonFormDate(new Date().toISOString().split('T')[0]);
+    setLessonFormTopic(lessonDraft.topic || '');
+    setLessonFormSummary(lessonDraft.summary || '');
+    setLessonFormWords(lessonDraft.vocabulary || '');
+    setLessonFormThingsToImprove(lessonDraft.grammar || '');
+    setLessonFormSuggestedFollowUp(lessonDraft.homework || '');
+    setLessonFormStudentSpeaking('');
+    setLessonFormScenarioId('');
+    setLessonFormScenarioTopic(lessonDraft.topic || '');
+    setLessonFormScenarioContent(lessonDraft.summary || '');
+    openLessonRecordModal('edit', undefined, true);
+    showToast('Przeniesiono propozycję lekcji z Asystenta AI do Dziennika!');
+    setMobileAssistantOpen(false);
+  };
+
+  const handleAssistantOpenInPresentation = async (scenarioData: any, studentId?: string, studentName?: string) => {
+    try {
+      const targetStudent = studentId ? users.find((x) => x.id === studentId) : selectedUser;
+      if (targetStudent) {
+        setSelectedUser(targetStudent as UserWithId);
+      }
+      const sName = studentName || (targetStudent ? (targetStudent.firstName ? `${targetStudent.firstName} ${targetStudent.lastName || ''}`.trim() : targetStudent.username) : null);
+      const scenario: GeneratedLessonScenario = (scenarioData && scenarioData.stages) ? scenarioData : {
+        id: scenarioData?.id || `scen_${Date.now()}`,
+        title: scenarioData?.topic || 'Temat lekcji',
+        topic: scenarioData?.topic || 'Temat lekcji',
+        content: scenarioData?.summary || '',
+        summary: scenarioData?.summary || '',
+        vocabularyText: scenarioData?.vocabulary || '',
+        grammar: scenarioData?.grammar || '',
+        homework: scenarioData?.homework || '',
+        targetLevel: targetStudent?.level || scenarioData?.targetLevel || 'B2',
+        lessonDuration: scenarioData?.lessonDuration || '60 min',
+        createdAt: new Date().toISOString(),
+      };
+      const pres = createPresentationFromScenario(scenario, targetStudent?.id, sName);
+      await savePresentationToStorage(pres);
+      setActiveTab('presentation');
+      showToast('Scenariusz z Asystenta AI załadowany do Prezentacji Live!');
+      setMobileAssistantOpen(false);
+      setTimeout(() => {
+        tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 150);
+    } catch (e) {
+      console.error('Błąd uruchamiania w prezentacji:', e);
+      showToast('Nie udało się załadować scenariusza do prezentacji.');
+    }
+  };
+
   return (
     <div className="w-full pb-28 min-w-0 space-y-6">
       {!selectedUser && (
@@ -1992,8 +2100,66 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
 
-      {/* GŁÓWNE KAFELKI LEKTORA — symetryczne i wyśrodkowane */}
-      <div className="space-y-4 max-w-5xl mx-auto w-full">
+      {/* Pocket Companion — telefon (< md): 3 kafelki + wejście do Asystenta AI w stopce,
+          zamiast pełnego pulpitu desktopowego. Widoczny tylko na stronie głównej
+          (activeTab === null); dalsze moduły otwierane z kafelków są nadal ekranami
+          desktopowymi — to świadomy zasięg tego zadania, nie każdy z nich jest jeszcze
+          dostosowany do telefonu. */}
+      {!isDesktopUI && activeTab === null && (
+        <TeacherMobileHub
+          currentUser={currentUser as UserWithId | null}
+          users={users as UserWithId[]}
+          lessons={allTeacherLessons}
+          onSelectStudent={handleAssistantSelectStudent}
+          onOpenHistory={(sId, lessonId) => {
+            if (sId) {
+              const u = users.find((x) => x.id === sId);
+              if (u) handleSelectUser(u as UserWithId, 'history');
+            } else {
+              handleTileClick('lesson-history');
+            }
+          }}
+          onOpenHomeworkReview={(taskId, sId) => {
+            if (sId) {
+              const u = users.find((x) => x.id === sId);
+              if (u) handleSelectUser(u as UserWithId, 'homework');
+            }
+            setActiveTab('homework');
+          }}
+          onOpenAssistant={() => setMobileAssistantOpen(true)}
+        />
+      )}
+
+      {/* Pełnoekranowa nakładka Asystenta AI na telefonie — ten sam czat co embedded
+          na desktopie (patrz uchwyty `handleAssistant*` wyżej), tylko bez współdzielenia
+          layoutu z resztą panelu, żeby otwierał się natychmiast na cały ekran. */}
+      {mobileAssistantOpen && (
+        <div className="md:hidden fixed inset-0 z-[96] bg-base-100 flex flex-col">
+          <header className="shrink-0 flex items-center justify-between px-4 py-3.5 border-b border-line-strong bg-base-200/80">
+            <span className="text-sm font-bold text-text-hi">Asystent AI</span>
+            <button
+              type="button"
+              onClick={() => setMobileAssistantOpen(false)}
+              className="p-2 rounded-xl border border-line-strong text-content-muted hover:text-text-hi cursor-pointer"
+              aria-label="Zamknij"
+            >
+              <X size={18} />
+            </button>
+          </header>
+          <div className="flex-1 overflow-y-auto p-3">
+            <TeacherAssistant
+              mode="embedded"
+              onNavigateToModule={handleAssistantNavigate}
+              onSelectStudent={handleAssistantSelectStudent}
+              onCreateLessonRecord={handleAssistantCreateLessonRecord}
+              onOpenInPresentation={handleAssistantOpenInPresentation}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* GŁÓWNE KAFELKI LEKTORA — symetryczne i wyśrodkowane (tylko desktop, patrz Pocket Companion wyżej) */}
+      <div className="hidden md:block space-y-4 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between">
           <h2 className="text-xs font-extrabold uppercase tracking-wider text-content-muted flex items-center gap-2">
             <span>Główne Narzędzia Lektora</span>
@@ -2397,6 +2563,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
           <AdminStatsScreen />
         </div>
+      ) : activeTab === 'lesson-planner' && !isDesktopUI ? (
+        <DesktopOnlyNotice moduleName="Planer lekcji" onBack={() => setActiveTab(null)} />
       ) : activeTab && ['lesson-planner', 'presentation'].includes(activeTab) ? (
         <div className="p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-primary/40 shadow-[0_0_30px_rgba(114,240,180,0.1)] space-y-4 mt-4">
           <div className="flex items-center justify-between pb-3 border-b border-line-strong">
@@ -2542,96 +2710,16 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           </div>
         </div>
       ) : (
-        /* activeTab === null: Strona główna panelu lektora - centralny Asystent AI / Chat */
-        <div className="mt-3.5 max-w-4xl mx-auto w-full animate-in fade-in duration-200">
+        /* activeTab === null: Strona główna panelu lektora - centralny Asystent AI / Chat.
+           Tylko na desktopie — na telefonie ten sam czat pokazuje pełnoekranowa
+           nakładka `mobileAssistantOpen` wywołana z paska w stopce Pocket Companion. */
+        <div className="hidden md:block mt-3.5 max-w-4xl mx-auto w-full animate-in fade-in duration-200">
           <TeacherAssistant
             mode="embedded"
-            onNavigateToModule={(mod, extra) => {
-              if (mod === 'scratchpad') {
-                openScratchpadTab(extra?.studentId ? `sp_${extra.studentId}` : undefined);
-              } else if (
-                mod === 'students' ||
-                mod === 'lesson-history' ||
-                mod === 'mailing' ||
-                mod === 'lesson-planner' ||
-                (mod === 'admin' && extra?.tab === 'lesson-planner')
-              ) {
-                const targetTab = mod === 'admin' && extra?.tab ? extra.tab : mod;
-                setActiveTab(targetTab);
-                if (extra?.initialScenario) {
-                  setPlannerInitialScenario(extra.initialScenario);
-                }
-                const sId = extra?.studentId || extra?.userId;
-                if (sId) {
-                  const u = users.find((x) => x.id === sId);
-                  if (u) setSelectedUser(u as UserWithId);
-                }
-                setTimeout(() => {
-                  tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 150);
-              } else if (onViewChange) {
-                onViewChange(mod, extra);
-              }
-            }}
-            onSelectStudent={(studentId) => {
-              const u = users.find((x) => x.id === studentId);
-              if (u) handleSelectUser(u as UserWithId, 'profile');
-            }}
-            onCreateLessonRecord={(lessonDraft) => {
-              setEditingRecordId(null);
-              setViewingRecord(null);
-              const targetStudent = (lessonDraft.studentId ? users.find((x) => x.id === lessonDraft.studentId) : null) || selectedUser;
-              if (targetStudent) {
-                setSelectedUser(targetStudent as UserWithId);
-              }
-              const sId = targetStudent?.id || '';
-              setLessonFormStudentId(sId);
-              setLessonFormStudentIds(sId ? [sId] : []);
-              setLessonFormDate(new Date().toISOString().split('T')[0]);
-              setLessonFormTopic(lessonDraft.topic || '');
-              setLessonFormSummary(lessonDraft.summary || '');
-              setLessonFormWords(lessonDraft.vocabulary || '');
-              setLessonFormThingsToImprove(lessonDraft.grammar || '');
-              setLessonFormSuggestedFollowUp(lessonDraft.homework || '');
-              setLessonFormStudentSpeaking('');
-              setLessonFormScenarioId('');
-              setLessonFormScenarioTopic(lessonDraft.topic || '');
-              setLessonFormScenarioContent(lessonDraft.summary || '');
-              openLessonRecordModal('edit', undefined, true);
-              showToast('Przeniesiono propozycję lekcji z Asystenta AI do Dziennika!');
-            }}
-            onOpenInPresentation={async (scenarioData, studentId, studentName) => {
-              try {
-                const targetStudent = studentId ? users.find((x) => x.id === studentId) : selectedUser;
-                if (targetStudent) {
-                  setSelectedUser(targetStudent as UserWithId);
-                }
-                const sName = studentName || (targetStudent ? (targetStudent.firstName ? `${targetStudent.firstName} ${targetStudent.lastName || ''}`.trim() : targetStudent.username) : null);
-                const scenario: GeneratedLessonScenario = (scenarioData && scenarioData.stages) ? scenarioData : {
-                  id: scenarioData?.id || `scen_${Date.now()}`,
-                  title: scenarioData?.topic || 'Temat lekcji',
-                  topic: scenarioData?.topic || 'Temat lekcji',
-                  content: scenarioData?.summary || '',
-                  summary: scenarioData?.summary || '',
-                  vocabularyText: scenarioData?.vocabulary || '',
-                  grammar: scenarioData?.grammar || '',
-                  homework: scenarioData?.homework || '',
-                  targetLevel: targetStudent?.level || scenarioData?.targetLevel || 'B2',
-                  lessonDuration: scenarioData?.lessonDuration || '60 min',
-                  createdAt: new Date().toISOString(),
-                };
-                const pres = createPresentationFromScenario(scenario, targetStudent?.id, sName);
-                await savePresentationToStorage(pres);
-                setActiveTab('presentation');
-                showToast('Scenariusz z Asystenta AI załadowany do Prezentacji Live!');
-                setTimeout(() => {
-                  tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }, 150);
-              } catch (e) {
-                console.error('Błąd uruchamiania w prezentacji:', e);
-                showToast('Nie udało się załadować scenariusza do prezentacji.');
-              }
-            }}
+            onNavigateToModule={handleAssistantNavigate}
+            onSelectStudent={handleAssistantSelectStudent}
+            onCreateLessonRecord={handleAssistantCreateLessonRecord}
+            onOpenInPresentation={handleAssistantOpenInPresentation}
           />
         </div>
       )}

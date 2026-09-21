@@ -20,11 +20,15 @@ import {
   Play
 } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
+import { useIsDesktop } from '../../hooks/useMediaQuery';
 
 export const AdminAIActivityMonitor: React.FC = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const isAllowed = canUserViewAiMonitor(user);
+  const isDesktop = useIsDesktop();
+  /* Widżet diagnostyczny — na telefonie tylko szum: zajmuje miejsce, które na
+     Pocket Companion (mobilny pulpit lektora) idzie pod trzy główne kafelki. */
+  const isAllowed = canUserViewAiMonitor(user) && isDesktop;
 
   const [events, setEvents] = useState<AIActivityEvent[]>([]);
   const [activeCount, setActiveCount] = useState<number>(0);

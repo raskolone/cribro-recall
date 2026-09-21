@@ -3,6 +3,8 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import TeacherScratchpadScreen from './TeacherScratchpadScreen';
 import PublicScratchpadScreen from './PublicScratchpadScreen';
+import DesktopOnlyNotice from '../ui/DesktopOnlyNotice';
+import { useIsDesktop } from '../../hooks/useMediaQuery';
 
 /**
  * Notatnik pod adresem `/scratchpad` — JEDNA strona i JEDEN link dla obu stron.
@@ -35,6 +37,7 @@ export const ScratchpadPage: React.FC = () => {
   const { user, isAuthReady } = useAuth();
   const [documentId, setDocumentId] = useState<string | null>(null);
   const [hasPinParam, setHasPinParam] = useState(false);
+  const isDesktop = useIsDesktop();
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -103,6 +106,14 @@ export const ScratchpadPage: React.FC = () => {
    * kursanta: sprawdza, co widzi druga strona. Wtedy zostaje przy widoku
    * publicznym, bo o to właśnie mu chodzi.
    */
+  if (isTeacher && !hasPinParam && !isDesktop) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-base-100">
+        <DesktopOnlyNotice moduleName="Notatnik A4" onBack={() => window.close()} />
+      </div>
+    );
+  }
+
   if (isTeacher && !hasPinParam) {
     return (
       <TeacherScratchpadScreen
