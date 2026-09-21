@@ -4273,3 +4273,67 @@ z zasadą "zatrzymaj się i opisz problem" — opisane tutaj, zmiana jest
 addytywna i nie zmienia dostępu do żadnej innej kolekcji.
 Weryfikacja całości: npx tsc --noEmit (0 błędów), npm test (495/495),
 npm run test:rules (44/44), npm run build (przechodzi).
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Etap 2 — UI Polish (whitespace w panelu sprawdzania lektora, responsywność
+i animacja 3D fiszek) oraz nowy dwutrybowy silnik ćwiczeń tłumaczeniowych
+(typy + komponent UI).
+
+Zrobione:
+- HomeworkScreen.tsx: modale recenzji (`reviewTask`, `v2ReviewTask`, ok. linii
+  3157–3275) — `items-center` → `items-start`, `my-8` → `my-4`. To był
+  faktyczny root cause zgłoszonego "scrollowania przed dotarciem do listy",
+  którego dwie poprzednie sesje (AK, AL w CHANGELOG.md) nie znalazły, bo
+  szukały w statycznym układzie treści, nie w centrowaniu modala.
+- FlashcardExercise.tsx (components/practice/): przepisana animacja flip na
+  czyste klasy Tailwind (`perspective-[1000px]`, `[transform-style:preserve-3d]`,
+  `[backface-visibility:hidden]`, `[transform:rotateY(180deg)]`,
+  `[-webkit-backface-visibility:hidden]`) zamiast inline style bez
+  `perspective` na przodku (przez co obrót renderował się jako płaskie
+  ściśnięcie, nie 3D). Karta: `w-full max-w-md mx-auto`, `aspect-[3/2]
+  min-h-[220px]` zamiast `h-80`.
+- index.css: `.backface-hidden` dostała brakujący `-webkit-backface-visibility`
+  (naprawia jank na iOS Safari globalnie dla `RecallFlashcard.tsx` i
+  `FlashcardStudyScreen.tsx`, które już używały tej klasy).
+- FlashcardStudyScreen.tsx: `min-h-[220px]` dodane do obu kart `aspect-[3/2]`
+  (dedykowany widok "Fiszki" kursanta) — zabezpieczenie przed zbyt niską
+  kartą na wąskich telefonach. Animacja tam już działała poprawnie
+  (framer-motion), nie przepisywana.
+- Nowy plik types/translationExercise.ts wg podanego kontraktu
+  (TranslationMode, TranslationStep, AdvancedTranslationPayload).
+- Nowy komponent components/practice/TranslationExercise.tsx — oba tryby
+  (classic_assisted z podpowiedziami leksykalnymi, fragment_pool z pulą
+  fragmentów wybieranych krok po kroku), nowa normalizeSentence() (ta sama
+  polityka co utils/unscrambleGrading.ts, ale na całym zdaniu, nie per-token).
+
+Nie dokończone / do sprawdzenia:
+- TranslationExercise.tsx NIE jest podłączony do żadnego źródła danych ani
+  do PracticeZone.tsx / pracy domowej — zlecenie (po doprecyzowaniu przez
+  Macieja) określiło to jako świadomie UI-only, bez generatora AI i bez
+  wskazanego miejsca integracji. Podłączenie (routing w PracticeZone,
+  generator AdvancedTranslationPayload) zostaje na osobne zlecenie.
+- Żadna z wizualnych zmian (modal recenzji, flip fiszek na iOS Safari, nowy
+  komponent tłumaczeń) nie została zweryfikowana wzrokowo w przeglądarce —
+  tylko tsc/test/build. Do zrobienia na koncie testowym: (1) lektor otwiera
+  "Sprawdź" na odesłanej pracy z wieloma zdaniami — nagłówek i lista mają
+  być widoczne bez przewijania w górę, (2) fiszki w components/practice/ —
+  realny obrót 3D (nie ściśnięcie) na desktopie i iOS Safari.
+
+Decyzje architektoniczne:
+- Zakres Części 2B doprecyzowany z Maciejem po dwóch identycznie uciętych
+  wklejeniach specyfikacji (tooling/clipboard limit) — potwierdzone przez
+  AskUserQuestion: sam projektuję komponent, UI-only, bez wymuszonej
+  integracji z konkretnym ekranem czy generatorem AI.
+- normalizeSentence() w TranslationExercise.tsx porównuje CAŁE znormalizowane
+  zdanie, nie multiset tokenów jak classifyUnscrambleAttempt() w
+  unscrambleGrading.ts — bo w tłumaczeniu kolejność słów jest częścią oceny
+  (inaczej niż w układance ze stałym zestawem słów z rozgrzewki), więc
+  multiset dałby fałszywe "poprawne" przy przestawionych słowach.
+
+Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji, ścieżkach
+tokenowych bez logowania. Zmiana w HomeworkScreen.tsx dotyka istniejącego,
+działającego modala recenzji pracy (zmiana zachowania scrolla/centrowania) —
+przetestowana tsc/test/build, nie zweryfikowana wzrokowo.
+Weryfikacja całości: npx tsc --noEmit (0 błędów), npm test (495/495),
+npm run build (przechodzi).
