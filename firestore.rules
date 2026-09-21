@@ -222,6 +222,16 @@ service cloud.firestore {
              (!('transcriptReceivedAt' in data) || isValidDateString(data.transcriptReceivedAt));
     }
 
+    function isValidRejectedNotionItem(data) {
+      return hasRequiredFields(['id', 'studentId', 'topic', 'rejectedAt']) &&
+             validStringLength('id', 1, 200) &&
+             validStringLength('studentId', 1, 100) &&
+             validStringLength('topic', 1, 200) &&
+             isValidDateString(data.rejectedAt) &&
+             isValidOptionalString('date', 0, 50) &&
+             isValidOptionalString('reason', 0, 500);
+    }
+
     function isValidVocabularySet(data) {
       return hasRequiredFields(['studentId', 'lessonRecordId', 'title', 'date', 'topic', 'vocabularyText', 'itemCount', 'status', 'source', 'createdAt', 'updatedAt']) &&
              // hasOnlyAllowedFields(['studentId', 'lessonRecordId', 'title', 'date', 'topic', 'vocabularyText', 'itemCount', 'status', 'source', 'createdAt', 'updatedAt']) &&
@@ -299,6 +309,16 @@ service cloud.firestore {
         allow read: if isOwner(userId) || isAdmin();
         allow create: if isAdmin() && isValidVocabularySet(request.resource.data);
         allow update: if (isAdmin() && isValidVocabularySet(request.resource.data)) || (isOwner(userId) && request.resource.data.used is bool && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['used']));
+        allow delete: if isAdmin();
+      }
+
+      // Czarna lista wpisów Notion odrzuconych przez lektora — zapisywana przez
+      // rejectNotionLesson()/restoreRejectedNotionLesson() (services/lessonRecord.ts),
+      // żeby kolejna synchronizacja Notion nie zaimportowała ich ponownie.
+      match /rejectedNotionLessons/{rejectedId} {
+        allow read: if isOwner(userId) || isAdmin();
+        allow create: if isAdmin() && isValidRejectedNotionItem(request.resource.data);
+        allow update: if isAdmin() && isValidRejectedNotionItem(request.resource.data);
         allow delete: if isAdmin();
       }
 

@@ -1023,26 +1023,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     if (!window.confirm(confirmMsg)) return;
 
     setIsRejectingLessonId(record.id);
+
+    // Optymistyczna aktualizacja: element znika z widoku natychmiast,
+    // zanim zapis w Firestore się zakończy. W razie błędu przywracamy stan.
+    const rejectedEntry = {
+      id: record.notionPageId || record.id,
+      studentId: selectedUser.id,
+      topic: record.topic,
+      date: record.date,
+      rejectedAt: new Date().toISOString(),
+      reason: 'Odrzucono przez nauczyciela (manualny przegląd)',
+    };
+    setLessonRecords(prev => prev.filter(r => r.id !== record.id));
+    setRejectedLessons(prev => [rejectedEntry, ...prev]);
+    if (viewingRecord?.id === record.id) {
+      setShowLessonRecordModal(false);
+      setViewingRecord(null);
+    }
+
     try {
       await rejectNotionLesson(selectedUser.id, record);
-      setLessonRecords(prev => prev.filter(r => r.id !== record.id));
-      setRejectedLessons(prev => [
-        {
-          id: record.notionPageId || record.id,
-          studentId: selectedUser.id,
-          topic: record.topic,
-          date: record.date,
-          rejectedAt: new Date().toISOString(),
-          reason: 'Odrzucono przez nauczyciela (manualny przegląd)',
-        },
-        ...prev
-      ]);
-      if (viewingRecord?.id === record.id) {
-        setShowLessonRecordModal(false);
-        setViewingRecord(null);
-      }
       showToast(`Odrzucono lekcję „${record.topic}”. Dodano do listy ignorowanych z Notion.`);
     } catch (err: any) {
+      // Rollback: przywracamy lekcję na liście i usuwamy wpis z czarnej listy.
+      setLessonRecords(prev => [record, ...prev]);
+      setRejectedLessons(prev => prev.filter(r => r.id !== rejectedEntry.id));
       alert("Błąd podczas odrzucania lekcji: " + (err?.message || String(err)));
     } finally {
       setIsRejectingLessonId(null);
