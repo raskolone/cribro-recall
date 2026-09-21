@@ -5507,3 +5507,70 @@ klienta lektora (`updateDoc`) — ten sam wzorzec zapisu co reszta
 uprawnień.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508),
 npm run build (przechodzi, zbudowano dist/ + server.cjs + api/index.js).
+
+## 2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: sprawdzanie pisowni/stylu PL/EN w Notatniku A4 w stylu Google
+Docs — falowane podkreślenia w tekście + dymek podpowiedzi po kliknięciu,
+akcje zbiorcze (zastosuj wszystkie / wyczyść podkreślenia).
+Zrobione:
+- server.ts: nowy endpoint `POST /api/notebook/spellcheck`
+  (`requireFirebaseAdmin` — dopuszcza `teacher`/`admin`, tak jak
+  `/api/gemini/lesson-summary`). Wywołuje `generateContentWithRetry`
+  wymuszony na `[PRIMARY_MODEL]` (`gemini-2.5-flash`, `thinkingBudget: 0`,
+  `responseMimeType: json`), z systemowym poleceniem dokładnie wg
+  zlecenia (kontekst dwujęzyczny, nie myl PL z EN). Zwraca
+  `{ issues: [...] }` wg schematu z zadania
+  (`id`/`matchedText`/`contextSnippet`/`suggestion`/`type`/`shortReason`).
+  Import `PRIMARY_MODEL` z `services/aiModels.ts` zamiast literału stringa
+  — zgodnie z jawną intencją tego pliku (jedno źródło prawdy o nazwach
+  modeli, patrz jego własny docstring).
+- services/notebookSpellcheckService.ts (nowy plik): cienki klient tego
+  endpointu.
+- components/scratchpad/useNotebookSpellcheck.ts (nowy plik): cała logika
+  lokalizowania błędu w DOM i podmiany tekstu, wyeksportowane
+  `buildTextIndex`/`findIssueRange` do testów jednostkowych.
+- components/scratchpad/SpellcheckPopover.tsx (nowy plik): dymek z
+  przyciskiem sugestii (zielony akcent), przyciskiem "Ignoruj" i
+  `shortReason` pod spodem — dokładnie wg makiety ze zlecenia.
+- components/scratchpad/ScratchpadEditor.tsx: przycisk „Sprawdź
+  pisownię" w pasku narzędzi (obok „Do dziennika"), stan ładowania,
+  pigułka statusowa „X uwag do pisowni" z akcjami zbiorczymi, toast przy
+  zerze błędów (reużyty `components/ui/Toast.tsx` — już istniał, nie
+  trzeba było pisać nowego).
+- tests/notebookSpellcheck.test.tsx (nowy plik, jsdom ręcznie jak w
+  `tests/homeworkWarmupScrambler.test.tsx`): lokalizacja dopasowania
+  rozbitego na węzły tekstowe przez element inline, disambiguacja przez
+  `contextSnippet` przy powtórzonym słowie, `null` gdy błędu już nie ma
+  w treści, fallback na sam `matchedText` gdy `contextSnippet` nie pasuje.
+
+ŚWIADOME ODSTĘPSTWO OD LITERY ZLECENIA (ważne, do wiedzy Macieja):
+Zlecenie podawało konkretne klasy Tailwind (`underline decoration-wavy
+decoration-rose-500...`) do zastosowania WPROST na dopasowanym tekście.
+Te klasy działają tylko na realnym tekście przez `text-decoration` — co
+oznaczałoby owijanie dopasowań w `<span>` WEWNĄTRZ edytowalnego DOM-u
+notatnika, którego `innerHTML` jest bezpośrednio tym, co idzie do
+Firestore (`handleInput`/`triggerDebouncedSave`). Wymagałoby to potem
+wycinania tych spanów przed każdym zapisem, w edytorze z wieloletnią
+historią delikatnych zależności (execCommand, historia cofania — patrz
+komentarze w samym pliku). Zamiast tego znaczniki żyją w OSOBNEJ,
+nakładanej warstwie (`position: absolute` nad kartką, pozycjonowanej
+przez `Range.getClientRects()`), z falą narysowaną przez CSS
+`background-image` (ten sam efekt wizualny, zero ryzyka dla zapisywanej
+treści). Konsekwencja: pozycje liczą się przy kliknięciu „Sprawdź
+pisownię" i po każdej podmianie, nie śledzą tekstu w locie — każda
+kolejna edycja czyści podkreślenia (bo ich pozycje przestają być
+aktualne), co jest zgodne z tym, że to funkcja "na żądanie", nie
+kontrola w czasie rzeczywistym.
+Nie dokończone / do sprawdzenia:
+- Zero weryfikacji wzrokowej w przeglądarce — pozycjonowanie podkreśleń
+  względem realnego layoutu kartki A4, dymek na krawędzi ekranu,
+  zachowanie przy scrollu w trakcie otwartego dymka.
+- Multi-line dopasowania (rzadkie dla pojedynczych słów/fraz) nie były
+  testowane wizualnie, tylko przez `Range.getClientRects()` (biblioteka
+  DOM), które z założenia zwraca po jednym prostokącie na linię.
+Ryzyka: zero zmian w firestore.rules, middleware autoryzacji, ścieżkach
+tokenowych bez logowania. Nowy endpoint używa istniejącego
+`requireFirebaseAdmin` bez modyfikacji tej funkcji.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513, +5 nowych),
+npm run build (przechodzi, dist/ + server.cjs + api/index.js zbudowane).

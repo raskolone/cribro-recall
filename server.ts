@@ -177,7 +177,7 @@ import { createHmac } from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
 import defaultFirebaseConfig from "./firebase-applet-config.json";
-import { AI_MODEL_CASCADE, GEMINI_MODEL_CASCADE, openAiModelsFor } from "./services/aiModels";
+import { AI_MODEL_CASCADE, GEMINI_MODEL_CASCADE, openAiModelsFor, PRIMARY_MODEL } from "./services/aiModels";
 import { normalizeImportedLessons } from "./utils/lessonImport";
 import { normalizeStudentImportAnalysis } from "./utils/studentImportNormalize";
 import {
@@ -4401,6 +4401,68 @@ Zwróć wynik jako JSON z poniższymi polami:
 
 
   
+  /**
+   * Sprawdzanie pisowni/stylu w Notatniku A4 — dwujęzyczne (PL/EN), bo
+   * notatka lektora miesza oba języki w jednym akapicie. Dostaje sam tekst
+   * (nie HTML — znaczniki tylko myliłyby model i nie są potrzebne do
+   * zlokalizowania błędu, o to dba `contextSnippet` po stronie klienta).
+   */
+  app.post('/api/notebook/spellcheck', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (typeof text !== 'string' || !text.trim()) {
+        return res.status(400).json({ error: 'Missing notebook text.' });
+      }
+
+      const apiKey = getGeminiApiKey();
+      if (!apiKey && !getOpenAIApiKey()) {
+        return res.status(500).json({ error: 'AI API key not configured.' });
+      }
+
+      const ai = new GoogleGenAI({ apiKey: apiKey || 'dummy' });
+
+      const schema = {
+        type: Type.OBJECT,
+        properties: {
+          issues: {
+            type: Type.ARRAY,
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                id: { type: Type.STRING },
+                matchedText: { type: Type.STRING },
+                contextSnippet: { type: Type.STRING },
+                suggestion: { type: Type.STRING },
+                type: { type: Type.STRING, enum: ['spelling', 'grammar', 'awkward'] },
+                shortReason: { type: Type.STRING },
+              },
+              required: ['id', 'matchedText', 'contextSnippet', 'suggestion', 'type', 'shortReason'],
+            },
+          },
+        },
+        required: ['issues'],
+      };
+
+      const response = await generateContentWithRetry(ai, text.slice(0, 20000), {
+        systemInstruction:
+          'Jesteś profesjonalnym korektorem językowym notatek lektora języka angielskiego. Notatki są dwujęzyczne (polski i angielski współistnieją w jednym dokumencie: wyjaśnienia po polsku, zwroty docelowe i przykłady po angielsku). Nie oznaczaj poprawnych słów angielskich jako błędów w polszczyźnie ani odwrotnie. Wykrywaj: 1) literówki, błędy ortograficzne i brak znaków diakrytycznych, 2) rażące błędy gramatyczne, 3) słowa/zwroty nienaturalne w danym kontekście (awkward phrasing, kalki językowe). Zwróć wyłącznie poprawny JSON.',
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 0 },
+      }, [PRIMARY_MODEL]);
+
+      const responseText = response?.text;
+      if (!responseText) return res.json({ issues: [] });
+
+      const json = JSON.parse(responseText);
+      const issues = Array.isArray(json?.issues) ? json.issues : [];
+      res.json({ issues });
+    } catch (error: any) {
+      console.error('[Notebook Spellcheck]', error);
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
   app.post('/api/gemini/grade-test', requireFirebaseAuth, async (req, res) => {
     try {
       const { testTitle, questions, studentAnswers } = req.body;

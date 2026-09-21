@@ -6024,6 +6024,54 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
+  app2.post("/api/notebook/spellcheck", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { text } = req.body;
+      if (typeof text !== "string" || !text.trim()) {
+        return res.status(400).json({ error: "Missing notebook text." });
+      }
+      const apiKey = getGeminiApiKey();
+      if (!apiKey && !getOpenAIApiKey()) {
+        return res.status(500).json({ error: "AI API key not configured." });
+      }
+      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const schema = {
+        type: Type3.OBJECT,
+        properties: {
+          issues: {
+            type: Type3.ARRAY,
+            items: {
+              type: Type3.OBJECT,
+              properties: {
+                id: { type: Type3.STRING },
+                matchedText: { type: Type3.STRING },
+                contextSnippet: { type: Type3.STRING },
+                suggestion: { type: Type3.STRING },
+                type: { type: Type3.STRING, enum: ["spelling", "grammar", "awkward"] },
+                shortReason: { type: Type3.STRING }
+              },
+              required: ["id", "matchedText", "contextSnippet", "suggestion", "type", "shortReason"]
+            }
+          }
+        },
+        required: ["issues"]
+      };
+      const response = await generateContentWithRetry(ai, text.slice(0, 2e4), {
+        systemInstruction: "Jeste\u015B profesjonalnym korektorem j\u0119zykowym notatek lektora j\u0119zyka angielskiego. Notatki s\u0105 dwuj\u0119zyczne (polski i angielski wsp\xF3\u0142istniej\u0105 w jednym dokumencie: wyja\u015Bnienia po polsku, zwroty docelowe i przyk\u0142ady po angielsku). Nie oznaczaj poprawnych s\u0142\xF3w angielskich jako b\u0142\u0119d\xF3w w polszczy\u017Anie ani odwrotnie. Wykrywaj: 1) liter\xF3wki, b\u0142\u0119dy ortograficzne i brak znak\xF3w diakrytycznych, 2) ra\u017C\u0105ce b\u0142\u0119dy gramatyczne, 3) s\u0142owa/zwroty nienaturalne w danym kontek\u015Bcie (awkward phrasing, kalki j\u0119zykowe). Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny JSON.",
+        responseMimeType: "application/json",
+        responseSchema: schema,
+        thinkingConfig: { thinkingBudget: 0 }
+      }, [PRIMARY_MODEL]);
+      const responseText = response?.text;
+      if (!responseText) return res.json({ issues: [] });
+      const json = JSON.parse(responseText);
+      const issues = Array.isArray(json?.issues) ? json.issues : [];
+      res.json({ issues });
+    } catch (error) {
+      console.error("[Notebook Spellcheck]", error);
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
   app2.post("/api/gemini/grade-test", requireFirebaseAuth, async (req, res) => {
     try {
       const { testTitle, questions, studentAnswers } = req.body;

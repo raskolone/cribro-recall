@@ -66,6 +66,7 @@ import {
   Trash2,
   Target,
   FileSignature,
+  SpellCheck2,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate, ScratchpadBlock, LessonAttachment, LessonRecord } from '../../types';
 import { isSharedNotebookV2Enabled } from '../../config/featureFlags';
@@ -106,6 +107,9 @@ import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, sanitizeFrozenHeadingContrast } from '
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 import { generateLessonRevision } from '../../services/scratchpadAiService';
+import { useNotebookSpellcheck } from './useNotebookSpellcheck';
+import { SpellcheckPopover } from './SpellcheckPopover';
+import Toast, { useToast } from '../ui/Toast';
 import { runCouncil, SCRATCHPAD_REVIEW_SYSTEM } from '../../services/aiCouncil';
 import mammoth from 'mammoth';
 import ScratchpadInsertPreviewModal, {
@@ -886,6 +890,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const handleInput = () => {
     if (!editorRef.current || isReadOnly) return;
 
+    // Dowolna edycja unieważnia policzone pozycje podkreśleń spellchecka —
+    // patrz `refreshAfterSpellcheckEdit` wyżej po wyjaśnienie, dlaczego TA
+    // funkcja czyści, a tamta nie.
+    spellcheck.clearAll();
+
     isUserTypingRef.current = true;
     if (typingResetTimeoutRef.current) clearTimeout(typingResetTimeoutRef.current);
     typingResetTimeoutRef.current = setTimeout(() => {
@@ -899,6 +908,38 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     scheduleStructureRefresh();
 
     triggerDebouncedSave(html);
+  };
+
+  /**
+   * Wersja `handleInput` do wywołania PO podmianie tekstu przez spellcheck
+   * (`applyIssue`/`applyAll` niżej) — bez `spellcheck.clearAll()`, bo to
+   * właśnie ten kod sam już przeliczył, co z pozostałych uwag da się jeszcze
+   * zlokalizować. Zwykły `handleInput` czyści WSZYSTKIE znaczniki przy każdej
+   * edycji (patrz `onInput` niżej), bo dowolna zmiana treści przez
+   * użytkownika unieważnia policzone wcześniej pozycje.
+   */
+  const refreshAfterSpellcheckEdit = () => {
+    if (!editorRef.current || isReadOnly) return;
+    const html = editorRef.current.innerHTML.replace(/ class="pad-img is-selected"/g, ' class="pad-img"');
+    const txt = extractText(html);
+    setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
+    setContentBytes(scratchpadContentBytes(html));
+    scheduleStructureRefresh();
+    triggerDebouncedSave(html);
+  };
+
+  const spellcheck = useNotebookSpellcheck({ editorRef, onApplied: refreshAfterSpellcheckEdit });
+  const { toast: spellcheckToast, showToast: showSpellcheckToast, dismissToast: dismissSpellcheckToast } = useToast();
+
+  const handleRunSpellcheck = async () => {
+    try {
+      const { found } = await spellcheck.runCheck();
+      if (found === 0) {
+        showSpellcheckToast('Brak błędów pisowni i stylu. Notatka wygląda świetnie!', 'success');
+      }
+    } catch (err: any) {
+      showSpellcheckToast(err?.message || 'Nie udało się sprawdzić pisowni.', 'warning');
+    }
   };
 
   // Komendy formatowania tekstu
@@ -2009,6 +2050,45 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             </Button>
           )}
 
+          {/* Sprawdzanie pisowni/stylu PL/EN — falowane podkreślenia w treści, na żądanie */}
+          {isTeacher && !isReadOnly && (
+            spellcheck.issues.length > 0 ? (
+              <div className="flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300">
+                <AlertTriangle size={12} />
+                <span className="text-[11px] font-bold whitespace-nowrap">
+                  {spellcheck.issues.length} {spellcheck.issues.length === 1 ? 'uwaga' : 'uwagi'} do pisowni
+                </span>
+                <button
+                  type="button"
+                  onClick={spellcheck.applyAll}
+                  className="text-[11px] font-bold text-emerald-300 hover:text-emerald-200 px-1.5 py-0.5 rounded hover:bg-emerald-500/15 transition-colors cursor-pointer"
+                >
+                  Zastosuj wszystkie
+                </button>
+                <button
+                  type="button"
+                  onClick={spellcheck.clearAll}
+                  className="text-[11px] font-semibold text-content-muted hover:text-text-hi px-1.5 py-0.5 rounded hover:bg-white/[0.07] transition-colors cursor-pointer"
+                >
+                  Wyczyść podkreślenia
+                </button>
+              </div>
+            ) : (
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={handleRunSpellcheck}
+                disabled={spellcheck.isChecking}
+                className="h-8 text-xs flex items-center gap-1.5"
+                title="Sprawdź pisownię i styl (polski i angielski)"
+              >
+                {spellcheck.isChecking ? <Loader2 size={13} className="animate-spin" /> : <SpellCheck2 size={13} />}
+                <span className="hidden md:inline">{spellcheck.isChecking ? 'Sprawdzam pisownię...' : 'Sprawdź pisownię'}</span>
+              </Button>
+            )
+          )}
+
           {/* Wskaźnik laserowy z synchronizacją na żywo */}
           <button
             type="button"
@@ -2727,6 +2807,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           document.body
         )}
 
+        <Toast toast={spellcheckToast} onDismiss={dismissSpellcheckToast} />
+
         {/* KANWA Z SYMETRYCZNIE WYŚRODKOWANĄ KARTKĄ A4 */}
         <div
           ref={paperWrapRef}
@@ -2754,33 +2836,90 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             )}
 
             <div
-              ref={editorRef}
-              data-coach="pad-editor"
-              data-pad-theme={paperTheme}
-              contentEditable={!isReadOnly}
-              onInput={handleInput}
-              onClick={handlePaperClick}
-              onPaste={handlePaste}
-              onKeyDown={(e) => {
-                // Alt+H (Option+H na Macu) — natychmiastowe żółte wyróżnienie zaznaczenia,
-                // bez celowania kursorem w pasek narzędzi zakreślaczy.
-                if (e.altKey && e.code === 'KeyH') {
-                  e.preventDefault();
-                  handleHighlight('#fef3c7', '#92400e');
-                }
+              className="relative w-full"
+              onMouseDown={(e) => {
+                // Klik gdziekolwiek indziej w kartkę zamyka dymek podpowiedzi —
+                // sam znacznik zatrzymuje własny `onClick`, więc otwarcie NOWEGO
+                // dymka nadal działa (mousedown-zamknij, potem click-otwórz).
+                if (spellcheck.popover) spellcheck.closePopover();
               }}
-              suppressContentEditableWarning
-              className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 w-full relative ${
-                isLandscape ? 'is-landscape' : ''
-              } ${isReadOnly ? 'cursor-default' : 'cursor-text'}`}
-              style={{
-                wordBreak: 'break-word',
-                boxShadow: 'var(--pad-shadow)',
-                minHeight: activePageHeight,
-                padding: `${PAGE_MARGIN_PX}px`,
-                boxSizing: 'border-box',
-              }}
-            />
+            >
+              <div
+                ref={editorRef}
+                data-coach="pad-editor"
+                data-pad-theme={paperTheme}
+                contentEditable={!isReadOnly}
+                onInput={handleInput}
+                onClick={handlePaperClick}
+                onPaste={handlePaste}
+                onKeyDown={(e) => {
+                  // Alt+H (Option+H na Macu) — natychmiastowe żółte wyróżnienie zaznaczenia,
+                  // bez celowania kursorem w pasek narzędzi zakreślaczy.
+                  if (e.altKey && e.code === 'KeyH') {
+                    e.preventDefault();
+                    handleHighlight('#fef3c7', '#92400e');
+                  }
+                }}
+                suppressContentEditableWarning
+                className={`pad-paper pad-sheet focus:outline-none transition-shadow font-sans selection:bg-primary/30 w-full relative ${
+                  isLandscape ? 'is-landscape' : ''
+                } ${isReadOnly ? 'cursor-default' : 'cursor-text'}`}
+                style={{
+                  wordBreak: 'break-word',
+                  boxShadow: 'var(--pad-shadow)',
+                  minHeight: activePageHeight,
+                  padding: `${PAGE_MARGIN_PX}px`,
+                  boxSizing: 'border-box',
+                }}
+              />
+
+              {/* Falowane podkreślenia spellchecka — warstwa NAD kartką, nigdy
+                  wewnątrz jej edytowalnego DOM-u (patrz komentarz w
+                  `useNotebookSpellcheck.ts`: to świadomy wybór, żeby nie
+                  dotykać treści, która się zapisuje). */}
+              {spellcheck.marks.length > 0 && (
+                <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 5 }}>
+                  {spellcheck.marks.map(({ issue, rects }) =>
+                    rects.map((rect, idx) => (
+                      <div
+                        key={`${issue.id}-${idx}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          spellcheck.openPopoverFor(issue, rect);
+                        }}
+                        title={issue.shortReason}
+                        className={`absolute pointer-events-auto cursor-pointer rounded-sm transition-colors ${
+                          issue.type === 'awkward' ? 'hover:bg-amber-400/10' : 'hover:bg-rose-500/10'
+                        }`}
+                        style={{
+                          left: rect.left,
+                          top: rect.top,
+                          width: rect.width,
+                          height: rect.height,
+                          backgroundImage: `linear-gradient(135deg, transparent 40%, ${
+                            issue.type === 'awkward' ? '#fbbf24' : '#f43f5e'
+                          } 40%, ${issue.type === 'awkward' ? '#fbbf24' : '#f43f5e'} 60%, transparent 60%), linear-gradient(45deg, transparent 40%, ${
+                            issue.type === 'awkward' ? '#fbbf24' : '#f43f5e'
+                          } 40%, ${issue.type === 'awkward' ? '#fbbf24' : '#f43f5e'} 60%, transparent 60%)`,
+                          backgroundSize: '5px 4px',
+                          backgroundRepeat: 'repeat-x',
+                          backgroundPosition: 'left bottom',
+                        }}
+                      />
+                    ))
+                  )}
+                </div>
+              )}
+
+              {spellcheck.popover && (
+                <SpellcheckPopover
+                  issue={spellcheck.popover.issue}
+                  anchor={spellcheck.popover.anchor}
+                  onApply={spellcheck.applyIssue}
+                  onIgnore={spellcheck.ignoreIssue}
+                />
+              )}
+            </div>
 
             {/* Zaznaczony obraz — pływający pasek zmiany rozmiaru i przesuwania */}
             {selectedImage && (
