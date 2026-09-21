@@ -198,6 +198,19 @@ we dwoje na żywo.
 
 ---
 
+### 🎯 Przywrócenie Hero Chatu Asystenta AI na pulpicie lektora (2026-09-21, runda 47)
+
+**Zadanie:** zlecenie chciało dedykowanej sekcji Hero z centralnym czatem AI pod siatką 4 kafelków pulpitu (badge, nagłówek "W czym mogę dzisiaj pomóc?", pigułki Flash/Thinking, @ Kursant/Skille/Załącz, przycisk wysyłki). Audyt pokazał, że `TeacherAssistant.tsx` w `mode="embedded"` (`:979-1836`) to dokładnie ten komponent — identyczny badge, nagłówek, pigułki (Flash w amber gradiencie), autouzupełnianie @ i /, załączniki, karty lekcji/scenariuszy — już w pełni zbudowany i przetestowany. Był jednak montowany wyłącznie wewnątrz pełnoekranowej nakładki, otwieranej przyciskiem-paskiem pod kafelkami (`AdminPanel.tsx`), zamiast być stałym elementem pulpitu.
+
+**Zmienione:**
+- `components/admin/AdminPanel.tsx` — przycisk-pasek "Otwórz czat AI" pod siatką 4 kafelków zastąpiony bezpośrednim montowaniem `<TeacherAssistant mode="embedded" .../>` z tymi samymi handlerami co wcześniej (`handleAssistantNavigate`, `handleAssistantSelectStudent`, `handleAssistantCreateLessonRecord`, `handleAssistantOpenInPresentation`). Montowanie warunkiem JS `isDesktopUI` (nie samym CSS `hidden md:block` jak reszta siatki) — inaczej komponent odpalałby `buildStudentIndex()` w tle również na telefonie, mimo że wizualnie ukryty.
+
+**Świadomie nieruszone:** `assistantOverlayOpen` i pełnoekranowa nakładka (`AdminPanel.tsx:2260-2280`) zostają bez zmian — to nadal jedyne wejście do czatu AI na telefonie (`TeacherMobileHub` → stopka "Zapytaj Asystenta AI"). Żadna logika `TeacherAssistant.tsx` nie została zduplikowana w nowym komponencie — zero ryzyka rozjazdu między "hero" a "pełnym" czatem, bo to ten sam komponent.
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (508/508), `npm run build` (przechodzi). UI NIE zweryfikowane wzrokowo w przeglądarce w tej sesji (dług z sekcji 6 CLAUDE.md) — zwłaszcza czy `isDesktopUI` faktycznie wyklucza podwójne montowanie na telefonie.
+
+---
+
 ### 🧠 Ekstrakcja Gemini Flash w imporcie transkrypcji z Notion — koniec z surowym tytułem/ISO, gotowa lekcja od razu po akceptacji (2026-09-21, runda 46)
 
 **Zadanie:** Pull-on-Demand import z Notion (`server.ts:2683` `syncNotionTranscriptsFromApi`, endpoint `/api/notion/fetch-transcripts`) miał już selekcję per-kursant, idempotentność i modal podglądu, ale tytuł lekcji był surowym tytułem strony Notion (albo fallbackiem "Lekcja z dnia..."), a zaakceptowany import zapisywał tylko `topic/date/rawTranscript` ze statusem `pending_confirmation` — lektor musiał później osobno wygenerować bloki lekcji.

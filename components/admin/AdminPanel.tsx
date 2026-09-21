@@ -2418,24 +2418,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           })}
         </div>
 
-        {/* Strefa Asystenta AI — pasek szybkiego zapytania pod siatką kafelków,
-            bez kolizji z ich układem. Kliknięcie otwiera pełnoekranowy czat
-            (ta sama nakładka co Pocket Companion na telefonie). */}
-        <button
-          type="button"
-          onClick={() => setAssistantOverlayOpen(true)}
-          className="w-full flex items-center gap-3 px-5 py-4 rounded-2xl border border-line-strong bg-base-200/80 hover:border-primary/60 hover:bg-base-200 transition-colors text-left cursor-pointer group max-w-5xl mx-auto"
-        >
-          <span className="shrink-0 p-2.5 rounded-xl bg-primary/15 text-primary border border-primary/30 group-hover:bg-primary/25 transition-colors">
-            <Sparkles size={20} />
-          </span>
-          <span className="flex-1 text-sm text-content-muted group-hover:text-text-hi transition-colors truncate">
-            Zapytaj o dzisiejsze lekcje, kursanta lub zaplanuj ćwiczenie...
-          </span>
-          <span className="shrink-0 text-xs font-bold uppercase tracking-wider text-primary px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/30 group-hover:bg-primary group-hover:text-accent-ink transition-colors">
-            Otwórz czat AI
-          </span>
-        </button>
+        {/* Hero Asystenta AI — wpięty na stałe pod siatką kafelków (przywrócony
+            z pełnoekranowej nakładki, gdzie był schowany za przyciskiem).
+            Montowany warunkiem JS (nie samym CSS `hidden md:block`), żeby na
+            telefonie nie odpalał się w tle `buildStudentIndex()` — tam wejście
+            do czatu zostaje przez stopkę `TeacherMobileHub` -> nakładkę. */}
+        {isDesktopUI && (
+          <TeacherAssistant
+            mode="embedded"
+            onNavigateToModule={handleAssistantNavigate}
+            onSelectStudent={handleAssistantSelectStudent}
+            onCreateLessonRecord={handleAssistantCreateLessonRecord}
+            onOpenInPresentation={handleAssistantOpenInPresentation}
+          />
+        )}
       </div>
       </div>
 

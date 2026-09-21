@@ -5185,3 +5185,38 @@ server.ts ani ścieżek tokenowych bez logowania. Endpoint już był za
 requireFirebaseAdmin, bez zmian w tym zakresie.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
 build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Pakiet "Inteligentny Fetch Transkrypcji Notion oraz Pulpit Hero
+Chatu AI" — Część 2: przywrócenie Hero Chatu na pulpicie lektora
+(Część 1 — ekstrakcja Gemini w imporcie Notion — osobny wcześniejszy
+commit tej samej sesji).
+Zrobione:
+- Audyt wykazał, że `TeacherAssistant.tsx` w `mode="embedded"`
+  (components/admin/TeacherAssistant.tsx:979-1836) JEST już dokładnie
+  Hero Chatem ze zlecenia — identyczny badge/nagłówek/pigułki Flash-
+  Thinking/@ Kursant/Skille/Załącz/przycisk wysyłki, w pełni działający
+  (streaming, karty lekcji, autouzupełnianie). Był montowany wyłącznie
+  wewnątrz pełnoekranowej nakładki otwieranej przyciskiem pod kafelkami.
+- AdminPanel.tsx: przycisk-pasek "Otwórz czat AI" zastąpiony
+  bezpośrednim montowaniem <TeacherAssistant mode="embedded" .../> pod
+  siatką 4 kafelków, z tymi samymi handlerami co poprzednio. Montowanie
+  pod warunkiem JS `isDesktopUI`, nie CSS `hidden md:block`.
+Nie dokończone / do sprawdzenia:
+- Zero weryfikacji wzrokowej — czy `isDesktopUI` faktycznie wyklucza
+  podwójne montowanie (i podwójny buildStudentIndex()) na telefonie,
+  wygląd Hero Chatu na realnym pulpicie.
+Decyzje architektoniczne:
+- Świadomie NIE budowano nowego komponentu ani nie duplikowano logiki
+  TeacherAssistant.tsx — zmieniono wyłącznie punkt montowania. Zero
+  ryzyka rozjazdu między "hero" a "pełnym" czatem.
+- `assistantOverlayOpen` i pełnoekranowa nakładka zostają nietknięte —
+  jedyne wejście do czatu AI na telefonie (TeacherMobileHub → stopka).
+Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
+server.ts ani ścieżek tokenowych bez logowania. Zmiany wyłącznie w
+components/admin/AdminPanel.tsx.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
+build (przechodzi, w tym server.cjs i api/index.js).
