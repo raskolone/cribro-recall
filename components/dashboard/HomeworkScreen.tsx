@@ -311,6 +311,10 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const isSavingRef = React.useRef<boolean>(false);
   const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards'>('list');
 
+  // Zakładki widoku lektora: Prace domowe / Moje testy / Sprawdzone przez nauczyciela.
+  // Wyłącznie prezentacyjne — nie wpływają na zapytania Firestore ani logikę oceniania.
+  const [contentTab, setContentTab] = useState<'homework' | 'tests' | 'archived'>('homework');
+
   // Filter state for teacher
   const [filterStudentId, setFilterStudentId] = useState<string>('all');
   /**
@@ -643,21 +647,15 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     }
   };
 
-  const filteredStudentTests = React.useMemo(() => {
-    return studentTests.filter((t) => {
-      if (filterStatus === 'all') return true;
-      if (filterStatus === 'submitted') {
-        return t.status === 'graded' || t.status === 'completed' || Boolean(t.completedAt);
-      }
-      if (filterStatus === 'pending') {
-        return t.status === 'pending' || !t.status;
-      }
-      if (filterStatus === 'graded') {
-        return t.status === 'graded' || t.status === 'completed';
-      }
-      return true;
-    });
-  }, [studentTests, filterStatus]);
+  // Testy aktywne (jeszcze nie ocenione/ukończone) — do zakładki "Moje testy".
+  const activeStudentTests = React.useMemo(() => {
+    return studentTests.filter((t) => !(t.status === 'graded' || t.status === 'completed' || Boolean(t.completedAt)));
+  }, [studentTests]);
+
+  // Testy sprawdzone/ukończone — do zakładki "Sprawdzone przez nauczyciela".
+  const completedStudentTests = React.useMemo(() => {
+    return studentTests.filter((t) => t.status === 'graded' || t.status === 'completed' || Boolean(t.completedAt));
+  }, [studentTests]);
 
   // Auto-select initial task if provided
   useEffect(() => {
@@ -1544,6 +1542,16 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   }, [teacherStudentTasks]);
 
   const filteredTasks = activeTasks;
+
+  // Licznik do zakładki "Prace domowe" — niezależny od rozwijanego filtra
+  // statusu, żeby badge na zakładce zawsze pokazywał realną liczbę aktywnych
+  // zadań (oczekujące + przesłane nieprzeczytane), a nie to, co akurat
+  // wybrano w dropdownie "Status".
+  const activeHomeworkCount = React.useMemo(() => {
+    return teacherStudentTasks.filter(
+      t => t.status === 'pending' || (t.status === 'submitted' && t.teacherRead !== true)
+    ).length;
+  }, [teacherStudentTasks]);
 
   // Human-in-the-loop: przełącznik „Automatyczna ocena AI przy 100% pewności",
   // domyślnie wyłączony. Czytany/zapisywany w `system/homeworkAiSettings`
@@ -2551,8 +2559,49 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       {/* ---------------- HOMEWORK LIST VIEW (Students & Teachers) ---------------- */}
       {!activeTask && (activeTab === 'list' || !isTeacher) && (
         <div className="space-y-6">
-          {/* Teacher Filters */}
+          {/* Zakładki: Prace domowe / Moje testy / Sprawdzone przez nauczyciela */}
           {isTeacher && (
+            <div className="flex items-center gap-1 border-b border-white/10">
+              {([
+                { key: 'homework', label: 'Prace domowe', count: activeHomeworkCount },
+                { key: 'tests', label: 'Moje testy', count: activeStudentTests.length },
+                { key: 'archived', label: 'Sprawdzone przez nauczyciela', count: archivedTasks.length + completedStudentTests.length },
+              ] as const).map((tab) => {
+                const isActive = contentTab === tab.key;
+                const highlightCount = tab.key !== 'archived' && tab.count > 0;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setContentTab(tab.key)}
+                    className={`px-4 py-2.5 text-sm border-b-2 -mb-px transition-colors cursor-pointer ${
+                      isActive
+                        ? highlightCount
+                          ? 'border-emerald-500 text-emerald-400 font-semibold'
+                          : 'border-primary text-primary font-semibold'
+                        : 'border-transparent text-content-muted hover:text-text-hi'
+                    }`}
+                  >
+                    {tab.label}
+                    {tab.count > 0 && (
+                      <span
+                        className={`ml-2 px-1.5 py-0.5 rounded-full text-[11px] font-bold ${
+                          highlightCount
+                            ? 'bg-emerald-500/15 text-emerald-400'
+                            : 'bg-white/10 text-content-muted'
+                        }`}
+                      >
+                        {tab.count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Teacher Filters */}
+          {isTeacher && contentTab === 'homework' && (
             <div className="flex flex-wrap items-center gap-4 p-4 rounded-xl bg-base-200/60 border border-white/10">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-content-muted">Kursant:</span>
@@ -2580,7 +2629,6 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   <option value="all">Wszystkie statusy</option>
                   <option value="pending">Oczekujące (w trakcie)</option>
                   <option value="submitted">Przesłane do oceny</option>
-                  <option value="graded">Ocenione przez nauczyciela</option>
                 </select>
               </div>
 
@@ -2630,7 +2678,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           )}
 
           {/* Homework Cards List */}
-          {isLoading ? (
+          {(!isTeacher || contentTab === 'homework') && (isLoading ? (
             <div className="text-center py-12 text-content-muted">
               <RefreshCw className="animate-spin mx-auto mb-2 text-primary" size={24} />
               Ładowanie prac domowych...
@@ -2886,10 +2934,10 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 );
               })}
             </div>
-          )}
+          ))}
 
-          {/* ---------------- ROZDZIELAJĄCY DIVIDER - ARCHIWUM ---------------- */}
-          {isTeacher && (filterStatus === 'submitted' || filterStatus === 'all' || filterStatus === 'graded') && (
+          {/* Archiwum: prace sprawdzone/ocenione — teraz osobna zakładka */}
+          {isTeacher && contentTab === 'archived' && (
             <div className="space-y-4 pt-2">
               <div className="relative my-8 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -3014,41 +3062,59 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   })}
                 </div>
               )}
+
+              {/* Testy sprawdzone/ukończone — ta sama zakładka archiwum */}
+              {completedStudentTests.length > 0 && (
+                <div className="space-y-2.5 pt-4">
+                  <p className="text-xs font-bold text-content-muted uppercase tracking-wider flex items-center gap-1.5">
+                    <GraduationCap size={14} className="text-primary" />
+                    Testy sprawdzone/ukończone
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {completedStudentTests.map((test) => (
+                      <Card key={test.id} className="p-4 flex items-center justify-between gap-3 border border-white/10 bg-base-200/50">
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-white truncate">{test.title}</p>
+                          <p className="text-xs text-content-muted flex items-center gap-1.5 mt-0.5">
+                            <UserIcon size={11} className="text-primary" />
+                            {test.studentName}
+                            {test.score !== undefined && (
+                              <span className="text-primary font-bold">· Wynik: {test.score}/{test.maxScore || test.questions?.length || 100} pkt</span>
+                            )}
+                          </p>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => exportTestToPDF(test, (k: string) => k)}
+                          className="text-xs flex items-center gap-1.5 shrink-0 cursor-pointer"
+                          title="Pobierz arkusz lub raport PDF"
+                        >
+                          <Download size={13} /> PDF
+                        </Button>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
-          {/* ---------------- ROZDZIELAJĄCY DIVIDER MIĘDZY PRACAMI A TESTAMI ---------------- */}
-          {isTeacher && (
+          {/* ---------------- MOJE TESTY (zakładka) ---------------- */}
+          {isTeacher && contentTab === 'tests' && (
             <>
-              <div className="relative my-10 py-2">
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="w-full border-t border-white/10" />
-                </div>
-                <div className="relative flex justify-center">
-                  <span className="bg-base-200 px-5 py-2 rounded-full text-xs font-mono font-bold uppercase tracking-wider text-primary border border-primary/30 flex items-center gap-2 shadow-xl shadow-black/40">
-                    <GraduationCap size={16} />
-                    <span>Testy i Sprawdziany kursantów</span>
-                    {filteredStudentTests.length > 0 && (
-                      <span className="px-2 py-0.5 bg-primary/20 rounded-full text-[11px] font-bold">
-                        {filteredStudentTests.length}
-                      </span>
-                    )}
-                  </span>
-                </div>
-              </div>
-
               {/* ---------------- TESTY KURSANTÓW DLA NAUCZYCIELA ---------------- */}
-              {filteredStudentTests.length === 0 ? (
-                <Card className="text-center py-8 bg-base-200/40 border border-white/5">
-                  <GraduationCap className="mx-auto text-content-muted mb-2 opacity-40" size={36} />
-                  <p className="text-sm font-bold text-content">Brak testów dla wybranych filtrów</p>
-                  <p className="text-xs text-content-muted mt-0.5">
-                    Nie znaleziono testów odpowiadających wybranemu kursantowi lub statusowi.
+              {activeStudentTests.length === 0 ? (
+                <Card className="text-center py-12">
+                  <GraduationCap className="mx-auto text-content-muted mb-3 opacity-40" size={48} />
+                  <p className="text-base font-bold text-content">Brak testów</p>
+                  <p className="text-xs text-content-muted mt-1">
+                    Nie znaleziono aktywnych testów odpowiadających wybranemu kursantowi.
                   </p>
                 </Card>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {filteredStudentTests.map((test) => {
+                  {activeStudentTests.map((test) => {
                     const isCompleted = test.status === 'graded' || test.status === 'completed' || Boolean(test.completedAt);
                     const isOverdue = !isCompleted && isDateOverdue(test.dueDate);
                     const isPending = !isCompleted && !isOverdue;
