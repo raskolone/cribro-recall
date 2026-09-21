@@ -1449,9 +1449,10 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 <RefreshCw size={24} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Cykliczne automatyzowanie Notion Fetch</h3>
+                <h3 className="text-base font-bold text-white">Import z Notion — Pull-on-Demand</h3>
                 <p className="text-xs text-content-muted">
-                  Pobieranie najnowszych wpisów z historii lekcji z baz Notion bez konieczności ręcznego klikania.
+                  Sprawdzanie i import lekcji z Notion działa wyłącznie na kliknięcie lektora, dla jednego
+                  wybranego kursanta naraz — bez zadań w tle.
                 </p>
               </div>
             </div>
@@ -1462,21 +1463,10 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 <span className="text-primary font-mono text-[11px]">Zsynchronizowana</span>
               </div>
               <p>
-                Aplikacja posiada zaimplementowane funkcje <code>previewNotionSync</code> oraz <code>importNotionSelection</code> w Cloud Functions.
-              </p>
-              <div className="pt-2 border-t border-white/5 flex flex-col gap-1.5 font-mono text-[11px]">
-                <div className="text-white/80">• Lessons DB: 5c6d910b-31b7-83b8-810c-0187aa513b51</div>
-                <div className="text-white/80">• Students DB: ca88a293-bd34-4cc7-b09e-f6bd3901ef96</div>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2 text-xs">
-              <h4 className="font-bold text-primary flex items-center gap-1.5">
-                <Sparkles size={16} />
-                Planowany Scheduler (Cron)
-              </h4>
-              <p className="text-content-muted leading-relaxed">
-                Kolejnym krokiem automatyzacji będzie Cloud Scheduler (np. uruchamiany codziennie o 22:00), który automatycznie wykryje nowe lekcje z Notion i powiąże nowe słownictwo z profilami kursantów.
+                Przycisk „Sprawdź transkrypcje w Notion" w widoku Historii Lekcji pokazuje podgląd stron
+                Notion dla zaznaczonego kursanta i importuje wyłącznie to, co lektor jawnie zaakceptuje w
+                modalu — nic nie zapisuje się automatycznie w tle (zlecenie 2026-09-21, zastępuje wcześniejszy
+                cykliczny timer co 5 minut).
               </p>
             </div>
           </Card>

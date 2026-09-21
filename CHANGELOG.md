@@ -198,6 +198,27 @@ we dwoje na żywo.
 
 ---
 
+### 🧹 Import z Notion na Pull-on-Demand, deduplikacja po dacie, likwidacja "salonu gier" AI z widoku lekcji (2026-09-21, runda 43)
+
+**Zadanie:** pakiet stabilizacji silnika lekcji — wyłączyć automatyczny import z Notion w tle, wymusić twardą deduplikację i idempotentne ID przy imporcie, ujednolicić format tematów/dat w widoku "Moje Lekcje", zastąpić poziomy pasek 20+ pigułek kursantów kompaktowym dropdownem, oraz usunąć 3 karty generatorów AI z widoku szczegółów pojedynczej lekcji.
+
+**Zmienione:**
+- `server.ts` (`syncNotionTranscriptsFromApi`, `/api/notion/fetch-transcripts`) — usunięty `setInterval` odpytujący Notion co 5 minut w tle. Funkcja dostała tryby `preview` (tylko podgląd, nic nie zapisuje) i `import` (zapisuje wyłącznie strony jawnie zaznaczone przez lektora, dla jednego wybranego kursanta). Twarda deduplikacja: pominięcie strony, jeśli kursant ma już zatwierdzoną (`status: 'confirmed'`) lekcję na ten sam dzień. Idempotentne ID nowych wpisów: `notion_<pageId>`. Usunięty podwójny zapis do osieroconej, nieobjętej `firestore.rules` kolekcji najwyższego poziomu `lessonRecords` — zapis idzie wyłącznie do `users/{studentId}/lessonRecords`.
+- `components/admin/NotionImportPreviewModal.tsx` (nowy) — modal podglądu: lektor widzi kandydatów z Notion dla wybranego kursanta i sam zaznacza, co zaimportować. `components/admin/NotionUnmatchedTranscriptsModal.tsx` (usunięty — ścieżka stała się nieosiągalna po zawężeniu podglądu do jednego kursanta).
+- `functions/src/notion/dailyCheck.ts` (usunięty) — martwy `onSchedule` (codziennie 06:00), nigdy nie wyeksportowany jako Cloud Function, pisał do dokumentu, którego żaden frontend nie czytał.
+- `utils/lessonDisplay.ts` (nowy) — `getDisplayLessonTopic()`/`formatLessonDateDDMMYYYY()`: wykrywa surowe ciągi ISO zapisane jako temat lekcji (np. `Milena… 2026-09-16T06:30…`) i pokazuje `Lekcja z dnia DD.MM.YYYY` zamiast nich. Podłączone we wszystkich miejscach, gdzie temat trafia bezpośrednio do lektora (`TeacherLessonHistoryView.tsx`, `AdminPanel.tsx`, `TeacherMobileHub.tsx`, `TeacherTodayCockpit.tsx`, `StudentOperationalHub.tsx`).
+- `components/admin/TeacherLessonHistoryView.tsx` — poziomy pasek pigułek kursantów/grup zastąpiony przyciskiem-dropdownem z wyszukiwarką.
+- `components/admin/AdminPanel.tsx` — z widoku szczegółów pojedynczej lekcji usunięte 3 karty generatorów AI ("Wygeneruj pracę domową z tej lekcji", "Generator scenariusza lekcji 2.0", "Kreator Scenariuszy — Canvas"); widok zawiera teraz wyłącznie temat, datę, notatki/transkrypcję, listę słówek oraz akcje Edytuj/Usuń.
+- `services/lessonRecord.ts` — próba naprawy błędu uprawnień przy odrzucaniu/usuwaniu lekcji: `deleteLessonRecord()` usuwał bezwarunkowo `sets/set-lesson-{id}`, mimo że większość lekcji nie ma zestawu fiszek — dodano sprawdzenie istnienia przed `deleteDoc` (dokument, którego nigdy nie było, potrafi wywołać "Missing or insufficient permissions" przy ewaluacji reguły Firestore). `rejectNotionLesson()` dostał fallback dla pustego `topic` (pole wymagane przez `isValidRejectedNotionItem` w `firestore.rules`).
+
+**Świadomie nieruszone:** `firestore.rules` — bez jednoznacznego, odtwarzalnego dowodu, że błąd uprawnień pochodzi z reguł (a nie z kodu klienta, co dwie powyższe poprawki już adresują), zmiana w tym obszarze wysokiego ryzyka wymaga osobnej zgody i planu (CLAUDE.md sekcja 3). `functions/src/notion/sync.ts` (`previewSync`/`importSelection`) — ta ścieżka nigdy nie była wyeksportowana jako Cloud Function (nieobecna w `functions/src/index.ts`), a jej bazy Notion w `functions/src/config.ts` są puste od migracji workspace'u 2026-09-19; nie dostała tych samych poprawek co `server.ts`, bo nie wpływa na produkcję — ale ma pokrycie testami (`tests/notionMatch.test.ts`, `notionLevel.test.ts`, `notionParse.test.ts`), więc plik został zamiast tego przy życiu.
+
+**Szczegóły i decyzje architektoniczne:** `AGENT_LOG.md`, wpisy z 2026-09-21 (trzy — jeden na sekcję zadania).
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (495/495), `npm run build` (przechodzi). UI nie zweryfikowane wzrokowo w przeglądarce.
+
+---
+
 ### 🎯 Kokpit lektora (desktop): 4 kafelki zamiast rozwijanego paska „Więcej narzędzi", pasek szybkiego zapytania do Asystenta AI (2026-09-21, runda 42)
 
 **Zadanie:** uprościć główną nawigację pulpitu lektora na desktopie do 4 wyrazistych kafelków i dedykowanej strefy Asystenta AI, likwidując rozwijaną listę drugorzędnych narzędzi.

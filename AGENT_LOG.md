@@ -4476,3 +4476,361 @@ Ryzyka: Brak zmian w firestore.rules, middleware autoryzacji w server.ts,
 ścieżkach tokenowych bez logowania.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (495/495), npm run
 build (przechodzi).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Część 1/3 zadania stabilizacyjnego — usunięcie z widoku
+szczegółów pojedynczej lekcji (modal otwierany z listy lekcji w panelu
+lektora) trzech kafelków wejściowych do generowania AI: "Wygeneruj pracę
+domową z tej lekcji" (górna karta), "Generator scenariusza lekcji 2.0"
+oraz "Kreator Scenariuszy — Canvas".
+
+Zrobione:
+- components/admin/AdminPanel.tsx: w widoku szczegółów lekcji (Card
+  renderowana gdy `viewingRecord` jest ustawiony, poza trybem edycji)
+  usunięto: kartę "Quick Homework Generation Top Card" (gradientowa karta
+  z przyciskiem "Generuj zadania" wywołującym
+  `handleGenerateHomeworkFromLesson`), blok `<ScenarioPreviewPanel />`
+  ("Generator Scenariusza Lekcji 2.0") oraz blok `<ScenarioCanvasPanel />`
+  ("Kreator Scenariuszy i Interaktywny Canvas"). Po usunięciu widok
+  zawiera tylko `<CascadingLessonDetails />` (Temat, Data w nagłówku +
+  Notatki/Transkrypcja/Słówka w blokach) i przyciski nagłówka
+  Edytuj/Usuń.
+- Usunięto martwe importy `ScenarioPreviewPanel` i `ScenarioCanvasPanel`
+  z AdminPanel.tsx (używane wyłącznie w usuniętym fragmencie; same pliki
+  komponentów NIE zostały skasowane — `ScenarioModuleCard` używany też
+  przez components/admin/TeacherAssistant.tsx, czyli osobne narzędzie
+  poza tym widokiem, zostawione bez zmian).
+
+Nie dokończone / do sprawdzenia:
+- UI NIE zweryfikowane wzrokowo w przeglądarce (zgodnie z zakresem tego
+  zadania — bar to tsc + testy). Do sprawdzenia przez Macieja: modal
+  szczegółów lekcji po otwarciu z listy pokazuje już tylko dane lekcji +
+  Edytuj/Usuń, bez trzech usuniętych kafelków.
+
+Decyzje architektoniczne:
+- `handleGenerateHomeworkFromLesson` NIE usunięty — nadal używany przez
+  przyciski szybkiej akcji (ikona ✨) w wierszach listy lekcji (poza tym
+  modalem) oraz przekazywany jako `onGenerateHomework` do
+  `CascadingLessonDetails`.
+- Wewnątrz `CascadingLessonDetails.tsx` (komponent NIE był w zakresie tego
+  zadania — nie dotyka plików zastrzeżonych dla innego inżyniera, ale nie
+  był to jeden z 3 nazwanych kafelków) zostały dwa mniejsze przyciski
+  generujące zadanie domowe AI: link "Przekształć w zadanie Cribro" (przy
+  istniejącym zadaniu domowym) i przycisk "Wygeneruj zadanie domowe AI z
+  tej lekcji" (gdy brak zadania w notatkach) — oba wywołują ten sam
+  `onGenerateHomework`. Nie były jedną z 3 nazwanych pozycji do usunięcia,
+  więc zostały — flaguję je tutaj jako kandydatów do ewentualnego
+  osobnego ustalenia zakresu, zamiast usuwać jednostronnie.
+- Wiersze na liście lekcji (poza modalem szczegółów) mają własny,
+  niezależny przycisk-ikonę "Wygeneruj pracę domową z tej lekcji"
+  (hover na karcie lekcji, dwa wystąpienia — widok pogrupowany i
+  niepogrupowany wg miesiąca) — to osobna powierzchnia UI (lista, nie
+  widok szczegółów pojedynczej lekcji), więc zgodnie z zakresem zadania
+  NIE była ruszana.
+
+Ryzyka: brak — nie dotknięto firestore.rules, middleware autoryzacji w
+server.ts, ścieżek tokenowych bez logowania, ani plików zastrzeżonych
+(TeacherLessonHistoryView.tsx, utils/lessonDuplicates.ts,
+utils/lessonBlocks.ts).
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (495/495 przechodzi).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Część A/B trzyczęściowego zadania stabilizacyjnego (praca
+równoległa z innym agentem nad tym samym repo — swój zakres, bez ruszania
+plików zastrzeżonych dla innych części). Zakres:
+A) Normalizacja wyświetlania tematu/tytułu lekcji — część rekordów
+   pokazywała lektorowi surowy znacznik czasu ISO jako temat (np.
+   „Milena… 2026-09-16T06:30…”).
+B) Selektor kursanta w widoku „Moje Lekcje” (`TeacherLessonHistoryView`)
+   — zamiana poziomego rzędu 20+ pigułek na kompaktowy dropdown z
+   wyszukiwarką.
+
+Zrobione:
+- `utils/lessonDisplay.ts` (nowy plik) — `isJunkIsoTopic()` (wykrywa
+  temat będący surowym ISO-datetime, np. z doklejonym imieniem
+  kursanta), `formatLessonDateDDMMYYYY()` (format `DD.MM.YYYY` przez
+  `toLocaleDateString('pl-PL', ...)`), `getDisplayLessonTopic()` — zwraca
+  realny temat bez zmian albo `Lekcja z dnia DD.MM.YYYY` z prawdziwego
+  pola `date` rekordu (nigdy z zepsutego `topic`). Nic z tego nie zmienia
+  danych zapisanych w Firestore — to warstwa normalizacji na czas
+  wyświetlania.
+- `server.ts` (`/api/notion/fetch-transcripts`, ok. linii 2897) —
+  **jedyna zmiana w tym pliku w tym zadaniu**: tytuł strony Notion trafiał
+  wprost do `topic: title` przy imporcie transkrypcji; to jest źródło
+  bugu z przykładu („Milena… 2026-09-16T06:30…” to tytuł strony Notion
+  nadany przez narzędzie do nagrywania spotkań, nie treść tematu). Dodano
+  `safeTopic` — gdy `isJunkIsoTopic(title)`, zapisuje się
+  `Lekcja z dnia DD.MM.YYYY` zamiast surowego tytułu. To NIE jest
+  middleware autoryzacji (`requireFirebaseAuth`/`requireFirebaseAdmin`)
+  ani ścieżka tokenowa — czysta logika biznesowa importu, więc uznałem to
+  za w zakresie zadania (sekcja 3 CLAUDE.md wymienia konkretnie
+  middleware/ścieżki tokenowe, nie ten endpoint). Import
+  `isJunkIsoTopic`/`formatLessonDateDDMMYYYY` z `utils/lessonDisplay.ts`
+  jest type-safe dla esbuild (plik nie importuje niczego runtime'owego
+  poza typem `LessonRecord`, wymazywanym przy kompilacji).
+- `components/admin/TeacherLessonHistoryView.tsx`:
+  - `formatDateLabel` przełączony na `formatLessonDateDDMMYYYY` (był
+    długi format „16 września 2026”, teraz `DD.MM.YYYY` zgodnie z
+    poleceniem).
+  - Temat lekcji w wierszu tabeli, w modalu podglądu (nagłówek) i w
+    treści `window.confirm` przy usuwaniu — wszystko przez
+    `getDisplayLessonTopic()`.
+  - Nazwa kursanta (rząd tabeli, dropdown, odznaka w modalu podglądu)
+    przez `formatStudentDisplayName()` z `utils/studentFormat.ts`
+    (istniejący helper — dawał już „Imię Nazwisko” z porządnym
+    fallbackiem), zamiast ręcznej konkatenacji `firstName + lastName`.
+  - Poziomy rząd pigułek studentów/grup zastąpiony przyciskiem-dropdownem
+    (`isStudentDropdownOpen`, `studentSearchQuery`, `studentDropdownRef`)
+    z polem wyszukiwania (`filteredStudentTabs`, filtr po
+    `formatStudentDisplayName`) i listą klikalną w popoverze. Stan
+    `selectedStudentTab` i cała logika filtrowania lekcji w dole
+    komponentu — bez zmian (ta sama zmienna, te same semantyki).
+    Zamykanie: Escape (`useEscapeModal`, wzorzec z istniejącego użycia w
+    tym samym pliku dla `previewLesson`), klik poza dropdown
+    (`mousedown` listener na `document` + `studentDropdownRef`), oraz
+    klik w pozycję z listy. Kolory przez tokeny z `utils/themeTokens.ts`
+    (`bg-line-soft`, `border-line-strong`, `text-text-hi`,
+    `text-content-muted`, `bg-primary`/`text-accent-ink` dla wybranego
+    kursanta, `bg-purple-500` dla grup — te same, które już były używane
+    w usuniętym rzędzie pigułek), żadnych surowych `text-white`/`bg-black`
+    poza istniejącym `hover:bg-white/10` na przycisku zamknięcia
+    komunikatu (nie ruszane, poza zakresem).
+- `components/admin/TeacherMobileHub.tsx`, `TeacherTodayCockpit.tsx`,
+  `StudentOperationalHub.tsx`, `components/admin/AdminPanel.tsx`
+  (kolejka weryfikacji/zatwierdzania lekcji z Notion, listy odbytych
+  lekcji) — podłączono `getDisplayLessonTopic()` wszędzie, gdzie
+  `lesson.topic`/`record.topic`/`item.topic` trafiał bezpośrednio do UI
+  lektora. To właśnie kolejka weryfikacji w `AdminPanel.tsx` jest
+  najbardziej narażona na zepsute tematy z importu Notion (pierwsze
+  miejsce, gdzie lektor widzi nowo zaimportowaną lekcję).
+
+Nie dokończone / do sprawdzenia:
+- UI NIE zweryfikowane wzrokowo w przeglądarce (zgodnie z konwencją tego
+  repo — tsc + testy to bar dla tej klasy zmian). Do sprawdzenia przez
+  Macieja: dropdown wyboru kursanta w „Moje Lekcje” (otwieranie,
+  wyszukiwanie, wybór, Escape, klik poza), wygląd `Lekcja z dnia
+  DD.MM.YYYY` na rekordach z realnie zepsutym tematem w bazie (dawne,
+  już zapisane dane — ten helper NIE migruje istniejących rekordów w
+  Firestore, tylko naprawia wyświetlanie i zapobiega nowym).
+- NIE przeglądałem każdego miejsca w repo, gdzie występuje `.topic` —
+  jest ich dziesiątki (m.in. `scenario.topic` w generatorach scenariuszy,
+  `LessonPlanner.tsx`, `TeacherAssistant.tsx`, `LessonHistory.tsx` po
+  stronie kursanta w `components/dashboard/`). Skupiłem się na
+  komponentach realnie pokazujących `LessonRecord.topic` lektorowi w
+  widokach listy/szczegółów lekcji, zgodnie z opisem zadania. Warto
+  osobno sprawdzić `components/dashboard/LessonHistory.tsx` (widok
+  kursanta) — ten sam problem może być widoczny też po stronie ucznia,
+  ale to był świadomie poza zakresem („rendered to teachers”).
+- Praca równoległa innego agenta w tym samym repo dotykała
+  `components/admin/AdminPanel.tsx` i `TeacherLessonHistoryView.tsx` w
+  trakcie mojej sesji (dodanie `NotionImportPreviewModal` i usunięcie
+  `ScenarioPreviewPanel`/`ScenarioCanvasPanel` z modala szczegółów) — po
+  scaleniu tsc i testy nadal przechodzą (0 błędów, 495/495), ale
+  świadomie NIE weryfikowałem wzrokowo interakcji między moimi zmianami
+  a tamtymi.
+
+Decyzje architektoniczne:
+- Nowy helper w `utils/lessonDisplay.ts`, nie w `utils/lessonBlocks.ts`
+  ani `utils/lessonDuplicates.ts` — `lessonBlocks.ts` odpowiada za
+  ekstrakcję 4 bloków Notion (inna odpowiedzialność), a
+  `normalizeTopic()` w `lessonDuplicates.ts` służy do porównania przy
+  wykrywaniu duplikatów (nieodwracalnie obcina wielkość liter, ogonki,
+  numerację — nie nadaje się do wyświetlania). Osobny plik trzyma tę
+  jedną, wąską odpowiedzialność (normalizacja NA CZAS WYŚWIETLANIA) w
+  jednym miejscu.
+- Ponowne użycie istniejącego `formatStudentDisplayName()` zamiast
+  pisania nowego formattera — repo już miało dokładnie tę funkcję
+  (`utils/studentFormat.ts`), łącznie z priorytetem `firstName+lastName`
+  i ochroną przed surowymi ID/loginami jako nazwą.
+- Nie zmieniałem zachowania kolejki duplikatów
+  (`utils/lessonDuplicates.ts`) ani logiki `normalizeTopic` używanej do
+  wykrywania duplikatów — to osobna, nieruchoma odpowiedzialność
+  (porównanie do dedupu, nie wyświetlanie).
+- `server.ts`: minimalna, jednolinijkowa interwencja (dodanie
+  `safeTopic` przed zapisem `lessonPayload`) zamiast szerszej zmiany
+  logiki importu z Notion — poza zakresem tego zadania i poza obszarem,
+  który mogę ruszać bez dodatkowej zgody wg sekcji 3 CLAUDE.md.
+
+Ryzyka: brak zmian w firestore.rules, middleware autoryzacji w server.ts
+(`requireFirebaseAuth`/`requireFirebaseAdmin`) ani ścieżkach tokenowych
+bez logowania (`homework/direct/:token`, notatnik po PIN). Jedyna zmiana
+w `server.ts` dotyczy zwykłego endpointu biznesowego importu z Notion
+(`/api/notion/fetch-transcripts`), nie middleware ani autoryzacji.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (495/495 przechodzi). 
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Prompt 1/3 pakietu stabilizacji: wyłączenie automatycznego
+importu z Notion w tle, twarda deduplikacja + idempotentne ID przy
+imporcie, przejście na Pull-on-Demand (podgląd + akceptacja lektora dla
+jednego kursanta), oraz próba naprawy błędu uprawnień przy
+odrzucaniu/usuwaniu lekcji. Prowadziłem tę część równolegle z dwoma
+podagentami (normalizacja tematów/dropdown kursantów — sekcja 2, i
+usunięcie 3 kart generatorów AI z widoku szczegółów lekcji — sekcja 3;
+ich wpisy są wyżej w tym logu).
+
+Zrobione:
+- `server.ts` (`syncNotionTranscriptsFromApi` + endpoint
+  `/api/notion/fetch-transcripts`, ok. linia 2680–2960):
+  - Usunięto `setInterval` odpytujący Notion co 5 minut w tle (był
+    sterowany martwym polem `autoFetchEnabled`, którego żaden ekran w
+    aplikacji nie ustawiał — pola `autoFetchEnabled`/
+    `autoFetchIntervalMinutes` w `getNotionConfig()`/`/api/notion/config`
+    zostają jako nieużywane resztki, nie kasowałem całego API configu).
+  - Funkcja dostała tryby `mode: 'preview' | 'import'`. `preview` tylko
+    dopasowuje strony Notion do kursanta i zwraca listę — nic nie
+    zapisuje. `import` zapisuje WYŁĄCZNIE strony podane w `pageIds`
+    (czyli te, które lektor zaznaczył w modalu podglądu), zawsze
+    wymaga `studentId`.
+  - Twarda deduplikacja po dacie: przed zapisem sprawdzam
+    `users/{studentId}/lessonRecords` po `date == X` i
+    `status == 'confirmed'` — jeśli kursant ma już zatwierdzoną lekcję
+    tego dnia, strona z Notion jest pomijana (status
+    `pominięto (kursant ma już zatwierdzoną lekcję na ten dzień)`) bez
+    tworzenia szkicu.
+  - Idempotentne ID: nowe wpisy dostają ID `notion_<pageId>` zamiast
+    losowego. Wykrywanie „już zaimportowano” idzie po polu
+    `notionPageId` (nie po ID dokumentu), więc stare wpisy sprzed tej
+    zmiany (gołe `pageId` jako ID) nadal są poprawnie rozpoznawane i nie
+    dostają duplikatu pod nowym schematem ID.
+  - Usunięto podwójny zapis do osieroconej kolekcji najwyższego poziomu
+    `lessonRecords` (bez żadnej reguły w `firestore.rules`, nikt jej
+    nigdy nie czytał ani nie kasował) — zapis idzie teraz wyłącznie do
+    `users/{studentId}/lessonRecords`.
+- `components/admin/TeacherLessonHistoryView.tsx`: przycisk „Sprawdź
+  transkrypcje w Notion” wymaga teraz wybranego kursanta (dropdown z
+  sekcji 2) i otwiera nowy modal podglądu zamiast importować od razu.
+  Usunięto stary tor `NotionUnmatchedTranscriptsModal` (stał się
+  nieosiągalny — podgląd zawężony do jednego kursanta nie zwraca już
+  nigdy „niedopasowanych” pozycji z cudzej historii) razem z plikiem
+  `components/admin/NotionUnmatchedTranscriptsModal.tsx` (bez innych
+  referencji w repo — sprawdzone grepem przed usunięciem).
+- Nowy `components/admin/NotionImportPreviewModal.tsx`: lista
+  kandydatów z Notion dla wybranego kursanta, checkboxy (domyślnie
+  zaznaczone wszystkie „do importu”), przycisk „Zaimportuj zaznaczone”
+  wywołujący `mode: 'import'` z listą zaznaczonych `pageIds` — bez tego
+  kliknięcia nic się nie zapisuje.
+- `functions/src/notion/dailyCheck.ts` — usunięty. Był to scheduler
+  (`onSchedule`, codziennie 06:00) sprawdzający Notion w tle, ale NIGDY
+  nie był wyeksportowany z `functions/src/index.ts` (nie wdrożony jako
+  Cloud Function) i pisał do `system/notionAutoCheck`, którego żaden
+  frontend nie czytał — czysto martwy kod, sprawdzone grepem. Zostawiłem
+  bez zmian resztę `functions/src/notion/` (`sync.ts`, `client.ts`,
+  `parse.ts`) — mimo że też nigdy nie wyeksportowane jako Cloud
+  Functions (`previewNotionSync`/`importNotionSelection` nie istnieją w
+  produkcji), mają pokrycie testami (`tests/notionMatch.test.ts`,
+  `tests/notionLevel.test.ts`, `tests/notionParse.test.ts` importują z
+  nich `matchAccount`/`splitLevel`/`parseLessonSummary`) — usunięcie
+  wywaliłoby `npm test`. Ten sam mechanizm dedup/idempotentne-ID, co w
+  `server.ts`, NIE został przeniesiony do `functions/src/notion/sync.ts`
+  (`importSelection` tam nadal używa gołego `page.id` jako ID i nie ma
+  twardej deduplikacji po dacie) — patrz „Nie dokończone” niżej.
+- `components/admin/AdminMailingScreen.tsx`: poprawiony wprowadzający w
+  błąd opis w zakładce Automatyzacja/Notion — twierdził, że aplikacja ma
+  wdrożone `previewNotionSync`/`importNotionSelection` w Cloud
+  Functions (nieprawda, nigdy nie wyeksportowane) i reklamował „Cykliczne
+  automatyzowanie” (usunięte w tym zadaniu). Tekst opisuje teraz
+  rzeczywisty model Pull-on-Demand.
+- Próba naprawy błędu uprawnień przy odrzucaniu/usuwaniu lekcji
+  (`services/lessonRecord.ts`):
+  - `deleteLessonRecord()` usuwał bezwarunkowo `sets/set-lesson-{id}`
+    (zestaw fiszek), mimo że większość lekcji nigdy takiego zestawu nie
+    miała — komentarz w kodzie mówił „jeśli istnieje”, ale nic tego nie
+    sprawdzało. Reguła `allow delete` na `sets/{setId}` czyta
+    `resource.data.userId`, a dla dokumentu, którego nigdy nie było,
+    `resource` jest puste — to typowy sposób, w jaki Firestore rzuca
+    „Missing or insufficient permissions” nawet dla admina, jeśli
+    ewaluacja reguły nie skróci się wcześniej. Dodałem
+    `deleteIfExists()` (sprawdza `getDoc().exists()` przed
+    `deleteDoc()`, błąd łapie i loguje ostrzeżeniem zamiast przerywać
+    całą operację) i użyłem go zarówno dla zestawu fiszek, jak i
+    zestawu słownictwa.
+  - `rejectNotionLesson()`: `topic` jest polem wymaganym (min. 1 znak)
+    przez `isValidRejectedNotionItem` w `firestore.rules` — jeśli
+    odrzucana lekcja miała pusty/brakujący temat, zapis na czarną listę
+    (`rejectedNotionLessons`) odbijał się od tej reguły z tym samym
+    komunikatem. Dodano fallback `'Lekcja bez tematu'`.
+  - NIE dotknąłem `firestore.rules` — nie znalazłem jednoznacznego,
+    odtwarzalnego dowodu, że to reguły (a nie kod klienta) są źródłem
+    zgłoszonego błędu, a to obszar wysokiego ryzyka z sekcji 3 CLAUDE.md
+    wymagający jawnej zgody i planu przed zmianą. Powyższe dwie poprawki
+    usuwają dwa konkretne, zweryfikowane w kodzie źródła tego
+    komunikatu; jeśli błąd nadal wystąpi po tej zmianie, potrzebny jest
+    dokładny opis z konsoli przeglądarki (która kolekcja, create/update/
+    delete) do dalszej diagnozy.
+
+Nie dokończone / do sprawdzenia:
+- `functions/src/notion/sync.ts` (`previewSync`/`importSelection`) NIE
+  dostał tych samych poprawek (idempotentne ID `notion_<pageId>`, twarda
+  deduplikacja po dacie) co `server.ts` — ta ścieżka i tak nie jest
+  wdrożona jako Cloud Function (nieobecna w `functions/src/index.ts`),
+  więc nie wpływa na produkcję, ale jeśli ktoś kiedyś ją wyeksportuje,
+  odziedziczy te same problemy, które w tym zadaniu naprawiłem w
+  `server.ts`. Do rozważenia w kolejnym prompcie: albo dorobić te same
+  poprawki tam, albo skasować całą ścieżkę razem z testami, które ją
+  pokrywają (decyzja produktowa, nie moja).
+- `functions/src/config.ts`: `NOTION_LESSONS_DB`/`NOTION_STUDENTS_DB` są
+  puste od migracji workspace'u Notion 2026-09-19 (komentarz w pliku) —
+  potwierdza, że ta ścieżka i tak nie działa nawet gdyby ją
+  wyeksportować.
+- Permission fix: dwie konkretne poprawki (patrz wyżej) usuwają
+  najbardziej prawdopodobne źródła kodowe błędu, ale bez reprodukcji na
+  żywo (konto testowe, przeglądarka) nie mam stuprocentowej pewności, że
+  to WSZYSTKIE źródła — jeśli Maciej nadal zobaczy ten komunikat po
+  wdrożeniu, potrzebuję dokładnej ścieżki kolekcji z konsoli.
+- UI (nowy modal podglądu Notion, przycisk wymagający wybranego
+  kursanta) NIE zweryfikowane wzrokowo w przeglądarce — tsc + testy to
+  bar dla tej klasy zmian w tym repo.
+- Nie usunąłem martwych pól `autoFetchEnabled`/`autoFetchIntervalMinutes`
+  z `/api/notion/config`, `/api/notion/save-config` — nic ich już nie
+  czyta ani nie zapisuje z frontu, ale usunięcie całego API configu było
+  poza budżetem tego zadania i nie jest szkodliwe samo w sobie.
+
+Decyzje architektoniczne:
+- Wybrałem naprawę ŻYWEJ, wdrożonej ścieżki (`server.ts`, obsługiwanej
+  przez `api/serverless.ts` na Vercelu wg CLAUDE.md sekcja 2) zamiast
+  przełączenia na `functions/src/notion/sync.ts` (`previewNotionSync`/
+  `importNotionSelection`) — ta druga NIGDY nie była wyeksportowana z
+  `functions/src/index.ts` ani wdrożona, a jej bazy Notion w
+  `functions/src/config.ts` są dziś puste. Przełączenie frontu na
+  nieistniejącą Cloud Function zepsułoby import z Notion całkowicie
+  zamiast go naprawić.
+- „Twarda deduplikacja po dacie” sprawdza `status == 'confirmed'`, nie
+  `status == 'completed'` — w tym kodowej bazie kod nigdzie nie używa
+  wartości `'completed'` dla lekcji (zatwierdzone wpisy mają
+  `status: 'confirmed'`, patrz `isLessonPendingConfirmation` w
+  `utils/lessonBlocks.ts`). Polskie sformułowanie zlecenia
+  („status === 'completed' lub 'Odbyte'”) było opisowe, nie dosłownym
+  wskazaniem pola w tej bazie kodu.
+- Zostawiłem status `pending_confirmation`/`isPendingConfirmation: true`
+  dla świeżo zaimportowanej surowej transkrypcji z Notion (ten
+  ad-hoc-owy import w `server.ts` importuje surowy zapis rozmowy, nie
+  gotowe 4 bloki — identycznie jak transkrypcje z Cribro Sift,
+  `functions/src/transcript/ingest.ts`) — to nie jest „automatyczne
+  zaśmiecanie”, tylko rzeczywisty stan: transkrypcja naprawdę czeka na
+  wygenerowanie bloków przez lektora. Zlikwidowałem AUTOMATYCZNE
+  tworzenie takich wpisów w tle (setInterval) i wymusiłem jawną
+  akceptację przed zapisem — sam fakt, że zaimportowana transkrypcja
+  nadal wymaga dopracowania, zostaje (to prawdziwa praca, nie usterka).
+
+Ryzyka: NIE dotykałem `firestore.rules`, middleware autoryzacji w
+`server.ts` (`requireFirebaseAuth`/`requireFirebaseAdmin`) ani ścieżek
+tokenowych bez logowania (`homework/direct/:token`, notatnik po PIN).
+Zmiany w `server.ts` dotyczą wyłącznie logiki biznesowej importu z
+Notion (`syncNotionTranscriptsFromApi`, endpoint
+`/api/notion/fetch-transcripts`) i usunięcia tła (`setInterval`) — nie
+autoryzacji. `services/lessonRecord.ts` — zmiany defensywne (sprawdzenie
+istnienia przed usunięciem, fallback dla wymaganego pola), bez zmiany
+reguł dostępu.
+Weryfikacja: npx tsc --noEmit (0 błędów, po scaleniu z pracą obu
+podagentów), npm test (495/495 przechodzi), npm run build (przechodzi —
+vite build + esbuild server.ts + esbuild api/serverless.ts, bez nowych
+błędów).

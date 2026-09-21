@@ -33,6 +33,7 @@ import {
 } from '../../types';
 import { fetchTeacherCockpitData } from '../../services/teacherCockpitService';
 import { toPolishVocative } from '../../utils/polishVocative';
+import { getDisplayLessonTopic } from '../../utils/lessonDisplay';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import ManualTranscriptImportModal from './ManualTranscriptImportModal';
 
@@ -361,7 +362,7 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
 
                       <div className="space-y-1">
                         <span className="text-[10px] uppercase font-bold text-content-muted tracking-wider">Temat:</span>
-                        <p className="text-xs text-content font-medium line-clamp-2">{lesson.topic || 'Lekcja bez zdefiniowanego tematu'}</p>
+                        <p className="text-xs text-content font-medium line-clamp-2">{getDisplayLessonTopic(lesson)}</p>
                       </div>
 
                       <div className="pt-2 border-t border-line-soft flex items-center justify-between gap-2">
@@ -421,7 +422,7 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
 
                       <div className="space-y-1">
                         <span className="text-[10px] uppercase font-bold text-content-muted tracking-wider">Temat:</span>
-                        <p className="text-xs text-content font-medium line-clamp-2">{lesson.topic || 'Lekcja bez zdefiniowanego tematu'}</p>
+                        <p className="text-xs text-content font-medium line-clamp-2">{getDisplayLessonTopic(lesson)}</p>
                       </div>
 
                       <div className="pt-2 border-t border-line-soft flex items-center justify-between gap-2">
@@ -490,7 +491,7 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
                         </div>
                       </div>
 
-                      <p className="text-xs text-content font-medium line-clamp-2">{item.topic || 'Podsumowanie lekcji'}</p>
+                      <p className="text-xs text-content font-medium line-clamp-2">{getDisplayLessonTopic(item)}</p>
 
                       <div className="flex items-center gap-2 text-[11px] text-content-muted">
                         <span className={`px-2 py-0.5 rounded ${item.hasSummary ? 'bg-emerald-500/15 text-emerald-300' : 'bg-base-200 text-content-muted'}`}>

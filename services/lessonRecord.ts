@@ -1,5 +1,5 @@
 import { db } from '../firebase';
-import { doc, setDoc, collection, getDocs, query, orderBy, where, serverTimestamp, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, collection, getDocs, getDoc, query, orderBy, where, serverTimestamp, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { LessonRecord, RejectedNotionItem, VocabularySet } from '../types';
 import { findExistingDuplicate } from '../utils/lessonDuplicates';
 import { buildVocabularySetTitle, countVocabularyItems, getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
@@ -445,24 +445,40 @@ export async function markVocabularySetAsUsed(studentId: string, setId: string):
   }
 }
 
+/**
+ * Kasuje opcjonalny dokument tylko wtedy, gdy naprawdę istnieje.
+ *
+ * Bez sprawdzenia istnienia `deleteDoc` na nieistniejącym dokumencie trafiał
+ * czasem w regułę Firestore, która przy delete czyta `resource.data` — a dla
+ * dokumentu, którego nigdy nie było, `resource` jest puste i taka reguła
+ * kończy się „Missing or insufficient permissions" zamiast cichym sukcesem.
+ * Usuwanie/odrzucanie lekcji bez zestawu fiszek (większość wpisów) właśnie w
+ * ten sposób rzucało błędem, mimo że sam rekord lekcji kasował się poprawnie.
+ */
+async function deleteIfExists(path: string): Promise<void> {
+  const ref = doc(db, path);
+  try {
+    const snap = await getDoc(ref);
+    if (!snap.exists()) return;
+    await deleteDoc(ref);
+  } catch (err) {
+    console.warn(`Nie udało się usunąć ${path}:`, err);
+  }
+}
+
 export async function deleteLessonRecord(studentId: string, lessonRecord: LessonRecord): Promise<void> {
   const recordId = lessonRecord.id;
   const vocabId = lessonRecord.vocabularySetId;
 
-  // 1. Delete lesson record
+  // 1. Usuń rekord lekcji — to jedyny krok, którego błąd ma przerwać operację.
   const recordRef = doc(db, `users/${studentId}/lessonRecords/${recordId}`);
   await deleteDoc(recordRef);
 
-  // 2. Delete vocabulary set if it exists
+  // 2. Zestaw słownictwa i fiszki są opcjonalne — nie każda lekcja je ma.
   if (vocabId) {
-    const setRef = doc(db, `users/${studentId}/vocabularySets/${vocabId}`);
-    await deleteDoc(setRef);
+    await deleteIfExists(`users/${studentId}/vocabularySets/${vocabId}`);
   }
-
-  // 3. Delete flashcard set if it exists
-  const flashcardSetId = `set-lesson-${recordId}`;
-  const flashcardSetRef = doc(db, `sets/${flashcardSetId}`);
-  await deleteDoc(flashcardSetRef);
+  await deleteIfExists(`sets/set-lesson-${recordId}`);
 
   invalidateLessonRecordsCache(studentId);
 }
@@ -485,10 +501,14 @@ export async function rejectNotionLesson(
   const rejectedId = lessonRecord.notionPageId || lessonRecord.id;
   const rejectedRef = doc(db, `users/${studentId}/rejectedNotionLessons/${rejectedId}`);
 
+  // `topic` jest polem wymaganym przez regułę Firestore (min. 1 znak) — pusty
+  // wpis (np. lekcja bez wpisanego tematu) odbijałby się od zapisu z tym samym
+  // „Missing or insufficient permissions", co brak wymaganego pola daje w
+  // odpowiedzi klienta.
   const rejectedItem: RejectedNotionItem = {
     id: rejectedId,
     studentId,
-    topic: lessonRecord.topic,
+    topic: lessonRecord.topic?.trim() || 'Lekcja bez tematu',
     date: lessonRecord.date,
     rejectedAt: new Date().toISOString(),
     reason,

@@ -3,6 +3,7 @@ import { Calendar, Users, BookOpen, X, Search, ChevronRight, Loader2, Mail, Clip
 import { User, LessonRecord, TeacherCockpitData } from '../../types';
 import { fetchTeacherCockpitData } from '../../services/teacherCockpitService';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
+import { getDisplayLessonTopic } from '../../utils/lessonDisplay';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 type UserWithId = User & { id: string };
@@ -202,7 +203,7 @@ const TeacherMobileHub: React.FC<TeacherMobileHubProps> = ({
                     >
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-text-hi truncate">{lesson.studentName}</p>
-                        <p className="text-xs text-content-muted truncate">{lesson.topic || 'Bez tematu'}</p>
+                        <p className="text-xs text-content-muted truncate">{getDisplayLessonTopic(lesson)}</p>
                       </div>
                       <span className="shrink-0 text-[10px] font-bold uppercase px-2 py-1 rounded-md bg-line-soft text-content-muted border border-line-strong">
                         {workflowLabel[lesson.workflowStatus] || lesson.workflowStatus}
@@ -266,7 +267,7 @@ const TeacherMobileHub: React.FC<TeacherMobileHubProps> = ({
                   <p className="text-xs font-bold uppercase tracking-wider text-content-muted mb-1">Ostatnia lekcja</p>
                   {selectedStudentLastLesson ? (
                     <div>
-                      <p className="text-sm text-text-hi">{selectedStudentLastLesson.topic || 'Bez tematu'}</p>
+                      <p className="text-sm text-text-hi">{getDisplayLessonTopic(selectedStudentLastLesson)}</p>
                       <p className="text-xs text-content-muted">{selectedStudentLastLesson.date}</p>
                     </div>
                   ) : (
@@ -338,7 +339,7 @@ const TeacherMobileHub: React.FC<TeacherMobileHubProps> = ({
               >
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-text-hi truncate">{lesson.studentName || 'Kursant'}</p>
-                  <p className="text-xs text-content-muted truncate">{lesson.topic || 'Bez tematu'} · {lesson.date}</p>
+                  <p className="text-xs text-content-muted truncate">{getDisplayLessonTopic(lesson)} · {lesson.date}</p>
                 </div>
                 <ChevronRight size={16} className="text-content-muted shrink-0" />
               </button>

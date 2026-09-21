@@ -16,9 +16,8 @@ import RecallItemsReview, { ReviewedCandidate } from './RecallItemsReview';
 import { saveRecallReview } from '../../services/recallItems';
 import { countVocabularyItems, buildVocabularySetTitle, splitVocabularyLines } from '../../utils/vocabulary';
 import { isLessonPendingConfirmation, extractLessonBlocks } from '../../utils/lessonBlocks';
+import { getDisplayLessonTopic } from '../../utils/lessonDisplay';
 import { CascadingLessonDetails } from './CascadingLessonDetails';
-import { ScenarioPreviewPanel } from './ScenarioPreviewPanel';
-import { ScenarioCanvasPanel } from './ScenarioCanvasPanel';
 import { getGeneratedScenarios } from '../../services/scenarioService';
 import React, { useState, useEffect, useRef } from 'react';
 import gsap from 'gsap';
@@ -3235,7 +3234,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                           </span>
                                         </div>
 
-                                        <h5 className="font-bold text-sm text-text-hi truncate">{record.topic}</h5>
+                                        <h5 className="font-bold text-sm text-text-hi truncate">{getDisplayLessonTopic(record)}</h5>
 
                                         {record.lessonSummary ? (
                                           <p className="text-xs text-content-muted line-clamp-1 italic">{record.lessonSummary}</p>
@@ -3349,7 +3348,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                         </div>
                                         <div className="flex-1 min-w-0">
                                            <div className="flex items-center gap-2 flex-wrap">
-                                             <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                             <h4 className="font-bold text-base line-clamp-1">{getDisplayLessonTopic(record)}</h4>
                                              {record.scenarioTopic && (
                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 truncate max-w-[220px]" title={`Podstawa lekcji: ${record.scenarioTopic}`}>
                                                  🔗 {record.scenarioTopic}
@@ -3471,7 +3470,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                             </div>
                                                             <div className="flex-1 min-w-0">
                                                                <div className="flex items-center gap-2 flex-wrap">
-                                                                 <h4 className="font-bold text-base line-clamp-1">{record.topic}</h4>
+                                                                 <h4 className="font-bold text-base line-clamp-1">{getDisplayLessonTopic(record)}</h4>
                                                                  {record.scenarioTopic && (
                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 truncate max-w-[220px]" title={`Podstawa lekcji: ${record.scenarioTopic}`}>
                                                                      🔗 {record.scenarioTopic}
@@ -5312,7 +5311,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                     <span className="text-xs px-2 py-0.5 rounded-full bg-base-300 text-content-muted font-mono">{item.record.date}</span>
                                     <span className="text-xs text-primary font-bold">Kursant: {item.studentName}</span>
                                   </div>
-                                  <h4 className="font-bold text-base text-text-hi truncate">{item.record.topic}</h4>
+                                  <h4 className="font-bold text-base text-text-hi truncate">{getDisplayLessonTopic(item.record)}</h4>
                                   {item.record.lessonSummary && (
                                     <p className="text-xs text-content-muted line-clamp-2 italic">
                                       {item.record.lessonSummary}
@@ -5382,51 +5381,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
                 <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto">
-                  {/* Quick Homework Generation Top Card */}
-                  <div className="p-4 rounded-2xl bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 border border-primary/40 shadow-[0_0_20px_rgba(114,240,180,0.15)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xl shrink-0">
-                        ✨
-                      </div>
-                      <div>
-                        <h4 className="font-extrabold text-text-hi text-sm sm:text-base flex items-center gap-2">
-                          {i18n.t("Wygeneruj pracę domową z tej lekcji")}
-                          <span className="text-[10px] font-mono uppercase px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
-                            AI Generator
-                          </span>
-                        </h4>
-                        <p className="text-xs text-content-muted mt-0.5">
-                          {viewingRecord?.vocabularyText
-                            ? `Utwórz ćwiczenia na tłumaczenie zdań z wykorzystaniem ${viewingRecord.vocabularyText.split('\n').filter(l => l.trim().length > 0).length} słówek z tej lekcji.`
-                            : `Utwórz ćwiczenia na tłumaczenie zdań powiązane z tematem lekcji: „${viewingRecord?.topic}”.`}
-                        </p>
-                      </div>
-                    </div>
-                    <Button 
-                      variant="primary" 
-                      onClick={() => handleGenerateHomeworkFromLesson(viewingRecord!)}
-                      className="shrink-0 flex items-center gap-2 font-bold shadow-[0_0_15px_rgba(114,240,180,0.25)] hover:scale-105 text-xs sm:text-sm"
-                    >
-                      <Sparkles size={16} /> {i18n.t("Generuj zadania")}
-                    </Button>
-                  </div>
-                  
-                  {/* Generator Scenariusza Lekcji 2.0 */}
-                  {viewingRecord && selectedUser?.id && (
-                    <ScenarioPreviewPanel
-                      studentId={selectedUser.id}
-                      targetLessonId={viewingRecord.id}
-                    />
-                  )}
-
-                  {/* Kreator Scenariuszy i Interaktywny Canvas (MVP) */}
-                  {viewingRecord && selectedUser?.id && (
-                    <ScenarioCanvasPanel
-                      studentId={selectedUser.id}
-                      targetLessonId={viewingRecord.id}
-                    />
-                  )}
-
                   {/* Cascading Lesson Details view */}
                   {viewingRecord && (
                     <CascadingLessonDetails

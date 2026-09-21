@@ -40,6 +40,7 @@ import { openScratchpadTab } from '../../services/scratchpadService';
 import { extractLessonBlocks } from '../../utils/lessonBlocks';
 import { toPolishVocative } from '../../utils/polishVocative';
 import { formatStudentFirstName } from '../../utils/studentFormat';
+import { getDisplayLessonTopic } from '../../utils/lessonDisplay';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -412,7 +413,7 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
                               {lesson.source === 'live_transcript' ? 'Transkrypcja' : 'Notion / Manual'}
                             </span>
                           </div>
-                          <h3 className="text-base font-extrabold text-text-hi mt-0.5">{lesson.topic}</h3>
+                          <h3 className="text-base font-extrabold text-text-hi mt-0.5">{getDisplayLessonTopic(lesson)}</h3>
                         </div>
                       </div>
 

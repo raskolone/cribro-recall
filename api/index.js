@@ -2544,6 +2544,27 @@ var fetchNotionBlocksText = async (token, blockId, depth = 0) => {
   return lines.join("\n");
 };
 
+// utils/lessonDisplay.ts
+var ONLY_ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+function isJunkIsoTopic(topic) {
+  if (!topic) return true;
+  const trimmed = topic.trim();
+  if (!trimmed) return true;
+  if (ONLY_ISO_DATE.test(trimmed)) return true;
+  if (/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(trimmed)) return true;
+  return false;
+}
+function formatLessonDateDDMMYYYY(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toLocaleDateString("pl-PL", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
+  });
+}
+
 // server.ts
 function mapToActualOpenAIModel(modelName) {
   const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
@@ -4634,7 +4655,9 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  async function syncNotionTranscriptsFromApi() {
+  async function syncNotionTranscriptsFromApi(options) {
+    const { mode, studentId: studentIdFilter, pageIds } = options;
+    const allowedPageIds = mode === "import" ? new Set(pageIds || []) : null;
     const cfg = await getNotionConfig();
     const token = cfg.token;
     const meetingNotesDbId = normalizeNotionId(cfg.meetingNotesDbId);
@@ -4692,17 +4715,6 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         }
       }
       if (!dateStr) dateStr = (page.created_time || (/* @__PURE__ */ new Date()).toISOString()).split("T")[0];
-      const existingSnap = await adminDb.collection("lessonRecords").where("notionPageId", "==", page.id).limit(1).get();
-      if (!existingSnap.empty) {
-        processedItems.push({
-          id: page.id,
-          title,
-          studentName: existingSnap.docs[0].data().studentName || "Ju\u017C zaimportowano",
-          date: dateStr,
-          status: "istnieje"
-        });
-        continue;
-      }
       const transcriptText = await fetchNotionBlocksText(token, page.id, 0);
       if (!transcriptText || transcriptText.length < 50) {
         processedItems.push({
@@ -4756,6 +4768,7 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         }
       }
       if (!matchedUser) {
+        if (studentIdFilter) continue;
         unmatchedTranscripts.push({
           id: page.id,
           title,
@@ -4774,38 +4787,55 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       }
       const studentId = matchedUser.id;
       const studentName = matchedUser.name || title.split(/[\-\–—:]/)[0].trim() || "Kursant";
-      const newLessonRef = adminDb.collection("lessonRecords").doc();
+      if (studentIdFilter && studentId !== studentIdFilter) {
+        continue;
+      }
+      const lessonsRef = adminDb.collection("users").doc(studentId).collection("lessonRecords");
+      const alreadyImportedSnap = await lessonsRef.where("notionPageId", "==", page.id).limit(1).get();
+      if (!alreadyImportedSnap.empty) {
+        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: "istnieje" });
+        continue;
+      }
+      const sameDayConfirmedSnap = await lessonsRef.where("date", "==", dateStr).where("status", "==", "confirmed").limit(1).get();
+      if (!sameDayConfirmedSnap.empty) {
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName,
+          date: dateStr,
+          status: "pomini\u0119to (kursant ma ju\u017C zatwierdzon\u0105 lekcj\u0119 na ten dzie\u0144)"
+        });
+        continue;
+      }
+      if (mode === "preview") {
+        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: "do importu" });
+        continue;
+      }
+      if (!allowedPageIds.has(page.id)) {
+        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: "pomini\u0119to (nie zaznaczono)" });
+        continue;
+      }
+      const safeTopic = isJunkIsoTopic(title) ? `Lekcja z dnia ${formatLessonDateDDMMYYYY(dateStr) || dateStr}` : title;
       const lessonPayload = {
         studentId,
         studentIds: matchedUser.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
         date: dateStr,
-        topic: title,
+        topic: safeTopic,
         rawTranscript: transcriptText,
         liveTranscript: transcriptText,
         notionPageId: page.id,
         source: "notion",
         isGroupLesson: Boolean(matchedUser.isGroup),
         sessionStatus: "draft",
-        status: "pending",
+        status: "pending_confirmation",
         isPendingConfirmation: true,
-        pendingReason: "Zaimportowano now\u0105 transkrypcj\u0119 z Notion",
+        pendingReason: "Transkrypcja z Notion czeka na wygenerowanie blok\xF3w lekcji",
         createdAt: (/* @__PURE__ */ new Date()).toISOString(),
         updatedAt: (/* @__PURE__ */ new Date()).toISOString()
       };
-      await newLessonRef.set(lessonPayload);
-      try {
-        await adminDb.collection("users").doc(studentId).collection("lessonRecords").doc(newLessonRef.id).set(lessonPayload, { merge: true });
-      } catch (subErr) {
-        console.warn(`[Notion Sync] Nie uda\u0142o si\u0119 zapisa\u0107 do users/${studentId}/lessonRecords:`, subErr);
-      }
-      processedItems.push({
-        id: page.id,
-        title,
-        studentName,
-        date: dateStr,
-        status: "zaimportowano"
-      });
+      await lessonsRef.doc(`notion_${page.id}`).set(lessonPayload, { merge: true });
+      processedItems.push({ id: page.id, title, studentName, date: dateStr, status: "zaimportowano" });
     }
     const nowIso = (/* @__PURE__ */ new Date()).toISOString();
     await adminDb.collection("system").doc("notion").set({
@@ -4823,7 +4853,13 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
   }
   app2.post("/api/notion/fetch-transcripts", requireFirebaseAdmin, async (req, res) => {
     try {
-      const result = await syncNotionTranscriptsFromApi();
+      const mode = req.body?.mode === "import" ? "import" : "preview";
+      const studentId = typeof req.body?.studentId === "string" && req.body.studentId ? req.body.studentId : void 0;
+      const pageIds = Array.isArray(req.body?.pageIds) ? req.body.pageIds.filter((id) => typeof id === "string") : [];
+      if (mode === "import" && (!studentId || pageIds.length === 0)) {
+        return res.status(400).json({ error: "Import wymaga wybranego kursanta i przynajmniej jednej zaznaczonej strony." });
+      }
+      const result = await syncNotionTranscriptsFromApi({ mode, studentId, pageIds });
       return res.json({
         ok: true,
         ...result
@@ -4971,20 +5007,6 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  setInterval(async () => {
-    try {
-      const cfg = await getNotionConfig();
-      if (!cfg.autoFetchEnabled || !cfg.token) return;
-      const lastFetch = cfg.lastFetchTime ? new Date(cfg.lastFetchTime).getTime() : 0;
-      const intervalMs = (cfg.autoFetchIntervalMinutes || 30) * 60 * 1e3;
-      if (Date.now() - lastFetch >= intervalMs) {
-        console.log("[Notion Auto-Fetch] Uruchamiam cykliczn\u0105 synchronizacj\u0119 transkrypcji...");
-        await syncNotionTranscriptsFromApi();
-      }
-    } catch (e) {
-      console.warn("[Notion Auto-Fetch Error]:", e);
-    }
-  }, 5 * 60 * 1e3);
   app2.post("/api/gemini/generate-test", requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;

@@ -1,6 +1,8 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { User, LessonRecord } from '../../types';
 import { extractLessonBlocks, isLessonPendingConfirmation } from '../../utils/lessonBlocks';
+import { getDisplayLessonTopic, formatLessonDateDDMMYYYY } from '../../utils/lessonDisplay';
+import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { auth } from '../../firebase';
 import Card from '../ui/Card';
@@ -43,7 +45,7 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
-import { NotionUnmatchedTranscriptsModal, UnmatchedTranscriptItem } from './NotionUnmatchedTranscriptsModal';
+import { NotionImportPreviewModal, NotionPreviewItem } from './NotionImportPreviewModal';
 
 interface TeacherLessonHistoryViewProps {
   lessons: LessonRecord[];
@@ -83,50 +85,53 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const [isCheckingNotion, setIsCheckingNotion] = useState(false);
   const [notionCheckMsg, setNotionCheckMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
-  const [unmatchedList, setUnmatchedList] = useState<UnmatchedTranscriptItem[]>([]);
-  const [isUnmatchedModalOpen, setIsUnmatchedModalOpen] = useState(false);
   const [lastImportedCount, setLastImportedCount] = useState(0);
+  const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
+  const [studentSearchQuery, setStudentSearchQuery] = useState('');
+  const studentDropdownRef = useRef<HTMLDivElement>(null);
+  const [notionPreviewItems, setNotionPreviewItems] = useState<NotionPreviewItem[]>([]);
+  const [isNotionPreviewOpen, setIsNotionPreviewOpen] = useState(false);
+  const [isImportingNotion, setIsImportingNotion] = useState(false);
 
+  const callNotionSync = async (body: Record<string, unknown>) => {
+    const token = await auth.currentUser?.getIdToken();
+    const res = await fetch('/api/notion/fetch-transcripts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(body),
+    });
+    const contentType = res.headers.get('content-type') || '';
+    const data: any = contentType.includes('application/json') ? await res.json() : {};
+    if (!res.ok) {
+      throw new Error(data.error || 'Nie udało się połączyć z Notion');
+    }
+    return data;
+  };
+
+  /**
+   * Pull-on-Demand: krok 1. Tylko PATRZY — nic nie zapisuje. Wymaga
+   * zaznaczonego kursanta, bo import z Notion nie skanuje już całej bazy
+   * naraz w tle, tylko na wyraźne żądanie lektora dla jednej osoby.
+   */
   const handleCheckNotion = async () => {
+    if (selectedStudentTab === 'all') {
+      setNotionCheckMsg({
+        type: 'error',
+        text: 'Wybierz najpierw kursanta z listy powyżej — sprawdzanie Notion działa dla jednej osoby naraz.',
+      });
+      setTimeout(() => setNotionCheckMsg(null), 6000);
+      return;
+    }
+
     setIsCheckingNotion(true);
     setNotionCheckMsg(null);
     try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/notion/fetch-transcripts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-      let data: any = {};
-      const contentType = res.headers.get('content-type') || '';
-      if (contentType.includes('application/json')) {
-        data = await res.json();
-      } else {
-        const text = await res.text();
-        if (!res.ok) {
-          throw new Error(text.slice(0, 200) || `Błąd serwera (${res.status})`);
-        }
-      }
-      if (!res.ok) {
-        throw new Error(data.error || 'Nie udało się sprawdzić transkrypcji w Notion');
-      }
-      
-      const imported = Number(data.importedCount || data.processed || 0);
-      setLastImportedCount(imported);
-      
-      if (data.unmatchedTranscripts && data.unmatchedTranscripts.length > 0) {
-        setUnmatchedList(data.unmatchedTranscripts);
-        setIsUnmatchedModalOpen(true);
-      }
-
-      setNotionCheckMsg({
-        type: 'success',
-        text: `Sprawdzono Notion: znaleziono ${data.found || 0} stron, zaimportowano ${imported}${data.unmatchedTranscripts?.length ? ` (pominięto ${data.unmatchedTranscripts.length} niedotyczących lekcji)` : ''}`,
-      });
-      if (onRefresh) onRefresh();
-      setTimeout(() => setNotionCheckMsg(null), 6000);
+      const data = await callNotionSync({ mode: 'preview', studentId: selectedStudentTab });
+      setNotionPreviewItems((data.items || []) as NotionPreviewItem[]);
+      setIsNotionPreviewOpen(true);
     } catch (e: any) {
       setNotionCheckMsg({
         type: 'error',
@@ -138,7 +143,46 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
     }
   };
 
+  /** Pull-on-Demand: krok 2. Zapisuje wyłącznie to, co lektor zaznaczył w modalu. */
+  const handleConfirmNotionImport = async (pageIds: string[]) => {
+    if (selectedStudentTab === 'all' || pageIds.length === 0) return;
+    setIsImportingNotion(true);
+    try {
+      const data = await callNotionSync({ mode: 'import', studentId: selectedStudentTab, pageIds });
+      const imported = Number(data.importedCount || 0);
+      setLastImportedCount(imported);
+      setIsNotionPreviewOpen(false);
+      setNotionCheckMsg({
+        type: 'success',
+        text: `Zaimportowano ${imported} ${imported === 1 ? 'lekcję' : 'lekcji'} z Notion dla ${selectedStudentLabel}.`,
+      });
+      if (onRefresh) onRefresh();
+      setTimeout(() => setNotionCheckMsg(null), 6000);
+    } catch (e: any) {
+      setNotionCheckMsg({
+        type: 'error',
+        text: `Błąd importu z Notion: ${e.message || String(e)}`,
+      });
+      setTimeout(() => setNotionCheckMsg(null), 7000);
+    } finally {
+      setIsImportingNotion(false);
+    }
+  };
+
   useEscapeModal(Boolean(previewLesson), () => setPreviewLesson(null), 10);
+  useEscapeModal(isStudentDropdownOpen, () => setIsStudentDropdownOpen(false), 5);
+
+  // Zamknięcie dropdownu wyboru kursanta po kliknięciu poza nim
+  useEffect(() => {
+    if (!isStudentDropdownOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (studentDropdownRef.current && !studentDropdownRef.current.contains(e.target as Node)) {
+        setIsStudentDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isStudentDropdownOpen]);
 
   // Map of studentId -> User for O(1) lookups
   const studentMap = useMemo(() => {
@@ -180,6 +224,27 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
         return nameA.localeCompare(nameB);
       });
   }, [students, lessonCountsByStudent]);
+
+  // Lista kursantów przefiltrowana po wpisanej frazie w dropdownie wyboru kursanta
+  const filteredStudentTabs = useMemo(() => {
+    const q = studentSearchQuery.trim().toLowerCase();
+    if (!q) return sortedStudentTabs;
+    return sortedStudentTabs.filter((student) =>
+      formatStudentDisplayName(student).toLowerCase().includes(q)
+    );
+  }, [sortedStudentTabs, studentSearchQuery]);
+
+  // Etykieta aktualnie wybranego kursanta na przycisku dropdownu
+  const selectedStudentLabel = useMemo(() => {
+    if (selectedStudentTab === 'all') return 'Wszyscy kursanci';
+    const student = studentMap.get(selectedStudentTab);
+    return student ? formatStudentDisplayName(student) : 'Wszyscy kursanci';
+  }, [selectedStudentTab, studentMap]);
+
+  const selectedStudentForTab = selectedStudentTab === 'all' ? null : studentMap.get(selectedStudentTab);
+  const isSelectedGroup = Boolean(
+    selectedStudentForTab?.isGroup || selectedStudentForTab?.lessonType === 'Group'
+  );
 
   // Filtered and sorted lessons
   const filteredLessons = useMemo(() => {
@@ -241,18 +306,7 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   };
 
   const formatDateLabel = (dateStr?: string) => {
-    if (!dateStr) return '-';
-    try {
-      const d = new Date(dateStr);
-      if (isNaN(d.getTime())) return dateStr;
-      return d.toLocaleDateString('pl-PL', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
+    return formatLessonDateDDMMYYYY(dateStr) || dateStr || '-';
   };
 
   const getStudentForLesson = (lesson: LessonRecord): User | undefined => {
@@ -294,7 +348,11 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
             onClick={handleCheckNotion}
             isLoading={isCheckingNotion}
             className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong hover:border-amber-400/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-semibold"
-            title="Sprawdź manualnie czy w skonfigurowanej bazie Notion pojawiły się nowe transkrypcje"
+            title={
+              selectedStudentTab === 'all'
+                ? 'Wybierz kursanta z listy, żeby sprawdzić jego transkrypcje w Notion'
+                : `Sprawdź w Notion, czy jest coś nowego do zaimportowania dla: ${selectedStudentLabel}`
+            }
           >
             <Database size={13} className={isCheckingNotion ? 'animate-spin' : ''} />
             Sprawdź transkrypcje w Notion
@@ -348,73 +406,114 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
         </div>
       )}
 
-      {/* Notion Student / Group Horizontal Filter Tabs */}
-      <div className="relative border-b border-line-strong pb-2">
-        <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-          {/* Wszystkie lekcje Tab */}
-          <button
-            onClick={() => setSelectedStudentTab('all')}
-            className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 font-medium ${
-              selectedStudentTab === 'all'
-                ? 'bg-primary text-accent-ink font-bold shadow-md shadow-primary/20'
-                : 'bg-line-soft/50 text-content-muted hover:text-text-hi hover:bg-line-soft border border-line-strong'
+      {/* Wybór kursanta / grupy — kompaktowy dropdown z wyszukiwarką */}
+      <div className="relative border-b border-line-strong pb-3" ref={studentDropdownRef}>
+        <button
+          type="button"
+          onClick={() => {
+            setIsStudentDropdownOpen((v) => !v);
+            setStudentSearchQuery('');
+          }}
+          className={`w-full sm:w-auto px-3.5 py-2 rounded-xl transition-all flex items-center gap-2 font-medium text-xs border ${
+            selectedStudentTab !== 'all'
+              ? isSelectedGroup
+                ? 'bg-purple-500 text-white font-bold border-purple-500 shadow-md shadow-purple-500/20'
+                : 'bg-primary text-accent-ink font-bold border-primary shadow-md shadow-primary/20'
+              : 'bg-line-soft/50 text-text-hi hover:bg-line-soft border-line-strong'
+          }`}
+        >
+          {selectedStudentTab === 'all' ? (
+            <Layers size={14} />
+          ) : isSelectedGroup ? (
+            <Users size={14} />
+          ) : (
+            <UserIcon size={14} />
+          )}
+          <span className="truncate max-w-[200px]">{selectedStudentLabel}</span>
+          <span
+            className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+              selectedStudentTab !== 'all' ? 'bg-black/20 text-inherit' : 'bg-line-strong text-content-muted'
             }`}
           >
-            <Layers size={13} />
-            <span>Wszystkie lekcje</span>
-            <span
-              className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                selectedStudentTab === 'all'
-                  ? 'bg-black/20 text-accent-ink'
-                  : 'bg-line-strong text-content-muted'
-              }`}
-            >
-              {lessons.length}
-            </span>
-          </button>
+            {selectedStudentTab === 'all' ? lessons.length : lessonCountsByStudent[selectedStudentTab] || 0}
+          </span>
+          {isStudentDropdownOpen ? (
+            <ChevronUp size={14} className="ml-auto sm:ml-0.5 opacity-70" />
+          ) : (
+            <ChevronDown size={14} className="ml-auto sm:ml-0.5 opacity-70" />
+          )}
+        </button>
 
-          <div className="h-4 w-[1px] bg-line-strong mx-1 shrink-0" />
-
-          {/* Student & Group Tabs */}
-          {sortedStudentTabs.map((student) => {
-            const isGrp = Boolean(student.isGroup || student.lessonType === 'Group');
-            const count = lessonCountsByStudent[student.id || ''] || 0;
-            const isSelected = selectedStudentTab === student.id;
-            const name =
-              student.displayName ||
-              student.name ||
-              `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
-              student.username;
-
-            return (
+        {isStudentDropdownOpen && (
+          <div className="absolute z-20 mt-2 w-full sm:w-72 rounded-2xl border border-line-strong bg-base-200 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-2 border-b border-line-strong">
+              <div className="relative">
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-muted" />
+                <input
+                  type="text"
+                  autoFocus
+                  value={studentSearchQuery}
+                  onChange={(e) => setStudentSearchQuery(e.target.value)}
+                  placeholder="Szukaj kursanta lub grupy..."
+                  className="w-full pl-8 pr-3 py-1.5 rounded-lg bg-base-100 border border-line-strong text-text-hi text-xs placeholder:text-content-muted/60 focus:outline-none focus:border-primary transition-all"
+                />
+              </div>
+            </div>
+            <div className="max-h-72 overflow-y-auto py-1">
               <button
-                key={student.id}
-                onClick={() => setSelectedStudentTab(student.id || '')}
-                className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 font-medium ${
-                  isSelected
-                    ? isGrp
-                      ? 'bg-purple-500 text-white font-bold shadow-md shadow-purple-500/20'
-                      : 'bg-primary text-accent-ink font-bold shadow-md shadow-primary/20'
-                    : 'bg-line-soft/40 text-content-muted hover:text-text-hi hover:bg-line-soft border border-line-strong'
+                type="button"
+                onClick={() => {
+                  setSelectedStudentTab('all');
+                  setIsStudentDropdownOpen(false);
+                }}
+                className={`w-full px-3 py-2 flex items-center gap-2 text-xs text-left transition-colors ${
+                  selectedStudentTab === 'all'
+                    ? 'bg-primary/15 text-primary font-bold'
+                    : 'text-text-hi hover:bg-line-soft'
                 }`}
               >
-                {isGrp ? <Users size={12} /> : <UserIcon size={12} />}
-                <span className="truncate max-w-[150px]">{name}</span>
-                {count > 0 && (
-                  <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                      isSelected
-                        ? 'bg-black/20 text-inherit'
-                        : 'bg-line-strong text-content-muted'
-                    }`}
-                  >
-                    {count}
-                  </span>
-                )}
+                <Layers size={13} />
+                <span className="flex-1 truncate">Wszyscy kursanci</span>
+                <span className="text-[10px] font-mono text-content-muted">{lessons.length}</span>
               </button>
-            );
-          })}
-        </div>
+
+              {filteredStudentTabs.length === 0 ? (
+                <p className="px-3 py-3 text-xs text-content-muted/80 italic">Brak kursanta pasującego do frazy.</p>
+              ) : (
+                filteredStudentTabs.map((student) => {
+                  const isGrp = Boolean(student.isGroup || student.lessonType === 'Group');
+                  const count = lessonCountsByStudent[student.id || ''] || 0;
+                  const isSelected = selectedStudentTab === student.id;
+                  const name = formatStudentDisplayName(student);
+
+                  return (
+                    <button
+                      key={student.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedStudentTab(student.id || '');
+                        setIsStudentDropdownOpen(false);
+                      }}
+                      className={`w-full px-3 py-2 flex items-center gap-2 text-xs text-left transition-colors ${
+                        isSelected
+                          ? isGrp
+                            ? 'bg-purple-500/15 text-purple-300 font-bold'
+                            : 'bg-primary/15 text-primary font-bold'
+                          : 'text-text-hi hover:bg-line-soft'
+                      }`}
+                    >
+                      {isGrp ? <Users size={13} /> : <UserIcon size={13} />}
+                      <span className="flex-1 truncate">{name}</span>
+                      {count > 0 && (
+                        <span className="text-[10px] font-mono text-content-muted">{count}</span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Search & Status Filters Bar */}
@@ -518,12 +617,10 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                 (isExpanded ? filteredLessons : filteredLessons.slice(0, 6)).map((lesson) => {
                   const student = getStudentForLesson(lesson);
                   const isGrp = Boolean(student?.isGroup || student?.lessonType === 'Group');
-                  const sName =
-                    student?.displayName ||
-                    student?.name ||
-                    `${student?.firstName || ''} ${student?.lastName || ''}`.trim() ||
-                    student?.username ||
-                    'Nieprzypisany';
+                  const sName = student
+                    ? formatStudentDisplayName(student)
+                    : 'Nieprzypisany';
+                  const lessonTopicLabel = getDisplayLessonTopic(lesson);
 
                   const blocks = extractLessonBlocks(lesson);
                   const isPending = isLessonPendingConfirmation(lesson);
@@ -550,7 +647,7 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                           </div>
                           <div>
                             <span className="font-bold text-text-hi group-hover:text-primary transition-colors block text-sm leading-snug">
-                              {lesson.topic || 'Bez tematu'}
+                              {lessonTopicLabel}
                             </span>
                             {lesson.lessonSummary && (
                               <span className="text-[11px] text-content-muted line-clamp-1 mt-0.5">
@@ -728,7 +825,7 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                               onClick={async () => {
                                 if (
                                   window.confirm(
-                                    `Czy na pewno chcesz usunąć lekcję „${lesson.topic}” z dnia ${lesson.date}?`
+                                    `Czy na pewno chcesz usunąć lekcję „${lessonTopicLabel}” z dnia ${formatDateLabel(lesson.date)}?`
                                   )
                                 ) {
                                   await onDeleteLesson(student.id || lesson.studentId, lesson);
@@ -796,14 +893,14 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                     return (
                       <span className="px-2 py-0.5 rounded-lg bg-line-soft text-text-hi text-xs font-semibold flex items-center gap-1 border border-line-strong">
                         {isGrp ? <Users size={12} className="text-purple-400" /> : <UserIcon size={12} className="text-primary" />}
-                        {student.displayName || student.name || student.username}
+                        {formatStudentDisplayName(student)}
                       </span>
                     );
                   })()}
                 </div>
                 <h3 className="text-lg sm:text-xl font-black text-text-hi flex items-center gap-2">
                   <FileText className="text-primary w-5 h-5 shrink-0" />
-                  <span>{previewLesson.topic || 'Szczegóły lekcji'}</span>
+                  <span>{getDisplayLessonTopic(previewLesson)}</span>
                 </h3>
               </div>
 
@@ -1120,12 +1217,14 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
         </div>
       )}
 
-      {/* Modal powiadomienia o zignorowanych spotkaniach z Notion */}
-      <NotionUnmatchedTranscriptsModal
-        isOpen={isUnmatchedModalOpen}
-        onClose={() => setIsUnmatchedModalOpen(false)}
-        unmatched={unmatchedList}
-        importedCount={lastImportedCount}
+      {/* Podgląd Pull-on-Demand: lektor zaznacza, co z Notion wejdzie do historii tego kursanta */}
+      <NotionImportPreviewModal
+        isOpen={isNotionPreviewOpen}
+        onClose={() => setIsNotionPreviewOpen(false)}
+        studentName={selectedStudentLabel}
+        items={notionPreviewItems}
+        isImporting={isImportingNotion}
+        onConfirmImport={handleConfirmNotionImport}
       />
     </div>
   );

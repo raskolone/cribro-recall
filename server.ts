@@ -208,6 +208,7 @@ import {
   deserializeLearningProfile
 } from "./utils/learningCurve";
 import { fetchNotionBlocksText } from "./utils/notionBlocksFetcher";
+import { isJunkIsoTopic, formatLessonDateDDMMYYYY } from "./utils/lessonDisplay";
 let pdfParse: any;
 try {
   const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
@@ -2639,8 +2640,52 @@ export function createApp() {
     }
   });
 
-  // Reusable Notion sync function
-  async function syncNotionTranscriptsFromApi(): Promise<{ found: number; processed: number; importedCount?: number; items: any[]; unmatchedTranscripts?: any[]; lastFetchTime: string }> {
+  /**
+   * Sprawdza transkrypcje w Notion — wyłącznie na żądanie lektora (Pull-on-Demand).
+   *
+   * ══ DLACZEGO DWA TRYBY ══
+   *
+   * `mode: 'preview'` tylko PATRZY: dopasowuje strony Notion do kursantów i
+   * zwraca listę kandydatów, nic nie zapisując. `mode: 'import'` zapisuje
+   * WYŁĄCZNIE strony, których `id` znalazło się w `pageIds` — czyli te, które
+   * lektor jawnie zaakceptował w modalu podglądu. Bez trybu podglądu każde
+   * kliknięcie przycisku od razu zapisywało wszystko, co dopasował algorytm,
+   * bez możliwości odrzucenia pomyłki przed zapisem.
+   *
+   * ══ TWARDA DEDUPLIKACJA PO DACIE ══
+   *
+   * Zanim cokolwiek zapiszemy, sprawdzamy czy dla tego kursanta na ten sam
+   * dzień (`YYYY-MM-DD`) istnieje już lekcja ze statusem `confirmed` (czyli
+   * odbyta i zatwierdzona). Jeśli tak — pomijamy wpis całkowicie, nie tworząc
+   * szkicu do przejrzenia. Lektor nie prowadzi dwóch lekcji z tym samym
+   * kursantem jednego dnia, więc druga strona Notion z tą samą datą to prawie
+   * zawsze albo już przetworzony wpis, albo poprawka w Notion — obie sytuacje
+   * lektor i tak zobaczy w podglądzie jako „już zaimportowano".
+   *
+   * ══ IDEMPOTENTNE ID ══
+   *
+   * Dokument lekcji dostaje ID `notion_<pageId>` zamiast losowego — ponowny
+   * import tej samej strony nadpisuje ten sam dokument zamiast dokładać
+   * bliźniaka. Stare wpisy (sprzed tej zmiany) miały gołe `pageId` jako ID;
+   * jeśli taki dokument już istnieje, aktualizujemy JEGO, żeby nie powstał
+   * duplikat pod nowym schematem ID obok starego wpisu.
+   *
+   * ══ CO SIĘ ZMIENIŁO WZGLĘDEM POPRZEDNIEJ WERSJI ══
+   *
+   * Poprzednia wersja pisała lekcję RÓWNIEŻ do osobnej kolekcji najwyższego
+   * poziomu `lessonRecords` (obok właściwej `users/{uid}/lessonRecords`) —
+   * ta kolekcja nie miała żadnej reguły w `firestore.rules` (efektywnie
+   * zamknięta) i nikt jej nigdy nie czytał ani nie kasował, więc zostawiała
+   * osierocone dokumenty przy każdym imporcie. Zapis idzie teraz wyłącznie
+   * do `users/{studentId}/lessonRecords`, czyli tego samego miejsca, które
+   * czyta i kasuje reszta aplikacji.
+   */
+  async function syncNotionTranscriptsFromApi(
+    options: { mode: 'preview' | 'import'; studentId?: string; pageIds?: string[] }
+  ): Promise<{ found: number; processed: number; importedCount?: number; items: any[]; unmatchedTranscripts?: any[]; lastFetchTime: string }> {
+    const { mode, studentId: studentIdFilter, pageIds } = options;
+    const allowedPageIds = mode === 'import' ? new Set(pageIds || []) : null;
+
     const cfg = await getNotionConfig();
     const token = cfg.token;
     const meetingNotesDbId = normalizeNotionId(cfg.meetingNotesDbId);
@@ -2709,19 +2754,6 @@ export function createApp() {
       }
       if (!dateStr) dateStr = (page.created_time || new Date().toISOString()).split('T')[0];
 
-      // Sprawdź czy ta lekcja już istnieje w Firestore (po notionPageId)
-      const existingSnap = await adminDb.collection('lessonRecords').where('notionPageId', '==', page.id).limit(1).get();
-      if (!existingSnap.empty) {
-        processedItems.push({
-          id: page.id,
-          title,
-          studentName: existingSnap.docs[0].data().studentName || 'Już zaimportowano',
-          date: dateStr,
-          status: 'istnieje',
-        });
-        continue;
-      }
-
       // Pobierz pełną treść transkrypcji ze strony
       const transcriptText = await fetchNotionBlocksText(token, page.id, 0);
       if (!transcriptText || transcriptText.length < 50) {
@@ -2788,6 +2820,8 @@ export function createApp() {
 
       // Jeśli transkrypcja nie pasuje do żadnego kursanta w bazie (np. spotkanie prywatne/inne):
       if (!matchedUser) {
+        // Podgląd zawężony do jednego kursanta nie pokazuje cudzych, niedopasowanych stron.
+        if (studentIdFilter) continue;
         unmatchedTranscripts.push({
           id: page.id,
           title,
@@ -2808,43 +2842,87 @@ export function createApp() {
       const studentId = matchedUser.id;
       const studentName = matchedUser.name || title.split(/[\-\–—:]/)[0].trim() || 'Kursant';
 
-      // Utwórz rekord lekcji z transkrypcją (oczekuje na zatwierdzenie lektora)
-      const newLessonRef = adminDb.collection('lessonRecords').doc();
+      // Pull-on-Demand: podgląd patrzy tylko na wybranego kursanta, jeśli
+      // lektor go zaznaczył — strony innych kursantów nie zaśmiecają listy.
+      if (studentIdFilter && studentId !== studentIdFilter) {
+        continue;
+      }
+
+      const lessonsRef = adminDb.collection('users').doc(studentId).collection('lessonRecords');
+
+      // Ta strona Notion już tu jest — bez względu na to, pod jakim ID (stare
+      // wpisy sprzed idempotentnego ID miały gołe `pageId`, nowe mają
+      // `notion_<pageId>`; szukamy po polu, nie po ID dokumentu).
+      const alreadyImportedSnap = await lessonsRef.where('notionPageId', '==', page.id).limit(1).get();
+      if (!alreadyImportedSnap.empty) {
+        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: 'istnieje' });
+        continue;
+      }
+
+      // Twarda deduplikacja po dacie: kursant nie ma dwóch odbytych lekcji
+      // tego samego dnia. Jeśli już jedna jest zatwierdzona na ten dzień,
+      // druga strona z Notion to niemal zawsze powtórka albo poprawka w
+      // Notion — nie tworzymy dla niej szkicu.
+      const sameDayConfirmedSnap = await lessonsRef
+        .where('date', '==', dateStr)
+        .where('status', '==', 'confirmed')
+        .limit(1)
+        .get();
+      if (!sameDayConfirmedSnap.empty) {
+        processedItems.push({
+          id: page.id,
+          title,
+          studentName,
+          date: dateStr,
+          status: 'pominięto (kursant ma już zatwierdzoną lekcję na ten dzień)',
+        });
+        continue;
+      }
+
+      if (mode === 'preview') {
+        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: 'do importu' });
+        continue;
+      }
+
+      // mode === 'import': zapisujemy wyłącznie to, co lektor jawnie zaznaczył
+      // w modalu podglądu — nie wszystko, co akurat dopasował algorytm.
+      if (!allowedPageIds!.has(page.id)) {
+        processedItems.push({ id: page.id, title, studentName, date: dateStr, status: 'pominięto (nie zaznaczono)' });
+        continue;
+      }
+
+      // Tytuł strony Notion bywa nadany przez narzędzie do nagrywania spotkań
+      // i wygląda np. "Milena Sesniak - 2026-09-16T06:30:00.000Z" — surowy
+      // znacznik czasu ISO doklejony do imienia, a nie prawdziwy temat lekcji.
+      // Zapisanie go wprost jako `topic` wygląda w UI lektora jak zepsuty rekord.
+      const safeTopic = isJunkIsoTopic(title)
+        ? `Lekcja z dnia ${formatLessonDateDDMMYYYY(dateStr) || dateStr}`
+        : title;
+
       const lessonPayload = {
         studentId,
         studentIds: matchedUser.isGroup && matchedUser.memberIds?.length ? matchedUser.memberIds : [studentId],
         studentName,
         date: dateStr,
-        topic: title,
+        topic: safeTopic,
         rawTranscript: transcriptText,
         liveTranscript: transcriptText,
         notionPageId: page.id,
         source: 'notion',
         isGroupLesson: Boolean(matchedUser.isGroup),
         sessionStatus: 'draft',
-        status: 'pending',
+        status: 'pending_confirmation',
         isPendingConfirmation: true,
-        pendingReason: 'Zaimportowano nową transkrypcję z Notion',
+        pendingReason: 'Transkrypcja z Notion czeka na wygenerowanie bloków lekcji',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
 
-      await newLessonRef.set(lessonPayload);
+      // ID idempotentne: ponowny import tej samej strony nadpisuje ten sam
+      // dokument zamiast dokładać bliźniaka.
+      await lessonsRef.doc(`notion_${page.id}`).set(lessonPayload, { merge: true });
 
-      // Zapisz również do podkolekcji kursanta, aby lekcja była natychmiast widoczna w historii
-      try {
-        await adminDb.collection('users').doc(studentId).collection('lessonRecords').doc(newLessonRef.id).set(lessonPayload, { merge: true });
-      } catch (subErr) {
-        console.warn(`[Notion Sync] Nie udało się zapisać do users/${studentId}/lessonRecords:`, subErr);
-      }
-
-      processedItems.push({
-        id: page.id,
-        title,
-        studentName,
-        date: dateStr,
-        status: 'zaimportowano',
-      });
+      processedItems.push({ id: page.id, title, studentName, date: dateStr, status: 'zaimportowano' });
     }
 
     const nowIso = new Date().toISOString();
@@ -2863,10 +2941,20 @@ export function createApp() {
     };
   }
 
-  // 4. POST /api/notion/fetch-transcripts (Manual or cyclic polling)
+  // 4. POST /api/notion/fetch-transcripts — Pull-on-Demand: podgląd (bez zapisu)
+  // albo import ograniczony do jawnie zaznaczonych stron dla jednego kursanta.
+  // Body: { mode: 'preview' | 'import', studentId?: string, pageIds?: string[] }
   app.post('/api/notion/fetch-transcripts', requireFirebaseAdmin, async (req, res) => {
     try {
-      const result = await syncNotionTranscriptsFromApi();
+      const mode = req.body?.mode === 'import' ? 'import' : 'preview';
+      const studentId = typeof req.body?.studentId === 'string' && req.body.studentId ? req.body.studentId : undefined;
+      const pageIds = Array.isArray(req.body?.pageIds) ? req.body.pageIds.filter((id: unknown) => typeof id === 'string') : [];
+
+      if (mode === 'import' && (!studentId || pageIds.length === 0)) {
+        return res.status(400).json({ error: 'Import wymaga wybranego kursanta i przynajmniej jednej zaznaczonej strony.' });
+      }
+
+      const result = await syncNotionTranscriptsFromApi({ mode, studentId, pageIds });
       return res.json({
         ok: true,
         ...result,
@@ -3049,22 +3137,12 @@ export function createApp() {
     }
   });
 
-  // Background cyclic timer for Notion auto-fetching
-  setInterval(async () => {
-    try {
-      const cfg = await getNotionConfig();
-      if (!cfg.autoFetchEnabled || !cfg.token) return;
-
-      const lastFetch = cfg.lastFetchTime ? new Date(cfg.lastFetchTime).getTime() : 0;
-      const intervalMs = (cfg.autoFetchIntervalMinutes || 30) * 60 * 1000;
-      if (Date.now() - lastFetch >= intervalMs) {
-        console.log('[Notion Auto-Fetch] Uruchamiam cykliczną synchronizację transkrypcji...');
-        await syncNotionTranscriptsFromApi();
-      }
-    } catch (e) {
-      console.warn('[Notion Auto-Fetch Error]:', e);
-    }
-  }, 5 * 60 * 1000);
+  // Zadanie w tle, które co 5 minut samo odpytywało Notion, zostało usunięte
+  // (zlecenie 2026-09-21: import z Notion ma działać wyłącznie na kliknięcie
+  // lektora — patrz `syncNotionTranscriptsFromApi` i /api/notion/fetch-transcripts
+  // wyżej). Pola `autoFetchEnabled`/`autoFetchIntervalMinutes` w `getNotionConfig()`
+  // zostają nieużywane w kodzie — jedyny ich sens to historyczne dane w
+  // `system/notion`, którym nic już nie nadaje znaczenia.
 
   // Proxy for Gemini API
   
