@@ -227,17 +227,6 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
               <span>Prowadź lekcję</span>
             </button>
 
-            {onOpenRecall && (
-              <button
-                onClick={() => onOpenRecall(studentId)}
-                className="px-4 py-3 rounded-2xl border border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-300 hover:text-indigo-200 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg shadow-indigo-500/10"
-                title="Przejdź do sesji Spaced Repetition kursanta"
-              >
-                <Brain size={16} className="text-indigo-400" />
-                <span>Rozpocznij dzisiejszy Recall</span>
-              </button>
-            )}
-
             {onOpenHomeworkModal && (
               <button
                 onClick={() => onOpenHomeworkModal(studentId)}
@@ -366,6 +355,40 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
               lessonRecords={hubData?.lastLessons || []}
               onOpenHistory={() => setActiveTab('lessons')}
             />
+          </div>
+
+          {/* Boks Recall (SRS) — dawna osobna zakładka „Spaced Repetition",
+              wchłonięta przez Hub, żeby nie mnożyć zakładek profilu. */}
+          <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-extrabold text-text-hi flex items-center gap-2">
+                <Brain size={16} className="text-indigo-400" />
+                <span>Stan bazy Recall (Spaced Repetition)</span>
+              </h3>
+              {onOpenRecall && (
+                <button
+                  onClick={() => onOpenRecall(studentId)}
+                  className="text-[11px] font-bold text-indigo-300 hover:text-indigo-200 flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Zobacz szczegóły</span>
+                  <ExternalLink size={11} />
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-3 rounded-xl bg-base-100/40 border border-line-soft">
+                <div className="text-[10px] text-content-muted uppercase tracking-wider font-mono mb-1">Słówka w bazie</div>
+                <div className="text-xl font-bold text-text-hi">{hubData?.recallStats?.totalWords || 0}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-base-100/40 border border-line-soft">
+                <div className="text-[10px] text-emerald-400 uppercase tracking-wider font-mono mb-1">Opanowane</div>
+                <div className="text-xl font-bold text-emerald-300">{hubData?.recallStats?.masteredWords || 0}</div>
+              </div>
+              <div className="p-3 rounded-xl bg-base-100/40 border border-line-soft">
+                <div className="text-[10px] text-amber-400 uppercase tracking-wider font-mono mb-1">W powtórkach</div>
+                <div className="text-xl font-bold text-amber-300">{hubData?.recallStats?.learningWords || 0}</div>
+              </div>
+            </div>
           </div>
         </div>
       )}

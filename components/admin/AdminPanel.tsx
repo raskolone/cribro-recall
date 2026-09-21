@@ -112,6 +112,17 @@ interface AdminPanelProps {
  */
 const SHOW_LEGACY_PANEL_TOOLS = false;
 
+/**
+ * Zakładki profilu kursanta scalone z 6+ do 4 (Hub / Moje lekcje / Praca
+ * domowa / Profil & Dane) — CRM: tabela kursantów, tooltipy i nowy profil
+ * ucznia. „Spaced Repetition (Recall)" (metryki wchłonięte przez Hub) i
+ * „Aktywność i statystyki" (wchłonięte przez „Profil & Dane") oraz
+ * „Słownictwo & AI" i „Testy AI" nie zostały usunięte — tylko schowane z
+ * paska zakładek, żeby dało się je łatwo przywrócić bez grzebania w git.
+ * Odwrócenie: jedna zmiana tej stałej na `true`.
+ */
+const SHOW_LEGACY_STUDENT_TABS = false;
+
 const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, initialLessonDraft, initialScenario, onUserSelect, onTabChange }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { language } = useLanguage();
@@ -2800,18 +2811,22 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }}
           />
 
-          {/* PASEK ZAKŁADEK NA SAMEJ GÓRZE PROFILU KURSANTA */}
+          {/* PASEK ZAKŁADEK NA SAMEJ GÓRZE PROFILU KURSANTA — scalone do 4 głównych
+              zakładek. Recall, Słownictwo & AI, Testy AI i osobne Statystyki nie
+              zostały usunięte (SHOW_LEGACY_STUDENT_TABS === false tylko chowa
+              przyciski), ich treść nadal się renderuje niżej i wchłaniają je Hub
+              (metryki Recall) oraz „Profil & Dane" (metryki aktywności). */}
           <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-line-strong backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
             {[
               { id: 'hub', label: 'Centrum kursanta (Hub)', icon: Target },
-              { id: 'recall', label: 'Spaced Repetition (Recall)', icon: Brain },
-              { id: 'profile', label: 'Profil & Dane', icon: UserIcon },
-              { id: 'history', label: 'Historia lekcji', icon: Clock, count: lessonRecords.length },
+              { id: 'history', label: 'Moje lekcje', icon: Clock, count: lessonRecords.length },
               { id: 'homework', label: 'Praca domowa', icon: BookOpen, count: specialTasks.length },
-              { id: 'vocabulary', label: 'Słownictwo & AI', icon: BookMarked, count: userSets.length },
-              { id: 'tests', label: 'Testy AI', icon: Award },
-              { id: 'stats', label: 'Statystyki & Wyniki', icon: BarChart2 },
-            ].map((tab) => {
+              { id: 'profile', label: 'Profil & Dane', icon: UserIcon },
+              { id: 'recall', label: 'Spaced Repetition (Recall)', icon: Brain, hidden: true },
+              { id: 'vocabulary', label: 'Słownictwo & AI', icon: BookMarked, count: userSets.length, hidden: true },
+              { id: 'tests', label: 'Testy AI', icon: Award, hidden: true },
+              { id: 'stats', label: 'Statystyki & Wyniki', icon: BarChart2, hidden: true },
+            ].filter((tab) => SHOW_LEGACY_STUDENT_TABS || !tab.hidden).map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
@@ -3846,14 +3861,15 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   className="md:w-52 shrink-0 flex md:flex-col gap-1.5 overflow-x-auto md:overflow-visible no-scrollbar -mx-1 px-1 md:mx-0 md:px-0"
                 >
                   {[
-                    { id: 'basic', label: 'Dane podstawowe', icon: UserIcon },
-                    { id: 'mail', label: 'E-mail i dostęp', icon: Mail },
-                    { id: 'level', label: 'Poziom i AI', icon: Sparkles },
+                    { id: 'basic', label: 'Dane podstawowe i poziom', icon: UserIcon },
+                    { id: 'access', label: 'E-mail, dostęp i uprawnienia', icon: Shield },
                     { id: 'activity', label: 'Aktywność i statystyki', icon: Activity },
-                    { id: 'access', label: 'Uprawnienia', icon: Shield },
                   ].map(section => {
                     const SectionIcon = section.icon;
-                    const isActive = profileSection === section.id;
+                    const isActive =
+                      profileSection === section.id ||
+                      (section.id === 'basic' && profileSection === 'level') ||
+                      (section.id === 'access' && profileSection === 'mail');
                     return (
                       <button
                         key={section.id}
@@ -3875,7 +3891,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 <div className="flex-1 min-w-0 space-y-4">
 
               {/* CARD 1: DANE PODSTAWOWE I IDENTYFIKACJA */}
-              {profileSection === 'basic' && (
+              {(profileSection === 'basic' || profileSection === 'level') && (
               <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
@@ -3951,7 +3967,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               )}
 
               {/* CARD 2: KOMUNIKACJA I MAILING */}
-              {profileSection === 'mail' && (
+              {(profileSection === 'mail' || profileSection === 'access') && (
               <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
@@ -4091,7 +4107,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
 
               {/* CARD 3: POZIOM CEFR & KONFIGURACJA AI */}
-              {profileSection === 'level' && (
+              {(profileSection === 'basic' || profileSection === 'level') && (
               <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">
@@ -4208,7 +4224,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               )}
 
               {/* CARD 5: UPRAWNIENIA I ZARZĄDZANIE KONTEM */}
-              {profileSection === 'access' && (
+              {(profileSection === 'mail' || profileSection === 'access') && (
               <div className="rounded-xl border border-line-strong bg-base-100/40 p-4 md:p-5 space-y-4">
                 <div className="flex items-center justify-between border-b border-line pb-3">
                   <div className="flex items-center gap-2">

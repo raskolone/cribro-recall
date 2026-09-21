@@ -4970,3 +4970,61 @@ utils/lessonBlocks.ts, utils/lessonDisplay.ts).
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
 build (przechodzi — vite build + esbuild server.ts + esbuild
 api/serverless.ts, bez nowych błędów).
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: CRM kursantów — konfigurowalna tabela (widoczność kolumn,
+sortowanie, błyskawiczne tooltipy), scalenie profilu kursanta z 6+ do
+4 zakładek, odchudzenie panelu ucznia (usunięcie modułu Słownictwo &
+AI z widoku kursanta).
+Zrobione:
+- StudentDatabaseScreen.tsx: dropdown "Kolumny" (5 przełączników),
+  stan w localStorage (cribro_crm_columns_prefs), nowa kolumna
+  Kontraktor/Gdzie pracuje (user.contractor/user.company), sortowanie
+  z chevronem (Nazwisko, E-mail, Poziom, Ostatnia wizyta — pole
+  'logins' bez podpiętego nagłówka usunięte, ujednolicone do
+  'lastActive'), nowy komponent ActionTooltip zastępujący title= na
+  ikonach akcji (hasło, edycja e-maila, zaproszenie, skróty wiersza,
+  "więcej opcji").
+- AdminPanel.tsx: pasek zakładek profilu kursanta 8 -> 4 widoczne
+  (Hub, Moje lekcje, Praca domowa, Profil & Dane) przez nową stałą
+  SHOW_LEGACY_STUDENT_TABS=false (wzorzec identyczny do istniejącego
+  SHOW_LEGACY_PANEL_TOOLS) — Recall/Słownictwo & AI/Testy AI/
+  Statystyki NIE usunięte z kodu, tylko schowane z paska, JSX nadal
+  się renderuje. Wewnątrz "Profil & Dane" 5 sekcji scalonych widokowo
+  do 3 (Dane podstawowe i poziom / E-mail dostęp i uprawnienia /
+  Aktywność i statystyki) przez złączenie warunków || — stan
+  profileSection i istniejące callbacki (onEditContact -> 'mail',
+  onEditLevel -> 'level') nietknięte.
+- StudentOperationalHub.tsx: usunięty przycisk "Rozpocznij dzisiejszy
+  Recall" z paska obok "Prowadź lekcję"; metryki Recall (hubData.
+  recallStats) przeniesione do nowego boksu w zakładce Hub/briefing.
+- TodayScreen.tsx (panel ucznia): nowa stała
+  SHOW_STUDENT_VOCABULARY_MODULE=false chowa zakładkę "Słownictwo"
+  (StudentVocabPreview + skrót "Otwórz fiszki") w panelu zasobów
+  kursanta — domyślna zakładka to i tak "Praca domowa".
+Nie dokończone / do sprawdzenia:
+- UI NIE zweryfikowane wzrokowo w przeglądarce (brak dostępu do
+  działającej aplikacji w tej sesji) — do sprawdzenia przez Macieja:
+  (a) dropdown "Kolumny" — kolejność i szerokość kolumn po ukryciu
+  którejś, trwałość stanu po odświeżeniu; (b) chevron sortowania i
+  nowa kolumna Kontraktor na realnych danych (część kursantów może
+  nie mieć wypełnionego company/contractor); (c) czy 3 scalone sekcje
+  profilu nie są za długie na jednym ekranie bez przewijania.
+Decyzje architektoniczne:
+- Na wyraźne życzenie w trakcie zadania: żadna z "usuwanych" funkcji
+  (Słownictwo & AI, osobna zakładka Recall, Testy AI, osobne
+  Statystyki) nie została skasowana z kodu — wszystko schowane za
+  stałymi SHOW_* z komentarzem jak odwrócić (jedna zmiana na true).
+  Podejście spójne z już istniejącym w AdminPanel.tsx wzorcem
+  SHOW_LEGACY_PANEL_TOOLS.
+- Commit zbiorczy na wyraźne życzenie (zamiast cząstkowych commitów
+  per etap) — zadanie mieści się w jednej logicznej zmianie ("CRM
+  kursantów: tabela + profil + panel ucznia").
+Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
+server.ts (requireFirebaseAuth/requireFirebaseAdmin) ani ścieżek
+tokenowych bez logowania (homework/direct/:token, notatnik po PIN).
+Zmiany dotyczą wyłącznie UI/logiki frontendu (StudentDatabaseScreen.tsx,
+AdminPanel.tsx, StudentOperationalHub.tsx, TodayScreen.tsx).
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
+build (przechodzi).

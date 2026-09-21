@@ -11,6 +11,8 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
+  ChevronUp,
+  Settings,
   X,
   ShieldCheck,
   Sparkles,
@@ -68,8 +70,55 @@ export interface StudentDatabaseScreenProps {
 }
 
 type ViewTab = 'all' | 'students' | 'staff' | 'placeholder';
-type SortField = 'name' | 'email' | 'level' | 'logins' | 'lastActive';
+type SortField = 'name' | 'email' | 'level' | 'lastActive';
 type SortOrder = 'asc' | 'desc';
+
+/** Klucze kolumn, których widoczność kursant konfiguruje przez dropdown „Kolumny”. */
+type ColumnKey = 'level' | 'email' | 'invitation' | 'activity' | 'contractor';
+
+const COLUMN_STORAGE_KEY = 'cribro_crm_columns_prefs';
+
+const COLUMN_TOGGLES: { key: ColumnKey; label: string }[] = [
+  { key: 'level', label: 'Poziom / Profil' },
+  { key: 'email', label: 'Adres e-mail & hasło' },
+  { key: 'invitation', label: 'Zaproszenie i aktywacja' },
+  { key: 'activity', label: 'Ostatnia wizyta / Logowania' },
+  { key: 'contractor', label: 'Kontraktor / Gdzie pracuje' },
+];
+
+const DEFAULT_COLUMN_PREFS: Record<ColumnKey, boolean> = {
+  level: true,
+  email: true,
+  invitation: true,
+  activity: true,
+  contractor: true,
+};
+
+const loadColumnPrefs = (): Record<ColumnKey, boolean> => {
+  try {
+    const raw = localStorage.getItem(COLUMN_STORAGE_KEY);
+    if (!raw) return DEFAULT_COLUMN_PREFS;
+    return { ...DEFAULT_COLUMN_PREFS, ...JSON.parse(raw) };
+  } catch {
+    return DEFAULT_COLUMN_PREFS;
+  }
+};
+
+/**
+ * Błyskawiczny tooltip w czystym Tailwind (bez natywnego `title`, które w
+ * przeglądarce pojawia się z ~1-2 s opóźnieniem). Pokazuje etykietę
+ * natychmiast po najechaniu, dzięki `group-hover` na kontenerze nadrzędnym.
+ */
+const ActionTooltip: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
+  <div className="relative group/tip inline-flex">
+    {children}
+    <span className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 hidden group-hover/tip:flex px-2 py-0.5 text-xs bg-slate-900 border border-slate-700 text-slate-200 rounded whitespace-nowrap z-30 shadow-lg pointer-events-none">
+      {label}
+    </span>
+  </div>
+);
+
+const ACTION_ICON_HOVER_FX = 'transition-transform duration-150 hover:scale-115 hover:text-emerald-400 active:scale-95';
 
 /**
  * Zamrożone kolumny tabeli kursantów.
@@ -140,6 +189,22 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
 
   // Per-record expanded options menu
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
+
+  // Column visibility configuration (persisted per-lektor w localStorage)
+  const [visibleColumns, setVisibleColumns] = useState<Record<ColumnKey, boolean>>(loadColumnPrefs);
+  const [isColumnsMenuOpen, setIsColumnsMenuOpen] = useState<boolean>(false);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(visibleColumns));
+    } catch {
+      // localStorage niedostępny (np. tryb prywatny) — ustawienie po prostu nie przetrwa odświeżenia
+    }
+  }, [visibleColumns]);
+
+  const toggleColumn = (key: ColumnKey) => {
+    setVisibleColumns((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // App Invite Modal State
   const [inviteStudent, setInviteStudent] = useState<User | null>(null);
@@ -212,6 +277,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
   useEffect(() => {
     const handleGlobalClick = () => {
       setOpenMenuUserId(null);
+      setIsColumnsMenuOpen(false);
     };
     window.addEventListener('click', handleGlobalClick);
     return () => window.removeEventListener('click', handleGlobalClick);
@@ -272,9 +338,6 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
       } else if (sortField === 'level') {
         valA = a.level || '';
         valB = b.level || '';
-      } else if (sortField === 'logins') {
-        valA = a.loginCount || 0;
-        valB = b.loginCount || 0;
       } else if (sortField === 'lastActive') {
         valA = a.lastLoginDate ? new Date(a.lastLoginDate).getTime() : 0;
         valB = b.lastLoginDate ? new Date(b.lastLoginDate).getTime() : 0;
@@ -369,6 +432,15 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
     } finally {
       setIsApplyingBulkDelete(false);
     }
+  };
+
+  const renderSortIndicator = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown size={12} className="opacity-40" />;
+    return sortOrder === 'asc' ? (
+      <ChevronUp size={13} className="text-primary" />
+    ) : (
+      <ChevronDown size={13} className="text-primary" />
+    );
   };
 
   const handleSortToggle = (field: SortField) => {
@@ -678,6 +750,50 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
             <span>Pary & Grupy</span>
           </button>
 
+          {/* Konfiguracja widoczności kolumn tabeli */}
+          <div className="relative inline-block text-left">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsColumnsMenuOpen((prev) => !prev);
+              }}
+              className={`px-3.5 py-2 rounded-xl border text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm cursor-pointer ${
+                isColumnsMenuOpen
+                  ? 'bg-primary/20 text-primary border-primary/40'
+                  : 'bg-ink/70 hover:bg-white/10 text-white border-white/10'
+              }`}
+              title="Skonfiguruj widoczne kolumny tabeli"
+            >
+              <Settings size={14} className="text-primary" />
+              <span>Kolumny</span>
+            </button>
+
+            {isColumnsMenuOpen && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 top-full mt-1.5 w-64 bg-base-200 border border-white/15 rounded-xl shadow-2xl p-2 z-40 space-y-0.5 text-left text-xs animate-fade-in backdrop-blur-xl"
+              >
+                <div className="px-2 py-1 text-[10px] font-bold text-content-muted uppercase tracking-wider border-b border-white/5 mb-1">
+                  Widoczne kolumny
+                </div>
+                {COLUMN_TOGGLES.map(({ key, label }) => (
+                  <label
+                    key={key}
+                    className="w-full px-2 py-1.5 rounded-lg hover:bg-white/10 text-white flex items-center gap-2 cursor-pointer select-none"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={visibleColumns[key]}
+                      onChange={() => toggleColumn(key)}
+                      className="w-3.5 h-3.5 rounded accent-primary cursor-pointer"
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
+            )}
+          </div>
+
           {onAddNewStudent && (
             <button
               onClick={onAddNewStudent}
@@ -829,46 +945,61 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                 >
                   <div className="flex items-center gap-1.5">
                     <span>Aa Kursant</span>
-                    <ArrowUpDown size={12} className={sortField === 'name' ? 'text-primary' : 'opacity-40'} />
+                    {renderSortIndicator('name')}
                   </div>
                 </th>
-                <th
-                  onClick={() => handleSortToggle('email')}
-                  className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>✉️ Adres E-mail</span>
-                    <ArrowUpDown size={12} className={sortField === 'email' ? 'text-primary' : 'opacity-40'} />
-                  </div>
-                </th>
+                {visibleColumns.email && (
+                  <th
+                    onClick={() => handleSortToggle('email')}
+                    className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>✉️ Adres E-mail</span>
+                      {renderSortIndicator('email')}
+                    </div>
+                  </th>
+                )}
                 <th className="py-3 px-4">
                   <div className="flex items-center gap-1.5">
                     <span>🛡️ Uprawnienia (Rola)</span>
                   </div>
                 </th>
-                <th
-                  onClick={() => handleSortToggle('level')}
-                  className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>🎯 Poziom</span>
-                    <ArrowUpDown size={12} className={sortField === 'level' ? 'text-primary' : 'opacity-40'} />
-                  </div>
-                </th>
-                <th
-                  onClick={() => handleSortToggle('logins')}
-                  className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
-                >
-                  <div className="flex items-center gap-1.5">
-                    <span>📈 Logowania</span>
-                    <ArrowUpDown size={12} className={sortField === 'logins' ? 'text-primary' : 'opacity-40'} />
-                  </div>
-                </th>
-                <th className="py-3 px-4 min-w-[160px]">
-                  <div className="flex items-center gap-1.5">
-                    <span>📬 Zaproszenie & Aktywacja</span>
-                  </div>
-                </th>
+                {visibleColumns.level && (
+                  <th
+                    onClick={() => handleSortToggle('level')}
+                    className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>🎯 Poziom</span>
+                      {renderSortIndicator('level')}
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.activity && (
+                  <th
+                    onClick={() => handleSortToggle('lastActive')}
+                    className="py-3 px-4 cursor-pointer hover:text-text-hi transition-colors"
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>📈 Ostatnia wizyta / Logowania</span>
+                      {renderSortIndicator('lastActive')}
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.invitation && (
+                  <th className="py-3 px-4 min-w-[160px]">
+                    <div className="flex items-center gap-1.5">
+                      <span>📬 Zaproszenie & Aktywacja</span>
+                    </div>
+                  </th>
+                )}
+                {visibleColumns.contractor && (
+                  <th className="py-3 px-4 min-w-[140px]">
+                    <div className="flex items-center gap-1.5">
+                      <span>🏢 Kontraktor / Gdzie pracuje</span>
+                    </div>
+                  </th>
+                )}
                 <th className="py-3 px-4 text-right">
                   <span>⚡ Szybkie akcje & Narzędzia</span>
                 </th>
@@ -879,7 +1010,10 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
             <tbody className="divide-y divide-white/5">
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="text-center py-12 text-content-muted">
+                  <td
+                    colSpan={4 + Object.values(visibleColumns).filter(Boolean).length}
+                    className="text-center py-12 text-content-muted"
+                  >
                     <Database className="w-12 h-12 mx-auto mb-2 opacity-20" />
                     <p className="font-semibold text-sm text-white">Brak rekordów spełniających kryteria</p>
                     <p className="text-xs text-content-muted mt-0.5">Zmień frazę w wyszukiwarce lub zresetuj filtry.</p>
@@ -947,6 +1081,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                       </td>
 
                       {/* Email Column */}
+                      {visibleColumns.email && (
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-2">
                           <div className="min-w-0">
@@ -978,15 +1113,16 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                             </div>
                             <div className="mt-1 flex items-center gap-1.5">
                               {user.tempPassword ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleCopyPassword(user.id, user.tempPassword!)}
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warn/15 hover:bg-warn/25 text-warn font-mono text-[10px] font-bold border border-warn/30 transition-colors cursor-pointer"
-                                  title="Hasło startowe kursanta — kliknij, aby skopiować"
-                                >
-                                  <Lock size={10} />
-                                  <span>{copiedPasswordId === user.id ? 'Skopiowano!' : 'Kopiuj hasło'}</span>
-                                </button>
+                                <ActionTooltip label="Hasło startowe kursanta — kliknij, aby skopiować">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCopyPassword(user.id, user.tempPassword!)}
+                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warn/15 hover:bg-warn/25 text-warn font-mono text-[10px] font-bold border border-warn/30 cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                                  >
+                                    <Lock size={10} />
+                                    <span>{copiedPasswordId === user.id ? 'Skopiowano!' : 'Kopiuj hasło'}</span>
+                                  </button>
+                                </ActionTooltip>
                               ) : user.isGoogleLinked || user.authProvider === 'google' ? (
                                 <span className="text-[10px] text-sky-300/80 font-mono">🌐 Google</span>
                               ) : (
@@ -995,15 +1131,17 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                             </div>
                           </div>
 
-                          <button
-                            onClick={() => handleOpenEditEmail(user)}
-                            className="p-1 rounded-md hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
-                            title="Edytuj adres e-mail kursanta"
-                          >
-                            <Edit2 size={13} />
-                          </button>
+                          <ActionTooltip label="Edytuj adres e-mail kursanta">
+                            <button
+                              onClick={() => handleOpenEditEmail(user)}
+                              className={`p-1 rounded-md hover:bg-white/10 text-content-muted cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                          </ActionTooltip>
                         </div>
                       </td>
+                      )}
 
                       {/* Role / Permissions Column */}
                       <td className="py-3.5 px-4">
@@ -1031,6 +1169,7 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                       </td>
 
                       {/* Level Column */}
+                      {visibleColumns.level && (
                       <td className="py-3.5 px-4">
                         {user.level ? (
                           <span className="px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-mono font-bold">
@@ -1040,8 +1179,10 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                           <span className="text-content-muted font-mono">—</span>
                         )}
                       </td>
+                      )}
 
                       {/* Logins & Activity Column */}
+                      {visibleColumns.activity && (
                       <td className="py-3.5 px-4">
                         <div className="space-y-0.5">
                           <div className="font-semibold text-white">
@@ -1054,8 +1195,10 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                           </div>
                         </div>
                       </td>
+                      )}
 
                       {/* Zaproszenie & Aktywacja Column */}
+                      {visibleColumns.invitation && (
                       <td className="py-3.5 px-4">
                         <div className="space-y-1">
                           <div className="flex items-center gap-1.5">
@@ -1083,25 +1226,28 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                               </span>
                             </span>
 
-                            <button
-                              type="button"
-                              onClick={() => handleToggleInvitation(user)}
-                              disabled={togglingInviteId === user.id}
-                              className="px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-content-muted hover:text-text-hi transition-colors cursor-pointer"
-                              title={
+                            <ActionTooltip
+                              label={
                                 user.invitationSent || user.lastInviteSentAt
                                   ? 'Cofnij oznaczenie zaproszenia'
                                   : 'Oznacz manualnie jako wysłane'
                               }
                             >
-                              {togglingInviteId === user.id ? (
-                                <RefreshCw size={9} className="animate-spin" />
-                              ) : user.invitationSent || user.lastInviteSentAt ? (
-                                'Cofnij'
-                              ) : (
-                                'Oznacz'
-                              )}
-                            </button>
+                              <button
+                                type="button"
+                                onClick={() => handleToggleInvitation(user)}
+                                disabled={togglingInviteId === user.id}
+                                className={`px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-white/10 text-[10px] text-content-muted hover:text-text-hi cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                              >
+                                {togglingInviteId === user.id ? (
+                                  <RefreshCw size={9} className="animate-spin" />
+                                ) : user.invitationSent || user.lastInviteSentAt ? (
+                                  'Cofnij'
+                                ) : (
+                                  'Oznacz'
+                                )}
+                              </button>
+                            </ActionTooltip>
                           </div>
 
                           <div>
@@ -1148,81 +1294,105 @@ export const StudentDatabaseScreen: React.FC<StudentDatabaseScreenProps> = ({
                           </div>
                         </div>
                       </td>
+                      )}
+
+                      {/* Kontraktor / Gdzie pracuje Column */}
+                      {visibleColumns.contractor && (
+                      <td className="py-3.5 px-4">
+                        {user.contractor || user.company ? (
+                          <div className="space-y-0.5">
+                            {user.contractor && (
+                              <div className="text-xs font-semibold text-white truncate">{user.contractor}</div>
+                            )}
+                            {user.company && (
+                              <div className="text-[10px] text-content-muted truncate">{user.company}</div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-content-muted font-mono">—</span>
+                        )}
+                      </td>
+                      )}
 
                       {/* Direct Action Shortcuts & More Options Menu */}
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 relative">
-                          <button
-                            onClick={() => onSelectUser(user, 'profile')}
-                            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors flex items-center gap-1 hover:border-primary/40 border border-transparent cursor-pointer"
-                            title="Otwórz profil i parametry tego kursanta"
-                          >
-                            <UserIcon size={12} className="text-primary" />
-                            <span className="hidden sm:inline">Profil</span>
-                          </button>
+                          <ActionTooltip label="Otwórz profil i parametry tego kursanta">
+                            <button
+                              onClick={() => onSelectUser(user, 'profile')}
+                              className={`px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold flex items-center gap-1 hover:border-primary/40 border border-transparent cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                            >
+                              <UserIcon size={12} className="text-primary" />
+                              <span className="hidden sm:inline">Profil</span>
+                            </button>
+                          </ActionTooltip>
 
-                          <button
-                            onClick={() => onSelectUser(user, 'lesson-planner')}
-                            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors flex items-center gap-1 hover:border-primary/40 border border-transparent cursor-pointer"
-                            title="Otwórz planer lekcji dla tego kursanta"
-                          >
-                            <Sparkles size={12} className="text-primary" />
-                            <span className="hidden sm:inline">Planer</span>
-                          </button>
+                          <ActionTooltip label="Otwórz planer lekcji dla tego kursanta">
+                            <button
+                              onClick={() => onSelectUser(user, 'lesson-planner')}
+                              className={`px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold flex items-center gap-1 hover:border-primary/40 border border-transparent cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                            >
+                              <Sparkles size={12} className="text-primary" />
+                              <span className="hidden sm:inline">Planer</span>
+                            </button>
+                          </ActionTooltip>
 
-                          <button
-                            onClick={() => onSelectUser(user, 'homework')}
-                            className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold transition-colors flex items-center gap-1 hover:border-primary/40 border border-transparent cursor-pointer"
-                            title="Otwórz prace domowe tego kursanta"
-                          >
-                            <BookOpen size={12} className="text-primary" />
-                            <span className="hidden sm:inline">Prace</span>
-                          </button>
+                          <ActionTooltip label="Otwórz prace domowe tego kursanta">
+                            <button
+                              onClick={() => onSelectUser(user, 'homework')}
+                              className={`px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-white font-semibold flex items-center gap-1 hover:border-primary/40 border border-transparent cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                            >
+                              <BookOpen size={12} className="text-primary" />
+                              <span className="hidden sm:inline">Prace</span>
+                            </button>
+                          </ActionTooltip>
 
                           {/* Quick Invite Button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setInviteStudent(user);
-                              setShowInviteModal(true);
-                            }}
-                            className="px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold transition-colors flex items-center gap-1 border border-primary/20 hover:border-primary/40 cursor-pointer"
-                            title="Wyślij zaproszenie do aplikacji z loginem i hasłem"
-                          >
-                            <Send size={12} />
-                            <span className="hidden md:inline">Zaproszenie</span>
-                          </button>
+                          <ActionTooltip label="Wyślij zaproszenie do aplikacji z loginem i hasłem">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setInviteStudent(user);
+                                setShowInviteModal(true);
+                              }}
+                              className={`px-2 py-1 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-semibold flex items-center gap-1 border border-primary/20 hover:border-primary/40 cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                            >
+                              <Send size={12} />
+                              <span className="hidden md:inline">Zaproszenie</span>
+                            </button>
+                          </ActionTooltip>
 
                           {/* Quick Scratchpad Button */}
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openScratchpadTab(`sp_${user.id}`);
-                            }}
-                            className="px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold transition-colors flex items-center gap-1 border border-emerald-500/20 hover:border-emerald-500/40 cursor-pointer"
-                            title="Otwórz współdzielony notatnik kursanta (kod PIN)"
-                          >
-                            <FileEdit size={12} />
-                            <span className="hidden lg:inline">Notatnik</span>
-                          </button>
-
+                          <ActionTooltip label="Otwórz współdzielony notatnik kursanta (kod PIN)">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openScratchpadTab(`sp_${user.id}`);
+                              }}
+                              className={`px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 font-semibold flex items-center gap-1 border border-emerald-500/20 hover:border-emerald-500/40 cursor-pointer ${ACTION_ICON_HOVER_FX}`}
+                            >
+                              <FileEdit size={12} />
+                              <span className="hidden lg:inline">Notatnik</span>
+                            </button>
+                          </ActionTooltip>
 
                           {/* "Więcej opcji" Dropdown Button */}
                           <div className="relative inline-block text-left">
+                            <ActionTooltip label="Wyświetl więcej opcji dla tego rekordu">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setOpenMenuUserId(isMenuOpen ? null : user.id);
                               }}
-                              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                              className={`p-1.5 rounded-lg border cursor-pointer ${ACTION_ICON_HOVER_FX} ${
                                 isMenuOpen
                                   ? 'bg-primary/20 text-primary border-primary/40'
                                   : 'bg-white/5 hover:bg-white/10 text-content-muted hover:text-text-hi border-transparent'
                               }`}
-                              title="Wyświetl więcej opcji dla tego rekordu"
                             >
                               <MoreVertical size={14} />
                             </button>
+                            </ActionTooltip>
 
                             {isMenuOpen && (
                               <div

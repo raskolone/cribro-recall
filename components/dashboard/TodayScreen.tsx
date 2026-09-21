@@ -81,6 +81,15 @@ interface TodayScreenProps {
 }
 
 /** Ile elementów wchodzi do jednej sesji. */
+/**
+ * Odchudzenie panelu ucznia: moduł Słownictwo (i skrót do fiszek AI) schowany
+ * z widoku kursanta — kursant widzi wyłącznie prace domowe i dostęp do
+ * współdzielonych notatek lekcyjnych. Kod modułu zostaje nietknięty, tylko
+ * schowany za flagą (nie usunięty), żeby dało się go łatwo przywrócić.
+ * Odwrócenie: jedna zmiana tej stałej na `true`.
+ */
+const SHOW_STUDENT_VOCABULARY_MODULE = false;
+
 const SESSION_MAX = 10;
 
 /** Po tylu nieudanych próbach na TYM SAMYM elemencie proponujemy układankę. */
@@ -651,17 +660,19 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                     >
                       {L.tools.tests}
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setResourceSubTab('vocabulary')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                        resourceSubTab === 'vocabulary'
-                          ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
-                          : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
-                      }`}
-                    >
-                      {L.tools.vocabulary}
-                    </button>
+                    {SHOW_STUDENT_VOCABULARY_MODULE && (
+                      <button
+                        type="button"
+                        onClick={() => setResourceSubTab('vocabulary')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                          resourceSubTab === 'vocabulary'
+                            ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
+                            : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
+                        }`}
+                      >
+                        {L.tools.vocabulary}
+                      </button>
+                    )}
                   </div>
 
                   {resourceSubTab === 'homework' && (
@@ -678,7 +689,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                       onOpenTests={onOpenTests || (() => {})}
                     />
                   )}
-                  {resourceSubTab === 'vocabulary' && (
+                  {SHOW_STUDENT_VOCABULARY_MODULE && resourceSubTab === 'vocabulary' && (
                     <div className="p-3 sm:p-4 space-y-3">
                       {onOpenVocabulary && (
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-white/[0.03] border border-line-soft">
