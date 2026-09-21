@@ -4745,6 +4745,7 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         level: u.level || ""
       };
     });
+    console.log("[Notion Fetch] Zapytanie do bazy", { databaseId: meetingNotesDbId, mode, studentIdFilter: studentIdFilter || null, pageSize: 40 });
     const queryRes = await fetch(`${NOTION_API2}/databases/${meetingNotesDbId}/query`, {
       method: "POST",
       headers: {
@@ -4752,14 +4753,19 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         "Notion-Version": NOTION_VERSION2,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ page_size: 40 })
+      body: JSON.stringify({
+        page_size: 40,
+        sorts: [{ timestamp: "created_time", direction: "descending" }]
+      })
     });
     if (!queryRes.ok) {
       const errTxt = await queryRes.text();
+      console.error("[Notion Fetch] B\u0142\u0105d zapytania Notion", queryRes.status, errTxt.slice(0, 300));
       throw new Error(`B\u0142\u0105d zapytania bazy Notion (${queryRes.status}): ${errTxt.slice(0, 300)}`);
     }
     const queryData = await queryRes.json();
     const pages = queryData.results || [];
+    console.log("[Notion Fetch] Zwr\xF3cono stron:", pages.length);
     const processedItems = [];
     const unmatchedTranscripts = [];
     for (const page of pages) {
@@ -4831,6 +4837,21 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
             }
           }
         }
+      }
+      if (!matchedUser) {
+        for (const u of userList) {
+          if (u.name) {
+            const nameParts = u.name.toLowerCase().split(/\s+/).filter((p) => p.length > 2);
+            const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : "";
+            if (lastName && lastName.length >= 3 && (normTitle.includes(lastName) || normTranscript.includes(lastName))) {
+              matchedUser = u;
+              break;
+            }
+          }
+        }
+      }
+      if (!matchedUser) {
+        console.log("[Notion Fetch] Brak dopasowania kursanta dla strony", { pageId: page.id, title });
       }
       if (!matchedUser) {
         if (studentIdFilter) continue;
