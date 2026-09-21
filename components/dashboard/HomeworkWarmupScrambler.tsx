@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   ArrowRight,
   RotateCcw,
@@ -10,7 +10,6 @@ import {
   Shuffle,
   Sparkles,
 } from 'lucide-react';
-import confetti from 'canvas-confetti';
 import i18n from 'i18next';
 import { buildWarmupRounds, WarmupRound } from '../../utils/warmupRounds';
 import { classifyUnscrambleAttempt, UnscrambleResult } from '../../utils/unscrambleGrading';
@@ -44,7 +43,7 @@ const TILE_COLORS = [
   'bg-emerald-500/15 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/25',
   'bg-teal-500/15 border-teal-500/35 text-teal-300 hover:bg-teal-500/25',
   'bg-cyan-500/15 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/25',
-  'bg-amber-500/15 border-amber-500/35 text-amber-300 hover:bg-amber-500/25',
+  'bg-rose-500/15 border-rose-500/35 text-rose-300 hover:bg-rose-500/25',
   'bg-indigo-500/15 border-indigo-500/35 text-indigo-300 hover:bg-indigo-500/25',
 ];
 
@@ -63,6 +62,13 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   const [result, setResult] = useState<UnscrambleResult | null>(null);
   const [showHint, setShowHint] = useState(false);
 
+  // Zabezpiecza przed podwójnym kliknięciem "Następne zdanie" w tym samym evencie
+  // (np. podwójny tap na dotyku), zanim React zdąży przerenderować z nowym currentIndex.
+  const transitionLockRef = useRef(false);
+  // Gwarantuje, że onComplete wywoła się dokładnie raz po ostatnim zdaniu, nawet
+  // jeśli handleNext zostanie wywołane ponownie zanim rodzic zdąży odmontować komponent.
+  const completeOnceRef = useRef(false);
+
   // Jeśli brak odpowiednich zdań na rozgrzewkę, od razu przechodzimy do zadań
   useEffect(() => {
     if (warmupItems.length === 0) {
@@ -71,6 +77,13 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   }, [warmupItems, onSkip]);
 
   const currentItem = warmupItems[currentIndex];
+
+  // Zwalnia blokadę przejścia dopiero, gdy runda wskazywana przez currentIndex
+  // faktycznie się wyrenderowała — chroni przed drugim, szybkim dotknięciem
+  // "Następne zdanie" zanim React zdąży scalić stan nowej rundy.
+  useEffect(() => {
+    transitionLockRef.current = false;
+  }, [currentIndex]);
 
   // Słowa wzorcowe
   const targetWords = useMemo(() => {
@@ -92,13 +105,6 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
     }
     return bank;
   }, [targetWords]);
-
-  // Reset stanu po zmianie zdania
-  useEffect(() => {
-    setSelectedWordIndices([]);
-    setResult(null);
-    setShowHint(false);
-  }, [currentIndex]);
 
   if (!currentItem || warmupItems.length === 0) {
     return null;
@@ -124,17 +130,6 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
         answerOrder,
         result: classification,
       });
-
-      if (classification === 'correct') {
-        try {
-          confetti({
-            particleCount: 40,
-            spread: 60,
-            origin: { y: 0.7 },
-            colors: ['#10b981', '#06b6d4', '#f59e0b'],
-          });
-        } catch (e) {}
-      }
       // `incorrect` zostaje bez specjalnego ekranu — kursant widzi ułożone,
       // niepasujące kafelki i może użyć "Resetuj" (istniejące zachowanie retry).
     }
@@ -151,9 +146,25 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   };
 
   const handleNext = () => {
+    if (transitionLockRef.current) return;
+    transitionLockRef.current = true;
+
     if (currentIndex < warmupItems.length - 1) {
+      // Reset stanu rundy w TYM SAMYM evencie co zmiana indeksu — jeśli reset
+      // trafiał do osobnego useEffect uruchamianego po zmianie currentIndex,
+      // pierwszy render nowej (krótszej) rundy widział jeszcze indeksy kafelków
+      // z poprzedniej (dłuższej) rundy, więc `shuffledBank[bankIndex]` wypadało
+      // poza zakres nowego banku i renderowanie kończyło się crashem
+      // "Cannot read properties of undefined (reading 'word')".
+      setSelectedWordIndices([]);
+      setResult(null);
+      setShowHint(false);
       setCurrentIndex((prev) => prev + 1);
-    } else {
+      // Odblokowane dopiero, gdy nowa runda faktycznie się wyrenderuje (patrz
+      // useEffect niżej) — zwolnienie od razu tutaj nie chroniłoby przed
+      // szybkim podwójnym dotknięciem w tym samym momencie.
+    } else if (!completeOnceRef.current) {
+      completeOnceRef.current = true;
       onComplete();
     }
   };
@@ -165,8 +176,8 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
       {/* Pasek górny rozgrzewki */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/35 text-amber-300 text-xs font-bold uppercase tracking-wider">
-            <Flame size={14} className="text-amber-400 animate-pulse" />
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/35 text-primary text-xs font-bold uppercase tracking-wider">
+            <Flame size={14} className="text-primary animate-pulse" />
             Rozgrzewka językowa
           </span>
           <span className="text-[11px] font-mono text-content-muted">
@@ -201,7 +212,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
             <button
               type="button"
               onClick={() => setShowHint((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-[11px] text-content-muted hover:text-primary font-bold transition-colors cursor-pointer"
             >
               <Lightbulb size={12} />
               <span>{showHint ? 'Ukryj podpowiedź' : 'Podpowiedź'}</span>
@@ -224,8 +235,8 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
             {currentItem.instruction}
           </p>
           {showHint && currentItem.hint && (
-            <p className="text-xs text-amber-300/90 mt-2.5 pt-2.5 border-t border-white/10 flex items-center gap-1.5">
-              <span className="font-semibold">Wskazówka:</span> {currentItem.hint}
+            <p className="text-xs text-content mt-2.5 pt-2.5 border-t border-white/10 flex items-center gap-1.5">
+              <span className="font-semibold text-text-hi">Wskazówka:</span> {currentItem.hint}
             </p>
           )}
         </div>
@@ -250,7 +261,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
               result === 'correct'
                 ? 'border-emerald-500 bg-emerald-950/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
                 : result === 'close'
-                ? 'border-amber-500 bg-amber-950/20 shadow-[0_0_20px_rgba(245,158,11,0.15)]'
+                ? 'border-info bg-info/10 shadow-[0_0_20px_rgba(111,168,240,0.15)]'
                 : 'border-dashed border-line-strong bg-base-100/50'
             }`}
           >
@@ -262,10 +273,12 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
 
             {selectedWordIndices.map((bankIndex, pos) => {
               const item = shuffledBank[bankIndex];
+              if (!item) return null;
               return (
                 <button
                   key={`selected-${bankIndex}-${pos}`}
                   type="button"
+                  data-testid="warmup-selected-tile"
                   onClick={() => handleRemoveTile(pos)}
                   className="px-3.5 py-2 rounded-xl bg-primary/20 border border-primary/50 text-primary text-[15px] font-bold shadow-sm transition-transform active:scale-95 cursor-pointer hover:border-danger/60 hover:bg-danger/15 hover:text-danger flex items-center gap-1"
                   title="Kliknij, aby cofnąć słowo"
@@ -289,6 +302,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 <button
                   key={`bank-${bankIndex}`}
                   type="button"
+                  data-testid="warmup-bank-tile"
                   disabled={isUsed || isDone}
                   onClick={() => handleSelectTile(bankIndex)}
                   className={`px-3.5 py-2 rounded-xl border text-[15px] font-bold transition-all duration-150 active:scale-95 cursor-pointer ${
@@ -320,6 +334,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
 
               <button
                 type="button"
+                data-testid="warmup-next-button"
                 onClick={handleNext}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
@@ -330,14 +345,14 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
           )}
 
           {result === 'close' && (
-            <div className="mt-6 p-4 rounded-xl bg-amber-500/15 border border-amber-500/40 flex flex-col gap-3 animate-in zoom-in-95 duration-200">
+            <div className="mt-6 p-4 rounded-xl bg-info/15 border border-info/40 flex flex-col gap-3 animate-in zoom-in-95 duration-200">
               <div className="flex items-start gap-2.5">
-                <Sparkles size={22} className="text-amber-400 shrink-0 mt-0.5" />
+                <Sparkles size={22} className="text-info shrink-0 mt-0.5" />
                 <div className="space-y-1.5">
-                  <span className="font-bold text-amber-300 text-sm block">
+                  <span className="font-bold text-info text-sm block">
                     {i18n.t('Byłeś/Byłaś blisko!')}
                   </span>
-                  <p className="text-xs text-amber-200/80">
+                  <p className="text-xs text-content">
                     {i18n.t('Miałeś/Miałaś wszystkie właściwe słowa — tylko szyk był inny. Poprawna kolejność:')}
                   </p>
                   <p className="text-sm font-semibold text-white bg-black/20 rounded-lg px-3 py-2">
@@ -348,8 +363,9 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
 
               <button
                 type="button"
+                data-testid="warmup-next-button"
                 onClick={handleNext}
-                className="w-full sm:w-auto self-end px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto self-end px-5 py-2.5 rounded-xl bg-info hover:bg-info/85 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>{isLast ? 'Rozpocznij pracę domową →' : 'Następne zdanie →'}</span>
                 <ArrowRight size={15} />
