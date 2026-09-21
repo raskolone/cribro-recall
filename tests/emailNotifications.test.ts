@@ -116,13 +116,13 @@ test('buildStaticHomeworkNote: statyczna notatka zawiera wołacz, temat i link, 
     link: 'https://app.maciej.pro/hw?token=abc123',
   });
 
-  assert.ok(note.startsWith('Cześć, Bartłomieju!'));
+  assert.ok(note.startsWith('Hej, Bartłomieju!'));
   assert.ok(note.includes('From Symptom to Solution: Troubleshooting an Aircraft Problem'));
-  assert.ok(note.includes('Link: https://app.maciej.pro/hw?token=abc123.'));
-  // Maksymalnie 2-3 zdania: co najwyżej dwie kropki kończące zdanie w treści
-  // (dwukropek w "Link:" nie liczy się jako kropka kończąca zdanie).
-  const sentenceEndings = (note.match(/\.(?:\s|$)/g) || []).length;
-  assert.ok(sentenceEndings <= 3, `oczekiwano maks. 3 zdań, było ${sentenceEndings}`);
+  assert.ok(note.includes('Link do zadań: https://app.maciej.pro/hw?token=abc123.'));
+  assert.ok(note.includes('Daj znać, jak Ci poszło!'));
+  // Ten sam temat nie może się powtórzyć (topicTitle i lessonTopics są identyczne).
+  const topicOccurrences = note.split('Troubleshooting an Aircraft Problem').length - 1;
+  assert.strictEqual(topicOccurrences, 1, `temat nie powinien się duplikować, wystąpił ${topicOccurrences} razy`);
 });
 
 test('buildStaticHomeworkNote: brak tematu/linku nie psuje zdania (statyczny fallback bez wymyślonych danych)', async () => {
@@ -130,9 +130,51 @@ test('buildStaticHomeworkNote: brak tematu/linku nie psuje zdania (statyczny fal
 
   const note = buildStaticHomeworkNote({ studentName: 'Zofia' });
 
-  assert.ok(note.startsWith('Cześć, Zofio!'));
-  assert.ok(note.includes('Przygotowałem dla Ciebie zestaw ćwiczeń.'));
-  assert.ok(!note.includes('Link:'));
+  assert.ok(note.startsWith('Hej, Zofio!'));
+  assert.ok(note.includes('zestaw powtórkowy'));
+  assert.ok(!note.includes('Link'));
+});
+
+test('buildStaticHomeworkNote: brak imienia kursanta używa ogólnego powitania "Cześć!"', async () => {
+  const { buildStaticHomeworkNote } = await import('../services/homeworkGenerator');
+
+  const note = buildStaticHomeworkNote({ topicTitle: 'Business Idioms' });
+
+  assert.ok(note.startsWith('Cześć!'));
+});
+
+test('buildStaticHomeworkNote: wersja EN dla kursanta anglojęzycznego', async () => {
+  const { buildStaticHomeworkNote } = await import('../services/homeworkGenerator');
+
+  const note = buildStaticHomeworkNote({
+    studentName: 'Anna',
+    topicTitle: 'Business Idioms',
+    link: 'https://app.maciej.pro/hw?token=xyz789',
+    language: 'en',
+  });
+
+  assert.ok(note.startsWith('Hi Anna!'));
+  assert.ok(note.includes('Business Idioms'));
+  assert.ok(note.includes('Access link: https://app.maciej.pro/hw?token=xyz789.'));
+  assert.ok(note.includes('Let me know how it goes!'));
+});
+
+test('cleanTopic: usuwa prefiks "Praca domowa:" i duplikat tego samego tematu sklejonego z topicTitle i lessonTopics', async () => {
+  const { buildStaticHomeworkNote, cleanTopic } = await import('../services/homeworkGenerator');
+
+  assert.strictEqual(cleanTopic('Praca domowa: Digital Tools for Remote Teams'), 'Digital Tools for Remote Teams');
+  assert.strictEqual(cleanTopic('Homework: Business Idioms'), 'Business Idioms');
+  assert.strictEqual(cleanTopic('Digital Tools, Digital Tools'), 'Digital Tools');
+
+  const note = buildStaticHomeworkNote({
+    studentName: 'Kacper',
+    topicTitle: 'Praca domowa: Digital Tools for Remote Teams',
+    lessonTopics: ['Digital Tools for Remote Teams'],
+  });
+
+  const topicOccurrences = note.split('Digital Tools for Remote Teams').length - 1;
+  assert.strictEqual(topicOccurrences, 1, `temat nie powinien się duplikować, wystąpił ${topicOccurrences} razy`);
+  assert.ok(!note.includes('Praca domowa:'));
 });
 
 

@@ -199,13 +199,52 @@ ZASADY JAKOŚCI — OBOWIĄZUJĄ W KAŻDYM ZADANIU:
 6. BEZ ZDAŃ-WYDMUSZEK. Żadnych „This is a sentence with the word X" ani zdań,
    których jedyną treścią jest to, że zawierają słowo z listy.`;
 
-import { formatPolishGreeting } from '../utils/polishVocative';
+import { formatOnlyFirstName, toPolishVocative } from '../utils/polishVocative';
 
 export interface BuildStaticHomeworkNoteParams {
   studentName?: string;
   topicTitle?: string;
   lessonTopics?: string[];
   link?: string;
+  language?: 'pl' | 'en';
+}
+
+/**
+ * Zwraca temat lekcji bez prefiksów typu "Praca domowa:"/"Homework:" (dodawanych
+ * przy tworzeniu zadania — patrz `HomeworkComposerV2.tsx`, `TeacherSpecialTaskModal.tsx`)
+ * i bez wewnętrznych powtórzeń tego samego ciągu (np. gdy ten sam temat trafia
+ * do notatki jednocześnie jako `topicTitle` z prefiksem i jako `lessonTopics` bez
+ * niego — bez tego czyszczenia dają dwa różne stringi, więc zwykły `Set` ich nie scala).
+ */
+export function cleanTopic(rawTopic?: string): string {
+  if (!rawTopic) return '';
+  const withoutPrefix = rawTopic.trim().replace(/^(praca\s+domowa|homework)\s*[:\-–]\s*/i, '').trim();
+  if (!withoutPrefix) return '';
+
+  // Cały temat złożony z tego samego fragmentu sklejonego dwa razy (np. "X, X").
+  const halfLength = withoutPrefix.length / 2;
+  if (Number.isInteger(halfLength)) {
+    const firstHalf = withoutPrefix.slice(0, halfLength).trim();
+    const secondHalf = withoutPrefix.slice(halfLength).trim();
+    if (firstHalf && firstHalf.toLowerCase() === secondHalf.toLowerCase()) {
+      return firstHalf;
+    }
+  }
+
+  // Temat złożony z kilku fragmentów oddzielonych przecinkiem/średnikiem, część powtórzona.
+  const segments = withoutPrefix.split(/\s*[,;]\s*/).filter(Boolean);
+  if (segments.length > 1) {
+    const seen = new Set<string>();
+    const unique = segments.filter((segment) => {
+      const key = segment.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    return unique.join(', ');
+  }
+
+  return withoutPrefix;
 }
 
 /**
@@ -215,18 +254,37 @@ export interface BuildStaticHomeworkNoteParams {
  * KAŻDYM otwarciu `HomeworkEmailConfirmationModal.tsx`, zanim lektor
  * cokolwiek kliknął) — patrz AGENT_LOG.md, hotfix P0 (2026-09-20). Wołacz,
  * temat i link są już znane w momencie otwarcia modala, więc nie ma tu nic,
- * co wymagałoby swobodnej prozy LLM: dwa zdania, zero wywołania modelu,
- * zero ryzyka, że wygenerowana treść będzie nie na temat.
+ * co wymagałoby swobodnej prozy LLM: zero wywołania modelu, zero ryzyka, że
+ * wygenerowana treść będzie nie na temat.
  */
 export function buildStaticHomeworkNote(params: BuildStaticHomeworkNoteParams): string {
-  const { studentName, topicTitle, lessonTopics = [], link } = params;
+  const { studentName, topicTitle, lessonTopics = [], link, language = 'pl' } = params;
 
-  const vocativeGreeting = formatPolishGreeting(studentName);
-  const topicsSummary = Array.from(new Set([topicTitle, ...lessonTopics].filter(Boolean))).join(', ');
-  const topicFragment = topicsSummary ? ` na podstawie ${topicsSummary}` : '';
-  const linkFragment = link ? ` Link: ${link}.` : '';
+  const seenTopics = new Set<string>();
+  const uniqueTopics = [topicTitle, ...lessonTopics]
+    .map(cleanTopic)
+    .filter(Boolean)
+    .filter((topic) => {
+      const key = topic.toLowerCase();
+      if (seenTopics.has(key)) return false;
+      seenTopics.add(key);
+      return true;
+    });
+  const topic = cleanTopic(uniqueTopics.join(', '));
 
-  return `${vocativeGreeting} Przygotowałem dla Ciebie zestaw ćwiczeń${topicFragment}.${linkFragment}`;
+  if (language === 'en') {
+    const firstName = formatOnlyFirstName(studentName);
+    const greeting = firstName ? `Hi ${firstName}!` : 'Hi!';
+    const topicText = topic || 'a review set';
+    const linkFragment = link ? ` Access link: ${link}.` : '';
+    return `${greeting} Following our last lesson, I've prepared a set of practice exercises for you: ${topicText}.${linkFragment} Let me know how it goes!`;
+  }
+
+  const vocative = toPolishVocative(studentName);
+  const greeting = vocative ? `Hej, ${vocative}!` : 'Cześć!';
+  const topicText = topic || 'zestaw powtórkowy';
+  const linkFragment = link ? ` Link do zadań: ${link}.` : '';
+  return `${greeting} Po naszej ostatniej lekcji przygotowałem dla Ciebie zestaw ćwiczeń: ${topicText}.${linkFragment} Daj znać, jak Ci poszło!`;
 }
 
 /**
