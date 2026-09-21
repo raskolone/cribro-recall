@@ -56,12 +56,14 @@ describe('polecenie dla modelu', () => {
     assert.doesNotMatch(prompt, /Data lekcji:/);
   });
 
-  it('prosi o wszystkie cztery bloki kontraktu', () => {
+  it('prosi o bloki kontraktu, ale nie o pracę domową (żyje wyłącznie w module ćwiczeń)', () => {
     const prompt = buildTranscriptLessonPrompt({ transcript: 'x' });
 
-    for (const field of ['summary', 'vocabulary', 'corrections', 'homework', 'answerKey', 'nextLesson']) {
+    for (const field of ['summary', 'vocabulary', 'corrections', 'nextLesson', 'learningCurve']) {
       assert.match(prompt, new RegExp(`"${field}"`), `brak pola ${field}`);
     }
+    assert.doesNotMatch(prompt, /"homework"/);
+    assert.doesNotMatch(prompt, /"answerKey"/);
   });
 });
 

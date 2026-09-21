@@ -5367,3 +5367,46 @@ Ryzyka: brak zmian w firestore.rules, middleware autoryzacji, ścieżkach
 tokenowych bez logowania. Zabezpieczenie przed nadpisaniem notatek
 kursanta (obszar realnego ryzyka utraty danych) świadomie NIE ZMIENIONE.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).
+
+## 2026-09-21 — Claude Code / Sonnet 5 (trzecia zmiana tej sesji)
+
+Zadanie: powrót do zadania 1 (uproszczenie parsowania lekcji) — wycięcie
+generowania Bloku 3 (praca domowa) z promptu AI dla wklejanego tekstu
+Notion, priorytet dla Learning Curve. Zakres ustalony wcześniej: zmiana
+WYŁĄCZNIE w promptcie/parserze, bez ruszania pól/ekranów zależnych
+(HomeworkScreen, Notion sync, FlashcardContext).
+Zrobione:
+- utils/transcriptLesson.ts (TRANSCRIPT_SYSTEM_INSTRUCTION,
+  buildTranscriptLessonPrompt): usunięto z promptu punkt "PRACA DOMOWA"
+  i pola JSON "homework"/"answerKey" (BLOK 3a/3b) — model już o nie nie
+  prosi. Learning Curve oznaczone w prompcie jako priorytet, z wprost
+  napisanym powodem (praca domowa żyje w module ćwiczeń). Ta sama zmiana
+  serwisu obsługuje DWIE ścieżki UI: `ManualTranscriptImportModal.tsx`
+  ("Wklej notatki z Notion AI / Transkrypcję" — to jest dokładnie
+  zlecona funkcja) ORAZ `TranscriptLessonPanel.tsx` (recenzja transkrypcji
+  z Cribro Sift) — obie korzystają z tego samego `generateLessonFromTranscript`.
+  Pola `homework`/`answerKey` w `RawTranscriptLesson`/`parseTranscriptLesson`
+  zostały (tolerancja wsteczna), po prostu nic już ich nie wypełnia.
+- tests/transcriptLesson.test.ts: zaktualizowano test "prosi o wszystkie
+  cztery bloki kontraktu" → sprawdza teraz też, że prompt NIE zawiera
+  pól "homework"/"answerKey".
+Nie dokończone / do sprawdzenia — WAŻNE, wymaga decyzji Macieja:
+- Odkryto DRUGĄ, równoległą ścieżkę generowania lekcji z wklejonego
+  tekstu: `AdminPanel.tsx` → `generateLessonSummary()` →
+  `POST /api/gemini/lesson-summary` (server.ts:4202+), używaną też do
+  wklejania surowych notatek (`rawMeetingNotes`), nie tylko PDF.
+  Tryb 'notes' (gotowe podsumowanie Notion AI) JUŻ ma w prompcie wprost:
+  "Nie generuj pracy domowej..." — zgodne z zadaniem, nic nie trzeba
+  zmieniać. Tryb 'transcript' (surowa transkrypcja) NADAL generuje
+  homeworkText/homeworkAnswerKey — i ma w kodzie (server.ts ~linia 4290)
+  jawny komentarz uzasadniający, DLACZEGO to zostało: "wersja
+  transkrypcyjna MA generować pracę domową: blok 3 jest częścią układu,
+  a pusty blok w historii to dziura, nie oszczędność". Nie ruszono tego
+  bez pytania Macieja — trzeci w tej sesji przypadek, gdy zlecenie
+  koliduje z udokumentowaną, świadomą decyzją w kodzie.
+- Pozostała część zadania 1 (modal human-in-the-loop po zapisie lekcji +
+  szablon Resend `sendLessonSummaryEmail`) — NIE ZACZĘTA.
+Decyzje architektoniczne: żadne niejawne poza zakresem ustalonym wcześniej.
+Ryzyka: brak zmian w firestore.rules, middleware autoryzacji, ścieżkach
+tokenowych bez logowania.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).
