@@ -198,6 +198,25 @@ we dwoje na żywo.
 
 ---
 
+### 🌙 Nocny pakiet stabilizacyjny — zakładki prac domowych, logowanie e-mailem, mail powitalny, fix uprawnień odrzucania lekcji, tydzień kalendarzowy, fix Notion fetch-transcripts (2026-09-21, runda 48)
+
+**Zadanie:** zlecenie w pełni autonomicznej sesji obejmujące 7 niezależnych obszarów. Faza 4 (obszar wysokiego ryzyka wg CLAUDE.md sekcja 3) i ogólny zakres zostały najpierw potwierdzone z Maciejem przez `AskUserQuestion` zamiast działania bez pytania — zgodnie z CLAUDE.md, które ma priorytet nad instrukcją zlecenia "nie zatrzymuj się na pytania o zakres".
+
+**Zmienione:**
+- `components/dashboard/HomeworkScreen.tsx` — pionowy stos trzech sekcji lektora (aktywne prace / testy kursantów / archiwum) zastąpiony poziomą nawigacją zakładkową "Prace domowe" / "Moje testy" / "Sprawdzone przez nauczyciela" (nowy stan `contentTab`, memo `activeStudentTests`/`completedStudentTests`/`activeHomeworkCount`). Wyłącznie zmiana filtrowania/prezentacji — bez zmian w zapytaniach Firestore, mutacjach ani logice oceniania AI. Przycisk "+ Przypisz pracę domową" zostaje w nagłówku niezależnie od zakładki.
+- `components/auth/AuthScreen.tsx` — pole logowania to teraz "Adres e-mail" (`type="email"`, `autoComplete="email"`), normalizacja `trim().toLowerCase()`, mapowanie błędów Firebase (`auth/invalid-email`, `auth/user-not-found`/`wrong-password`/`invalid-credential`, `auth/too-many-requests`) na czytelne komunikaty PL. `loginWithEmail`/`registerWithEmail` w `AuthContext.tsx` już wcześniej wywoływały `signInWithEmailAndPassword` bezpośrednio, bez wyszukiwania po `username` w Firestore — bez zmian.
+- `components/admin/StudentDatabaseScreen.tsx` — usunięto renderowanie etykiet `@username` w wierszu tabeli CRM oraz w modalach usuwania/edycji kursanta (identyfikacja przez imię/nazwisko i e-mail). `types.ts`: `User.username` oznaczone `@deprecated` (fallback nazwy wyświetlanej, nie login).
+- `services/homeworkEmail.ts` (`buildWelcomeEmail`) i `components/admin/StudentInviteEmailModal.tsx` — pole "Login" w mailu powitalnym i w kopiowanym tekście bierze teraz e-mail odbiorcy zamiast `student.username`; dodana wyróżniona ramka ze wskazówką o logowaniu jednym kliknięciem przez Google dla adresów Gmail/Workspace (HTML + wersja tekstowa). Zapis statusu/daty zaproszenia (`invitationSent`, `invitationSentAt`, `lastInviteSentAt`) już działał poprawnie.
+- `services/lessonRecord.ts` (`deleteLessonRecord`) — **fix P0**: kasowanie głównego rekordu lekcji przy odrzucaniu (`rejectNotionLesson`) szło przez nieosłonięty `deleteDoc`; przy próbie usunięcia dokumentu, który już nie istniał (podwójny klik, wyścig dwóch zakładek lektora), reguła Firestore czytająca `resource.data` przy delete dostawała puste `resource` i zwracała "Missing or insufficient permissions". Naprawione przez objęcie tym samym guardem `deleteIfExists`, który już chronił opcjonalne zestawy fiszek. **Świadomie bez zmian w `firestore.rules`** — bezpieczny wariant ustalony z Maciejem przed wdrożeniem.
+- `components/admin/AdminPanel.tsx` — grupowanie historii lekcji kursanta zamiast kroczących 7 dni (`diffDays <= 7`, granica przesuwała się codziennie) liczy teraz bieżący tydzień kalendarzowy (poniedziałek 00:00 do teraz), etykieta "Ten tydzień".
+- `server.ts` (`syncNotionTranscriptsFromApi`) — **fix P0**: zapytanie do bazy spotkań Notion nie miało sortowania, więc przy bazie większej niż `page_size=40` świeżo dodana dzisiejsza transkrypcja mogła nie zmieścić się w wynikach i modal pokazywał "Brak stron w Notion powiązanych z tym kursantem" mimo istniejącej strony. Dodano `sorts: created_time desc` (tak jak już robi `/api/notion/recent-meetings`), dopasowanie po samym nazwisku (obok imienia/pełnego imienia+nazwiska/e-maila/nazwy grupy) i logi diagnostyczne (liczba zwróconych stron, pageId/tytuł niedopasowanych stron).
+
+**Świadomie nieruszone:** `firestore.rules`, middleware autoryzacji w `server.ts`, ścieżki tokenowe bez logowania (`homework/direct/:token`, notatnik po PIN).
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (508/508), `npm run build` (przechodzi, w tym `server.cjs` i `api/index.js`). UI NIE zweryfikowane wzrokowo w przeglądarce w tej sesji — zwłaszcza wygląd zakładek na telefonie, realny test logowania e-mailem i realny import transkrypcji Dariusza Wacha z Notion.
+
+---
+
 ### 🎯 Przywrócenie Hero Chatu Asystenta AI na pulpicie lektora (2026-09-21, runda 47)
 
 **Zadanie:** zlecenie chciało dedykowanej sekcji Hero z centralnym czatem AI pod siatką 4 kafelków pulpitu (badge, nagłówek "W czym mogę dzisiaj pomóc?", pigułki Flash/Thinking, @ Kursant/Skille/Załącz, przycisk wysyłki). Audyt pokazał, że `TeacherAssistant.tsx` w `mode="embedded"` (`:979-1836`) to dokładnie ten komponent — identyczny badge, nagłówek, pigułki (Flash w amber gradiencie), autouzupełnianie @ i /, załączniki, karty lekcji/scenariuszy — już w pełni zbudowany i przetestowany. Był jednak montowany wyłącznie wewnątrz pełnoekranowej nakładki, otwieranej przyciskiem-paskiem pod kafelkami (`AdminPanel.tsx`), zamiast być stałym elementem pulpitu.

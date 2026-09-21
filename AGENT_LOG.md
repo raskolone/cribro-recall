@@ -5220,3 +5220,61 @@ server.ts ani ścieżek tokenowych bez logowania. Zmiany wyłącznie w
 components/admin/AdminPanel.tsx.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), npm run
 build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: "Nocny Pakiet Stabilizacyjny" — zlecenie w pełni autonomicznej
+sesji, 7 faz: (1) zakładki w HomeworkScreen.tsx lektora, (2) logowanie
+e-mailem + usunięcie etykiet @username, (3) mail powitalny z login=e-mail
+i wskazówką Google Auth, (4) fix P0 "Missing or insufficient permissions"
+przy odrzucaniu lekcji, (5) grupowanie historii lekcji wg tygodnia
+kalendarzowego zamiast kroczących 7 dni, (6) fix P0 fetch-transcripts
+Notion (brak sortowania + brak dopasowania po nazwisku), (7) weryfikacja
+i commity.
+Zrobione:
+- Przed startem: AskUserQuestion x2 — potwierdzenie z Maciejem bezpiecznego
+  wariantu Fazy 4 (bez zmian w firestore.rules) i zakresu całej sesji,
+  zgodnie z CLAUDE.md sekcja 3 (obszary wysokiego ryzyka) i sekcja 7.1
+  (projekt w fazie testów, sprawdzić zakres przed dużymi zmianami) —
+  te reguły mają priorytet nad "nie zatrzymuj się na pytania" ze zlecenia.
+- components/dashboard/HomeworkScreen.tsx: nowy stan contentTab
+  ('homework'|'tests'|'archived'), memo activeStudentTests/
+  completedStudentTests/activeHomeworkCount, pasek zakładek zastępujący
+  pionowy stos sekcji. Bez zmian w zapytaniach Firestore/mutacjach/AI.
+- components/auth/AuthScreen.tsx: pole loginu → "Adres e-mail"
+  (type=email, autoComplete=email), normalizacja trim+lowercase, mapa
+  błędów Firebase na komunikaty PL.
+- components/admin/StudentDatabaseScreen.tsx, types.ts: usunięte etykiety
+  @username w CRM, User.username oznaczone @deprecated.
+- services/homeworkEmail.ts, components/admin/StudentInviteEmailModal.tsx:
+  Login w mailu powitalnym = e-mail, dodana ramka ze wskazówką logowania
+  Google jednym kliknięciem.
+- services/lessonRecord.ts (deleteLessonRecord): kasowanie głównego
+  rekordu lekcji objęte guardem deleteIfExists (tak jak wcześniej zestawy
+  fiszek) — bez zmian w firestore.rules.
+- components/admin/AdminPanel.tsx: grupowanie "Ten tydzień" liczone od
+  poniedziałku 00:00, nie kroczące 7 dni.
+- server.ts (syncNotionTranscriptsFromApi): dodano sortowanie
+  created_time desc w zapytaniu do bazy Notion, dopasowanie po samym
+  nazwisku, logi diagnostyczne. Przebudowano api/index.js.
+Nie dokończone / do sprawdzenia:
+- Zero weryfikacji wzrokowej w przeglądarce — wygląd zakładek
+  HomeworkScreen (zwłaszcza telefon), realny test logowania e-mailem,
+  realny import transkrypcji Dariusza Wacha z Notion po poprawce
+  sortowania.
+Decyzje architektoniczne:
+- Faza 4 zrealizowana jako "bezpieczny wariant" (guard deleteIfExists)
+  zamiast zmiany firestore.rules lub nowego endpointu Cloud Function —
+  ustalone z Maciejem przed wdrożeniem.
+- Faza 1: dropdown "Status" (all/pending/submitted) działa tylko wewnątrz
+  zakładki "Prace domowe"; opcję "graded" usunięto z dropdownu, bo to
+  teraz osobna zakładka niezależna od filterStatus.
+Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
+server.ts ani ścieżek tokenowych bez logowania. Faza 4 (obszar wysokiego
+ryzyka wg CLAUDE.md sekcja 3) zrealizowana po jawnym potwierdzeniu
+zakresu z Maciejem, bez zmian w regułach.
+Weryfikacja: npx tsc --noEmit (0 błędów) po każdej fazie, npm test
+(508/508) po każdej fazie, npm run build (przechodzi, w tym server.cjs
+i api/index.js) na końcu sesji.
