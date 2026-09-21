@@ -3512,16 +3512,18 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             let currentGroupKey = '';
                             let currentGroup: { key: string, items: typeof confirmedLessons } | null = null;
                             
+                            const startOfWeek = new Date();
+                            startOfWeek.setHours(0, 0, 0, 0);
+                            startOfWeek.setDate(startOfWeek.getDate() - ((startOfWeek.getDay() + 6) % 7));
+
                             confirmedLessons.forEach(record => {
                                 const d = new Date(record.date);
-                                const diffTime = new Date().getTime() - d.getTime();
-                                const diffDays = diffTime / (1000 * 3600 * 24);
 
                                 let groupKey = '';
-                                if (diffDays >= 0 && diffDays <= 7) {
-                                    groupKey = 'Ostatni tydzień';
-                                } else if (Number.isNaN(d.getTime())) {
+                                if (Number.isNaN(d.getTime())) {
                                     groupKey = 'Inne';
+                                } else if (d.getTime() >= startOfWeek.getTime()) {
+                                    groupKey = 'Ten tydzień';
                                 } else {
                                     groupKey = d.toLocaleString('pl-PL', { month: 'long', year: 'numeric' }).toUpperCase();
                                 }
