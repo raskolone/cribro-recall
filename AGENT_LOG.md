@@ -5096,3 +5096,47 @@ server.ts ani ścieżek tokenowych bez logowania. Zmiany wyłącznie w
 warstwie UI/frontend.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508), grep po
 repo na window\.confirm|confirm( poza utils/appAlert.ts — zero trafień.
+
+---
+
+2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: Pakiet "Izolacja Powtórek, Angielski Szablon Notatnika, Profil
+Kursanta i Zakładki Prac Domowych" (Krok 1/3). Przed startem zrobiony
+audyt względem §1-§5 zlecenia i historii repo.
+Zrobione:
+- Audyt wykazał §1 (izolacja powtórek + angielski szablon) i §5
+  (window.confirm/alert) już zaimplementowane w poprzednich commitach
+  (b4a992a, c3bd65a) — opisane też we wpisie AO w CHANGELOG.md.
+  Zapytany, Maciej wybrał zakres na tę sesję: tylko §2 i §3, §4
+  (zakładki w Pracach domowych) zostaje na osobny krok.
+- §2: components/admin/StudentProfileHeader.tsx odchudzony z 335 do
+  ok. 90 linii — usunięte 4 kafelki metryk (e-mail/poziom/logowania/
+  ostatnia wizyta, duplikat zakładki "Profil & Dane") i pigułki akcji
+  (kopiuj hasło, zaproszenie wysłano/oznacz/cofnij, status Google).
+  Nagłówek: awatar/inicjał, imię i nazwisko, jednolinijkowy pasek
+  statusu logowania.
+- §3: components/admin/AdminPanel.tsx — etykieta zakładki profilu
+  'Moje lekcje' -> 'Historia Lekcji' (ujednolicona z tytułem już
+  istniejącego, osobnego widoku TeacherLessonHistoryView.tsx). Dodany
+  przycisk "Sprawdź transkrypcje w Notion" w tej zakładce, wołający
+  ten sam endpoint co TeacherLessonHistoryView.tsx
+  (POST /api/notion/fetch-transcripts, mode preview/import), zawężony
+  na sztywno do selectedUser.id. Pusty wynik -> toast "Nie znaleziono
+  nowych transkrypcji w Notion dla tego kursanta.", niepusty -> reużyty
+  NotionImportPreviewModal.
+Nie dokończone / do sprawdzenia:
+- §4 (HomeworkScreen.tsx, 3537 linii — zamiana filtra/archiwum na 3
+  zakładki poziome) świadomie NIE ruszone, zaplanowane na kolejny krok.
+- Zero weryfikacji wzrokowej w przeglądarce — belka profilu w obu
+  motywach (kursant bez logowania / z logowaniem), przycisk Notion
+  (przypadek pusty i z wynikami).
+Decyzje architektoniczne:
+- §3 zrealizowane przez wywołanie istniejącego endpointu bezpośrednio
+  z AdminPanel.tsx (ten sam wzorzec co w TeacherLessonHistoryView.tsx),
+  zamiast wydzielania współdzielonego hooka — dwa call site'y, obie
+  krótkie, wydzielanie na tym etapie byłoby przedwczesną abstrakcją.
+Ryzyka: NIE dotknięto firestore.rules, middleware autoryzacji w
+server.ts ani ścieżek tokenowych bez logowania. Zmiany wyłącznie w
+components/admin/AdminPanel.tsx i components/admin/StudentProfileHeader.tsx.
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (508/508).
