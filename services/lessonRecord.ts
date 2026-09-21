@@ -470,9 +470,11 @@ export async function deleteLessonRecord(studentId: string, lessonRecord: Lesson
   const recordId = lessonRecord.id;
   const vocabId = lessonRecord.vocabularySetId;
 
-  // 1. Usuń rekord lekcji — to jedyny krok, którego błąd ma przerwać operację.
-  const recordRef = doc(db, `users/${studentId}/lessonRecords/${recordId}`);
-  await deleteDoc(recordRef);
+  // 1. Usuń rekord lekcji. Guardowane tak samo jak kroki 2/3 poniżej —
+  // podwójny klik lub odrzucenie już skasowanego rekordu (np. wyścig
+  // dwóch zakładek lektora) trafiał w ten sam „Missing or insufficient
+  // permissions" co delete na nieistniejącym dokumencie z fiszkami.
+  await deleteIfExists(`users/${studentId}/lessonRecords/${recordId}`);
 
   // 2. Zestaw słownictwa i fiszki są opcjonalne — nie każda lekcja je ma.
   if (vocabId) {
