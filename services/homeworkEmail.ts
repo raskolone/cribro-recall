@@ -379,19 +379,21 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
             <p style="margin:0 0 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.12em;color:#0d9488;">Twoje dane logowania</p>
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
               <tr>
-                <td style="padding:8px 0;color:#94a3b8;font-size:13px;border-bottom:1px solid #1e293b;width:100px;">Login</td>
+                <td style="padding:8px 0;color:#94a3b8;font-size:13px;border-bottom:1px solid #1e293b;width:130px;">Login (e-mail)</td>
                 <td style="padding:8px 0;color:#f1f5f9;font-size:15px;font-weight:700;font-family:'Courier New',monospace;border-bottom:1px solid #1e293b;text-align:right;">${escapeHtml(username)}</td>
               </tr>
               <tr>
-                <td style="padding:8px 0;color:#94a3b8;font-size:13px;width:100px;">Hasło</td>
+                <td style="padding:8px 0;color:#94a3b8;font-size:13px;width:130px;">Hasło startowe</td>
                 <td style="padding:8px 0;color:#f1f5f9;font-size:15px;font-weight:700;font-family:'Courier New',monospace;text-align:right;">${escapeHtml(tempPassword)}</td>
               </tr>
             </table>
           </div>
 
-          <p style="margin:0 0 4px;color:#94a3b8;font-size:13px;line-height:1.5;">
-            💡 Po zalogowaniu możesz zmienić hasło na własne lub powiązać konto z Google — wystarczy jedno kliknięcie.
-          </p>
+          <div style="margin:16px 0 0;background:rgba(66,133,244,0.08);border:1px solid rgba(66,133,244,0.25);border-radius:12px;padding:14px 18px;">
+            <p style="margin:0;color:#cbd5e1;font-size:13px;line-height:1.55;">
+              💡 <strong style="color:#f1f5f9;">Wskazówka:</strong> Jeśli Twój adres e-mail to konto Google (Gmail lub Google Workspace), możesz zalogować się jednym kliknięciem przyciskiem „Kontynuuj przez Google” bez podawania hasła.
+            </p>
+          </div>
 
           <!-- CTA Button -->
           <div style="margin:26px 0 0;text-align:center;">
@@ -436,10 +438,11 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
 
   textLines.push(
     '',
-    `Login: ${username}`,
-    `Hasło: ${tempPassword}`,
+    `Login (e-mail): ${username}`,
+    `Hasło startowe: ${tempPassword}`,
     '',
-    'Po zalogowaniu możesz zmienić hasło na własne lub powiązać konto z Google.',
+    'Wskazówka: Jeśli Twój adres e-mail to konto Google (Gmail lub Google Workspace),',
+    'możesz zalogować się jednym kliknięciem przyciskiem "Kontynuuj przez Google" bez podawania hasła.',
     '',
     `Zaloguj się: ${appUrl}`,
     unsubscribeUrl ? `\nWypisz się z powiadomień: ${unsubscribeUrl}` : null,

@@ -169,19 +169,19 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
     if (!student) return { html: '', text: '', subject: '' };
     return buildWelcomeEmail({
       studentName: student.firstName || studentDisplayName,
-      username: student.username || '',
+      username: recipientEmail || student.email || '',
       tempPassword: password,
       appUrl: appUrl || 'https://app.maciej.pro',
       customNote: customNote.trim() || undefined,
       assignedBy: senderName,
       subject: subject.trim() || undefined,
     });
-  }, [student, studentDisplayName, password, appUrl, customNote, senderName, subject]);
+  }, [student, studentDisplayName, password, appUrl, customNote, senderName, subject, recipientEmail]);
 
   if (!isOpen || !student) return null;
 
   const handleCopyCredentials = () => {
-    const textToCopy = `Witaj ${polishGreeting}!\n\nOto Twoje dane logowania do platformy CRIBRO ENGLISH:\n\n🔗 Adres: ${appUrl}\n👤 Login: ${student.username}\n🔑 Hasło: ${password}\n\nPo pierwszym zalogowaniu możesz zmienić hasło na własne lub powiązać konto z Google jednym kliknięciem.\n\nPozdrawiam,\n${senderName}`;
+    const textToCopy = `Witaj ${polishGreeting}!\n\nOto Twoje dane logowania do platformy CRIBRO ENGLISH:\n\n🔗 Adres: ${appUrl}\n👤 Login (e-mail): ${recipientEmail || student.email}\n🔑 Hasło: ${password}\n\nPo pierwszym zalogowaniu możesz zmienić hasło na własne lub powiązać konto z Google jednym kliknięciem.\n\nPozdrawiam,\n${senderName}`;
     navigator.clipboard.writeText(textToCopy);
     setCopiedData(true);
     setTimeout(() => setCopiedData(false), 2500);
