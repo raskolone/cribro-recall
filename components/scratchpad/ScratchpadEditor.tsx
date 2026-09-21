@@ -101,8 +101,8 @@ import { ScratchpadPresentationOverlay, PresentationState } from './ScratchpadPr
 import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationModal';
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
-import { buildLessonTemplate, extractLastLessonSections, highestLessonNumber, LESSON_SECTIONS } from '../../utils/lessonTemplate';
-import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, notebookHeadingColor, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
+import { buildLessonTemplate, extractLastLessonSections, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
+import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 import { generateLessonRevision } from '../../services/scratchpadAiService';
@@ -932,7 +932,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
       const structuredText = previousLesson
         ? [
-            previousLesson.mainTopic && `Main topic / Practice:\n${previousLesson.mainTopic}`,
+            previousLesson.mainTopic && `Main Focus & Practice:\n${previousLesson.mainTopic}`,
             previousLesson.keyLanguage && `Key Language & Corrections:\n${previousLesson.keyLanguage}`,
           ]
             .filter(Boolean)
@@ -1223,7 +1223,7 @@ Aktywne sekcje/nagłówki w bieżącym dokumencie:
 ${headingsList || '(dokument jest pusty — brak nagłówków)'}
 
 Gdy lektor wklei chaotyczne notatki lub poprosi o uporządkowanie materiału:
-- Rozpoznaj i podziel treść na właściwe sekcje: Revision, Main topic / Practice, Lesson Summary, Key Language & Corrections (New words), Homework.
+- Rozpoznaj i podziel treść na właściwe sekcje: Warm-up & Review, Main Focus & Practice, Lesson Summary, Key Language & Corrections, Homework & Action Items.
 - W sekcji Key Language & Corrections oznaczaj błędy i poprawne formy dokładnie tymi znacznikami HTML (interfejs rozpoznaje tylko te trzy klasy):
   Błąd: <span class="badge-error">X [błędna forma]</span>
   Poprawnie: <span class="badge-success">✓ [poprawna forma]</span>
@@ -1408,24 +1408,24 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
 
     let fullLessonHtml = `
       ${pageBreakHtml}
-      <h2 data-toggle="1" data-collapsed="0">
+      <h2 data-toggle="1" data-collapsed="0" style="${lessonTitleStyle(paperTheme)}">
         <span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>
         Lesson ${nextNum} — ${lessonDate}${topic ? ` • ${topic}` : ''}
       </h2>
     `;
 
     const sections = [
-      { title: 'Revision', colorKey: 'rose' as const, body: revText || '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>' },
-      { title: 'Main topic / Practice', colorKey: 'green' as const, body: topicText || (topic ? `<p><strong>Temat:</strong> ${topic}</p>` : '<p><br></p>') },
-      { title: 'Lesson Summary', colorKey: 'blue' as const, body: sumText || (text.length < 500 ? markdownToHtml(text) : '<p><br></p>') },
-      { title: 'Key Language & Corrections (New words)', colorKey: 'orange' as const, body: vocabText || '<p><br></p>' },
-      { title: 'Homework', colorKey: 'violet' as const, body: hwText || '<p>• Utrwalenie słówek w aplikacji Recall (Fiszki / Tłumaczenie zdań).</p>' },
+      { title: 'Warm-up &amp; Review', body: revText || '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>' },
+      { title: 'Main Focus &amp; Practice', body: topicText || (topic ? `<p><strong>Temat:</strong> ${topic}</p>` : '<p><br></p>') },
+      { title: 'Lesson Summary', body: sumText || (text.length < 500 ? markdownToHtml(text) : '<p><br></p>') },
+      { title: 'Key Language &amp; Corrections', body: vocabText || '<p><br></p>' },
+      { title: 'Homework &amp; Action Items', body: hwText || '<p>• Utrwalenie słówek w aplikacji Recall (Fiszki / Tłumaczenie zdań).</p>' },
     ];
 
     sections.forEach(s => {
       const bodyHtml = s.body.startsWith('<') ? s.body : markdownToHtml(s.body);
       fullLessonHtml += `
-        <h3 style="color: ${notebookHeadingColor(s.colorKey, paperTheme)}">${s.title}</h3>
+        <h3 style="${sectionHeadingStyle(paperTheme)}">${s.title}</h3>
         <div>${bodyHtml}</div>
       `;
     });
@@ -3049,11 +3049,11 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                           <button
                             type="button"
-                            onClick={() => handleInsertIntoSection('Revision', msg.text)}
-                            title="Wstaw pod sekcję Revision bieżącej lekcji"
+                            onClick={() => handleInsertIntoSection('Warm-up', msg.text)}
+                            title="Wstaw pod sekcję Warm-up & Review bieżącej lekcji"
                             className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
                           >
-                            Revision
+                            Warm-up
                           </button>
                           <button
                             type="button"

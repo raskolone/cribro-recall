@@ -1166,13 +1166,14 @@ tr.liquid-glass-hover:hover {
 .badge-success,
 .badge-vocab {
   display: inline;
-  font-weight: 700;
+  font-weight: 500;
   padding: 1px 6px;
   border-radius: 4px;
+  border: 1px solid transparent;
 }
-.badge-error { background: #fee2e2; color: #b91c1c; }
-.badge-success { background: #dcfce7; color: #15803d; }
-.badge-vocab { background: #fef3c7; color: #92400e; }
+.badge-error { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.badge-success { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.badge-vocab { background: #fffbeb; color: #92400e; border-color: #fde68a; }
 
 /* Zawsze nagłówek lekcji na samej górze nowej strony A4 */
 .pad-paper > *:first-child,

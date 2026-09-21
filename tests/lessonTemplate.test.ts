@@ -35,7 +35,7 @@ describe('utils/lessonTemplate', () => {
 
   it('szablon niesie wszystkie pięć sekcji', () => {
     const html = buildLessonTemplate({});
-    ['Revision', 'Main topic / Practice', 'Lesson Summary', 'Corrections', 'Homework'].forEach(
+    ['Warm-up', 'Main Focus &amp; Practice', 'Lesson Summary', 'Corrections', 'Homework'].forEach(
       title => assert.ok(html.includes(title), title)
     );
   });

@@ -1,4 +1,22 @@
-import { NOTEBOOK_COLORS, notebookHeadingColor } from './notebookPalette';
+import { NOTEBOOK_INK } from './notebookPalette';
+
+/**
+ * Kolor obramowania pod tytułem lekcji (H2) i drugorzędny, przytłumiony
+ * kolor tekstu sekcji (H3) — jeden neutralny odcień na motyw papieru,
+ * zamiast pięciu jaskrawych barw. Patrz komentarz przy `LESSON_SECTIONS`.
+ */
+export const TEMPLATE_TONE = {
+  light: { border: '#e2e8f0', sectionText: '#475569' },
+  dark: { border: 'rgba(255,255,255,0.14)', sectionText: '#94a3b8' },
+} as const;
+
+/** Inline `style` dla nagłówka H2 tytułu lekcji ("Lesson N — data"). */
+export const lessonTitleStyle = (paperTheme: 'light' | 'dark'): string =>
+  `font-size:20px;font-weight:700;color:${NOTEBOOK_INK[paperTheme]};border-bottom:1px solid ${TEMPLATE_TONE[paperTheme].border};padding-bottom:4px;margin-bottom:16px;`;
+
+/** Inline `style` dla nagłówka H3 sekcji lekcji (Warm-up & Review itd.). */
+export const sectionHeadingStyle = (paperTheme: 'light' | 'dark'): string =>
+  `font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:${TEMPLATE_TONE[paperTheme].sectionText};margin-top:20px;margin-bottom:8px;`;
 
 /**
  * Szablon wpisu lekcyjnego w notatniku.
@@ -51,7 +69,7 @@ const splitByHeading = (
 };
 
 /**
- * Wyciąga treść sekcji „Main topic / Practice" i „Key Language &
+ * Wyciąga treść sekcji „Main Focus & Practice" i „Key Language &
  * Corrections" z OSTATNIEJ lekcji w dokumencie — surowy tekst (bez
  * znaczników), używany jako materiał wejściowy do wygenerowania sekcji
  * Revision następnej lekcji. `null`, gdy w dokumencie nie ma jeszcze
@@ -85,38 +103,30 @@ export const templateDate = (date: Date = new Date()): string =>
   date.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 /**
- * Sekcje wpisu lekcyjnego. Kolor niesie ROLĘ sekcji, nie ozdobę: te same pięć
- * barw wraca w każdej lekcji, więc po miesiącu lektor trafia wzrokiem w
- * „Homework" bez czytania nagłówka.
+ * Sekcje wpisu lekcyjnego — angielskie, profesjonalne nagłówki w stylu
+ * Notion/Google Docs.
  *
- * ══ DLACZEGO WSZYSTKIE PIĘĆ MA TĘ SAMĄ JASNOŚĆ ══
+ * ══ DLACZEGO BEZ TĘCZY ══
  *
- * Kolor jest wpisany w HTML dokumentu (`style="color:…"`), więc nie da się
- * go przestawić motywem — ta sama wartość musi działać na jasnym papierze
- * I na ciemnej kartce. Poprzedni zestaw był dobrany wyłącznie pod papier:
- * mocne, ciemne barwy (#d81b7a, #1d4ed8, #7c3aed) na ciemnej kartce robiły
- * się jaskrawymi plamami, a każda z nich innej mocy — pięć nagłówków
- * wyglądało jak pięć niezależnych decyzji.
- *
- * Te pięć ma tę samą jasność względną (około 0,22), czyli około 3,4:1 na
- * papierze i 4,4:1 na ciemnej kartce. Wspólna jasność jest tym, co robi
- * z nich JEDEN zestaw: różnią się wyłącznie odcieniem, bo tylko odcień
- * niesie tu znaczenie.
+ * Poprzednia wersja niosła ROLĘ sekcji przez pięć jaskrawych barw (róż,
+ * zieleń, niebieski, pomarańcz, fiolet) wpisanych wprost w HTML. Rolę sekcji
+ * wystarczy nieść samym nagłówkiem — wielkimi literami, odstępem liter
+ * i wagą fontu, nie kolorem. Stąd `buildLessonTemplate` koloruje dziś
+ * WSZYSTKIE nagłówki sekcji tym samym, stonowanym odcieniem tekstu
+ * (`NOTEBOOK_INK`, ten sam co reszta treści), różnicując je wyłącznie
+ * typografią.
  *
  * Wpisy zrobione wcześniej zachowują swoje kolory — są zapisane w treści
- * dokumentu i nikt ich nie przepisuje za lektorem.
- *
- * `colorKey` zamiast gotowego heksa: `NOTEBOOK_COLORS` ma dziś osobną wartość
- * na jasny i ciemny papier (patrz `utils/notebookPalette.ts`), więc kolor
- * rozstrzyga się dopiero w `buildLessonTemplate`, w chwili wstawienia sekcji,
- * na podstawie aktualnego motywu papieru kursanta.
+ * dokumentu i nikt ich nie przepisuje za lektorem (patrz
+ * `sanitizeFrozenHeadingContrast` w `utils/notebookPalette.ts`, które zostaje
+ * wyłącznie dla tych starych wpisów).
  */
-export const LESSON_SECTIONS: { title: string; colorKey: keyof typeof NOTEBOOK_COLORS }[] = [
-  { title: 'Revision', colorKey: 'rose' },
-  { title: 'Main topic / Practice', colorKey: 'green' },
-  { title: 'Lesson Summary', colorKey: 'blue' },
-  { title: 'Key Language &amp; Corrections (New words)', colorKey: 'orange' },
-  { title: 'Homework', colorKey: 'violet' },
+export const LESSON_SECTIONS: { title: string }[] = [
+  { title: 'Warm-up &amp; Review' },
+  { title: 'Main Focus &amp; Practice' },
+  { title: 'Lesson Summary' },
+  { title: 'Key Language &amp; Corrections' },
+  { title: 'Homework &amp; Action Items' },
 ];
 
 /**
@@ -151,9 +161,9 @@ export const buildLessonTemplate = (options?: {
 
   const sections = LESSON_SECTIONS.map((section) => {
     let innerBody = '<p><br></p>';
-    if (section.title === 'Revision' && options?.revisionHtml && options.revisionHtml.trim().length > 0) {
+    if (section.title === 'Warm-up &amp; Review' && options?.revisionHtml && options.revisionHtml.trim().length > 0) {
       innerBody = `${options.revisionHtml}<p><br></p>`;
-    } else if (section.title === 'Revision' && options?.recallItems) {
+    } else if (section.title === 'Warm-up &amp; Review' && options?.recallItems) {
       const { corrections, vocabulary } = options.recallItems;
       const hasCorrections = corrections && corrections.length > 0;
       const hasVocab = vocabulary && vocabulary.length > 0;
@@ -178,7 +188,7 @@ export const buildLessonTemplate = (options?: {
       }
     }
 
-    return `<h3 style="color:${notebookHeadingColor(section.colorKey, paperTheme)}">${section.title}</h3>${innerBody}`;
+    return `<h3 style="${sectionHeadingStyle(paperTheme)}">${section.title}</h3>${innerBody}`;
   }).join('');
 
   const hasPreviousContent = previous.trim().length > 0 && previous.replace(/<[^>]+>/g, '').trim().length > 0;
@@ -186,6 +196,6 @@ export const buildLessonTemplate = (options?: {
     ? `<div class="pad-page-break" data-page-break="1" contenteditable="false"><span class="pad-page-break-badge">── Strona A4 • Nowa Lekcja ──</span></div>`
     : '';
 
-  return `${pageBreakHtml}<h2 data-toggle="1" data-collapsed="0"><span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>Lesson ${number} — ${date}</h2>${sections}`;
+  return `${pageBreakHtml}<h2 data-toggle="1" data-collapsed="0" style="${lessonTitleStyle(paperTheme)}"><span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>Lesson ${number} — ${date}</h2>${sections}`;
 };
 
