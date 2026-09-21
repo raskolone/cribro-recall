@@ -5278,3 +5278,46 @@ zakresu z Maciejem, bez zmian w regułach.
 Weryfikacja: npx tsc --noEmit (0 błędów) po każdej fazie, npm test
 (508/508) po każdej fazie, npm run build (przechodzi, w tym server.cjs
 i api/index.js) na końcu sesji.
+
+## 2026-09-21 — Claude Code / Sonnet 5
+
+Zadanie: humanizacja tonu szablonów mailowych Resend — eliminacja
+trzecioosobowego języka ("Lektor", "Przypisane przez") i biurokratycznych
+tabel metryk na rzecz bezpośredniej, pierwszoosobowej komunikacji Macieja
+z kursantem.
+Zrobione:
+- services/homeworkEmail.ts (buildHomeworkConfirmationEmail): usunięto
+  wiersz "Przypisane przez" z tabeli metryk i wersji tekstowej; termin
+  wykonania/ważność linku zamienione na zwykłe zdanie zamiast tabeli.
+  buildWelcomeEmail: "Wiadomość od lektora:" → "Wiadomość ode mnie:".
+- functions/src/emailTemplate.ts (buildHomeworkEmail): ta sama zmiana
+  tabeli metryk co wyżej (Cloud Function, ścieżka automatycznego
+  powiadomienia o nowej pracy domowej). buildHomeworkGradedEmail: temat
+  "Lektor sprawdził pracę: ..." → "Sprawdziłem Twoją pracę domową: ...",
+  etykieta "Komentarz lektora:" → "Komentarz i wskazówki ode mnie:".
+- components/admin/HomeworkEmailConfirmationModal.tsx: podgląd maila
+  (zakładka Preview) był niespójny z realnie wysyłaną treścią — miał
+  własny, twardo wpisany tekst "Lektor przypisał dla Ciebie..." i tabelę
+  "Przypisane przez", których nie było w kodzie wysyłki. Ujednolicono z
+  buildHomeworkConfirmationEmail: pierwsza osoba, zdanie zamiast tabeli.
+Nie dokończone / do sprawdzenia:
+- Punkt B (mail z podsumowaniem lekcji, sendLessonSummaryEmail) z
+  wcześniejszego promptu NIE istnieje w kodzie — to część osobnego,
+  nierozpoczętego zadania (uproszczenie parsera lekcji + mailing
+  podsumowania). Nie tworzono go w tej sesji.
+- Punkt 3 z promptu (twardy warunek w promptcie systemowym Gemini
+  przeciw halucynacjom w treści maila) pominięty — nie znaleziono w
+  repo miejsca, gdzie treść maila jest generowana przez Gemini
+  (AdminMailingScreen nie wywołuje tam żadnego modelu).
+- Etykiety "Lektor"/"Kursant" w UI panelu admina (nagłówki tabel,
+  podgląd wewnętrzny, np. AdminMailingScreen.tsx, StudentInviteEmailModal.tsx)
+  zostawione bez zmian — to interfejs dla Macieja, nie treść maila do
+  kursanta, więc poza zakresem "szablonów e-mail".
+- Zero weryfikacji wzrokowej w przeglądarce/kliencie pocztowym.
+Decyzje architektoniczne: żadne niejawne — trzymano się dosłownie
+zakresu "szablony e-mail" z promptu, nie ruszano UI panelu admina ani
+logiki wysyłki.
+Ryzyka: brak. Nie dotknięto firestore.rules, middleware autoryzacji,
+ścieżek tokenowych bez logowania ani kluczy API mailingu.
+Weryfikacja: npx tsc --noEmit (główny projekt i functions/) — 0 błędów;
+npm test — 508/508 zielone.

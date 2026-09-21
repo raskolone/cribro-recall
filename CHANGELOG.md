@@ -3333,6 +3333,15 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (508/508, bez nowych testów — zmiana czysto UI/wiring, bez nowej logiki czystej wymagającej pokrycia).
 - Ryzyka: brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania. Zmiany wyłącznie w `components/admin/AdminPanel.tsx` i `components/admin/StudentProfileHeader.tsx`. Wizualnie NIE zweryfikowano w przeglądarce — do zrobienia: (1) belka profilu w obu motywach z kursantem, który nigdy się nie logował, i z takim, który już się logował, (2) przycisk „Sprawdź transkrypcje w Notion" w zakładce „Historia Lekcji" — przypadek pusty (toast) i przypadek z wynikami (modal + import).
 
+### AQ. Humanizacja tonu szablonów mailowych Resend — koniec trzeciej osoby i tabel metryk (2026-09-21)
+- Zlecenie: wyeliminować z treści maili do kursanta bezosobowy/trzecioosobowy język ("Lektor", "Przypisane przez") i biurokratyczne tabele metryk na rzecz bezpośredniej, pierwszoosobowej komunikacji Macieja.
+- `services/homeworkEmail.ts` (`buildHomeworkConfirmationEmail`, ścieżka bezpośredniego linku bez logowania po potwierdzeniu lektora w `HomeworkEmailConfirmationModal.tsx`): usunięty wiersz „Przypisane przez" z tabeli metryk i wersji tekstowej; „Termin wykonania"/„Ważność linku" zamienione z tabeli na jedno zdanie („Zadanie czeka na Ciebie do..."). `buildWelcomeEmail`: „Wiadomość od lektora:" → „Wiadomość ode mnie:".
+- `functions/src/emailTemplate.ts` (`buildHomeworkEmail`, ścieżka Cloud Function przy zdarzeniu nowej pracy domowej w bazie): ta sama zmiana tabeli metryk. `buildHomeworkGradedEmail`: temat „Lektor sprawdził pracę: ..." → „Sprawdziłem Twoją pracę domową: ..."; etykieta „Komentarz lektora:" → „Komentarz i wskazówki ode mnie:" (ujednolicone z bliźniaczą funkcją `buildGradedHomeworkEmail` w `services/homeworkEmail.ts`, która już była w 1. osobie).
+- `components/admin/HomeworkEmailConfirmationModal.tsx`: podgląd (zakładka Preview) miał własny, twardo wpisany tekst rozjeżdżający się z realnie wysyłaną treścią — „Lektor przypisał dla Ciebie..." i tabelę „Przypisane przez", których w kodzie wysyłki już nie ma. Ujednolicono podgląd z faktycznym szablonem.
+- Świadomie pominięte: (1) mail z podsumowaniem lekcji (`sendLessonSummaryEmail`) — nie istnieje w kodzie, to część osobnego, nierozpoczętego zadania; (2) twardy warunek anty-halucynacyjny w promptcie systemowym Gemini dla treści maili — nie znaleziono w repo miejsca, gdzie treść maila byłaby generowana przez model; (3) etykiety „Lektor"/„Kursant" w UI panelu admina (nagłówki tabel, podgląd wewnętrzny w `AdminMailingScreen.tsx`, `StudentInviteEmailModal.tsx`) — to interfejs dla Macieja, nie treść maila do kursanta.
+- Weryfikacja: `npx tsc --noEmit` w katalogu głównym i w `functions/` (0 błędów w obu), `npm test` (508/508). Zero weryfikacji wzrokowej w kliencie pocztowym.
+- Ryzyka: brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania ani w kluczu API mailingu.
+
 ---
 
 

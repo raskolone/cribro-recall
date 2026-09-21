@@ -84,23 +84,15 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
        </div>`
     : '';
 
-  const metaRows = [
-    ...(due ? [['Termin wykonania', due]] : []),
-    ...(assignedBy ? [['Przypisane przez', assignedBy]] : []),
-    ...(expiresFormatted ? [['Ważność linku', expiresFormatted]] : []),
-  ];
+  const dueSentenceParts = [
+    due ? `Zadanie czeka na Ciebie do ${due}` : null,
+    expiresFormatted ? `link jest aktywny do ${expiresFormatted}` : null,
+  ].filter((part): part is string => Boolean(part));
 
-  const metaHtml = metaRows.length > 0
-    ? `<div style="margin:20px 0 0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-           ${metaRows.map(([label, value]) => `
-             <tr>
-               <td style="padding:6px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">${escapeHtml(label)}</td>
-               <td style="padding:6px 0;color:#0f172a;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${escapeHtml(value)}</td>
-             </tr>
-           `).join('')}
-         </table>
-       </div>`
+  const metaHtml = dueSentenceParts.length > 0
+    ? `<p style="margin:16px 0 0;color:#475569;font-size:14px;line-height:1.6;">
+         ${escapeHtml(`${dueSentenceParts.join(', ')}.`)}
+       </p>`
     : '';
 
   const isDirect = Boolean(isDirectLink || (appUrl && (appUrl.includes('/hw') || appUrl.includes('token='))));
@@ -230,8 +222,7 @@ export function buildHomeworkConfirmationEmail(params: HomeworkConfirmationEmail
     customNote ? `${customNote}\n` : null,
     `Przygotowałem dla Ciebie nową pracę domową: „${cleanTitle}".`,
     `Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.`,
-    due ? `Termin wykonania: ${due}` : null,
-    assignedBy ? `Przypisane przez: ${assignedBy}` : null,
+    due ? `Zadanie czeka na Ciebie do: ${due}` : null,
     instructions ? `\nWskazówki: ${instructions}` : null,
     customNote ? `\nWiadomość ode mnie: ${customNote}` : null,
     '',
@@ -335,7 +326,7 @@ export function buildWelcomeEmail(params: WelcomeEmailParams): {
 
   const customNoteHtml = customNote
     ? `<div style="margin:20px 0;background:rgba(234,179,8,0.1);border-left:4px solid #eab308;padding:14px 18px;border-radius:0 10px 10px 0;">
-         <p style="margin:0;font-size:11px;font-weight:800;color:#facc15;text-transform:uppercase;letter-spacing:0.08em;">Wiadomość od lektora:</p>
+         <p style="margin:0;font-size:11px;font-weight:800;color:#facc15;text-transform:uppercase;letter-spacing:0.08em;">Wiadomość ode mnie:</p>
          <p style="margin:6px 0 0;color:#fef08a;font-size:14px;line-height:1.5;">${escapeHtml(customNote)}</p>
        </div>`
     : '';

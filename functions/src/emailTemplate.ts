@@ -238,8 +238,7 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
     data.customNote ? `${data.customNote}\n` : null,
     `Przygotowałem dla Ciebie nową pracę domową: „${cleanTitle}".`,
     `Zadanie jest oczywiście opcjonalne, ale byłoby super, gdybyś ${verbZnalazl} na nie 5-10 minut przed naszą kolejną lekcją — to świetny sposób na utrwalenie materiału.`,
-    due ? `Termin wykonania: ${due}` : null,
-    data.assignedBy ? `Przypisane przez: ${data.assignedBy}` : null,
+    due ? `Zadanie czeka na Ciebie do: ${due}` : null,
     data.instructions ? `\nWskazówki: ${data.instructions}` : null,
     APP_URL ? `\nOtwórz zadanie w aplikacji: ${APP_URL}` : null,
     data.unsubscribeUrl ? `\nWypisz się z powiadomień: ${data.unsubscribeUrl}` : null,
@@ -255,22 +254,10 @@ export function buildHomeworkEmail(data: HomeworkEmailData): {
     '🐙 github.com/raskolone',
   ];
 
-  const metaRows = [
-    ...(due ? [['Termin wykonania', due]] : []),
-    ...(data.assignedBy ? [['Przypisane przez', data.assignedBy]] : []),
-  ];
-
-  const metaHtml = metaRows.length > 0
-    ? `<div style="margin:20px 0 0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 16px;">
-         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-           ${metaRows.map(([label, value]) => `
-             <tr>
-               <td style="padding:6px 0;color:#64748b;font-size:13px;border-bottom:1px solid #f1f5f9;">${escapeHtml(label)}</td>
-               <td style="padding:6px 0;color:#0f172a;font-size:14px;font-weight:600;text-align:right;border-bottom:1px solid #f1f5f9;">${escapeHtml(value)}</td>
-             </tr>
-           `).join('')}
-         </table>
-       </div>`
+  const metaHtml = due
+    ? `<p style="margin:16px 0 0;color:#475569;font-size:14px;line-height:1.6;">
+         ${escapeHtml(`Zadanie czeka na Ciebie do ${due}.`)}
+       </p>`
     : '';
 
   const button = APP_URL
@@ -372,7 +359,7 @@ export function buildHomeworkGradedEmail(data: HomeworkGradedEmailData): {
 } {
   const greeting = formatPolishGreeting(data.studentName);
   const cleanTitle = data.title?.trim() || 'Praca domowa';
-  const subject = `Lektor sprawdził pracę: ${cleanTitle}`;
+  const subject = `Sprawdziłem Twoją pracę domową: ${cleanTitle} 🎓 | Cribro English`;
 
   const instructorCardHtml = `
     <div style="margin:28px 0 0;border:1.5px solid #2563eb;border-radius:4px;background:#ffffff;padding:20px 22px;text-align:left;">
@@ -396,7 +383,7 @@ export function buildHomeworkGradedEmail(data: HomeworkGradedEmailData): {
 
   const feedbackHtml = data.teacherFeedback
     ? `<div style="margin:16px 0 0;background:#f0fdf4;border-left:4px solid #16a34a;padding:12px 16px;border-radius:0 8px 8px 0;">
-         <p style="margin:0;font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em;">Komentarz lektora:</p>
+         <p style="margin:0;font-size:12px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:0.05em;">Komentarz i wskazówki ode mnie:</p>
          <p style="margin:4px 0 0;color:#14532d;font-size:14px;line-height:1.5;">${escapeHtml(data.teacherFeedback)}</p>
        </div>`
     : '';
@@ -470,7 +457,7 @@ export function buildHomeworkGradedEmail(data: HomeworkGradedEmailData): {
     '',
     `Sprawdziłem Twoją pracę domową: „${cleanTitle}".`,
     typeof data.grade === 'number' ? `Ocena: ${data.grade}` : null,
-    data.teacherFeedback ? `\nKomentarz lektora: ${data.teacherFeedback}` : null,
+    data.teacherFeedback ? `\nKomentarz i wskazówki ode mnie: ${data.teacherFeedback}` : null,
     APP_URL ? `\nZobacz szczegóły w aplikacji: ${APP_URL}` : null,
     data.unsubscribeUrl ? `\nWypisz się z powiadomień: ${data.unsubscribeUrl}` : null,
   ];

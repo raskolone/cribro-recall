@@ -551,7 +551,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                   </h3>
 
                   <p className="text-xs text-slate-650 leading-relaxed mb-4">
-                    Lektor przypisał dla Ciebie nową pracę domową:{' '}
+                    Przygotowałem dla Ciebie nową pracę domową:{' '}
                     <strong className="text-slate-900 block mt-1 font-bold text-sm">
                       {task.title}
                     </strong>
@@ -569,28 +569,17 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
                   {customNote.trim() && (
                     <div className="mb-4 bg-yellow-50 border-l-4 border-yellow-500 p-2.5 rounded-r text-xs">
                       <span className="font-bold text-yellow-800 uppercase tracking-wide text-[10px] block">
-                        Wiadomość od lektora:
+                        Wiadomość ode mnie:
                       </span>
                       <span className="text-yellow-900">{customNote.trim()}</span>
                     </div>
                   )}
 
-                  <table className="w-full text-xs border border-slate-200 rounded-lg mb-4">
-                    <tbody>
-                      {task.dueDate && (
-                        <tr className="border-b border-slate-100">
-                          <td className="p-2 text-slate-500 font-medium">Termin wykonania</td>
-                          <td className="p-2 text-slate-900 font-bold text-right">
-                            {task.dueDate}
-                          </td>
-                        </tr>
-                      )}
-                      <tr>
-                        <td className="p-2 text-slate-500 font-medium">Przypisane przez</td>
-                        <td className="p-2 text-slate-900 font-bold text-right">{senderName}</td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  {task.dueDate && (
+                    <p className="text-xs text-slate-600 leading-relaxed mb-4">
+                      Zadanie czeka na Ciebie do {task.dueDate}.
+                    </p>
+                  )}
 
                   <div className="text-center my-6">
                     <span className="inline-block bg-teal-700 text-[#ffffff] font-bold text-xs py-2.5 px-6 rounded-lg shadow">
