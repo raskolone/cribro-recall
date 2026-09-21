@@ -290,6 +290,7 @@ html, body, #root { min-height: 100vh; }
   transform-style: preserve-3d;
 }
 .backface-hidden {
+  -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }
 .rotate-y-180 {

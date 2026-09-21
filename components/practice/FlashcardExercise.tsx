@@ -92,19 +92,22 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
             <Button onClick={onExit} variant="ghost">{i18n.t("Exit")}</Button>
         </div>
         
-        <div
-          className="relative w-full h-80 transition-transform duration-500"
-          style={{ transformStyle: 'preserve-3d', transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
-        >
-          {/* Front of card */}
-          <div className="absolute w-full h-full flex flex-col gap-4 items-center justify-center p-6 backface-hidden bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl relative">
-            <h3 className="text-4xl font-bold text-primary text-center">{currentWord?.word}</h3>
-            {currentWord?.word && <div className="absolute top-4 right-4"><TTSButtons text={currentWord.word} /></div>}
-          </div>
-          {/* Back of card */}
-          <div className="absolute w-full h-full p-6 backface-hidden bg-primary/40 backdrop-blur-xl border border-white/20 text-content rounded-xl shadow-2xl flex flex-col justify-center text-center" style={{ transform: 'rotateY(180deg)' }}>
-            <p className="text-xl font-semibold">{currentWord?.definition}</p>
-            <p className="mt-4 text-base italic opacity-80">"{currentWord?.example}"</p>
+        <div className="w-full max-w-md mx-auto perspective-[1000px]">
+          <div
+            className={`relative w-full aspect-[3/2] min-h-[220px] transition-transform duration-500 [transform-style:preserve-3d] [-webkit-transform-style:preserve-3d] ${
+              isFlipped ? '[transform:rotateY(180deg)]' : ''
+            }`}
+          >
+            {/* Front of card */}
+            <div className="absolute inset-0 flex flex-col gap-4 items-center justify-center p-6 [backface-visibility:hidden] [-webkit-backface-visibility:hidden] bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-xl shadow-2xl">
+              <h3 className="text-3xl sm:text-4xl font-bold text-primary text-center">{currentWord?.word}</h3>
+              {currentWord?.word && <div className="absolute top-4 right-4"><TTSButtons text={currentWord.word} /></div>}
+            </div>
+            {/* Back of card */}
+            <div className="absolute inset-0 p-6 [backface-visibility:hidden] [-webkit-backface-visibility:hidden] [transform:rotateY(180deg)] bg-primary/40 backdrop-blur-xl border border-white/20 text-content rounded-xl shadow-2xl flex flex-col justify-center text-center">
+              <p className="text-xl font-semibold">{currentWord?.definition}</p>
+              <p className="mt-4 text-base italic opacity-80">"{currentWord?.example}"</p>
+            </div>
           </div>
         </div>
         

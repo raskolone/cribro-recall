@@ -526,7 +526,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           <div>
             <div 
               ref={cardContainerRef}
-              className="relative w-full aspect-[3/2] cursor-pointer touch-pan-y"
+              className="relative w-full aspect-[3/2] min-h-[220px] cursor-pointer touch-pan-y"
               onClick={handleFlip}
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
@@ -1151,7 +1151,7 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm, language }: an
       </div>
 
       <div 
-        className="relative w-full aspect-[3/2] perspective-1000 cursor-pointer"
+        className="relative w-full aspect-[3/2] min-h-[220px] perspective-1000 cursor-pointer"
         onClick={() => setIsFlipped(!isFlipped)}
       >
         <div className={`w-full h-full transition-transform duration-500 transform-style-3d ${isFlipped ? 'rotate-y-180' : ''}`}>
