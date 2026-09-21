@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import confetti from 'canvas-confetti';
 import { Word } from '../../types';
 import Button from '../ui/Button';
 import TTSButtons from '../flashcards/TTSButtons';
@@ -72,16 +71,6 @@ const QuizExercise: React.FC<QuizExerciseProps> = ({ words, onExit, onComplete }
     setIsFinished(false);
   };
 
-  useEffect(() => {
-    if (isFinished) {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-    }
-  }, [isFinished]);
-  
   if (isFinished) {
       return (
         <div className="text-center p-8 bg-base-200/40 backdrop-blur-xl border border-white/20 rounded-lg shadow-2xl max-w-md mx-auto">

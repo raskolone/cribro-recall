@@ -1,6 +1,5 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
-import confetti from 'canvas-confetti';
 import { Word } from '../../types';
 import Button from '../ui/Button';
 import TTSButtons from '../flashcards/TTSButtons';
@@ -42,16 +41,6 @@ const FlashcardExercise: React.FC<FlashcardExerciseProps> = ({ words, onExit, on
       setIsFlipped(false);
     }
   }, [currentIndex, isFinished, currentWord, words]);
-
-  useEffect(() => {
-    if (isFinished) {
-      confetti({
-        particleCount: 150,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
-    }
-  }, [isFinished]);
 
   const handleAnswer = (option: string) => {
     if (selectedAnswer) return; // Prevent multiple submissions

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Word } from '../../types';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
-import confetti from 'canvas-confetti';
 import ContextMenu from '../ui/ContextMenu';
 
 interface MatchExerciseProps {
@@ -105,11 +104,6 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
       if (newMatched.size === cards.length / 2) {
         setIsFinished(true);
         onComplete();
-        confetti({
-          particleCount: 150,
-          spread: 70,
-          origin: { y: 0.6 }
-        });
       }
     } else {
       // Wrong match
