@@ -82,7 +82,7 @@ import {
   User as UserIcon, Users, Search, X, ChevronRight, ChevronDown, ChevronUp, Sparkles, BarChart2, Clock, 
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay, Mail, Database, Wand2,
-  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, Edit2, FileEdit, Mic,
+  AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, FileEdit, Mic,
   ClipboardList, Brain
 } from 'lucide-react';
 
@@ -4050,37 +4050,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   </div>
                 </div>
 
-                <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-base-100/40 p-3.5 rounded-xl border border-line">
-                  <div className="space-y-0.5">
-                    <span className="text-xs font-bold text-content-muted uppercase tracking-wider block">
-                      {i18n.t("Nazwa konta / Login (username)")}
-                    </span>
-                    <span className="text-sm font-mono font-bold text-primary">
-                      @{selectedUser.username}
-                    </span>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    className="flex items-center gap-1.5 text-xs bg-line-soft hover:bg-line-soft border-line-strong text-text-hi cursor-pointer"
-                    onClick={() => {
-                      const newName = prompt('Podaj nową nazwę konta (username):', selectedUser.username);
-                      if (newName && newName.trim() && newName.trim() !== selectedUser.username) {
-                        const trimmedName = newName.trim();
-                        const userRef = doc(db, 'users', selectedUser.id);
-                        updateDoc(userRef, { username: trimmedName }).then(() => {
-                          const updated = { ...selectedUser, username: trimmedName };
-                          setSelectedUser(updated);
-                          setUsers(users.map(u => u.id === updated.id ? updated : u));
-                          showToast('Nazwa konta została zaktualizowana.');
-                        }).catch(err => alert('Błąd: ' + err.message));
-                      }
-                    }}
-                  >
-                    <Edit2 size={13} />
-                    {i18n.t("Zmień login")}
-                  </Button>
-                </div>
               </div>
               )}
 
