@@ -98,11 +98,12 @@ import MenuDropdown, { MenuChevron } from '../ui/MenuDropdown';
 import CoachMarks from '../ui/CoachMarks';
 import { buildScratchpadCoachSteps } from './scratchpadCoachSteps';
 import ScratchpadTemplateManagerModal from './ScratchpadTemplateManagerModal';
+import InsertLessonModal from './InsertLessonModal';
 import { ScratchpadPresentationOverlay, PresentationState } from './ScratchpadPresentationOverlay';
 import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationModal';
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
-import { buildLessonTemplate, extractLastLessonSections, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
+import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
 import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
@@ -288,6 +289,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     isOpen: boolean;
     content: Partial<StructuredLessonContent>;
   }>({ isOpen: false, content: {} });
+  const [isInsertLessonModalOpen, setIsInsertLessonModalOpen] = useState(false);
 
   // Pobieranie historii lekcji przypisanego kursanta pod kątem koła fortuny i asystenta
   useEffect(() => {
@@ -955,93 +957,105 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   /** Wstawianie nowej lekcji z nagłówkiem H1 i sekcjami H2/H3 */
   const [isInsertingLesson, setIsInsertingLesson] = useState(false);
 
-  const handleInsertLesson = async () => {
+  /**
+   * Otwiera bramkę potwierdzenia (`InsertLessonModal`) zamiast wstawiać
+   * cokolwiek od razu.
+   *
+   * Wcześniej to miejsce od razu odpytywało AI o powtórkę, wyciągając
+   * „poprzednią lekcję" z ostatniego nagłówka H2 W TYM SAMYM dokumencie.
+   * Przy wprowadzaniu lekcji zaległych (nie po kolei) to była zwykle
+   * niewłaściwa lekcja — stąd dwuetapowa bramka: lektor sam wybiera, czy
+   * w ogóle chce powtórkę, i z KTÓREJ zatwierdzonej lekcji (`lessonRecords`,
+   * już wczytane do `studentLessons`) ma powstać.
+   */
+  const openInsertLessonGate = () => {
     if (isReadOnly || !editorRef.current || isInsertingLesson) return;
+    setIsInsertLessonModalOpen(true);
+  };
+
+  /** Wstawia deterministyczny szablon lekcji do dokumentu, ew. z gotową sekcją Revision. */
+  const insertLessonTemplateIntoDocument = (revisionHtml?: string) => {
+    if (!editorRef.current) return;
+    const previousHtml = editorRef.current.innerHTML;
+    const html = buildLessonTemplate({ previousHtml, revisionHtml, paperTheme });
+
+    editorRef.current.insertAdjacentHTML('beforeend', html);
+
+    const headings = editorRef.current.querySelectorAll('h3');
+    const firstSection = headings[headings.length - LESSON_SECTIONS.length];
+    const target = firstSection?.nextElementSibling as HTMLElement | null;
+    if (target) {
+      const range = window.document.createRange();
+      range.selectNodeContents(target);
+      range.collapse(true);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    handleInput();
+    setTimeout(() => {
+      measurePages();
+    }, 60);
+  };
+
+  /** Krok 1 „Czysta lekcja" — bez sieci, bez opóźnienia. */
+  const handleInsertCleanLesson = () => {
     setIsInsertingLesson(true);
-
     try {
-      const previousHtml = editorRef.current.innerHTML;
+      insertLessonTemplateIntoDocument();
+    } finally {
+      setIsInsertingLesson(false);
+    }
+  };
 
-      // Powtórka (Revision) jest generowana z treści OSTATNIEJ lekcji w tym
-      // samym dokumencie — nie z Notion. Brak poprzedniej lekcji (Lesson 1)
-      // = domyślna, pusta sekcja Revision.
-      const previousLesson = extractLastLessonSections(previousHtml);
-      console.log(
-        '[REVISION_DEBUG] Szukanie lekcji przed numerem:',
-        highestLessonNumber(previousHtml) + 1
-      );
-
-      const structuredText = previousLesson
-        ? [
-            previousLesson.mainTopic && `Main Focus & Practice:\n${previousLesson.mainTopic}`,
-            previousLesson.keyLanguage && `Key Language & Corrections:\n${previousLesson.keyLanguage}`,
-          ]
-            .filter(Boolean)
-            .join('\n\n')
-        : '';
-      // Lektor nie wypełnił jeszcze konkretnie „Main topic" ani „Key
-      // Language"? Nie wycofuj się do pustego szablonu — podaj AI treść
-      // całej ostatniej lekcji, żeby ułożyła powtórkę na podstawie
-      // omówionego tematu, zamiast zostawiać sekcję pustą.
+  /** Krok 2 „Generuj powtórkę z tej lekcji" — jedyne miejsce, które woła AI. */
+  const handleInsertLessonWithRevision = async (lesson: LessonRecord) => {
+    if (!editorRef.current) return;
+    setIsInsertingLesson(true);
+    try {
+      const structuredText = [
+        lesson.topic && `Main Focus & Practice:\n${lesson.topic}`,
+        lesson.vocabularyText && `Vocabulary:\n${lesson.vocabularyText}`,
+        lesson.corrections && `Key Language & Corrections:\n${lesson.corrections}`,
+      ]
+        .filter(Boolean)
+        .join('\n\n');
       const previousLessonText =
-        structuredText.trim().length > 0 ? structuredText : previousLesson?.fallbackText || '';
-      console.log('[REVISION_DEBUG] Pobrany tekst z poprzedniej lekcji:', previousLessonText);
+        structuredText.trim().length > 0
+          ? structuredText
+          : lesson.lessonSummary || lesson.topic || '';
 
-      const willGenerateRevision = previousLessonText.trim().length > 0;
-      const pendingToken = `revision-pending-${Date.now()}`;
-
-      const html = buildLessonTemplate({
-        previousHtml,
-        revisionHtml: willGenerateRevision
-          ? `<p data-revision-pending="${pendingToken}">⏳ Generuję powtórkę na podstawie poprzedniej lekcji...</p>`
-          : undefined,
-        paperTheme,
-      });
-
-      editorRef.current.insertAdjacentHTML('beforeend', html);
-
-      const headings = editorRef.current.querySelectorAll('h3');
-      const firstSection = headings[headings.length - LESSON_SECTIONS.length];
-      const target = firstSection?.nextElementSibling as HTMLElement | null;
-      if (target) {
-        const range = window.document.createRange();
-        range.selectNodeContents(target);
-        range.collapse(true);
-        const selection = window.getSelection();
-        selection?.removeAllRanges();
-        selection?.addRange(range);
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      if (!previousLessonText.trim()) {
+        insertLessonTemplateIntoDocument();
+        return;
       }
 
-      handleInput();
-      setTimeout(() => {
-        measurePages();
-      }, 60);
+      const pendingToken = `revision-pending-${Date.now()}`;
+      insertLessonTemplateIntoDocument(
+        `<p data-revision-pending="${pendingToken}">⏳ Generuję powtórkę na podstawie poprzedniej lekcji...</p>`
+      );
 
-      if (willGenerateRevision) {
-        // Nie blokuje wstawienia strony — placeholder jest już widoczny,
-        // podmieniamy go dopiero gdy Gemini odpowie (1-2 s).
-        void generateLessonRevision(previousLessonText)
-          .then((generatedHtml) => {
-            const placeholder = editorRef.current?.querySelector(
-              `[data-revision-pending="${pendingToken}"]`
-            );
-            if (placeholder) {
-              placeholder.outerHTML = generatedHtml;
-              handleInput();
-              setTimeout(() => measurePages(), 60);
-            }
-          })
-          .catch((err) => {
-            console.error('[REVISION_API_ERROR]', err);
-            const placeholder = editorRef.current?.querySelector(
-              `[data-revision-pending="${pendingToken}"]`
-            );
-            if (placeholder) {
-              placeholder.outerHTML = '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>';
-              handleInput();
-            }
-          });
+      try {
+        const generatedHtml = await generateLessonRevision(previousLessonText);
+        const placeholder = editorRef.current?.querySelector(
+          `[data-revision-pending="${pendingToken}"]`
+        );
+        if (placeholder) {
+          placeholder.outerHTML = generatedHtml;
+          handleInput();
+          setTimeout(() => measurePages(), 60);
+        }
+      } catch (err) {
+        console.error('[REVISION_API_ERROR]', err);
+        const placeholder = editorRef.current?.querySelector(
+          `[data-revision-pending="${pendingToken}"]`
+        );
+        if (placeholder) {
+          placeholder.outerHTML = '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>';
+          handleInput();
+        }
       }
     } finally {
       setIsInsertingLesson(false);
@@ -2480,7 +2494,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                             label: 'Nowa lekcja',
                             description: 'Numer, data i sekcje — na końcu dokumentu',
                             icon: <Calendar size={14} />,
-                            onSelect: handleInsertLesson,
+                            onSelect: openInsertLessonGate,
                           },
                           {
                             id: 'upload-image',
@@ -2621,7 +2635,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               <button
                 type="button"
                 onMouseDown={event => event.preventDefault()}
-                onClick={handleInsertLesson}
+                onClick={openInsertLessonGate}
                 disabled={isInsertingLesson}
                 title="Dodaj nową lekcję: nowa strona A4, kolejny numer i 5 sekcji szablonu"
                 className="h-7 px-2.5 rounded-lg text-[11px] font-bold bg-primary/12 text-primary border border-primary/30 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
@@ -3461,6 +3475,15 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         onClose={() => setInsertPreviewState({ isOpen: false, content: {} })}
         initialContent={insertPreviewState.content}
         onConfirmInsert={handleConfirmInsertFromModal}
+      />
+
+      {/* Bramka potwierdzenia przed wstawieniem nowej lekcji — patrz komentarz przy `openInsertLessonGate`. */}
+      <InsertLessonModal
+        isOpen={isInsertLessonModalOpen}
+        onClose={() => setIsInsertLessonModalOpen(false)}
+        recentLessons={studentLessons.filter((l) => l.status === 'confirmed').slice(0, 3)}
+        onInsertClean={handleInsertCleanLesson}
+        onInsertWithRevision={handleInsertLessonWithRevision}
       />
     </div>
   );

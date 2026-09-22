@@ -52,7 +52,7 @@ export const generateLessonRevision = async (previousLessonContent: string): Pro
     prompt,
     REVISION_SYSTEM_PROMPT,
     undefined,
-    undefined,
+    { thinkingConfig: { thinkingBudget: 0 } },
     undefined,
     { taskName: 'Generowanie sekcji Revision (Notatnik)' }
   );

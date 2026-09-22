@@ -119,7 +119,7 @@ export function saveLocalScratchpad(docData: ScratchpadDocument): void {
  * odzwierciedlające strukturę, której Maciej używał ręcznie w Google Docs).
  * Zmiana 2026-09-20: notatnik ma wczytywać WYŁĄCZNIE istniejący stan z bazy
  * — pusty dokument zostaje pusty, dopóki lektor sam nie kliknie
- * „+ Nowa lekcja" (`handleInsertLesson` w `ScratchpadEditor.tsx`), który
+ * „+ Nowa lekcja" (`openInsertLessonGate` w `ScratchpadEditor.tsx`), który
  * wstawia dokładnie ten sam blok na żądanie. Jeśli lektor ustawi własny
  * szablon jako domyślny w `scratchpadTemplates` (`isDefault: true`),
  * `getOrCreateStudentScratchpad` nadal użyje JEGO treści — to jawny wybór
