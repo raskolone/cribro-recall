@@ -5673,3 +5673,58 @@ Firebase i przechodzi ten sam admin-check co reszta `/api/admin-users/*`.
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
 npm run build (bez błędów, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: Porządki UI: (1) usunąć z widoku edycji lekcji w AdminPanel.tsx pola
+"Praca domowa (Blok 3)", "Klucz odpowiedzi" i "Na kolejnej lekcji (Blok 4)";
+(2) usunąć sekcję "NAZWA KONTA / LOGIN (USERNAME)" z profilu kursanta.
+
+Zrobione:
+- `components/admin/AdminPanel.tsx` — usunięte 3 bloki JSX (nagłówek +
+  textarea) dla Bloku 3/Klucza odpowiedzi/Bloku 4 z modala edycji lekcji
+  ("Panel lekcji"), zaraz po "Things to Improve". Nietknięte: "Elementy do
+  powtórek" (`RecallItemsReview`), "Things to Improve", pola powyżej.
+- Świadomie NIE usunięto stanu (`lessonFormHomework`, `lessonFormAnswerKey`,
+  `lessonFormSuggestedFollowUp`) ani pól w payloadzie zapisu
+  (`homeworkText`, `homeworkAnswerKey`, `nextLessonPlan`,
+  `suggestedFollowUp`) — patrz "Decyzje architektoniczne".
+- Zadanie 2 (username) — zweryfikowane jako już zrobione w commicie
+  4d60e39 (poprzednia sesja, ten sam dzień). Grep potwierdza brak
+  "NAZWA KONTA"/"Zmień login"/"@username" w AdminPanel.tsx; pozostałe
+  wystąpienia `username` to niepowiązany fallback nazwy wyświetlanej i
+  pole na liście kursantów — nic do zrobienia.
+
+Nie dokończone / do sprawdzenia: Zero weryfikacji wzrokowej w
+przeglądarce (tylko tsc + testy + build).
+
+Decyzje architektoniczne: Zlecenie prosiło też o "bezpieczny fallback
+null lub pomiń w payloadzie" dla usuniętych pól. Sprawdziłem przed
+zmianą: (a) `homeworkText`/`homeworkAnswerKey`/`nextLessonPlan`/
+`suggestedFollowUp` NIE są wymagane przez `isValidLessonRecord` w
+`firestore.rules` — zapis nigdy nie był przez nie blokowany; (b) te
+same pola są żywą, szeroko używaną częścią modelu danych — zasilają
+m.in. widok historii lekcji kursanta (`StudentLessonHistory.tsx`,
+`LessonHistory.tsx`, pokazują `suggestedFollowUp` kursantowi),
+`PreLessonContext.tsx`, `presentationService.ts`,
+`scenarioContextService.ts`, oraz nadal są generowane przez pipeline
+importu zbiorczego z Notion (`server.ts` `/api/gemini/import-lessons-batch`,
+`functions/src/notion/parse.ts`) — WCZEŚNIEJSZY wpis CHANGELOG "AS"
+(2026-09-21) usunął generowanie homeworku tylko z JEDNEJ ścieżki
+(transkrypcja), nie z całego modelu danych. Usunięcie tych pól z
+payloadu edycji skasowałoby więc realne dane przy każdym zapisie
+istniejącej lekcji z tego modala. Zamiast tego zostawiłem stan i
+payload nietknięte — wartości są i tak wczytywane z rekordu przy
+otwarciu edycji (AdminPanel.tsx ok. linii 1759-1761) i zapisywane z
+powrotem bez zmian, więc formularz jest zwarty (brak pól do edycji), a
+zapis nic nie niszczy i niczego nie wymaga. Uznałem to za bezpieczniejsze
+niż dosłowne wykonanie polecenia "pomiń w payloadzie", które
+wprowadziłoby utratę danych.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji,
+ścieżkach tokenowych bez logowania.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513), npm run
+build (przechodzi).

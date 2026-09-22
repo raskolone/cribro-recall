@@ -5254,35 +5254,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           rows={5}
                         />
                       </div>
-                      <div>
-                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Praca domowa (Blok 3 — Homework)")}</label>
-                        <textarea
-                          value={lessonFormHomework}
-                          onChange={e => setLessonFormHomework(e.target.value)}
-                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[120px] resize-y"
-                          placeholder={i18n.t("Zdania do przetłumaczenia, ćwiczenia, zadanie na kolejny tydzień...")}
-                          rows={5}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Klucz odpowiedzi (Answer Key)")}</label>
-                        <textarea
-                          value={lessonFormAnswerKey}
-                          onChange={e => setLessonFormAnswerKey(e.target.value)}
-                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[90px] resize-y"
-                          placeholder={i18n.t("Odpowiedzi do zadania wyżej — kursant widzi je dopiero po oddaniu pracy.")}
-                          rows={3}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-bold text-content-muted mb-1">{i18n.t("Na kolejnej lekcji (Blok 4 — Next Lesson)")}</label>
-                        <textarea 
-                          value={lessonFormSuggestedFollowUp} 
-                          onChange={e => setLessonFormSuggestedFollowUp(e.target.value)}
-                          className="w-full bg-base-200 border border-line-strong rounded-lg p-2 text-text-hi min-h-[120px] resize-y"
-                          rows={5}
-                        />
-                      </div>
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button variant="ghost" onClick={() => setShowLessonRecordModal(false)}>{i18n.t("Anuluj")}</Button>

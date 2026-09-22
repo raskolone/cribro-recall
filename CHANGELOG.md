@@ -3380,6 +3380,13 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513), `npm run build` (przechodzi, w tym `server.cjs`/`api/index.js`). Zero weryfikacji na koncie z rzeczywiście problematyczną rolą — zalecane ręczne sprawdzenie.
 - Ryzyka: `firestore.rules` NIE zmienione. Nowy endpoint wymaga poprawnego tokenu Firebase i przechodzi ten sam admin-check co reszta `/api/admin-users/*` — nie jest ścieżką bez logowania.
 
+### AW. Porządki UI: usunięcie pól Bloku 3/Klucza/Bloku 4 z edycji lekcji (2026-09-22)
+- `components/admin/AdminPanel.tsx` — usunięte z modala edycji lekcji ("Panel lekcji") trzy pola: "Praca domowa (Blok 3 — Homework)", "Klucz odpowiedzi (Answer Key)", "Na kolejnej lekcji (Blok 4 — Next Lesson)". Zostają: nagłówek, dane lekcji, słownictwo, "Elementy do powtórek" (`RecallItemsReview`), "Things to Improve".
+- Zlecenie prosiło też o "bezpieczny fallback null lub pomiń te pola w payloadzie zapisu". Sprawdzone przed zmianą i świadomie NIE zrobione: (a) te pola nigdy nie były wymagane przez `isValidLessonRecord` w `firestore.rules`, więc zapis nigdy nie był nimi blokowany; (b) `homeworkText`/`homeworkAnswerKey`/`nextLessonPlan`/`suggestedFollowUp` to żywy, szeroko używany model danych — m.in. widoczny kursantowi w `StudentLessonHistory.tsx`/`LessonHistory.tsx`, używany w `PreLessonContext.tsx`, `presentationService.ts`, `scenarioContextService.ts`, i wciąż generowany przez import zbiorczy z Notion (`server.ts` `/api/gemini/import-lessons-batch`). Wcześniejszy wpis "AS" (2026-09-21) usunął generowanie homeworku tylko z JEDNEJ ścieżki (transkrypcja), nie z całego modelu. Usunięcie tych pól z payloadu edycji kasowałoby więc realne dane przy każdym zapisie istniejącej lekcji z tego modala — zamiast tego stan i payload zostały nietknięte: wartości nadal wczytują się z rekordu przy otwarciu edycji i zapisują z powrotem bez zmian (round-trip), więc formularz jest zwarty, a zapis niczego nie niszczy ani nie wymaga.
+- Zadanie 2 zlecenia (usunięcie sekcji "NAZWA KONTA / LOGIN") było już wykonane w poprzednim, osobnym zadaniu tego samego dnia — commit 4d60e39. Zweryfikowane grepem, nic do zrobienia.
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513), `npm run build` (przechodzi).
+- Ryzyka: brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania. Zero weryfikacji wzrokowej w przeglądarce.
+
 ---
 
 
