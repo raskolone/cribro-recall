@@ -5728,3 +5728,91 @@ Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji,
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513), npm run
 build (przechodzi).
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: (1) Notatnik kursanta — dostęp z dashboardu + lazy get-or-create
+(brief zewnętrzny, kolekcja `notebooks/{studentId}`). (2) Przemianowanie
+"Ułóż zdanie" na "Uporządkuj" i usunięcie polskiej podpowiedzi z widoku
+kursanta. (3) Nowy typ zadania "Dopasuj pary" (`matching`) w kreatorze,
+generatorze AI i widoku kursanta + magic-link. (4) Usunięcie pigułek
+kategorii z ekranu rozwiązywania pracy domowej i wprowadzenie losowego
+przeplatania (Fisher-Yates) z licznikiem "Zadanie X z Y".
+
+Zrobione:
+- Przed startem ustalone z Maciejem (AskUserQuestion): (1) notatnik
+  POMINIĘTY — dashboard kursanta już ma kafelek "Mój notatnik"
+  (`TodayScreen.tsx`) z lazy get-or-create (`getOrCreateStudentScratchpad`,
+  commit `ca79f9f` z tej samej sesji roboczej, wcześniej dziś), oparty o
+  `scratchpads/{id}` + `scratchpadPins/{pin}` — brief mylił to z osobną,
+  nieistniejącą kolekcją `notebooks/{studentId}` i z przyciskiem "Prowadź
+  lekcję", który w ogóle nie występuje w widoku kursanta (tylko w
+  `StudentOperationalHub.tsx`/`PresentationStudio.tsx`, lektorskich). Nie
+  dodano nowej kolekcji — uniknięto dublowania działającej funkcji i
+  drugiego rozwiązania w obszarze wysokiego ryzyka (`firestore.rules`,
+  sekcja 3 CLAUDE.md). (2) Ekran "Free Practice" nie istnieje w kodzie —
+  pominięty zamiast budowania od zera. (3) Zmiany tylko w silniku homework
+  v1 (`specialTasks`/`StudentHomeworkScreen.tsx`) — v2
+  (`HOMEWORK_ENGINE_V2`) nietknięty, inny model danych.
+- `types.ts` — dodano `'matching'` do `HomeworkType`, nowy interfejs
+  `MatchingExercise { pairs: {id,left,right}[] }`.
+- `services/homeworkGenerator.ts` — etykieta `word_order` zmieniona na
+  "Uporządkuj"/"Unjumble"; nowy generator `generateMatching()` (wzorowany
+  na `generateMultipleChoice`, `thinkingBudget: 0` przez istniejące
+  `askForJson`); dodane do `HOMEWORK_TYPE_LABELS`, `OFFERED_HOMEWORK_TYPES`
+  i mapy `runners` w `generateHomeworkSet`.
+- `components/dashboard/HomeworkExercise.tsx` — usunięty warunkowy
+  nagłówek "Przetłumacz zdanie:"/boks z polskim zdaniem dla `word_order`,
+  zastąpiony stałym "Uporządkuj słowa w poprawne zdanie:". Nowy komponent
+  `MatchingExerciseView` (klik-lewa-potem-prawa, bez drag-and-drop —
+  spójne z resztą ćwiczeń w tym pliku, które też są dotykowe/klikane, nie
+  przeciągane). WAŻNE: przy okazji naprawiono kolejność sprawdzania stanu
+  — `normalizeExercise()` nie zna typów `multiple_choice`/`matching` (jego
+  kontrakt `CanonicalExerciseType` ma tylko 4 starsze typy) i zwracał dla
+  nich `state: 'invalid'`, a komponent sprawdzał ten stan PRZED gałęziami
+  `multiple_choice`/`matching` — czyli `multiple_choice` teoretycznie nigdy
+  nie powinien się renderować poprawnie (błąd sprzed tej sesji, nie mój).
+  Przeniesiono obie gałęzie przed odczyt `exercise.state`.
+- `components/dashboard/StudentHomeworkScreen.tsx` — usunięte pigułki
+  nawigacji po blokach typów (`blocksOf`/mapa bloków) z ekranu
+  rozwiązywania wraz z martwym już `countAnsweredIn`/`isAnswered`. Dodano
+  `displayOrder` (useMemo, Fisher-Yates z `utils/exerciseShuffle.ts`,
+  klucz `activeTask.id`) mapujący pozycję prezentacji na oryginalny indeks
+  w `task.sentences` — `answers`/ocena/przegląd lektora nadal kluczowane
+  oryginalnym indeksem, więc `handleSubmit` i reszta logiki zapisu nie
+  wymagały zmian. Licznik zmieniony na "Zadanie X z Y" (`L.taskCounter`,
+  PL+EN). Dodano branch `matching` w `answerToText`, `expected` (przegląd
+  lektora) i `gradeDeterministic` (wynik = % dopasowanych par).
+- `server.ts` — branch `matching` w ewaluacji `/api/homework/direct-submit`
+  (ścieżka magic-link bez logowania) — SAMA logika tokenu/autoryzacji
+  NIETKNIĘTA, dodano tylko gałąź oceny nowego typu zadania, analogicznie
+  do klienckiej w `StudentHomeworkScreen.tsx`.
+- `components/dashboard/DirectHomeworkScreen.tsx` — etykieta "Dopasuj pary"
+  w nagłówku ćwiczenia (magic-link), "Ułóż zdanie"->"Uporządkuj".
+- `components/dashboard/HomeworkScreen.tsx` — podgląd dla lektora
+  (`renderExercisePrompt`, `renderStudentAnswerDisplay`) rozszerzony o
+  `matching` — bez zmian w gałęzi `word_order`, tam polska podpowiedź
+  zostaje (to widok LEKTORA/klucz odpowiedzi, nie kursanta, brief dotyczył
+  tylko widoku kursanta).
+- `utils/homework.ts` — `homeworkItemType` rozpoznaje `matching` po polu
+  `item.pairs`.
+
+Nie dokończone / do sprawdzenia: Zero weryfikacji wzrokowej w
+przeglądarce — tylko tsc + testy + build. Generator `generateMatching`
+nie był testowany na żywym wywołaniu Gemini (brak klucza API w tej
+sesji) — sprawdzone tylko parsowanie/kształt promptu przez analogię do
+istniejących generatorów.
+
+Decyzje architektoniczne: patrz "Zrobione" wyżej — trzy świadome
+pominięcia (notatnik, Free Practice, silnik v2) ustalone z Maciejem
+PRZED implementacją przez AskUserQuestion, nie jednostronnie.
+
+Ryzyka: Brak zmian w `firestore.rules` i middleware autoryzacji.
+`server.ts` dotknięty, ale wyłącznie w gałęzi oceniania odpowiedzi w
+`/api/homework/direct-submit` — sama weryfikacja tokenu
+(`homework/direct/:token`) nietknięta.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
+npm run build (przechodzi, w tym server.cjs i api/index.js).
