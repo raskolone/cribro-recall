@@ -41,7 +41,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
     setError('');
     setIsLoading(true);
     try {
-      const normalizedEmail = email.trim().toLowerCase();
+      const rawInput = email.trim();
+      let normalizedEmail = rawInput.toLowerCase();
+      if (!rawInput.includes('@')) {
+        normalizedEmail = `${rawInput.toLowerCase()}@student.vocabboost.com`;
+      }
 
       if (isLoginMode) {
         await loginWithEmail(normalizedEmail, password);
@@ -50,12 +54,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
       }
     } catch (err: any) {
       let message = err.message || 'Authentication failed';
-      if (err.code === 'auth/invalid-email') message = 'Wprowadź poprawny format adresu e-mail.';
+      if (err.code === 'auth/invalid-email') message = 'Wprowadź poprawny format adresu e-mail lub login.';
       else if (
         err.code === 'auth/user-not-found' ||
         err.code === 'auth/wrong-password' ||
         err.code === 'auth/invalid-credential'
-      ) message = 'Nieprawidłowy adres e-mail lub hasło.';
+      ) message = 'Nieprawidłowy login lub hasło.';
       else if (err.code === 'auth/too-many-requests') message = 'Zbyt wiele nieudanych prób logowania. Odczekaj chwilę.';
       else if (err.code === 'auth/email-already-in-use') message = 'User is already registered';
       else if (err.code === 'auth/weak-password') message = 'Password should be at least 6 characters';
@@ -98,14 +102,16 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
 
         <form onSubmit={handleEmailAuth} className="space-y-4">
           <div>
-            <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">{i18n.t("Adres e-mail")}</label>
+            <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">
+              {isLoginMode ? i18n.t("E-mail lub login") : i18n.t("Adres e-mail")}
+            </label>
             <input
-              type="email"
-              autoComplete="email"
+              type={isLoginMode ? "text" : "email"}
+              autoComplete={isLoginMode ? "username" : "email"}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 bg-ink backdrop-blur-md border border-line-strong text-text-hi placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              placeholder={i18n.t("twoj.email@firma.pl")}
+              placeholder={isLoginMode ? i18n.t("twoj.email@firma.pl lub login") : i18n.t("twoj.email@firma.pl")}
               required
             />
           </div>

@@ -687,38 +687,43 @@ service cloud.firestore {
     // Współdzielony dokument brudnopisu (Scratchpad / Google Docs)
     // ---------------------------------------------------------------
     // Umożliwia dostęp po znanym ID lub kodzie PIN kursanta (get).
-    // Tworzenie i listowanie przez zalogowanych użytkowników i lektorów.
-    // Modyfikacja stanu zsynchronizowana w czasie rzeczywistym.
-    // Współdzielony notatnik lekcyjny.
-    //
-    // Identyfikator dokumentu to `sp_{firebaseUid}`, a UID Firebase to 28
-    // losowych znaków — samo ID pełni więc rolę przepustki, dokładnie jak
-    // nieodgadywalny link do dokumentu Google. Model docelowy: „widzi każdy,
-    // kto ma link".
-    match /scratchpads/{scratchpadId} {
-      // Odczyt po znanym identyfikatorze jest zamierzony — to jest właśnie
-      // udostępnianie linkiem, działające bez zakładania konta.
-      allow get: if true;
+    // ===============================================================
+    // Moduł Grup i Fan-Out Prac Domowych (P1)
+    // ===============================================================
 
-      // Zamknięte świadomie. To `list` był prawdziwą dziurą: pozwalał jednym
-      // zapytaniem wylistować notatki wszystkich kursantów, bez logowania
-      // i bez znajomości jakiegokolwiek linku. Wyszukiwanie po kodzie PIN
-      // obsługuje teraz indeks `scratchpadPins` poniżej.
-      allow list: if false;
+    // Kolekcja grup lekcyjnych
+    match /groups/{groupId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        (resource.data.teacherProfileId == request.auth.uid) ||
+        ('memberProfileIds' in resource.data && request.auth.uid in resource.data.memberProfileIds)
+      );
+
+      allow create, update, delete: if isAuthenticated() && (
+        isAdmin() ||
+        (request.resource.data.teacherProfileId == request.auth.uid)
+      );
+    }
+
+    // Współdzielony notatnik lekcyjny (A4)
+    match /scratchpads/{scratchpadId} {
+      allow read: if true; // udostępnianie linkiem po znanym ID
+      allow list: if false; // zapobieganie enumeracji wszystkich notatników
 
       allow create: if isAuthenticated();
 
-      // Pięć dróg zapisu: administrator, lektor-właściciel, przypisany kursant (studentId),
-      // członek grupy (memberIds — notatnik grupowy współdzielony przez wielu kursantów),
-      // oraz gość/kursant z linkiem (gdy lektor włączył allowStudentEdit).
-      // Kursant, członek grupy i gość mogą aktualizować wyłącznie pola treści i wersji.
+      // Zapis dopuszczony dla admina, lektora-właściciela lub w trybie edycji ucznia/grupy
       allow update: if isAdmin()
-        || (isAuthenticated() && request.auth.uid == resource.data.teacherUid)
+        || (isAuthenticated() && (
+             ('teacherUid' in resource.data && request.auth.uid == resource.data.teacherUid) ||
+             ('teacherId' in resource.data && request.auth.uid == resource.data.teacherId)
+           ))
         || (
              (
                resource.data.allowStudentEdit == true
                || (isAuthenticated() && 'studentId' in resource.data && request.auth.uid == resource.data.studentId)
                || (isAuthenticated() && 'memberIds' in resource.data && request.auth.uid in resource.data.memberIds)
+               || (isAuthenticated() && 'groupId' in resource.data && resource.data.groupId != null && exists(/databases/$(database)/documents/groups/$(resource.data.groupId)) && request.auth.uid in get(/databases/$(database)/documents/groups/$(resource.data.groupId)).data.memberProfileIds)
              )
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                   'contentHtml', 'contentText', 'updatedAt', 'version', 'lastEditedBy', 'blocks'
@@ -726,32 +731,27 @@ service cloud.firestore {
            );
 
       allow delete: if isAdmin();
+
+      // Prywatne notatki lektora — zablokowane dla kursantów
+      match /private/teacher {
+        allow read, write: if isAuthenticated() && (
+          isAdmin() ||
+          ('teacherUid' in get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data && request.auth.uid == get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.teacherUid) ||
+          ('teacherId' in get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data && request.auth.uid == get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.teacherId)
+        );
+      }
     }
 
+    // Indeks tokenów bezpośrednich (P1 Fan-Out) — wyłącznie dostęp przez Admin SDK
+    match /directHomeworkTokens/{tokenHash} {
+      allow read, write: if false;
+    }
 
     // Indeks: kod PIN → identyfikator notatnika.
-    //
-    // Istnieje po to, żeby wejście po PIN-ie było zwykłym `get` po znanym
-    // kluczu, a nie zapytaniem kolekcyjnym — dzięki temu `list` na
-    // `scratchpads` może pozostać zamknięty. Wpis nie zawiera treści notatek,
-    // wyłącznie wskaźnik, więc jego odczyt niczego nie ujawnia osobie, która
-    // i tak musi znać PIN.
     match /scratchpadPins/{pin} {
       allow get: if true;
       allow list: if false;
 
-      // Zapis tylko przez stronę, do której notatnik naprawdę należy —
-      // lektora-właściciela albo kursanta, dla którego go utworzono — albo
-      // admina. `isAuthenticated()` samo w sobie było zbyt szerokie: dowolny
-      // zalogowany kursant mógłby przekierować czyjś PIN na inny dokument
-      // (przejęcie linku) albo nadpisać istniejący wpis i odciąć prawowitego
-      // właściciela od jego notatnika.
-      //
-      // Sama własność dokumentu docelowego nie wystarczy: bez sprawdzenia,
-      // że `pin` (ID tego dokumentu) zgadza się z polem `pin` we wskazanym
-      // notatniku, kursant mógłby przejąć CUDZY kod PIN i przekierować go na
-      // WŁASNY notatnik — właściciel docelowego dokumentu się zgadza, ale kod
-      // wciąż nie należy do piszącego.
       allow create, update: if isAdmin() || (
         isAuthenticated() &&
         exists(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)) &&
@@ -766,19 +766,11 @@ service cloud.firestore {
     }
 
     // Szablony treści do wstawiania we wspólny notatnik (`scratchpads`).
-    //
-    // Zarządza nimi wyłącznie lektor/admin — kursant nigdy nie czyta tej
-    // kolekcji bezpośrednio ani nie wybiera szablonu sam, więc nie ma tu
-    // żadnej ścieżki bez logowania ani PIN-owej. Osobna kolekcja od
-    // `scratchpads`/`scratchpadPins` celowo — zero interakcji z tamtą,
-    // wrażliwą logiką dostępu linkiem/kodem.
     match /scratchpadTemplates/{templateId} {
       allow read, write: if isAdmin();
     }
 
-    // Baza tematów i inne wspólne ustawienia — czyta każdy zalogowany,
-    // zapisuje wyłącznie nauczyciel. Rolę "teacher" obsługuje już isAdmin(),
-    // więc osobny warunek na nią był zbędny i tylko powielał odczyt dokumentu.
+    // Baza tematów i inne wspólne ustawienia
     match /system/{document=**} {
       allow read: if isAuthenticated();
       allow write: if isAdmin();

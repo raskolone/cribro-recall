@@ -3,6 +3,7 @@ import { Mail, Send, Check, AlertTriangle, X, Eye, ListChecks, User as UserIcon,
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, auth } from '../../firebase';
 import { User } from '../../types';
+import { generateSecureHomeworkToken } from '../../utils/token';
 import { buildHomeworkConfirmationEmail } from '../../services/homeworkEmail';
 import { formatPolishGreeting } from '../../utils/polishVocative';
 import { buildStaticHomeworkNote } from '../../services/homeworkGenerator';
@@ -102,7 +103,7 @@ export const HomeworkEmailConfirmationModal: React.FC<HomeworkEmailConfirmationM
   const directAccess = useMemo(() => {
     if (!task) return { token: '', url: '', expiresAt: '' };
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.maciej.pro';
-    const token = task.accessToken || `hw_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 9)}`;
+    const token = task.accessToken || generateSecureHomeworkToken();
     const expiresAt = task.accessExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
     const url = `${origin}/hw?token=${token}`;
     return { token, url, expiresAt };

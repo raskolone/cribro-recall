@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { AlertTriangle, Check, ChevronDown, ChevronUp, Loader2, Send, Sparkles, Trash2 } from 'lucide-react';
 import { db } from '../../firebase';
-import { HomeworkType, LessonRecord, User } from '../../types';
+import { HomeworkType, LessonRecord, User, Group, GroupHomeworkFanOutResult } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { getAllUsers } from '../../services/userService';
+import { auth } from '../../firebase';
 import {
   GeneratedSection,
   HOMEWORK_TYPE_LABELS,
@@ -14,20 +15,7 @@ import {
 import { taskOwnerFields } from '../../utils/homework';
 import { cleanVocabularyTopic, splitVocabularyLines } from '../../utils/vocabulary';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
-
-/**
- * Kreator pracy domowej — jeden ekran, cztery decyzje.
- *
- * Poprzedni kreator miał zakładki, autozapis wersji roboczej, osobne modale do
- * wyboru lekcji i hurtowego wklejania zdań. Lektor przypisujący zadanie po
- * lekcji potrzebuje czterech rzeczy: komu, z czego, jakie ćwiczenia, na kiedy.
- * Wszystko inne było kosztem, który płaciło się przy każdym zadaniu.
- *
- * Każdy wybrany typ ćwiczeń trafia do osobnego zadania. Dzięki temu `type`
- * w bazie dalej znaczy dokładnie jedną rzecz — panel kursanta i podgląd lektora
- * nie muszą zgadywać, co jest w środku — a kursant dostaje kilka krótkich
- * zadań zamiast jednego długiego.
- */
+import { generateSecureHomeworkToken } from '../../utils/token';
 
 interface HomeworkComposerProps {
   /** Kursant wskazany z zewnątrz (np. z profilu w panelu lektora). */
@@ -36,6 +24,7 @@ interface HomeworkComposerProps {
   onAssigned?: () => void;
 }
 
+type RecipientMode = 'student' | 'group';
 type SourceMode = 'lessons' | 'text';
 
 const PER_TYPE_OPTIONS = [3, 5, 8];
@@ -61,8 +50,11 @@ const exerciseNoun = (n: number): string => {
 };
 
 const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, onAssigned }) => {
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>('student');
   const [students, setStudents] = useState<User[]>([]);
   const [studentId, setStudentId] = useState(initialStudentId || '');
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [groupId, setGroupId] = useState('');
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<SourceMode>('lessons');
@@ -80,8 +72,10 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
   const [assignedCount, setAssignedCount] = useState(0);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [pendingEmailTask, setPendingEmailTask] = useState<any>(null);
+  const [groupFanOutResult, setGroupFanOutResult] = useState<GroupHomeworkFanOutResult | null>(null);
 
   const student = students.find((s) => s.id === studentId);
+  const group = groups.find((g) => g.id === groupId);
 
   useEffect(() => {
     getAllUsers()
@@ -91,6 +85,20 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
         setStudents(list);
       })
       .catch((e) => console.error('Nie udało się wczytać kursantów:', e));
+
+    // Pobranie aktywnych grup
+    auth.currentUser?.getIdToken().then((token) => {
+      fetch('/api/groups', {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.ok && Array.isArray(data.groups)) {
+            setGroups(data.groups.filter((g: Group) => g.status === 'active'));
+          }
+        })
+        .catch((e) => console.error('Nie udało się wczytać grup:', e));
+    });
   }, []);
 
   // Zmiana kursanta zeruje wynik: zadania ułożone z lekcji jednej osoby nie
@@ -199,7 +207,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
   };
 
   const handleAssign = async () => {
-    if (!studentId || totalItems === 0) return;
+    if ((recipientMode === 'student' && !studentId) || (recipientMode === 'group' && !groupId) || totalItems === 0) return;
     setIsAssigning(true);
     setError('');
     try {
@@ -230,7 +238,37 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
         ? `Praca domowa: ${sourceLabel}`
         : 'Praca domowa';
 
-      const accessToken = 'hw_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36);
+      if (recipientMode === 'group' && groupId) {
+        // Obsługa Fan-outu dla całej grupy
+        const token = await auth.currentUser?.getIdToken();
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.maciej.pro';
+        const res = await fetch(`/api/groups/${groupId}/assign-homework`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({
+            title,
+            type: usable[0].type,
+            types: usable.map((section) => section.type),
+            instructions: usable.map((section) => HOMEWORK_TYPE_LABELS[section.type].hint.pl).join(' '),
+            sentences: items,
+            dueDate,
+            origin,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Nie udało się przypisać pracy domowej grupie.');
+
+        setAssignedCount(items.length * (data.result?.assignedCount || 1));
+        setSections([]);
+        setGroupFanOutResult(data.result);
+        return;
+      }
+
+      const accessToken = generateSecureHomeworkToken();
       const accessExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.maciej.pro';
       const accessUrl = `${origin}/hw?token=${accessToken}`;
@@ -284,6 +322,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
       setPendingEmailTask({
         id: docRef.id,
         ...taskPayload,
+        itemCount: items.length,
         lessonTopics,
         vocabularySample: vocabLines.slice(0, 10),
       });
@@ -306,22 +345,71 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
 
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
-      {/* 1. Kursant */}
+      {/* 1. Odbiorca (Kursant lub Grupa) */}
       <section className="rounded-2xl border border-white/10 bg-base-200/40 p-4 sm:p-5">
-        {stepLabel(1, 'Kursant')}
-        <select
-          value={studentId}
-          onChange={(e) => setStudentId(e.target.value)}
-          className="w-full min-h-[3rem] px-3 bg-base-100 text-white border border-white/15 rounded-xl text-sm font-semibold focus:border-primary focus:outline-none"
-        >
-          <option value="">— wybierz kursanta —</option>
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {studentLabel(s)}
-              {s.level ? ` · ${s.level}` : ''}
-            </option>
-          ))}
-        </select>
+        {stepLabel(1, 'Odbiorca zadania')}
+
+        {/* Przełącznik typu odbiorcy */}
+        <div className="flex gap-2 mb-3">
+          <button
+            type="button"
+            onClick={() => {
+              setRecipientMode('student');
+              setSections([]);
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+              recipientMode === 'student'
+                ? 'bg-primary/15 border-primary text-primary'
+                : 'border-white/10 text-content-muted hover:text-white'
+            }`}
+          >
+            Indywidualny kursant
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRecipientMode('group');
+              setSections([]);
+              setSourceMode('text'); // dla grupy domyślnie własny tekst/słownictwo
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+              recipientMode === 'group'
+                ? 'bg-primary/15 border-primary text-primary'
+                : 'border-white/10 text-content-muted hover:text-white'
+            }`}
+          >
+            Grupa ({groups.length})
+          </button>
+        </div>
+
+        {recipientMode === 'student' ? (
+          <select
+            value={studentId}
+            onChange={(e) => setStudentId(e.target.value)}
+            className="w-full min-h-[3rem] px-3 bg-base-100 text-white border border-white/15 rounded-xl text-sm font-semibold focus:border-primary focus:outline-none"
+          >
+            <option value="">— wybierz kursanta —</option>
+            {students.map((s) => (
+              <option key={s.id} value={s.id}>
+                {studentLabel(s)}
+                {s.level ? ` · ${s.level}` : ''}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <select
+            value={groupId}
+            onChange={(e) => setGroupId(e.target.value)}
+            className="w-full min-h-[3rem] px-3 bg-base-100 text-white border border-white/15 rounded-xl text-sm font-semibold focus:border-primary focus:outline-none"
+          >
+            <option value="">— wybierz grupę —</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.name} ({g.memberProfileIds?.length || 0} osób) · {g.level}
+              </option>
+            ))}
+          </select>
+        )}
       </section>
 
       {/* 2. Materiał */}
@@ -603,11 +691,88 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
               </>
             ) : (
               <>
-                <Send size={16} /> Przypisz kursantowi ({totalItems})
+                <Send size={16} /> {recipientMode === 'group' ? `Przypisz całej grupie (${totalItems})` : `Przypisz kursantowi (${totalItems})`}
               </>
             )}
           </button>
         </section>
+      )}
+
+      {/* Modal Fan-Out Grupowego (Raport Przypisania) */}
+      {groupFanOutResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+          <div className="bg-base-100 dark:bg-dark-base-100 w-full max-w-2xl rounded-2xl border border-line-strong shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-6 border-b border-line-weak flex justify-between items-center bg-emerald-500/10">
+              <div>
+                <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                  Praca domowa przypisana grupie!
+                </h2>
+                <p className="text-xs text-text-mute mt-1">
+                  Grupa: <strong className="text-text-hi">{groupFanOutResult.groupName}</strong> · Przypisano: {groupFanOutResult.assignedCount} kursantom
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setGroupFanOutResult(null);
+                  if (onAssigned) onAssigned();
+                }}
+                className="text-text-mute hover:text-text-hi"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6 flex-1 overflow-y-auto space-y-4">
+              {groupFanOutResult.skippedInactive.length > 0 && (
+                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 text-xs">
+                  Pominięto {groupFanOutResult.skippedInactive.length} kursantów o statusie nieaktywnym / zawieszonym.
+                </div>
+              )}
+
+              <p className="text-xs text-text-faint font-bold uppercase tracking-wider">
+                Indywidualne linki direct URL dla kursantów:
+              </p>
+
+              <div className="space-y-2 max-h-80 overflow-y-auto">
+                {groupFanOutResult.assignments.map((item) => (
+                  <div
+                    key={item.taskId}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 rounded-xl bg-ink border border-line-strong text-xs"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-bold text-text-hi block truncate">{item.studentName}</span>
+                      <span className="text-text-mute font-mono text-[11px] block truncate">{item.directUrl}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(item.directUrl);
+                        alert(`Skopiowano link dla: ${item.studentName}`);
+                      }}
+                      className="px-3 py-1.5 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-lg font-semibold shrink-0 transition-colors"
+                    >
+                      Kopiuj link
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-line-weak flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  setGroupFanOutResult(null);
+                  if (onAssigned) onAssigned();
+                }}
+                className="px-6 py-2.5 bg-primary text-accent-ink rounded-xl font-bold"
+              >
+                Zamknij i przejdź do zadań
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {isEmailModalOpen && pendingEmailTask && (

@@ -123,49 +123,24 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               }
 
               setUser({ id: firebaseUser.uid, ...data } as User);
+              setIsAuthReady(true);
             } else {
-              const defaultName = firebaseUser.isAnonymous ? 'Demo User' : (firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'User'));
-              const email = firebaseUser.email || '';
-              const role = email === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user';
-              
-              const isGoogle = firebaseUser.providerData.some((p) => p.providerId === 'google.com');
-              const nowIso = new Date().toISOString();
-              const newUser: any = {
-                id: firebaseUser.uid,
-                username: defaultName,
-                email: email,
-                role: role,
-                isActivated: true,
-                firstLoginAt: nowIso,
-                ...(isGoogle ? { isGoogleLinked: true, authProvider: 'google' } : {})
-              };
-              if (firebaseUser.photoURL) newUser.photoURL = firebaseUser.photoURL;
-              
-              setDoc(userDocRef, newUser).catch(console.error);
-              setUser(newUser);
+              // Profil w Firestore nie istnieje — blokujemy cichą rejestrację.
+              // Inwariant: FirebaseAuth.uid === canonicalProfileId === users/{profileId}
+              console.warn(`[Auth] Konto ${firebaseUser.uid} (${firebaseUser.email}) nie istnieje w Firestore. Wylogowuję.`);
+              signOut(auth).catch(console.error);
+              setUser(null);
+              setIsAuthReady(true);
             }
-            setIsAuthReady(true);
           }, (err) => {
             console.error("User snapshot error:", err);
-            const fallbackEmail = firebaseUser.email || '';
-            setUser({
-              id: firebaseUser.uid,
-              username: firebaseUser.displayName || (fallbackEmail ? fallbackEmail.split('@')[0] : 'User'),
-              email: fallbackEmail,
-              role: fallbackEmail === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user'
-            });
+            setUser(null);
             setIsAuthReady(true);
           });
 
         } catch (error: any) {
           console.error("Error loading user profile from firestore:", error);
-          const fallbackEmail = firebaseUser.email || '';
-          setUser({
-            id: firebaseUser.uid,
-            username: firebaseUser.displayName || (fallbackEmail ? fallbackEmail.split('@')[0] : 'User'),
-            email: fallbackEmail,
-            role: fallbackEmail === 'maciej.wyrozumski@gmail.com' ? 'admin' : 'user'
-          });
+          setUser(null);
           setIsAuthReady(true);
         }
       } else {
@@ -189,24 +164,30 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     try {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
+      const userRef = doc(db, 'users', result.user.uid);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        await signOut(auth);
+        throw new Error(
+          'Twoje konto Google nie zostało powiązane z profilem kursanta przez lektora. Zaloguj się loginem i hasłem lub skontaktuj się z lektorem.'
+        );
+      }
+
       try {
-        const userRef = doc(db, 'users', result.user.uid);
-        const userDoc = await getDoc(userRef);
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          const updates: Record<string, any> = {
-            isGoogleLinked: true,
-            authProvider: 'google',
-            isActivated: true,
-          };
-          if (!data.firstLoginAt) {
-            updates.firstLoginAt = new Date().toISOString();
-          }
-          if (data.tempPassword) {
-            updates.tempPassword = deleteField();
-          }
-          await updateDoc(userRef, updates);
+        const data = userDoc.data();
+        const updates: Record<string, any> = {
+          isGoogleLinked: true,
+          authProvider: 'google',
+          isActivated: true,
+        };
+        if (!data.firstLoginAt) {
+          updates.firstLoginAt = new Date().toISOString();
         }
+        if (data.tempPassword) {
+          updates.tempPassword = deleteField();
+        }
+        await updateDoc(userRef, updates);
       } catch (err) {
         console.warn('Could not update user Google profile status:', err);
       }
@@ -329,7 +310,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const credential = GoogleAuthProvider.credentialFromResult(result);
       
       if (credential?.accessToken) {
-        (function(){ try { localStorage.setItem('google_workspace_access_token', credential.accessToken); } catch(e) {} })();
+        (function(){ try { sessionStorage.setItem('google_workspace_access_token', credential.accessToken); } catch(e) {} })();
         return credential.accessToken;
       }
       throw new Error('No access token received');
@@ -350,7 +331,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const credential = GoogleAuthProvider.credentialFromResult(result);
       
       if (credential?.accessToken) {
-        (function(){ try { localStorage.setItem('google_calendar_access_token', credential.accessToken); } catch(e) {} })();
+        (function(){ try { sessionStorage.setItem('google_calendar_access_token', credential.accessToken); } catch(e) {} })();
         return credential.accessToken;
       }
       throw new Error('No access token received');

@@ -209,6 +209,8 @@ import {
 } from "./utils/learningCurve";
 import { fetchNotionBlocksText } from "./utils/notionBlocksFetcher";
 import { isJunkIsoTopic, formatLessonDateDDMMYYYY } from "./utils/lessonDisplay";
+import { Group, GroupWithMembers, GroupMemberPreview, GroupHomeworkFanOutResult, GroupHomeworkAssignmentItem } from "./types/group";
+import crypto from 'crypto';
 let pdfParse: any;
 try {
   const loadedPdf = typeof require !== "undefined" ? require("pdf-parse") : null;
@@ -694,6 +696,339 @@ export function createApp() {
       const { password } = req.body;
       await adminAuth.updateUser(uid, { password });
       res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  /*
+   * ═══════════════════════════════════════════════════════════════════════════
+   * MODUŁ GRUP I FAN-OUT PRAC DOMOWYCH (P1)
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+
+  // Pobranie listy grup (dla lektora lub kursanta)
+  app.get('/api/groups', requireFirebaseAuth, async (req, res) => {
+    try {
+      const callerUid = (req as any).userUid as string;
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const userDoc = await adminDb.collection('users').doc(callerUid).get();
+      const userData = userDoc.data() || {};
+      const isTeacherOrAdmin = userData.role === 'admin' || userData.role === 'teacher';
+
+      let querySnap: FirebaseFirestore.QuerySnapshot;
+      if (isTeacherOrAdmin) {
+        querySnap = await adminDb.collection('groups')
+          .where('teacherProfileId', '==', callerUid)
+          .get();
+        // Jeśli admin nie ma własnych grup, może przeglądać wszystkie
+        if (querySnap.empty && userData.role === 'admin') {
+          querySnap = await adminDb.collection('groups').get();
+        }
+      } else {
+        querySnap = await adminDb.collection('groups')
+          .where('memberProfileIds', 'array-contains', callerUid)
+          .where('status', '==', 'active')
+          .get();
+      }
+
+      const groups: Group[] = querySnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Group));
+      res.json({ ok: true, groups });
+    } catch (error: any) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  // Pobranie szczegółów pojedynczej grupy wraz z podglądem członków
+  app.get('/api/groups/:id', requireFirebaseAuth, async (req, res) => {
+    try {
+      const groupId = req.params.id as string;
+      const callerUid = (req as any).userUid as string;
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const groupDoc = await adminDb.collection('groups').doc(groupId).get();
+      if (!groupDoc.exists) {
+        return res.status(404).json({ error: 'not_found', message: 'Grupa nie istnieje.' });
+      }
+
+      const groupData = { id: groupDoc.id, ...groupDoc.data() } as Group;
+      const userDoc = await adminDb.collection('users').doc(callerUid).get();
+      const userData = userDoc.data() || {};
+      const isTeacherOrAdmin = userData.role === 'admin' || groupData.teacherProfileId === callerUid;
+      const isMember = (groupData.memberProfileIds || []).includes(callerUid);
+
+      if (!isTeacherOrAdmin && !isMember) {
+        return res.status(403).json({ error: 'forbidden', message: 'Brak dostępu do tej grupy.' });
+      }
+
+      // Wczytaj podgląd członków dla lektora
+      const memberPreviews: GroupMemberPreview[] = [];
+      const memberIds = groupData.memberProfileIds || [];
+
+      if (memberIds.length > 0) {
+        const userSnaps = await Promise.all(
+          memberIds.map(uid => adminDb.collection('users').doc(uid).get())
+        );
+
+        userSnaps.forEach((uSnap, idx) => {
+          const uData = uSnap.data() || {};
+          const fullName = `${uData.firstName || ''} ${uData.lastName || ''}`.trim() || uData.displayName || uData.username || 'Kursant';
+          memberPreviews.push({
+            profileId: memberIds[idx],
+            name: fullName,
+            email: uData.email || '',
+            isActivated: uData.isActivated,
+            isSuspended: uData.isSuspended,
+            isArchived: uData.isArchived,
+          });
+        });
+      }
+
+      const result: GroupWithMembers = {
+        ...groupData,
+        members: memberPreviews,
+      };
+
+      res.json({ ok: true, group: result });
+    } catch (error: any) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  // Utworzenie nowej grupy
+  app.post('/api/groups', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const teacherUid = (req as any).userUid as string;
+      const { name, level, company, memberProfileIds, activeScratchpadId } = req.body;
+
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ error: 'invalid_name', message: 'Nazwa grupy jest wymagana.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const cleanMemberIds = Array.isArray(memberProfileIds)
+        ? Array.from(new Set(memberProfileIds.map((id: any) => String(id).trim()).filter(Boolean)))
+        : [];
+
+      const nowIso = new Date().toISOString();
+      const newGroupRef = adminDb.collection('groups').doc();
+      const groupId = `grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`;
+
+      const groupPayload: Group = {
+        id: groupId,
+        name: name.trim(),
+        teacherProfileId: teacherUid,
+        status: 'active',
+        level: (level || 'B2').trim(),
+        company: company ? String(company).trim() : undefined,
+        memberProfileIds: cleanMemberIds,
+        activeScratchpadId: activeScratchpadId ? String(activeScratchpadId).trim() : undefined,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      await adminDb.collection('groups').doc(groupId).set(groupPayload);
+      res.json({ ok: true, group: groupPayload });
+    } catch (error: any) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  // Aktualizacja grupy (zmiana nazwy, poziomu, statusu lub składu osobowego)
+  app.put('/api/groups/:id', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const groupId = req.params.id as string;
+      const teacherUid = (req as any).userUid as string;
+      const { name, level, company, status, memberProfileIds, activeScratchpadId } = req.body;
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const groupRef = adminDb.collection('groups').doc(groupId);
+      const groupSnap = await groupRef.get();
+
+      if (!groupSnap.exists) {
+        return res.status(404).json({ error: 'not_found', message: 'Grupa nie istnieje.' });
+      }
+
+      const existingGroup = groupSnap.data() as Group;
+      // Weryfikacja właściciela (lub admina)
+      const userDoc = await adminDb.collection('users').doc(teacherUid).get();
+      const userData = userDoc.data() || {};
+      if (existingGroup.teacherProfileId !== teacherUid && userData.role !== 'admin') {
+        return res.status(403).json({ error: 'forbidden', message: 'Brak uprawnień do edycji tej grupy.' });
+      }
+
+      const updates: Partial<Group> & { updatedAt: string } = {
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (name && typeof name === 'string') updates.name = name.trim();
+      if (level && typeof level === 'string') updates.level = level.trim();
+      if (company !== undefined) updates.company = company ? String(company).trim() : undefined;
+      if (status === 'active' || status === 'archived') updates.status = status;
+      if (Array.isArray(memberProfileIds)) {
+        updates.memberProfileIds = Array.from(new Set(memberProfileIds.map((id: any) => String(id).trim()).filter(Boolean)));
+      }
+      if (activeScratchpadId !== undefined) {
+        updates.activeScratchpadId = activeScratchpadId ? String(activeScratchpadId).trim() : undefined;
+      }
+
+      await groupRef.update(updates);
+      const updatedSnap = await groupRef.get();
+      res.json({ ok: true, group: { id: updatedSnap.id, ...updatedSnap.data() } });
+    } catch (error: any) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  // Fan-out pracy domowej dla całej grupy
+  app.post('/api/groups/:id/assign-homework', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const groupId = req.params.id as string;
+      const callerUid = (req as any).userUid as string;
+      const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
+
+      if (!sentences || !Array.isArray(sentences) || sentences.length === 0) {
+        return res.status(400).json({ error: 'missing_sentences', message: 'Brak zadań w pracy domowej.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const groupRef = adminDb.collection('groups').doc(groupId);
+      const groupSnap = await groupRef.get();
+
+      if (!groupSnap.exists) {
+        return res.status(404).json({ error: 'not_found', message: 'Grupa nie istnieje.' });
+      }
+
+      const groupData = groupSnap.data() as Group;
+      const memberIds = groupData.memberProfileIds || [];
+
+      if (memberIds.length === 0) {
+        return res.status(400).json({ error: 'empty_group', message: 'Grupa nie ma przypisanych kursantów.' });
+      }
+
+      // Wczytaj dokumenty kursantów i odfiltruj zawieszonych / zarchiwizowanych
+      const userSnaps = await Promise.all(
+        memberIds.map(uid => adminDb.collection('users').doc(uid).get())
+      );
+
+      const activeMembers: Array<{ uid: string; name: string; email: string }> = [];
+      const skippedInactive: string[] = [];
+
+      userSnaps.forEach((uSnap, idx) => {
+        const uid = memberIds[idx];
+        if (!uSnap.exists) {
+          skippedInactive.push(uid);
+          return;
+        }
+        const uData = uSnap.data() || {};
+        if (uData.isSuspended || uData.isArchived || uData.statusWspolpracy === 'Nieaktywny') {
+          skippedInactive.push(uid);
+          return;
+        }
+
+        const fullName = `${uData.firstName || ''} ${uData.lastName || ''}`.trim() || uData.displayName || uData.username || 'Kursant';
+        activeMembers.push({
+          uid,
+          name: fullName,
+          email: uData.email || '',
+        });
+      });
+
+      if (activeMembers.length === 0) {
+        return res.status(400).json({
+          error: 'no_active_students',
+          message: 'Brak aktywnych kursantów w grupie (wszyscy są zarchiwizowani lub zawieszeni).',
+          skippedInactive,
+        });
+      }
+
+      const nowIso = new Date().toISOString();
+      const homeworkSetId = `hwset_grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`;
+      const expiresAt = accessExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
+      const baseUrl = clientOrigin || 'https://app.maciej.pro';
+
+      const batch = adminDb.batch();
+      const assignments: GroupHomeworkAssignmentItem[] = [];
+
+      for (const member of activeMembers) {
+        // Generowanie bezpiecznego tokenu i hasha SHA-256
+        const rawToken = 'hw_' + crypto.randomBytes(16).toString('hex');
+        const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const taskId = `task_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`;
+
+        const taskDocRef = adminDb.collection('specialTasks').doc(taskId);
+        const directTokenRef = adminDb.collection('directHomeworkTokens').doc(tokenHash);
+
+        const taskPayload = {
+          id: taskId,
+          homeworkSetId,
+          groupId,
+          groupName: groupData.name,
+          studentUid: member.uid,
+          studentId: member.uid,
+          studentName: member.name,
+          studentEmail: member.email,
+          title: title || `Praca domowa — ${groupData.name}`,
+          type: type || 'mixed',
+          types: Array.isArray(types) ? types : [type || 'mixed'],
+          instructions: instructions || '',
+          sentences,
+          accessToken: rawToken, // Dla kompatybilności wstecznej z /hw?token=
+          accessTokenHash: tokenHash,
+          accessExpiresAt: expiresAt,
+          status: 'assigned',
+          assignedBy: callerUid,
+          createdAt: nowIso,
+          updatedAt: nowIso,
+        };
+
+        // 1. Zapis zadania w specialTasks
+        batch.set(taskDocRef, taskPayload);
+
+        // 2. Zapis w indeksie directHomeworkTokens/{tokenHash}
+        batch.set(directTokenRef, {
+          taskId,
+          studentUid: member.uid,
+          groupId,
+          expiresAt,
+          createdAt: nowIso,
+        });
+
+        // 3. Oznaczenie flagi hasNewHomework na profilu kursanta
+        const userProfileRef = adminDb.collection('users').doc(member.uid);
+        batch.set(userProfileRef, { hasNewHomework: true, lastHomeworkAssignedAt: nowIso }, { merge: true });
+
+        assignments.push({
+          studentProfileId: member.uid,
+          studentName: member.name,
+          studentEmail: member.email,
+          taskId,
+          accessToken: rawToken,
+          directUrl: `${baseUrl}/hw?token=${rawToken}`,
+        });
+      }
+
+      // Atomowe zatwierdzenie fan-outu
+      await batch.commit();
+
+      const result: GroupHomeworkFanOutResult = {
+        groupId,
+        groupName: groupData.name,
+        homeworkSetId,
+        assignedCount: assignments.length,
+        skippedInactive,
+        assignments,
+        createdAt: nowIso,
+      };
+
+      res.json({ ok: true, result });
     } catch (error: any) {
       res.status(500).json({ error: formatErrorString(error) });
     }

@@ -59,6 +59,7 @@ import LessonDuplicatesPanel from './LessonDuplicatesPanel';
 import { sortChronologically } from '../../utils/lessonDuplicates';
 import { confirmAsync } from '../../utils/appAlert';
 import AdminMailingScreen from './AdminMailingScreen';
+import { GroupsManager } from './GroupsManager';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import GroupManagementModal from './GroupManagementModal';
 import { getGroups, ensureGroupScratchpad } from '../../services/groupService';
@@ -2669,6 +2670,28 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       ) : activeTab === 'mailing' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
           <AdminMailingScreen onBack={() => setActiveTab(null)} />
+        </div>
+      ) : activeTab === 'groups' ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-4">
+          <div className="flex items-center justify-between pb-3 border-b border-line-strong">
+            <div className="flex items-center gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary animate-pulse" />
+              <h2 className="text-base sm:text-lg font-bold text-text-hi flex items-center gap-2">
+                Grupy zajęciowe
+              </h2>
+            </div>
+            <button
+              onClick={() => setActiveTab(null)}
+              className="px-3 py-1.5 rounded-xl bg-line-soft hover:bg-line-soft text-content-muted hover:text-text-hi text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line-strong"
+            >
+              <X size={14} />
+              Wróć do strony głównej
+            </button>
+          </div>
+          <GroupsManager
+            students={users}
+            onOpenScratchpad={(scratchpadId) => openScratchpadTab(scratchpadId)}
+          />
         </div>
       ) : activeTab === 'homework' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
