@@ -25,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { HomeworkType, SpecialTask, StudentTest } from '../../types';
 import { homeworkBlocks, homeworkItemType, isV1Task, studentTasksQuery } from '../../utils/homework';
+import { shuffleArray } from '../../utils/exerciseShuffle';
 import { formatTaskDateTime } from './HomeworkScreen';
 import { evaluateTranslations } from '../../services/geminiService';
 import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
@@ -116,6 +117,17 @@ const answerToText = (type: HomeworkType, item: any, answer: any): string => {
   if (type === 'multiple_choice') {
     return typeof answer === 'number' ? item.options?.[answer] || '' : '';
   }
+  if (type === 'matching') {
+    const matched: string[] = Array.isArray(answer) ? answer : [];
+    const pairs: Array<{ id: string; left: string; right: string }> = Array.isArray(item?.pairs)
+      ? item.pairs
+      : [];
+    return matched
+      .map((id) => pairs.find((p) => p.id === id))
+      .filter(Boolean)
+      .map((p) => `${p!.left} = ${p!.right}`)
+      .join(', ');
+  }
   if (type === 'fill_in_the_blank') {
     const blanks = answer && typeof answer === 'object' ? answer : {};
     return Object.keys(blanks)
@@ -171,7 +183,11 @@ const getExerciseReviewRows = (task: SpecialTask): ReviewExerciseItem[] => {
       if (itemType === 'find_errors') expected = item.correctSentence || '';
       else if (itemType === 'word_order') expected = item.correctSentence || '';
       else if (itemType === 'multiple_choice') expected = item.options?.[item.correctIndex] || '';
-      else if (itemType === 'fill_in_the_blank' && item.blanks) {
+      else if (itemType === 'matching') {
+        expected = Array.isArray(item.pairs)
+          ? item.pairs.map((p: any) => `${p.left} = ${p.right}`).join(', ')
+          : '';
+      } else if (itemType === 'fill_in_the_blank' && item.blanks) {
         expected = Object.entries(item.blanks)
           .map(([k, v]) => `${k}=${v}`)
           .join(', ');
@@ -430,6 +446,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           progressTitle: 'Twój postęp',
           progressHint:
             'Nie musisz robić wszystkiego naraz — odpowiedzi zapisują się same. Możesz zamknąć aplikację i wrócić do reszty później.',
+          taskCounter: (at: number, of: number) => `Zadanie ${at} z ${of}`,
         }
       : {
           title: 'Homework',
@@ -466,6 +483,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           progressTitle: 'Your progress',
           progressHint:
             'You do not have to finish in one go — your answers save themselves. Close the app and come back to the rest later.',
+          taskCounter: (at: number, of: number) => `Task ${at} of ${of}`,
         };
 
   /** Nazwa rodzaju zadania w języku interfejsu. */
@@ -482,6 +500,23 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
     blocksCache.set(key, blocks);
     return blocks;
   };
+
+  /**
+   * Przemieszana kolejność zadań do rozwiązywania — Fisher-Yates, raz na
+   * zadanie (klucz to `activeTask.id`, nie cała treść). Kursant nie ma iść
+   * blokami "tłumaczenie, potem uporządkuj, potem pary" — ma je dostać na
+   * przemian, żeby nie rozwiązywał dziesięciu takich samych z rzędu.
+   *
+   * Mapuje POZYCJĘ w widoku (`index`, jak dotąd) na oryginalny indeks w
+   * `task.sentences` — odpowiedzi (`answers`), zapis, ocena i przegląd
+   * lektora zostają kluczowane oryginalnym indeksem, więc nie trzeba ich
+   * przepisywać: tasowanie dotyczy wyłącznie kolejności prezentacji.
+   */
+  const displayOrder = useMemo(() => {
+    const count = activeTask?.sentences?.length || 0;
+    return shuffleArray(Array.from({ length: count }, (_, i) => i));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTask?.id]);
 
   const pending = useMemo(
     () => tasks.filter((t) => t.status === 'pending' || !t.status),
@@ -592,6 +627,19 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
         isCorrect,
         score: isCorrect ? 100 : 0,
         explanation: item.explanation,
+      };
+    }
+
+    if (type === 'matching') {
+      const matched: string[] = Array.isArray(answer) ? answer : [];
+      const pairs: Array<{ id: string }> = Array.isArray(item?.pairs) ? item.pairs : [];
+      const score = pairs.length > 0 ? Math.round((matched.length / pairs.length) * 100) : 0;
+      return {
+        polishSentence: item.question || 'Dopasuj pary',
+        correctTranslation: studentAnswer,
+        studentAnswer,
+        isCorrect: score === 100,
+        score,
       };
     }
 
@@ -1282,37 +1330,14 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       );
     }
 
+    // Kolejność prezentacji jest przemieszana (displayOrder) — `index` to
+    // pozycja w tej kolejności, `itemIndex` to oryginalny indeks w
+    // `task.sentences`, po którym kluczowane są odpowiedzi i ocena.
+    const itemIndex = displayOrder[index] ?? index;
     // Jedna praca domowa miesza rodzaje ćwiczeń, więc rodzaj rozstrzyga
     // element, a nie dokument (patrz utils/homework.ts).
-    const type = homeworkItemType(items[index], activeTask);
+    const type = homeworkItemType(items[itemIndex], activeTask);
     const isLast = index >= items.length - 1;
-    const blocks = blocksOf(activeTask);
-    const block = blocks.find((b) => index >= b.from && index < b.from + b.count);
-
-    /**
-     * Czy na to zadanie padła jakakolwiek odpowiedź.
-     *
-     * Odpowiedzi bywają tekstem, tablicą (układanka, dobieranie) albo obiektem
-     * (luki), więc samo `Boolean(answers[i])` uznałoby pustą tablicę i `{}` za
-     * wypełnione i licznik pokazywałby komplet przy pustej pracy.
-     */
-    const isAnswered = (value: any): boolean => {
-      if (value === null || value === undefined) return false;
-      if (typeof value === 'string') return value.trim().length > 0;
-      if (Array.isArray(value)) return value.some((entry) => isAnswered(entry));
-      if (typeof value === 'object') return Object.values(value).some((entry) => isAnswered(entry));
-      return true;
-    };
-
-    const countAnsweredIn = (from: number, count: number): number => {
-      let done = 0;
-      for (let i = from; i < from + count; i++) {
-        if (isAnswered(answers[i])) done += 1;
-      }
-      return done;
-    };
-
-    const answeredCount = countAnsweredIn(0, items.length);
 
     return (
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
@@ -1332,7 +1357,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             />
           </div>
           <span className="font-mono text-xs text-content-muted shrink-0">
-            {index + 1}/{items.length}
+            {L.taskCounter(index + 1, items.length)}
           </span>
           <button
             type="button"
@@ -1346,69 +1371,13 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           </button>
         </div>
 
-        {/* Etykieta bloku: przy pracy z kilku rodzajów kursant widzi, w którym
-            jest i ile w nim zostało — bez tego mieszane zadania czytają się
-            jak jeden nieprzewidywalny ciąg. */}
-        {block && blocks.length > 1 && (
-          <p className="px-1 text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
-            {L.blockLabel(typeLabel(block.type), index - block.from + 1, block.count)}
-          </p>
-        )}
-
-        {/* Mapa bloków z postępem.
-            Pracy domowej nie trzeba robić za jednym posiedzeniem — odpowiedzi
-            zapisują się same. Żeby to miało sens, kursant musi widzieć, co ma
-            już wypełnione i gdzie wrócić; bez tego po przerwie przewija
-            wszystko od początku, szukając pierwszej pustej luki. */}
-        {blocks.length > 1 && (
-          <div className="rounded-2xl border border-white/10 bg-base-200/40 p-3 space-y-2.5">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <span className="text-[11px] font-bold text-white">{L.progressTitle}</span>
-              <span className="text-[11px] font-mono text-content-muted">
-                {answeredCount}/{items.length}
-              </span>
-            </div>
-
-            <div className="flex flex-wrap gap-1.5">
-              {blocks.map((b, bi) => {
-                const done = countAnsweredIn(b.from, b.count);
-                const isCurrent = index >= b.from && index < b.from + b.count;
-                const complete = done === b.count;
-                return (
-                  <button
-                    key={`${b.type}-${bi}`}
-                    type="button"
-                    onClick={() => setIndex(b.from)}
-                    title={`${typeLabel(b.type)} — ${done}/${b.count}`}
-                    className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors cursor-pointer flex items-center gap-1.5 ${
-                      isCurrent
-                        ? 'border-primary/50 bg-primary/12 text-primary'
-                        : complete
-                        ? 'border-white/10 bg-white/[0.05] text-content-muted'
-                        : 'border-white/12 bg-base-100/60 text-content hover:bg-white/[0.07]'
-                    }`}
-                  >
-                    {complete && <CheckCheck size={12} className="shrink-0" />}
-                    <span className="truncate max-w-[10rem]">{typeLabel(b.type)}</span>
-                    <span className="font-mono opacity-70">
-                      {done}/{b.count}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            <p className="text-[11px] text-content-muted leading-relaxed">{L.progressHint}</p>
-          </div>
-        )}
-
         <div ref={exerciseCardRef} className="rounded-2xl border border-white/10 bg-base-200/50 p-4 sm:p-6 shadow-xl relative overflow-hidden backdrop-blur-sm">
           <HomeworkExercise
-            key={index}
+            key={itemIndex}
             type={type}
-            item={items[index]}
-            answer={answers[index]}
-            onChange={(value) => setAnswers((prev) => ({ ...prev, [index]: value }))}
+            item={items[itemIndex]}
+            answer={answers[itemIndex]}
+            onChange={(value) => setAnswers((prev) => ({ ...prev, [itemIndex]: value }))}
           />
         </div>
 

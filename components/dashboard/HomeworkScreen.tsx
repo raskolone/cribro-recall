@@ -140,11 +140,20 @@ export const renderStudentAnswerDisplay = (stAns: any, item?: any): React.ReactN
     );
   }
 
-  // If stAns is an array (e.g. word order chunks or reordered fragments)
+  // If stAns is an array (e.g. word order chunks, matched pair ids, or reordered fragments)
   if (Array.isArray(stAns)) {
     if (item?.chunks && Array.isArray(item.chunks)) {
       const text = stAns.map((i) => item.chunks[i] ?? i).join(' ');
       return <span className="text-primary font-medium">{text}</span>;
+    }
+    if (item?.pairs && Array.isArray(item.pairs)) {
+      const pairs: Array<{ id: string; left: string; right: string }> = item.pairs;
+      const text = stAns
+        .map((id: string) => pairs.find((p) => p.id === id))
+        .filter(Boolean)
+        .map((p: any) => `${p.left} = ${p.right}`)
+        .join(', ');
+      return <span className="text-primary font-medium">{text || '(Brak odpowiedzi)'}</span>;
     }
     return <span className="text-primary font-medium">{stAns.join(' ')}</span>;
   }
@@ -223,6 +232,24 @@ export const renderExercisePrompt = (item: any, itemType: HomeworkType): React.R
         <div>
           <span className="text-xs text-content-muted block mb-0.5">Poprawne zdanie (wzorzec):</span>
           <p className="text-primary font-medium">{item.correctSentence}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (itemType === 'matching') {
+    const pairs: Array<{ id: string; left: string; right: string }> = Array.isArray(item?.pairs)
+      ? item.pairs
+      : [];
+    return (
+      <div className="space-y-1.5 text-sm">
+        <span className="text-xs text-content-muted block mb-0.5">Pary (wzorzec):</span>
+        <div className="space-y-1">
+          {pairs.map((p) => (
+            <p key={p.id} className="text-primary font-medium">
+              {p.left} <span className="text-content-muted">=</span> {p.right}
+            </p>
+          ))}
         </div>
       </div>
     );

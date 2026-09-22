@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import i18n from 'i18next';
 import { AlertCircle, Check, Copy, HelpCircle, Languages, Lightbulb, RotateCcw, Sparkles } from 'lucide-react';
 import { HomeworkType } from '../../types';
 import { CanonicalExercise, ExerciseSegment, normalizeExercise } from '../../utils/normalizeExercise';
+import { shuffleArray } from '../../utils/exerciseShuffle';
 
 /**
  * Jedno ćwiczenie pracy domowej, w czterech odmianach.
@@ -42,8 +43,152 @@ const InvalidExerciseCard: React.FC<{ message?: string }> = ({ message }) => (
   </div>
 );
 
+interface MatchingPair {
+  id: string;
+  left: string;
+  right: string;
+}
+
+/**
+ * Dopasuj pary: klik w lewą kolumnę, potem w prawą. Trafiona para blokuje się
+ * na zielono, chybiona miga na czerwono i wraca do stanu wyjściowego —
+ * dotykowo, bez przeciągania, tak jak reszta zadań w tym komponencie.
+ */
+const MatchingExerciseView: React.FC<{
+  pairs: MatchingPair[];
+  answer: any;
+  onChange: (answer: string[]) => void;
+}> = ({ pairs, answer, onChange }) => {
+  const matched: string[] = Array.isArray(answer) ? answer : [];
+  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
+  const [selectedRight, setSelectedRight] = useState<string | null>(null);
+  const [wrongPair, setWrongPair] = useState<{ left: string; right: string } | null>(null);
+
+  const leftOrder = useMemo(() => shuffleArray(pairs), [pairs]);
+  const rightOrder = useMemo(() => shuffleArray(pairs), [pairs]);
+
+  const pick = (side: 'left' | 'right', id: string) => {
+    if (matched.includes(id) || wrongPair) return;
+    if (side === 'left') {
+      if (!selectedRight) {
+        setSelectedLeft(id);
+        return;
+      }
+      resolve(id, selectedRight);
+    } else {
+      if (!selectedLeft) {
+        setSelectedRight(id);
+        return;
+      }
+      resolve(selectedLeft, id);
+    }
+  };
+
+  const resolve = (leftId: string, rightId: string) => {
+    if (leftId === rightId) {
+      onChange([...matched, leftId]);
+      setSelectedLeft(null);
+      setSelectedRight(null);
+    } else {
+      setWrongPair({ left: leftId, right: rightId });
+      window.setTimeout(() => {
+        setWrongPair(null);
+        setSelectedLeft(null);
+        setSelectedRight(null);
+      }, 500);
+    }
+  };
+
+  const tileClass = (side: 'left' | 'right', id: string) => {
+    if (matched.includes(id)) return `${chipBase} bg-success/15 border-success/40 text-success cursor-default`;
+    if (wrongPair && wrongPair[side] === id) return `${chipBase} bg-danger/15 border-danger/40 text-danger`;
+    if ((side === 'left' && selectedLeft === id) || (side === 'right' && selectedRight === id)) {
+      return `${chipBase} bg-primary/15 border-primary/45 text-primary`;
+    }
+    return `${chipBase} bg-base-100/60 border-white/15 text-content`;
+  };
+
+  return (
+    <div className="space-y-4">
+      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
+        <Languages size={13} />
+        {i18n.t('Dopasuj pary')}
+      </span>
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="space-y-2">
+          {leftOrder.map((pair) => (
+            <button
+              key={pair.id}
+              disabled={matched.includes(pair.id)}
+              onClick={() => pick('left', pair.id)}
+              className={`${tileClass('left', pair.id)} w-full text-left`}
+            >
+              {pair.left}
+            </button>
+          ))}
+        </div>
+        <div className="space-y-2">
+          {rightOrder.map((pair) => (
+            <button
+              key={pair.id}
+              disabled={matched.includes(pair.id)}
+              onClick={() => pick('right', pair.id)}
+              className={`${tileClass('right', pair.id)} w-full text-left`}
+            >
+              {pair.right}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer, onChange }) => {
   const [showHint, setShowHint] = useState(false);
+
+  // `multiple_choice` i `matching` czytają `item` bezpośrednio, bez
+  // przechodzenia przez `normalizeExercise` — kontrakt tego adaptera zna tylko
+  // cztery starsze typy (patrz `CanonicalExerciseType`), więc dla tych dwóch
+  // zawsze zwróciłby `state: 'invalid'`. Sprawdzamy je więc PRZED odczytaniem
+  // stanu `exercise`, inaczej ważne zadanie nigdy by się nie wyrenderowało.
+  if (type === 'multiple_choice') {
+    const options: string[] = item.options || [];
+    const selected = typeof answer === 'number' ? answer : -1;
+
+    return (
+      <div className="space-y-4">
+        <p className="prose-justified text-lg font-bold text-text-hi leading-snug">{item.question}</p>
+        <div className="space-y-2">
+          {options.map((option, index) => (
+            <button
+              key={index}
+              onClick={() => onChange(index)}
+              className={`w-full min-h-[3.25rem] px-4 rounded-xl border text-left text-[15px] font-semibold transition-colors ${
+                selected === index
+                  ? 'bg-primary/15 border-primary/45 text-primary'
+                  : 'bg-base-100/50 border-white/12 text-content'
+              }`}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (type === 'matching') {
+    const pairs: MatchingPair[] = Array.isArray(item?.pairs)
+      ? item.pairs.filter((p: any) => p?.id && p?.left && p?.right)
+      : [];
+
+    if (pairs.length < 2) {
+      return <InvalidExerciseCard />;
+    }
+
+    return <MatchingExerciseView pairs={pairs} answer={answer} onChange={onChange} />;
+  }
 
   const exercise: CanonicalExercise = normalizeExercise(item, { type });
 
@@ -122,25 +267,15 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     const chosen: number[] = Array.isArray(answer) ? answer : [];
     const tokens = exercise.tokens || [];
     const remaining = tokens.map((_, i) => i).filter((i) => !chosen.includes(i));
-    const sourceSentence = exercise.sourceSentence || '';
 
     return (
       <div className="space-y-4">
-        {/* Nagłówek: rozróżnia rozsypankę bez tekstu polskiego od tłumaczenia z klocków */}
+        {/* Nagłówek deterministyczny — to układanka gramatyczna, nie tłumaczenie,
+            więc nie pokazujemy polskiego zdania ani żadnej podpowiedzi treściowej. */}
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
           <Languages size={13} />
-          {sourceSentence ? 'Przetłumacz zdanie:' : i18n.t('Ułóż zdanie')}
+          {i18n.t('Uporządkuj słowa w poprawne zdanie:')}
         </span>
-
-        {/* Boks ze zdaniem źródłowym renderuje się TYLKO, gdy realnie istnieje —
-            bez niego zostają same kafelki, żeby nie pokazywać pustej ramki. */}
-        {sourceSentence && (
-          <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
-            <p className="prose-justified text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
-              {sourceSentence}
-            </p>
-          </div>
-        )}
 
         {/* Ułożone zdanie: dotknięcie fragmentu zdejmuje go z powrotem. */}
         <div className="min-h-[5rem] rounded-xl border border-dashed border-white/20 bg-base-100/40 p-2.5 flex flex-wrap gap-2 items-start">
@@ -184,31 +319,6 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
     );
   }
 
-  if (type === 'multiple_choice') {
-    const options: string[] = item.options || [];
-    const selected = typeof answer === 'number' ? answer : -1;
-
-    return (
-      <div className="space-y-4">
-        <p className="prose-justified text-lg font-bold text-text-hi leading-snug">{item.question}</p>
-        <div className="space-y-2">
-          {options.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => onChange(index)}
-              className={`w-full min-h-[3.25rem] px-4 rounded-xl border text-left text-[15px] font-semibold transition-colors ${
-                selected === index
-                  ? 'bg-primary/15 border-primary/45 text-primary'
-                  : 'bg-base-100/50 border-white/12 text-content'
-              }`}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   if (exercise.type === 'fill_in_the_blank') {
     const segments = exercise.segments || [];

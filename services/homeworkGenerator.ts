@@ -2,6 +2,7 @@ import {
   ErrorCorrectionExercise,
   HomeworkType,
   LessonRecord,
+  MatchingExercise,
   MultipleChoiceExercise,
   TranslationExercise,
   WordOrderExercise,
@@ -92,11 +93,11 @@ export const HOMEWORK_TYPE_LABELS: Record<
     hint: { pl: 'Kursant tłumaczy z polskiego na angielski.', en: 'Student translates PL to EN.' },
   },
   word_order: {
-    pl: 'Ułóż zdanie',
-    en: 'Word order',
+    pl: 'Uporządkuj',
+    en: 'Unjumble',
     hint: {
-      pl: 'Rozsypane fragmenty do ułożenia. Bez klawiatury, samym dotykiem.',
-      en: 'Scrambled chunks to arrange. Tap only, no keyboard.',
+      pl: 'Przeciągnij i upuść słowa, aby ułożyć poprawne zdanie.',
+      en: 'Drag and drop the words to build the correct sentence.',
     },
   },
   multiple_choice: {
@@ -117,6 +118,14 @@ export const HOMEWORK_TYPE_LABELS: Record<
     en: 'Spot the mistakes',
     hint: { pl: 'Zdania z błędami do poprawienia.', en: 'Sentences with mistakes to correct.' },
   },
+  matching: {
+    pl: 'Dopasuj pary',
+    en: 'Matching pairs',
+    hint: {
+      pl: 'Dopasuj słowo lub frazę do jej znaczenia.',
+      en: 'Match a word or phrase to its meaning.',
+    },
+  },
 };
 
 /** Typy oferowane w kreatorze pracy domowej. */
@@ -126,6 +135,7 @@ export const OFFERED_HOMEWORK_TYPES: HomeworkType[] = [
   'word_order',
   'multiple_choice',
   'fill_in_the_blank',
+  'matching',
 ];
 
 /**
@@ -456,6 +466,44 @@ Zwróć JSON:
   return { items, modelUsed };
 };
 
+/** Dopasuj pary: słowo/fraza po angielsku do znaczenia po polsku. */
+const generateMatching = async (
+  req: HomeworkGenerationRequest,
+  sourceText: string,
+  briefing?: string
+): Promise<{ items: MatchingExercise[]; modelUsed: string }> => {
+  const pairCount = Math.max(4, Math.min(6, req.perType * 4));
+  const prompt = `${baseContext(req, sourceText, briefing)}
+
+ZADANIE:
+Wybierz ${pairCount} słów lub krótkich fraz po angielsku z powyższego materiału i podaj ich
+polskie znaczenie (proste, jednoznaczne tłumaczenie albo krótka definicja).
+
+WYMAGANIA SZCZEGÓŁOWE DLA DOPASOWYWANIA PAR:
+- Każde polskie znaczenie musi jednoznacznie wskazywać dokładnie jedno angielskie
+  słowo/frazę z listy — bez dwuznaczności, które pasowałyby do kilku par naraz.
+- Wybieraj słownictwo rzeczywiście obecne w materiale z lekcji, nie ogólne słówka.
+- Bez powtórzeń — każde angielskie słowo/fraza występuje tylko raz.
+
+Zwróć JSON:
+{"pairs":[{"left":"deadline","right":"termin (ostateczny)"},{"left":"to catch up","right":"nadrobić zaległości"}]}`;
+
+  const { parsed, modelUsed } = await askForJson(prompt);
+  const rawPairs = Array.isArray(parsed?.pairs) ? parsed.pairs : [];
+
+  const pairs = rawPairs
+    .filter((p: any) => p?.left && p?.right)
+    .map((p: any, i: number) => ({
+      id: `pair-${i}`,
+      left: String(p.left).trim(),
+      right: String(p.right).trim(),
+    }));
+
+  const items: MatchingExercise[] = pairs.length >= 2 ? [{ pairs }] : [];
+
+  return { items, modelUsed };
+};
+
 /** Znajdź błąd w zdaniu: generujemy zdania z jednym konkretnym, wiarygodnym błędem do poprawy. */
 export const generateFindErrors = async (
   req: HomeworkGenerationRequest,
@@ -574,6 +622,7 @@ export const generateHomeworkSet = async (
     word_order: () => generateWordOrder(req, sourceText, briefing),
     multiple_choice: () => generateMultipleChoice(req, sourceText, briefing),
     fill_in_the_blank: () => generateGaps(req, sourceText, briefing, level),
+    matching: () => generateMatching(req, sourceText, briefing),
   };
 
   const selected = req.types.filter((type) => runners[type]);

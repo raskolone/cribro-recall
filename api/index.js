@@ -3540,6 +3540,13 @@ function createApp() {
             score = 70;
             isCorrect = true;
           }
+        } else if (itemType === "matching") {
+          const matched = Array.isArray(rawAns) ? rawAns : [];
+          const pairs = Array.isArray(item.pairs) ? item.pairs : [];
+          studentStr = matched.map((id) => pairs.find((p) => p.id === id)).filter(Boolean).map((p) => `${p.left} = ${p.right}`).join(", ");
+          expectedStr = pairs.map((p) => `${p.left} = ${p.right}`).join(", ");
+          score = pairs.length > 0 ? Math.round(matched.length / pairs.length * 100) : 0;
+          isCorrect = score === 100;
         } else {
           studentStr = String(rawAns || "").trim();
           expectedStr = item.englishTranslation || "";

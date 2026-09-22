@@ -72,6 +72,7 @@ export const homeworkItemType = (
   if (item?.exerciseType === 'gap_from_context' || item?.textWithBlanks || item?.blanks) return 'fill_in_the_blank';
   if (item?.exerciseType === 'micro_translation') return 'translation';
   if (item?.chunks) return 'word_order';
+  if (item?.pairs) return 'matching';
   if (item?.options && typeof item?.correctIndex === 'number') return 'multiple_choice';
   return (task?.type as HomeworkType) || 'translation';
 };

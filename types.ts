@@ -758,7 +758,8 @@ export type HomeworkType =
   | 'find_errors'
   | 'fill_in_the_blank'
   | 'word_order'
-  | 'multiple_choice';
+  | 'multiple_choice'
+  | 'matching';
 
 /** Ułóż zdanie z rozsypanych fragmentów. */
 export interface WordOrderExercise {
@@ -779,6 +780,15 @@ export interface MultipleChoiceExercise {
   correctIndex: number;
   /** Dlaczego ta, a nie tamta — pokazujemy po odpowiedzi. */
   explanation?: string;
+}
+
+/** Dopasuj pary — słowo/fraza po angielsku do znaczenia po polsku. */
+export interface MatchingExercise {
+  pairs: Array<{
+    id: string;
+    left: string;
+    right: string;
+  }>;
 }
 
 export interface FillInTheBlankExercise {

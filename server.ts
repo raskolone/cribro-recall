@@ -1329,6 +1329,17 @@ export function createApp() {
             score = 70;
             isCorrect = true;
           }
+        } else if (itemType === 'matching') {
+          const matched: string[] = Array.isArray(rawAns) ? rawAns : [];
+          const pairs: Array<{ id: string; left: string; right: string }> = Array.isArray(item.pairs) ? item.pairs : [];
+          studentStr = matched
+            .map((id: string) => pairs.find((p) => p.id === id))
+            .filter(Boolean)
+            .map((p: any) => `${p.left} = ${p.right}`)
+            .join(', ');
+          expectedStr = pairs.map((p) => `${p.left} = ${p.right}`).join(', ');
+          score = pairs.length > 0 ? Math.round((matched.length / pairs.length) * 100) : 0;
+          isCorrect = score === 100;
         } else {
           // translation
           studentStr = String(rawAns || '').trim();

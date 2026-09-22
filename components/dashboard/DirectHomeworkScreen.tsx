@@ -670,10 +670,11 @@ export const DirectHomeworkScreen: React.FC = () => {
           </span>
           <span className="text-xs text-content-muted uppercase tracking-wider font-semibold">
             {exerciseType === 'translation' && 'Tłumaczenie'}
-            {exerciseType === 'word_order' && 'Rozsypanka słowna'}
+            {exerciseType === 'word_order' && 'Uporządkuj'}
             {exerciseType === 'multiple_choice' && 'Wybór opcji'}
             {exerciseType === 'fill_in_the_blank' && 'Uzupełnij luki'}
             {exerciseType === 'find_errors' && 'Popraw błąd'}
+            {exerciseType === 'matching' && 'Dopasuj pary'}
           </span>
         </div>
 
