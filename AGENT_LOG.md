@@ -5607,3 +5607,69 @@ ani ścieżek tokenowych bez logowania.
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone).
 Commit 4d60e39, wypchnięty na main.
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: Naprawić błąd "Missing or insufficient permissions" przy klikaniu
+[ Odrzuć ] na liście lekcji "Do potwierdzenia" (import z Notion) w
+AdminPanel.tsx.
+
+Diagnoza (przed zmianą, bo dotyka obszaru z sekcji 3 CLAUDE.md): zadanie
+zakładało, że przyczyną jest pole `teacherId` niepasujące do reguły
+Firestore. To założenie było błędne — dokumenty `lessonRecords`,
+`vocabularySets`, `sets`, `rejectedNotionLessons` w ogóle nie mają pola
+`teacherId` (potwierdzone w `functions/src/notion/sync.ts`). Reguły dla
+tych kolekcji w `firestore.rules` są bramkowane wyłącznie przez
+`isAdmin()` — bez odniesienia do właściciela dokumentu. `isAdmin()`
+przechodzi tylko dla 5 twardo zakodowanych e-maili LUB gdy dokument
+`users/{uid}` wołającego ma `role` w `['admin', 'admin_student',
+'teacher']`. Błąd uprawnień oznacza więc, że konto klikające [Odrzuć] nie
+spełnia żadnego z tych warunków (np. brak/inna wartość `role` na koncie
+lektora) — nie ma tu do naprawienia niedopasowania `teacherId`, bo taka
+kolumna nie istnieje.
+
+Zrobione (bez zmian w `firestore.rules` — nie było potrzeby, patrz niżej):
+- `server.ts` — nowy endpoint `POST /api/lessons/reject-pending`
+  (guardowany `requireFirebaseAdmin`), który przez Admin SDK usuwa
+  `lessonRecords/{lessonId}`, opcjonalnie `vocabularySets/{vocabularySetId}`
+  i `sets/set-lesson-{lessonId}`, oraz zapisuje wpis w
+  `rejectedNotionLessons/{rejectedId}`. Admin SDK omija reguły klienckie
+  Firestore całkowicie, więc odrzucanie przestaje zależeć od tego, czy
+  konto lektora spełnia `isAdmin()` po stronie klienta.
+- `services/lessonRecord.ts` — `rejectNotionLesson()` przepisane, żeby
+  wołać ten endpoint (wzorem `authHeader()` z `services/aiConfigService.ts`:
+  `auth.currentUser?.getIdToken()` + nagłówek `Authorization: Bearer`)
+  zamiast robić bezpośrednie zapisy klienckie przez `firebase/firestore`.
+  `deleteLessonRecord()` zostało nietknięte — nadal używane w innych
+  miejscach (zwykłe kasowanie lekcji, duplikaty) i tam działa poprawnie.
+
+Nie dokończone / do sprawdzenia:
+- Nie zweryfikowano wzrokowo w przeglądarce klikania [Odrzuć] na
+  rzeczywistych 3 oczekujących lekcjach z Notion (środowisko deweloperskie
+  nie miało pod ręką zalogowanego konta z problematyczną rolą) — zalecane
+  ręczne sprawdzenie przez Macieja.
+- `server.ts`'s `requireFirebaseAdmin` i `firestore.rules`'s `isAdmin()`
+  różnią się (server nie uznaje roli `admin_student`, którą uznają reguły)
+  — niespójność zauważona przy analizie, nie naprawiona, bo poza zakresem
+  tego zadania i nie ona powodowała opisany błąd.
+
+Decyzje architektoniczne: Nie zmieniałem `firestore.rules` mimo że
+oryginalne zlecenie tego żądało — endpoint Admin SDK w pełni rozwiązuje
+problem (Admin SDK nie podlega regułom klienckim), więc dotykanie reguł
+uprawnień (obszar wysokiego ryzyka wg CLAUDE.md sekcja 3) byłoby
+niepotrzebnym ryzykiem bez korzyści. Nie zaimplementowałem też
+dwuetapowego mechanizmu "spróbuj klienta, potem fallback backendowy" z
+oryginalnego zlecenia — uproszczone do jednej ścieżki przez backend, bo
+tam i tak trzeba by już wołać sieć, a dwie ścieżki tylko dodają
+złożoność bez korzyści dla niezawodności.
+
+Ryzyka: `firestore.rules` NIE zostały zmienione. Dotknięty
+`requireFirebaseAdmin` istniejący middleware — użyty bez zmian, tylko
+jako guard nowego endpointu, nie zmodyfikowany. Nowy endpoint w
+`server.ts` nie jest ścieżką bez logowania — wymaga poprawnego tokenu
+Firebase i przechodzi ten sam admin-check co reszta `/api/admin-users/*`.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
+npm run build (bez błędów, w tym server.cjs i api/index.js).

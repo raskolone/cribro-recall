@@ -3076,6 +3076,39 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
+  app2.post("/api/lessons/reject-pending", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { studentId, lessonId, vocabularySetId, notionPageId, topic, date, reason } = req.body;
+      if (!studentId || !lessonId) {
+        res.status(400).json({ error: "studentId i lessonId s\u0105 wymagane" });
+        return;
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const studentRef = adminDb.collection("users").doc(studentId);
+      const deleteIfExists = async (ref) => {
+        const snap = await ref.get();
+        if (snap.exists) await ref.delete();
+      };
+      await deleteIfExists(studentRef.collection("lessonRecords").doc(lessonId));
+      if (vocabularySetId) {
+        await deleteIfExists(studentRef.collection("vocabularySets").doc(vocabularySetId));
+      }
+      await deleteIfExists(adminDb.collection("sets").doc(`set-lesson-${lessonId}`));
+      const rejectedId = notionPageId || lessonId;
+      await studentRef.collection("rejectedNotionLessons").doc(rejectedId).set({
+        id: rejectedId,
+        studentId,
+        topic: (topic || "").trim() || "Lekcja bez tematu",
+        date: date || "",
+        rejectedAt: (/* @__PURE__ */ new Date()).toISOString(),
+        reason: reason || "Odrzucono przez nauczyciela (manualny przegl\u0105d)"
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
   app2.post("/api/admin-users/users/:uid/role", requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid;

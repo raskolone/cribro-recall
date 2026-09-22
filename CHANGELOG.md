@@ -3371,6 +3371,15 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513, +5 nowych), `npm run build` (przechodzi).
 - Ryzyka: brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania. Zero weryfikacji wzrokowej w przeglądarce.
 
+### AV. Naprawa: „Missing or insufficient permissions" przy odrzucaniu lekcji „Do potwierdzenia" (2026-09-22)
+- Zlecenie zakładało, że przyczyną jest pole `teacherId` niepasujące do reguły Firestore — założenie błędne. Dokumenty `lessonRecords`/`vocabularySets`/`sets`/`rejectedNotionLessons` nie mają w ogóle pola `teacherId` (potwierdzone w `functions/src/notion/sync.ts`); reguły tych kolekcji w `firestore.rules` są bramkowane wyłącznie przez `isAdmin()` (5 twardo zakodowanych e-maili LUB `role` na koncie w `['admin', 'admin_student', 'teacher']`), bez odniesienia do właściciela dokumentu. Błąd oznaczał, że konto klikające „Odrzuć" nie spełniało żadnego z tych warunków.
+- `server.ts` — nowy endpoint `POST /api/lessons/reject-pending` (`requireFirebaseAdmin`), który przez Admin SDK usuwa `lessonRecords/{lessonId}`, opcjonalnie `vocabularySets/{vocabularySetId}` i `sets/set-lesson-{lessonId}`, i zapisuje wpis w `rejectedNotionLessons/{rejectedId}`. Admin SDK omija reguły klienckie Firestore całkowicie.
+- `services/lessonRecord.ts` — `rejectNotionLesson()` przepisane na wywołanie tego endpointu (wzorem `authHeader()` z `services/aiConfigService.ts`) zamiast bezpośrednich zapisów klienckich. `deleteLessonRecord()` (zwykłe kasowanie lekcji, duplikaty) pozostało bez zmian.
+- Świadomie pominięte: zmiana `firestore.rules` (zlecona jako „Krok A") — niepotrzebna, bo endpoint Admin SDK w pełni rozwiązuje problem bez dotykania obszaru wysokiego ryzyka z sekcji 3 `CLAUDE.md`. Pominięty też dwuetapowy mechanizm „spróbuj klienta, potem fallback backendowy" — uproszczone do jednej ścieżki przez backend.
+- Zauważona przy okazji niespójność (nienaprawiona, poza zakresem): `requireFirebaseAdmin` w `server.ts` nie uznaje roli `admin_student`, którą uznają `firestore.rules`.
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513), `npm run build` (przechodzi, w tym `server.cjs`/`api/index.js`). Zero weryfikacji na koncie z rzeczywiście problematyczną rolą — zalecane ręczne sprawdzenie.
+- Ryzyka: `firestore.rules` NIE zmienione. Nowy endpoint wymaga poprawnego tokenu Firebase i przechodzi ten sam admin-check co reszta `/api/admin-users/*` — nie jest ścieżką bez logowania.
+
 ---
 
 

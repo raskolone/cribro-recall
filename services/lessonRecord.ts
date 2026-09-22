@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { auth, db } from '../firebase';
 import { doc, setDoc, collection, getDocs, getDoc, query, orderBy, where, serverTimestamp, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { LessonRecord, RejectedNotionItem, VocabularySet } from '../types';
 import { findExistingDuplicate } from '../utils/lessonDuplicates';
@@ -486,37 +486,43 @@ export async function deleteLessonRecord(studentId: string, lessonRecord: Lesson
 }
 
 /**
- * Odrzuca błędny/niechciany wpis z Notion:
- * 1. Usuwa go z aktywnych lekcji kursanta (wraz z ewentualnymi fiszkami/zestawami)
- * 2. Zapisuje informację o odrzuceniu w subkolekcji `rejectedNotionLessons`,
- *    dzięki czemu kolejne synchronizacje Notion nie zaimportują go ponownie.
+ * Odrzuca błędny/niechciany wpis z Notion: usuwa go z aktywnych lekcji
+ * kursanta (wraz z ewentualnymi fiszkami/zestawami) i zapisuje informację o
+ * odrzuceniu w subkolekcji `rejectedNotionLessons`, dzięki czemu kolejne
+ * synchronizacje Notion nie zaimportują go ponownie.
+ *
+ * Idzie przez `/api/lessons/reject-pending` (Admin SDK po stronie serwera),
+ * a nie bezpośrednio przez klienckie zapisy Firestore — te ostatnie potrafiły
+ * kończyć się „Missing or insufficient permissions", jeśli konto lektora nie
+ * spełniało warunku isAdmin() z firestore.rules (np. brak/inna rola na
+ * koncie), mimo że ten sam lektor ma dostęp do panelu odrzucania lekcji.
  */
 export async function rejectNotionLesson(
   studentId: string,
   lessonRecord: LessonRecord,
   reason: string = 'Odrzucono przez nauczyciela (manualny przegląd)'
 ): Promise<void> {
-  // 1. Usuwamy rekord z bazy
-  await deleteLessonRecord(studentId, lessonRecord);
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch('/api/lessons/reject-pending', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({
+      studentId,
+      lessonId: lessonRecord.id,
+      vocabularySetId: lessonRecord.vocabularySetId,
+      notionPageId: lessonRecord.notionPageId,
+      topic: lessonRecord.topic,
+      date: lessonRecord.date,
+      reason,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Nie udało się odrzucić lekcji.');
 
-  // 2. Zapisujemy wpis na czarnej liście odrzuconych Notion dla tego kursanta
-  const rejectedId = lessonRecord.notionPageId || lessonRecord.id;
-  const rejectedRef = doc(db, `users/${studentId}/rejectedNotionLessons/${rejectedId}`);
-
-  // `topic` jest polem wymaganym przez regułę Firestore (min. 1 znak) — pusty
-  // wpis (np. lekcja bez wpisanego tematu) odbijałby się od zapisu z tym samym
-  // „Missing or insufficient permissions", co brak wymaganego pola daje w
-  // odpowiedzi klienta.
-  const rejectedItem: RejectedNotionItem = {
-    id: rejectedId,
-    studentId,
-    topic: lessonRecord.topic?.trim() || 'Lekcja bez tematu',
-    date: lessonRecord.date,
-    rejectedAt: new Date().toISOString(),
-    reason,
-  };
-
-  await setDoc(rejectedRef, rejectedItem);
+  invalidateLessonRecordsCache(studentId);
 }
 
 /**

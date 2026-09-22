@@ -699,6 +699,49 @@ export function createApp() {
     }
   });
 
+  // Odrzucenie lekcji "Do potwierdzenia" (import z Notion) przez Admin SDK —
+  // omija reguły klienckie Firestore, które przy odrzucaniu potrafiły rzucać
+  // "Missing or insufficient permissions", jeśli konto lektora nie spełniało
+  // warunku isAdmin() w firestore.rules (np. brak roli na koncie).
+  app.post('/api/lessons/reject-pending', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { studentId, lessonId, vocabularySetId, notionPageId, topic, date, reason } = req.body;
+      if (!studentId || !lessonId) {
+        res.status(400).json({ error: 'studentId i lessonId są wymagane' });
+        return;
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+      const studentRef = adminDb.collection('users').doc(studentId);
+
+      const deleteIfExists = async (ref: FirebaseFirestore.DocumentReference) => {
+        const snap = await ref.get();
+        if (snap.exists) await ref.delete();
+      };
+
+      await deleteIfExists(studentRef.collection('lessonRecords').doc(lessonId));
+      if (vocabularySetId) {
+        await deleteIfExists(studentRef.collection('vocabularySets').doc(vocabularySetId));
+      }
+      await deleteIfExists(adminDb.collection('sets').doc(`set-lesson-${lessonId}`));
+
+      const rejectedId = notionPageId || lessonId;
+      await studentRef.collection('rejectedNotionLessons').doc(rejectedId).set({
+        id: rejectedId,
+        studentId,
+        topic: (topic || '').trim() || 'Lekcja bez tematu',
+        date: date || '',
+        rejectedAt: new Date().toISOString(),
+        reason: reason || 'Odrzucono przez nauczyciela (manualny przegląd)',
+      });
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
   app.post('/api/admin-users/users/:uid/role', requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid as string;
