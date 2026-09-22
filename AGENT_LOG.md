@@ -5574,3 +5574,36 @@ tokenowych bez logowania. Nowy endpoint używa istniejącego
 `requireFirebaseAdmin` bez modyfikacji tej funkcji.
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513, +5 nowych),
 npm run build (przechodzi, dist/ + server.cjs + api/index.js zbudowane).
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: Usunąć z panelu lektora (AdminPanel.tsx) ostatnią pozostałość po
+starym systemie loginu tekstowego — blok "Nazwa konta / Login (username)"
+i przycisk "Zmień login".
+
+Zrobione: Usunięty blok UI wraz z inline-handlerem edycji `username` w
+Firestore przez `prompt()` (components/admin/AdminPanel.tsx, karta "Dane
+podstawowe i identyfikacja"). Usunięty nieużywany już import ikony
+`Edit2`. Login do aplikacji nadal opiera się na e-mailu (sekcja
+Mailing, karta "Zaproszenie do aplikacji" z wysyłką loginu/hasła/linku —
+bez zmian, już istniała).
+
+Nie dokończone / do sprawdzenia: Brak — zmiana punktowa, bez zmian
+wizualnych poza usunięciem jednego bloku. Nie sprawdzone wzrokowo w
+przeglądarce (tylko tsc + testy), zgodnie z resztą nieprzejrzanych
+wzrokowo UI w tej sesji projektu.
+
+Decyzje architektoniczne: Pole `username` w dokumentach Firestore
+pozostaje nietknięte (brak migracji) — zgodnie z poleceniem, UI po
+prostu go już nie czyta ani nie wyświetla w tym miejscu. Nie dodawano
+nowego przycisku "Wyślij link resetujący hasło", bo równoważna akcja
+("Wyślij zaproszenie" z loginem/hasłem/linkiem) już istniała w karcie
+Mailing tuż pod usuniętym blokiem.
+
+Ryzyka: Brak — nie dotknięto firestore.rules, middleware autoryzacji
+ani ścieżek tokenowych bez logowania.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone).
+Commit 4d60e39, wypchnięty na main.
