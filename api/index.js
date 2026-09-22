@@ -5998,7 +5998,7 @@ Na podstawie podanej bazy kursant\xF3w dopasuj studentId oraz studentIds (gdy le
 - studentIds (array of strings, wszyscy kursanci tej lekcji)
 - date (string, YYYY-MM-DD \u2014 wy\u0142\u0105cznie je\u015Bli data pad\u0142a w zapisie; inaczej puste)
 - lessonTopic (string, zwi\u0119z\u0142e has\u0142o tematu, maksymalnie 50 znak\xF3w, bez daty)
-- revisionNotes (string, BLOK 1 \u201ELekcja w skr\xF3cie": przebieg lekcji po polsku, 4-8 zda\u0144 \u2014 co \u0107wiczyli\u015Bcie i w jakiej kolejno\u015Bci)
+- revisionNotes (string, BLOK 1 \u201ELekcja w skr\xF3cie": maksymalnie 3-4 konkretne punkty w stronie biernej/bezosobowej, ka\u017Cdy w osobnej linii. ZAKAZANE formy gaw\u0119dziarskie/narracyjne \u2014 nigdy \u201ELektor wprowadzi\u0142...", \u201EAdam opowiada\u0142 o...", \u201EKursant \u0107wiczy\u0142...". Zamiast tego np.: \u201EWprowadzono i prze\u0107wiczono r\xF3\u017Cnice mi\u0119dzy czasem Present Simple a Present Continuous w kontek\u015Bcie pracy.", \u201ESkupiono si\u0119 na eliminacji b\u0142\u0119du kalki 'in this week' oraz poprawnej konstrukcji 'go running'.", \u201EPrzeanalizowano s\u0142ownictwo bran\u017Cowe zwi\u0105zane z logistyk\u0105 i procedur\u0105 FIFO.")
 - vocabularyText (string, BLOK 2 \u201EKey Language": ka\u017Cde s\u0142\xF3wko i zwrot w osobnej linii, \u015Bci\u015Ble "angielskie - polskie". Bez punktor\xF3w, bez markdown, bez numeracji.)
 - corrections (string, BLOK 2b \u201EKorekty i wymowa": poprawki w formacie "\u274C to, co powiedzia\u0142 kursant \u2192 \u2705 poprawna wersja", po jednej na lini\u0119, z kr\xF3tkim wyja\u015Bnieniem po polsku, gdy jest potrzebne. Tu trafiaj\u0105 te\u017C uwagi o wymowie.)
 - nextLessonPlan (string, BLOK 4 \u201ENext Lesson": ustalenia i najlepsze tematy na kolejne zaj\u0119cia, po polsku)
@@ -6023,7 +6023,7 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
 - studentId (string, ID g\u0142\xF3wnego wybranego kursanta z Bazy Kursant\xF3w, je\u015Bli nie potrafisz dopasowa\u0107 zostaw puste)
 - studentIds (array of strings, Lista ID wszystkich kursant\xF3w z Bazy Kursant\xF3w, je\u015Bli lekcja dotyczy\u0142a grupy lub kilku os\xF3b)
 - lessonTopic (string, Kr\xF3tkie, jednozdaniowe podsumowanie tematu lekcji na podstawie revision notes. Maksymalnie 50 znak\xF3w, bez daty, zwi\u0119z\u0142e has\u0142o bez wielocz\u0119\u015Bciowych zda\u0144.)
-- revisionNotes (string, Kr\xF3tkie podsumowanie lekcji w stronie biernej po polsku, 3-6 zda\u0144)
+- revisionNotes (string, BLOK 1 \u201ELekcja w skr\xF3cie": maksymalnie 3-4 konkretne punkty w stronie biernej/bezosobowej, ka\u017Cdy w osobnej linii. ZAKAZANE formy gaw\u0119dziarskie/narracyjne \u2014 nigdy \u201ELektor wprowadzi\u0142...", \u201EAdam opowiada\u0142 o...", \u201EKursant \u0107wiczy\u0142...". Zamiast tego np.: \u201EWprowadzono i prze\u0107wiczono r\xF3\u017Cnice mi\u0119dzy czasem Present Simple a Present Continuous w kontek\u015Bcie pracy.", \u201ESkupiono si\u0119 na eliminacji b\u0142\u0119du kalki 'in this week' oraz poprawnej konstrukcji 'go running'.", \u201EPrzeanalizowano s\u0142ownictwo bran\u017Cowe zwi\u0105zane z logistyk\u0105 i procedur\u0105 FIFO.")
 - vocabularyText (string, Wyodr\u0119bnij WSZYSTKIE s\u0142\xF3wka, zwroty i idiomy, kt\xF3re pojawiaj\u0105 si\u0119 w notatkach z lekcji. Nawet je\u015Bli s\u0105 zapisane ci\u0105giem (nie w kolumnie) lub wplecione w tekst, wy\u0142uskaj DOK\u0141ADNIE KA\u017BDE z nich. U\u0142\xF3\u017C je \u015Bci\u015Ble w formacie: "s\u0142owo_angielskie - polskie_t\u0142umaczenie" w osobnych linijkach. Uwa\u017Caj, aby nie pomin\u0105\u0107 \u017Cadnego s\u0142owa. Do not include markdown formatting or bullet points.)
 - studentSpeaking (string, Kr\xF3tkie memory o kursancie po polsku, 5-6 zda\u0144 neutralnie o czym m\xF3wi\u0142, styl itp.)
 - thingsToImprove (string, 2-3 obszary wymagaj\u0105ce poprawy z diagnoz\u0105 i przyk\u0142adami, po polsku)
@@ -6040,12 +6040,14 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
           studentSpeaking: { type: Type3.STRING },
           thingsToImprove: { type: Type3.STRING },
           suggestedFollowUp: { type: Type3.STRING },
-          /* Bloki 2b-4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
-             pola są opcjonalne, więc schemat jest jeden dla obu trybów. */
+          /* Blok 2b i 4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
+             pola są opcjonalne, więc schemat jest jeden dla obu trybów.
+             Świadomie BEZ homeworkText/homeworkAnswerKey (dawny Blok 3):
+             praca domowa żyje wyłącznie w module ćwiczeń, nie w notatce
+             z lekcji — nawet jeśli transkrypcja ją zawiera, ma być
+             pominięta. */
           date: { type: Type3.STRING },
           corrections: { type: Type3.STRING },
-          homeworkText: { type: Type3.STRING },
-          homeworkAnswerKey: { type: Type3.STRING },
           nextLessonPlan: { type: Type3.STRING }
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]

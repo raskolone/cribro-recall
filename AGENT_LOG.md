@@ -5949,3 +5949,61 @@ tokenowych bez logowania.
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
 npm run build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: Importer Lekcji AI (strona bierna, "Lekcja w skrócie") i
+zunifikowany widok historii lekcji (toggle accordions) kursant/lektor,
+trwałe usunięcie Bloku 3 (Homework) z historii dla obu ról.
+
+Zrobione:
+- `utils/transcriptLesson.ts` — TRANSCRIPT_SYSTEM_INSTRUCTION i
+  buildTranscriptLessonPrompt: BLOK 1 "Lekcja w skrócie" (pola
+  summary/summaryPoints) wymuszony na max 3-4 punkty w stronie
+  biernej/bezosobowej, jawny zakaz form gawędziarskich. parseTranscriptLesson
+  już nie czyta homework/answerKey z odpowiedzi modelu (defensywnie
+  ignorowane, nawet jeśli model je zwróci).
+- `server.ts` (`/api/gemini/lesson-summary`, ok. linii 4353-4435) — ta sama
+  reguła stylistyczna w obu wariantach promptu (transcriptInstruction,
+  sysInstruction); homeworkText/homeworkAnswerKey usunięte z responseSchema.
+  Bulk-import `/api/gemini/import-lessons-batch` (ok. linii 3754-3812)
+  świadomie NIETKNIĘTY — inny endpoint, inny cel, poza zakresem.
+- `components/dashboard/LessonDetails.tsx` (widok kursanta) przepisany na
+  ten sam wzorzec zwijanych akordeonów (kolorowe pigułki BLOK N,
+  ChevronDown/Up, domyślnie zwinięte) co `CascadingLessonDetails.tsx`
+  (widok lektora). Dodana sekcja Learning Curve (fioletowa), wcześniej jej
+  tam w ogóle nie było — gating przez wewnętrzny `useAuth()` (isTeacher),
+  tak jak już istniejący gating dla Next Lesson.
+- `components/admin/CascadingLessonDetails.tsx` — cały akordeon "BLOK 3 —
+  Homework — Cribro Habit" usunięty (wraz z propem onGenerateHomework i
+  stanem isAnswerKeyOpen). Zaktualizowane wywołania w `AdminPanel.tsx`
+  (linia ok. 5511) i `TeacherLessonHistoryView.tsx` (linia ok. 978) — usunięte
+  przekazywanie onGenerateHomework/onGenerateHomeworkFromLesson (teraz
+  martwy prop, bo przycisk generowania homeworku istniał tylko wewnątrz
+  usuniętego Bloku 3 — capability nie zginęła: te same akcje w wierszach
+  tabeli AdminPanel.tsx, linie ok. 3502/3626, wołają
+  handleGenerateHomeworkFromLesson bezpośrednio, bez tego propa).
+- `pl.json`/`en.json` — wartość klucza i18n "Revision Notes" zmieniona na
+  "Lekcja w skrócie (Lesson summary)" / "Lesson summary (Lekcja w
+  skrócie)" (sam klucz nietknięty, żeby nie ruszać i18n.t(...)).
+
+Nie dokończone / do sprawdzenia: Zero weryfikacji wzrokowej w przeglądarce
+(brak dostępu w tej sesji) — w szczególności wygląd nowego akordeonu
+kursanta na obu motywach i zachowanie domyślnie-zwiniętych sekcji na
+mobile (StudentLessonPanel.tsx, LessonHistoryMonths.tsx).
+
+Decyzje architektoniczne: `components/dashboard/LessonHistory.tsx` i
+`components/dashboard/StudentLessonHistory.tsx` NIE dotknięte — sprawdzone
+grepem po grafie importów z `Dashboard.tsx`, żaden z nich nie jest
+faktycznie podłączony (martwy kod), mimo że wcześniejszy wpis w tym logu
+(AW w CHANGELOG.md, 2026-09-22) sugerował, że StudentLessonHistory.tsx są
+"widoczne kursantowi" — to się nie potwierdziło. Jeśli kiedyś zostaną
+podłączone, będą wymagały tej samej rewizji co LessonDetails.tsx.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach
+tokenowych bez logowania.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
+npm run build (przechodzi, w tym server.cjs i api/index.js).

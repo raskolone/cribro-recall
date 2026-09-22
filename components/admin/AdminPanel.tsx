@@ -2637,9 +2637,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             onEditLesson={(_studentId, lesson) => {
               openLessonRecordModal('edit', lesson);
             }}
-            onGenerateHomeworkFromLesson={(_studentId, lesson) => {
-              handleGenerateHomeworkFromLesson(lesson);
-            }}
             onConfirmLesson={(studentId, lesson) => handleConfirmLessonDirectly(lesson, undefined, studentId)}
             onRejectLesson={(studentId, lesson) => handleRejectNotionLesson(lesson, studentId)}
             onUpdateLesson={handleUpdateLessonRecordForStudent}
@@ -5513,7 +5510,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       studentName={selectedUser ? `${selectedUser.firstName || ''} ${selectedUser.lastName || selectedUser.username}`.trim() : undefined}
                       studentLevel={selectedUser?.level}
                       onLinkScenario={handleLinkScenarioToRecord}
-                      onGenerateHomework={() => handleGenerateHomeworkFromLesson(viewingRecord)}
                       onEdit={() => openLessonRecordModal('edit', viewingRecord)}
                       onDelete={() => handleDeleteLessonRecord(viewingRecord)}
                       onClose={() => setShowLessonRecordModal(false)}

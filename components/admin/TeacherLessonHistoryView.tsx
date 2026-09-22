@@ -53,7 +53,6 @@ interface TeacherLessonHistoryViewProps {
   onOpenPresentation?: (lesson: LessonRecord, student?: User) => void;
   onDeleteLesson?: (studentId: string, lesson: LessonRecord) => Promise<void>;
   onEditLesson?: (studentId: string, lesson: LessonRecord) => void;
-  onGenerateHomeworkFromLesson?: (studentId: string, lesson: LessonRecord) => void;
   onConfirmLesson?: (studentId: string, lesson: LessonRecord) => void | Promise<void>;
   onRejectLesson?: (studentId: string, lesson: LessonRecord) => void | Promise<void>;
   onUpdateLesson?: (studentId: string, lesson: LessonRecord, updates: Partial<LessonRecord>) => Promise<void>;
@@ -75,7 +74,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   onOpenPresentation,
   onDeleteLesson,
   onEditLesson,
-  onGenerateHomeworkFromLesson,
   onConfirmLesson,
   onRejectLesson,
   onUpdateLesson,
@@ -979,14 +977,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
                     record={previewLesson}
                     studentName={student ? formatStudentDisplayName(student) : undefined}
                     studentLevel={student?.level}
-                    onGenerateHomework={
-                      onGenerateHomeworkFromLesson
-                        ? () => {
-                            setPreviewLesson(null);
-                            onGenerateHomeworkFromLesson(studentId, previewLesson);
-                          }
-                        : undefined
-                    }
                     onConfirmLesson={
                       onConfirmLesson ? () => onConfirmLesson(studentId, previewLesson) : undefined
                     }

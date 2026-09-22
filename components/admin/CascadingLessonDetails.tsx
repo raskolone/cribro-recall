@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import { 
-  Sparkles, BookOpen, Clock, FileText, CheckCircle2, 
-  ChevronDown, ChevronUp, Link as LinkIcon, ExternalLink, 
+import {
+  Sparkles, BookOpen, Clock, FileText, CheckCircle2,
+  ChevronDown, ChevronUp, Link as LinkIcon, ExternalLink,
   User as UserIcon, MessageSquare, AlertTriangle, Target, Plus, Eye,
-  KeyRound, ListChecks, Activity, Wand2, ArrowRight
+  Activity, Wand2, ArrowRight
 } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { LessonRecord, GeneratedLessonScenario } from '../../types';
-import { extractLessonBlocks, isRecordNeedsCleanup, migrateRecordToBlocks, parseNumberedItems, isLessonPendingConfirmation } from '../../utils/lessonBlocks';
+import { extractLessonBlocks, isRecordNeedsCleanup, migrateRecordToBlocks, isLessonPendingConfirmation } from '../../utils/lessonBlocks';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import TTSButtons from '../flashcards/TTSButtons';
@@ -19,7 +19,6 @@ interface CascadingLessonDetailsProps {
   /** Poziom kursanta z profilu — zmienia to, co model uzna za błąd. */
   studentLevel?: string;
   onLinkScenario?: (scenario: GeneratedLessonScenario) => Promise<void>;
-  onGenerateHomework?: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
   onClose?: () => void;
@@ -32,7 +31,6 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
   record,
   studentName,
   studentLevel,
-  onGenerateHomework,
   onEdit,
   onDelete,
   onClose,
@@ -40,7 +38,6 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
   onConfirmLesson,
   onRejectLesson,
 }) => {
-  const [isAnswerKeyOpen, setIsAnswerKeyOpen] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
   const [cleanSuccess, setCleanSuccess] = useState(false);
 
@@ -61,13 +58,11 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
   const [expandedSections, setExpandedSections] = useState<{
     block1: boolean;
     block2: boolean;
-    block3: boolean;
     block4: boolean;
     learningCurve: boolean;
   }>({
     block1: false,
     block2: false,
-    block3: false,
     block4: false,
     learningCurve: false
   });
@@ -120,8 +115,6 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
       }
       return { id: idx, term, def, raw: line };
     });
-
-  const parsedHwSentences = parseNumberedItems(blocks.homework);
 
   return (
     <div className="space-y-4">
@@ -296,98 +289,6 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
                 <div className="p-3.5 rounded-xl bg-base-300/60 border border-emerald-500/20 text-xs text-content leading-relaxed whitespace-pre-wrap">
                   <Markdown>{blocks.corrections}</Markdown>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* 3. BLOK 3: HOMEWORK — CRIBRO HABIT (Amber/Brown Accordion / Badge) */}
-      <div className="rounded-2xl border border-amber-500/25 bg-amber-950/15 overflow-hidden shadow-sm transition-all">
-        <div 
-          onClick={() => toggleSection('block3')}
-          className="p-3.5 bg-gradient-to-r from-amber-900/40 via-amber-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-amber-900/50 transition-colors select-none border-b border-amber-500/15"
-        >
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
-              <ListChecks size={16} />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  BLOK 3
-                </span>
-                <h4 className="font-extrabold text-sm text-white">Homework — Cribro Habit</h4>
-              </div>
-              <p className="text-[11px] text-amber-200/70">Zadania domowe z lekcji, zdania do tłumaczenia i klucz odpowiedzi</p>
-            </div>
-          </div>
-          <div className="text-amber-300">
-            {expandedSections.block3 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-          </div>
-        </div>
-
-        {expandedSections.block3 && (
-          <div className="p-4 bg-amber-950/10 space-y-3.5">
-            {blocks.homework ? (
-              <div className="space-y-3">
-                <div className="p-3.5 rounded-xl bg-base-300/80 border border-amber-500/20 space-y-2">
-                  <div className="text-xs font-bold text-amber-300 flex items-center justify-between gap-2">
-                    <span>Zdania do przetłumaczenia / Zadanie:</span>
-                    {onGenerateHomework && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onGenerateHomework();
-                        }}
-                        className="text-[11px] text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
-                      >
-                        <Sparkles size={12} /> Przekształć w zadanie Cribro
-                      </button>
-                    )}
-                  </div>
-                  <div className="text-xs text-content whitespace-pre-wrap leading-relaxed space-y-1">
-                    <Markdown>{blocks.homework}</Markdown>
-                  </div>
-                </div>
-
-                {/* Answer key w zwijanym akordeonie, by nie zdradzać odpowiedzi */}
-                {blocks.answerKey && (
-                  <div className="rounded-xl border border-white/10 bg-base-300/50 overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setIsAnswerKeyOpen(v => !v)}
-                      className="w-full p-2.5 flex items-center justify-between text-xs font-bold text-content-muted hover:text-text-hi transition-colors cursor-pointer select-none"
-                    >
-                      <span className="flex items-center gap-1.5">
-                        <KeyRound size={13} className="text-amber-400" />
-                        Klucz odpowiedzi (Answer Key)
-                      </span>
-                      <span>{isAnswerKeyOpen ? 'Ukryj odpowiedzi ▲' : 'Pokaż odpowiedzi ▼'}</span>
-                    </button>
-                    {isAnswerKeyOpen && (
-                      <div className="p-3 border-t border-white/5 bg-base-200/50 text-xs text-content leading-relaxed whitespace-pre-wrap">
-                        <Markdown>{blocks.answerKey}</Markdown>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-base-300/40 border border-white/5 text-center text-xs text-content-muted">
-                Brak zadań domowych przypisanych bezpośrednio w notatkach lekcji.
-                {onGenerateHomework && (
-                  <div className="mt-2">
-                    <Button
-                      size="sm"
-                      variant="primary"
-                      onClick={onGenerateHomework}
-                      className="text-xs font-bold mx-auto flex items-center gap-1.5"
-                    >
-                      <Sparkles size={13} /> Wygeneruj zadanie domowe AI z tej lekcji
-                    </Button>
-                  </div>
-                )}
               </div>
             )}
           </div>

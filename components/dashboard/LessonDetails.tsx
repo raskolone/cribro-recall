@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, BookOpen, ChevronDown, KeyRound, ListChecks, Loader2, Sparkles, Tag, Target } from 'lucide-react';
+import {
+  AlertCircle, BookOpen, ChevronDown, ChevronUp, Loader2, Tag, Target, Activity,
+} from 'lucide-react';
 import Markdown from 'react-markdown';
 import { LessonRecord } from '../../types';
 import { useLanguage } from '../../context/LanguageContext';
@@ -46,7 +48,6 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
   const [vocabulary, setVocabulary] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showFullSummary, setShowFullSummary] = useState(false);
-  const [showAnswerKey, setShowAnswerKey] = useState(false);
 
   // Normalizujemy bloki lekcji (działa bezbłędnie dla starych i nowych wpisów)
   const blocks = extractLessonBlocks(lesson);
@@ -85,13 +86,15 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
     language === 'pl'
       ? {
           block1Title: 'Lekcja w skrócie',
-          block2Title: 'Słownictwo & Wymowa',
-          correctionsTitle: 'Do poprawy & Wskazówki',
-          homeworkTitle: 'Zadania z lekcji (Homework)',
-          nextLessonTitle: 'Na kolejnej lekcji',
-          answerKey: 'Klucz odpowiedzi',
-          showAnswerKey: 'Pokaż klucz odpowiedzi ▼',
-          hideAnswerKey: 'Ukryj klucz odpowiedzi ▲',
+          block1Desc: 'Zwięzłe podsumowanie przebiegu lekcji',
+          block2Title: 'Key Language & Corrections',
+          block2Desc: 'Kluczowe słownictwo, wymowa i gramatyka',
+          correctionsTitle: 'Things to Improve',
+          correctionsDesc: 'Błędy do poprawy i wskazówki językowe',
+          nextLessonTitle: 'Next Lesson',
+          nextLessonDesc: 'Plany, tematyka i cele na kolejne spotkanie',
+          learningCurveTitle: 'Learning Curve',
+          learningCurveDesc: 'O czym mówił kursant, obserwacje dotyczące płynności i postępów',
           more: 'Pokaż całość',
           less: 'Zwiń',
           empty: 'Lektor nie dodał jeszcze notatek do tej lekcji.',
@@ -100,14 +103,16 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
           aiSentences: 'Trening zdań',
         }
       : {
-          block1Title: 'Lesson Overview',
-          block2Title: 'Vocabulary & Pronunciation',
-          correctionsTitle: 'To Work On & Notes',
-          homeworkTitle: 'Homework Tasks',
+          block1Title: 'Lesson Summary',
+          block1Desc: 'Concise overview of what the lesson covered',
+          block2Title: 'Key Language & Corrections',
+          block2Desc: 'Key vocabulary, pronunciation and grammar',
+          correctionsTitle: 'Things to Improve',
+          correctionsDesc: 'Mistakes to work on and language notes',
           nextLessonTitle: 'Next Lesson',
-          answerKey: 'Answer Key',
-          showAnswerKey: 'Show answer key ▼',
-          hideAnswerKey: 'Hide answer key ▲',
+          nextLessonDesc: 'Plans, topics and goals for the next meeting',
+          learningCurveTitle: 'Learning Curve',
+          learningCurveDesc: "What the student talked about, fluency and progress notes",
           more: 'Show all',
           less: 'Collapse',
           empty: 'Your teacher has not added notes to this lesson yet.',
@@ -121,161 +126,241 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
   const summary = firstSentences(blocks.summary, 3);
   const items = vocabulary.map(parseVocabLine).filter((item) => item.word.length > 0);
   const hasAnything =
-    Boolean(blocks.summary) ||
-    items.length > 0 ||
-    Boolean(blocks.corrections) ||
-    (isTeacher && Boolean(blocks.homework));
+    Boolean(blocks.summary) || items.length > 0 || Boolean(blocks.corrections);
 
-  const headingClass =
-    'text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted';
+  // Sekcje domyślnie zwinięte — dokładnie ten sam wzorzec co w akordeonie
+  // lektora (CascadingLessonDetails): kursant/lektor sam rozwija to, co go
+  // interesuje, zamiast przewijać ścianę zawsze-rozwiniętego tekstu.
+  const [expandedSections, setExpandedSections] = useState<{
+    block1: boolean;
+    block2: boolean;
+    corrections: boolean;
+    nextLesson: boolean;
+    learningCurve: boolean;
+  }>({
+    block1: false,
+    block2: false,
+    corrections: false,
+    nextLesson: false,
+    learningCurve: false,
+  });
+
+  const toggleSection = (section: keyof typeof expandedSections) => {
+    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  };
 
   return (
-    <div className={compact ? 'space-y-4' : 'space-y-5'}>
+    <div className={compact ? 'space-y-3' : 'space-y-4'}>
       {!hasAnything && !isLoading && <p className="text-sm text-content-muted">{L.empty}</p>}
 
       {/* BLOK 1: Lekcja w skrócie */}
       {blocks.summary && (
-        <section className="space-y-2 p-3.5 rounded-2xl bg-sky-950/20 border border-sky-500/20">
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-sky-500/20 text-sky-300 border border-sky-500/30">
-              BLOK 1
-            </span>
-            <h4 className="text-xs font-bold text-sky-300 flex items-center gap-1.5">
-              <BookOpen size={13} />
-              {L.block1Title}
-            </h4>
-          </div>
-          <div className="prose-justified text-[15px] sm:text-sm text-content leading-relaxed">
-            <Markdown>{showFullSummary ? blocks.summary : summary.short}</Markdown>
-          </div>
-          {summary.truncated && (
-            <button
-              onClick={() => setShowFullSummary((v) => !v)}
-              className="inline-flex items-center gap-1 min-h-[2.5rem] text-xs font-bold text-primary hover:underline cursor-pointer"
-            >
-              {showFullSummary ? L.less : L.more}
-              <ChevronDown
-                size={13}
-                className={`transition-transform ${showFullSummary ? 'rotate-180' : ''}`}
-              />
-            </button>
-          )}
-        </section>
-      )}
-
-      {/* BLOK 2a: Słownictwo */}
-      <section className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className={`${headingClass} flex items-center gap-1.5 text-emerald-400`}>
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              BLOK 2
-            </span>
-            <Tag size={12} className="text-emerald-400" />
-            {L.block2Title}
-            {items.length > 0 && (
-              <span className="text-emerald-300/80">· {L.count(items.length)}</span>
-            )}
-          </h4>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center gap-2 py-2 text-xs text-content-muted">
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          </div>
-        ) : (
-          items.length > 0 && (
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-              {items.map((item, index) => (
-                <li
-                  key={`${index}-${item.word}`}
-                  className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-base-100/50 border border-white/[0.07] hover:border-emerald-500/30 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <span className="block font-semibold text-white text-[15px] sm:text-sm leading-snug">
-                      {item.word}
-                    </span>
-                    {item.translation && (
-                      <span className="block text-xs text-content-muted leading-snug mt-0.5">
-                        {item.translation}
-                      </span>
-                    )}
-                  </div>
-                  <TTSButtons text={item.word} />
-                </li>
-              ))}
-            </ul>
-          )
-        )}
-      </section>
-
-      {/* BLOK 2b: Korekty językowe i błędy */}
-      {blocks.corrections && (
-        <section className="rounded-2xl bg-amber-950/15 border border-amber-500/20 p-3.5 space-y-2">
-          <h4 className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400">
-            <AlertCircle size={13} />
-            {L.correctionsTitle}
-          </h4>
-          <div className="prose-justified text-[14px] sm:text-xs text-content leading-relaxed">
-            <Markdown>{blocks.corrections}</Markdown>
-          </div>
-        </section>
-      )}
-
-      {/* BLOK 3: Zadania z lekcji (Homework) — widoczne TYLKO dla lektora/admina jako robocze propozycje do wykorzystania w module Homework */}
-      {isTeacher && blocks.homework && (
-        <section className="rounded-2xl bg-base-200/60 border border-amber-500/30 p-3.5 space-y-2.5">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-500/20 text-warn border border-amber-500/30">
-                BLOK 3
-              </span>
-              <h4 className="text-xs font-bold text-warn flex items-center gap-1.5">
-                <ListChecks size={14} />
-                {L.homeworkTitle}
-              </h4>
+        <div className="rounded-2xl border border-sky-500/20 bg-sky-950/15 overflow-hidden shadow-sm transition-all">
+          <div
+            onClick={() => toggleSection('block1')}
+            className="p-3.5 bg-gradient-to-r from-sky-900/40 via-sky-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-sky-900/50 transition-colors select-none border-b border-sky-500/15"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0">
+                <BookOpen size={16} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                    BLOK 1
+                  </span>
+                  <h4 className="font-extrabold text-sm text-white">{L.block1Title}</h4>
+                </div>
+                <p className="text-[11px] text-sky-200/70">{L.block1Desc}</p>
+              </div>
+            </div>
+            <div className="text-sky-300">
+              {expandedSections.block1 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </div>
           </div>
-          <div className="text-xs text-content leading-relaxed whitespace-pre-wrap">
-            <Markdown>{blocks.homework}</Markdown>
-          </div>
-
-          {/* Klucz odpowiedzi (Answer Key) */}
-          {blocks.answerKey && (
-            <div className="pt-2 border-t border-white/5">
-              <button
-                type="button"
-                onClick={() => setShowAnswerKey((v) => !v)}
-                className="text-[11px] font-bold text-content-muted hover:text-text-hi flex items-center gap-1 cursor-pointer transition-colors"
-              >
-                <KeyRound size={12} className="text-warn" />
-                {showAnswerKey ? L.hideAnswerKey : L.showAnswerKey}
-              </button>
-              {showAnswerKey && (
-                <div className="mt-2 p-2.5 rounded-xl bg-base-300/60 border border-white/5 text-xs text-content-muted leading-relaxed">
-                  <Markdown>{blocks.answerKey}</Markdown>
-                </div>
+          {expandedSections.block1 && (
+            <div className="p-4 bg-sky-950/10 space-y-2">
+              <div className="prose-justified text-[15px] sm:text-sm text-content leading-relaxed">
+                <Markdown>{showFullSummary ? blocks.summary : summary.short}</Markdown>
+              </div>
+              {summary.truncated && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowFullSummary((v) => !v);
+                  }}
+                  className="inline-flex items-center gap-1 min-h-[2.5rem] text-xs font-bold text-primary hover:underline cursor-pointer"
+                >
+                  {showFullSummary ? L.less : L.more}
+                  <ChevronDown
+                    size={13}
+                    className={`transition-transform ${showFullSummary ? 'rotate-180' : ''}`}
+                  />
+                </button>
               )}
             </div>
           )}
-        </section>
+        </div>
       )}
 
-      {/* BLOK 4: Następna lekcja — widoczne TYLKO dla lektora/admina (notatki operacyjne na kolejną zajęcia) */}
+      {/* BLOK 2: Key Language & Corrections */}
+      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/15 overflow-hidden shadow-sm transition-all">
+        <div
+          onClick={() => toggleSection('block2')}
+          className="p-3.5 bg-gradient-to-r from-emerald-900/40 via-emerald-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-900/50 transition-colors select-none border-b border-emerald-500/15"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+              <Tag size={16} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  BLOK 2
+                </span>
+                <h4 className="font-extrabold text-sm text-white">{L.block2Title}</h4>
+                {items.length > 0 && (
+                  <span className="text-[11px] text-emerald-400/80 font-bold">
+                    ({L.count(items.length)})
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-emerald-200/70">{L.block2Desc}</p>
+            </div>
+          </div>
+          <div className="text-emerald-300">
+            {expandedSections.block2 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+          </div>
+        </div>
+
+        {expandedSections.block2 && (
+          <div className="p-4 bg-emerald-950/10">
+            {isLoading ? (
+              <div className="flex items-center gap-2 py-2 text-xs text-content-muted">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              </div>
+            ) : items.length > 0 ? (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {items.map((item, index) => (
+                  <li
+                    key={`${index}-${item.word}`}
+                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-base-100/50 border border-white/[0.07] hover:border-emerald-500/30 transition-colors"
+                  >
+                    <div className="min-w-0">
+                      <span className="block font-semibold text-white text-[15px] sm:text-sm leading-snug">
+                        {item.word}
+                      </span>
+                      {item.translation && (
+                        <span className="block text-xs text-content-muted leading-snug mt-0.5">
+                          {item.translation}
+                        </span>
+                      )}
+                    </div>
+                    <TTSButtons text={item.word} />
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-content-muted italic">Brak słownictwa przypisanego do tej lekcji.</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Things to Improve (korekty i uwagi językowe) */}
+      {blocks.corrections && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-950/15 overflow-hidden shadow-sm transition-all">
+          <div
+            onClick={() => toggleSection('corrections')}
+            className="p-3.5 bg-gradient-to-r from-amber-900/40 via-amber-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-amber-900/50 transition-colors select-none border-b border-amber-500/15"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+                <AlertCircle size={16} />
+              </div>
+              <div>
+                <h4 className="font-extrabold text-sm text-white">{L.correctionsTitle}</h4>
+                <p className="text-[11px] text-amber-200/70">{L.correctionsDesc}</p>
+              </div>
+            </div>
+            <div className="text-amber-300">
+              {expandedSections.corrections ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </div>
+          </div>
+          {expandedSections.corrections && (
+            <div className="p-4 bg-amber-950/10">
+              <div className="prose-justified text-[14px] sm:text-xs text-content leading-relaxed">
+                <Markdown>{blocks.corrections}</Markdown>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* BLOK 4: Next Lesson — wyłącznie dla lektora/admina (notatki operacyjne na kolejne zajęcia) */}
       {isTeacher && blocks.nextLesson && (
-        <section className="rounded-2xl bg-yellow-950/15 border border-yellow-500/20 p-3.5 space-y-1.5">
-          <div className="flex items-center gap-2">
-            <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-yellow-500/20 text-warn border border-yellow-500/30">
-              BLOK 4
-            </span>
-            <h4 className="text-xs font-bold text-warn flex items-center gap-1.5">
-              <Target size={13} />
-              {L.nextLessonTitle}
-            </h4>
+        <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/15 overflow-hidden shadow-sm transition-all">
+          <div
+            onClick={() => toggleSection('nextLesson')}
+            className="p-3.5 bg-gradient-to-r from-yellow-900/40 via-yellow-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-yellow-900/50 transition-colors select-none border-b border-yellow-500/15"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center justify-center shrink-0">
+                <Target size={16} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                    BLOK 4
+                  </span>
+                  <h4 className="font-extrabold text-sm text-white">{L.nextLessonTitle}</h4>
+                </div>
+                <p className="text-[11px] text-yellow-200/70">{L.nextLessonDesc}</p>
+              </div>
+            </div>
+            <div className="text-yellow-300">
+              {expandedSections.nextLesson ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </div>
           </div>
-          <div className="text-xs text-content-muted leading-relaxed">
-            <Markdown>{blocks.nextLesson}</Markdown>
+          {expandedSections.nextLesson && (
+            <div className="p-4 bg-yellow-950/10 text-xs text-content-muted leading-relaxed">
+              <Markdown>{blocks.nextLesson}</Markdown>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Learning Curve — wyłącznie dla lektora/admina, ściśle ukryte przed kursantem */}
+      {isTeacher && blocks.learningCurve && (
+        <div className="rounded-2xl border border-purple-500/20 bg-purple-950/15 overflow-hidden shadow-sm transition-all">
+          <div
+            onClick={() => toggleSection('learningCurve')}
+            className="p-3.5 bg-gradient-to-r from-purple-900/40 via-purple-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-purple-900/50 transition-colors select-none border-b border-purple-500/15"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0">
+                <Activity size={16} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                    LEARNING CURVE
+                  </span>
+                  <h4 className="font-extrabold text-sm text-white">{L.learningCurveTitle}</h4>
+                </div>
+                <p className="text-[11px] text-purple-200/70">{L.learningCurveDesc}</p>
+              </div>
+            </div>
+            <div className="text-purple-300">
+              {expandedSections.learningCurve ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+            </div>
           </div>
-        </section>
+          {expandedSections.learningCurve && (
+            <div className="p-4 bg-purple-950/10 text-xs text-content leading-relaxed">
+              <Markdown>{blocks.learningCurve}</Markdown>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Ćwiczenie tego samego materiału — fiszki i zdania */}

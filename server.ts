@@ -4379,7 +4379,7 @@ Na podstawie podanej bazy kursantów dopasuj studentId oraz studentIds (gdy lekc
 - studentIds (array of strings, wszyscy kursanci tej lekcji)
 - date (string, YYYY-MM-DD — wyłącznie jeśli data padła w zapisie; inaczej puste)
 - lessonTopic (string, zwięzłe hasło tematu, maksymalnie 50 znaków, bez daty)
-- revisionNotes (string, BLOK 1 „Lekcja w skrócie": przebieg lekcji po polsku, 4-8 zdań — co ćwiczyliście i w jakiej kolejności)
+- revisionNotes (string, BLOK 1 „Lekcja w skrócie": maksymalnie 3-4 konkretne punkty w stronie biernej/bezosobowej, każdy w osobnej linii. ZAKAZANE formy gawędziarskie/narracyjne — nigdy „Lektor wprowadził...", „Adam opowiadał o...", „Kursant ćwiczył...". Zamiast tego np.: „Wprowadzono i przećwiczono różnice między czasem Present Simple a Present Continuous w kontekście pracy.", „Skupiono się na eliminacji błędu kalki 'in this week' oraz poprawnej konstrukcji 'go running'.", „Przeanalizowano słownictwo branżowe związane z logistyką i procedurą FIFO.")
 - vocabularyText (string, BLOK 2 „Key Language": każde słówko i zwrot w osobnej linii, ściśle "angielskie - polskie". Bez punktorów, bez markdown, bez numeracji.)
 - corrections (string, BLOK 2b „Korekty i wymowa": poprawki w formacie "❌ to, co powiedział kursant → ✅ poprawna wersja", po jednej na linię, z krótkim wyjaśnieniem po polsku, gdy jest potrzebne. Tu trafiają też uwagi o wymowie.)
 - nextLessonPlan (string, BLOK 4 „Next Lesson": ustalenia i najlepsze tematy na kolejne zajęcia, po polsku)
@@ -4405,7 +4405,7 @@ Zwróć wynik jako JSON z poniższymi polami:
 - studentId (string, ID głównego wybranego kursanta z Bazy Kursantów, jeśli nie potrafisz dopasować zostaw puste)
 - studentIds (array of strings, Lista ID wszystkich kursantów z Bazy Kursantów, jeśli lekcja dotyczyła grupy lub kilku osób)
 - lessonTopic (string, Krótkie, jednozdaniowe podsumowanie tematu lekcji na podstawie revision notes. Maksymalnie 50 znaków, bez daty, zwięzłe hasło bez wieloczęściowych zdań.)
-- revisionNotes (string, Krótkie podsumowanie lekcji w stronie biernej po polsku, 3-6 zdań)
+- revisionNotes (string, BLOK 1 „Lekcja w skrócie": maksymalnie 3-4 konkretne punkty w stronie biernej/bezosobowej, każdy w osobnej linii. ZAKAZANE formy gawędziarskie/narracyjne — nigdy „Lektor wprowadził...", „Adam opowiadał o...", „Kursant ćwiczył...". Zamiast tego np.: „Wprowadzono i przećwiczono różnice między czasem Present Simple a Present Continuous w kontekście pracy.", „Skupiono się na eliminacji błędu kalki 'in this week' oraz poprawnej konstrukcji 'go running'.", „Przeanalizowano słownictwo branżowe związane z logistyką i procedurą FIFO.")
 - vocabularyText (string, Wyodrębnij WSZYSTKIE słówka, zwroty i idiomy, które pojawiają się w notatkach z lekcji. Nawet jeśli są zapisane ciągiem (nie w kolumnie) lub wplecione w tekst, wyłuskaj DOKŁADNIE KAŻDE z nich. Ułóż je ściśle w formacie: "słowo_angielskie - polskie_tłumaczenie" w osobnych linijkach. Uważaj, aby nie pominąć żadnego słowa. Do not include markdown formatting or bullet points.)
 - studentSpeaking (string, Krótkie memory o kursancie po polsku, 5-6 zdań neutralnie o czym mówił, styl itp.)
 - thingsToImprove (string, 2-3 obszary wymagające poprawy z diagnozą i przykładami, po polsku)
@@ -4423,12 +4423,14 @@ Zwróć wynik jako JSON z poniższymi polami:
           studentSpeaking: { type: Type.STRING },
           thingsToImprove: { type: Type.STRING },
           suggestedFollowUp: { type: Type.STRING },
-          /* Bloki 2b-4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
-             pola są opcjonalne, więc schemat jest jeden dla obu trybów. */
+          /* Blok 2b i 4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
+             pola są opcjonalne, więc schemat jest jeden dla obu trybów.
+             Świadomie BEZ homeworkText/homeworkAnswerKey (dawny Blok 3):
+             praca domowa żyje wyłącznie w module ćwiczeń, nie w notatce
+             z lekcji — nawet jeśli transkrypcja ją zawiera, ma być
+             pominięta. */
           date: { type: Type.STRING },
           corrections: { type: Type.STRING },
-          homeworkText: { type: Type.STRING },
-          homeworkAnswerKey: { type: Type.STRING },
           nextLessonPlan: { type: Type.STRING },
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
