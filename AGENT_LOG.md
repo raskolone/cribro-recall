@@ -5816,3 +5816,61 @@ Ryzyka: Brak zmian w `firestore.rules` i middleware autoryzacji.
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
 npm run build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: Human-in-the-loop bramka przed wstawianiem nowej lekcji do
+Notatnika A4 — likwidacja automatycznego generowania sekcji powtórki
+(Revision) na kliknięcie "Nowa lekcja".
+
+Zrobione:
+- Zdiagnozowano istniejący przepływ (`handleInsertLesson`,
+  `ScratchpadEditor.tsx:958-1049` przed zmianą): powtórka była
+  generowana z treści OSTATNIEGO nagłówka H2 w TYM SAMYM dokumencie
+  notatnika (`extractLastLessonSections`, `utils/lessonTemplate.ts`) —
+  nie z kolekcji `lessonRecords`, jak zakładał brief. Przy wpisywaniu
+  lekcji zaległych nie po kolei dawało to powtórkę z przypadkowej
+  ostatnio wpisanej lekcji, nie z faktycznie poprzedzającej.
+- Nowy komponent `components/scratchpad/InsertLessonModal.tsx` —
+  dwuetapowa bramka (wzorowana stylem na `components/ui/ConfirmModal.tsx`
+  + `useEscapeModal`): Krok 1 (Czysta lekcja / Sprawdź poprzednią),
+  Krok 2 (karta podglądu najnowszej ZATWIERDZONEJ lekcji — data, temat,
+  do 3 linii słownictwa — z opcjonalnym selectem ostatnich 3, jeśli jest
+  więcej niż jedna).
+- `components/scratchpad/ScratchpadEditor.tsx` — `handleInsertLesson`
+  rozbite na trzy funkcje: `openInsertLessonGate` (tylko otwiera modal,
+  zero sieci — podpięte pod oba miejsca wywołania: pozycję menu
+  "Wstaw" i przycisk "+ Nowa lekcja"), `insertLessonTemplateIntoDocument`
+  (czysta mechanika DOM z oryginału, bez zmian — `buildLessonTemplate` +
+  wstawienie kursora + `measurePages`), `handleInsertLessonWithRevision`
+  (jedyne miejsce wołające `generateLessonRevision` — teraz na podstawie
+  przekazanego `LessonRecord` z Firestore, nie z HTML dokumentu). Dane
+  o lekcjach kursanta pobiera się z JUŻ istniejącego stanu
+  `studentLessons` (wczytywanego przy montowaniu komponentu przez
+  `getLessonRecordsForStudent`, używanego też przez koło fortuny) —
+  filtrowane po `status === 'confirmed'`, bez nowego zapytania do bazy.
+- `services/scratchpadAiService.ts` — `generateLessonRevision` dostaje
+  jawny `thinkingConfig: { thinkingBudget: 0 }` (wcześniej `undefined` —
+  domyślna kaskada i tak prawdopodobnie już to ustawiała gdzie indziej,
+  ale brief wymagał jawnego wymuszenia w tym konkretnym wywołaniu).
+
+Nie dokończone / do sprawdzenia: Zero weryfikacji wzrokowej w
+przeglądarce. Opcjonalny punkt z brief-u "80/20: select innej z 3
+ostatnich lekcji" zaimplementowany. NIE zaimplementowano: żadnego
+fallbacku na lekcje ze statusem innym niż 'confirmed', gdy brak
+zatwierdzonych, mimo że mogą istnieć `pending_confirmation` — celowo,
+brief mówił wprost "ostatnie ZATWIERDZONE lekcje".
+
+Decyzje architektoniczne: Źródło "poprzedniej lekcji" zmienione
+świadomie z ekstrakcji HTML dokumentu na `lessonRecords` z Firestore —
+to była wyraźna, literalna prośba brief-u, nie moja inicjatywa, mimo że
+to zmienia zachowanie istniejącej (dopiero co wdrożonej) funkcji.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji,
+ścieżkach tokenowych bez logowania — notatnik nadal używa
+`scratchpads/{id}` bez zmian w regułach dostępu.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
+npm run build (przechodzi).
