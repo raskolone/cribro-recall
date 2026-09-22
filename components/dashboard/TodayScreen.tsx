@@ -13,12 +13,15 @@ import {
   Puzzle,
   RotateCcw,
   Sparkles,
+  Users,
   X as XIcon,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { RecallItem, RetrievalResult } from '../../types';
+import { RecallItem, RetrievalResult, StudentGroup } from '../../types';
 import { getDueRecallItems, logReviewSession, recordRetrievalAttempt } from '../../services/recallItems';
+import { getGroupsForStudent } from '../../services/groupService';
+import { openScratchpadTab } from '../../services/scratchpadService';
 import { recordExerciseResults } from '../../services/learningProfile';
 import { normalizeLevel } from '../../utils/learningCurve';
 import PuzzleExercise from './PuzzleExercise';
@@ -151,6 +154,25 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   const [revealed, setRevealed] = useState(false);
   const [results, setResults] = useState<RetrievalResult[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([]);
+
+  useEffect(() => {
+    if (!targetId) {
+      setStudentGroups([]);
+      return;
+    }
+    let isMounted = true;
+    getGroupsForStudent(targetId)
+      .then((groups) => {
+        if (isMounted) setStudentGroups(groups);
+      })
+      .catch((err) => {
+        console.warn('[TodayScreen] Błąd pobierania grup dla kursanta:', err);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [targetId]);
 
   const load = useCallback(async () => {
     if (!user?.id || isPreview) {
@@ -540,10 +562,11 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   })();
 
   /*
-   * 3 Kafelki listwy kursanta:
+   * Kafelki listwy kursanta:
    * 1. Moje zasoby (Zadania, testy, słownictwo)
    * 2. Historia (Wcześniejsze lekcje i historia ćwiczeń)
    * 3. Mój notatnik (Wspólny brudnopis z lektorem)
+   * 4. Wspólny notatnik grupy (jeśli kursant należy do grupy)
    */
   const tools: StudentTool[] = [
     {
@@ -575,6 +598,19 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
           } satisfies StudentTool,
         ]
       : []),
+    ...studentGroups.map(
+      (group) =>
+        ({
+          id: `group_scratchpad_${group.id}`,
+          label: `${group.name}`,
+          meta: language === 'pl' ? 'Notatnik grupy' : 'Group notebook',
+          icon: <Users size={20} />,
+          onNavigate: () => {
+            const scratchpadId = group.activeScratchpadId || `sp_group_${group.id}`;
+            openScratchpadTab(scratchpadId, group.name);
+          },
+        } satisfies StudentTool)
+    ),
   ];
 
   /*
@@ -595,6 +631,41 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
         streakHidden={user?.streakHidden}
       />
       </div>
+
+      {/* Wyróżniony kafelek wspólnego notatnika grupy kursanta */}
+      {studentGroups.length > 0 && (
+        <div className="space-y-2.5">
+          {studentGroups.map((group) => {
+            const scratchpadId = group.activeScratchpadId || `sp_group_${group.id}`;
+            return (
+              <div
+                key={group.id}
+                onClick={() => openScratchpadTab(scratchpadId, group.name)}
+                className="glass-tile p-4 rounded-2xl cursor-pointer flex items-center justify-between gap-3 border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all group"
+              >
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                    <Users size={22} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-[11px] font-bold uppercase tracking-wider text-primary truncate">
+                      {language === 'pl' ? 'Wspólny notatnik grupy' : 'Group shared notebook'}
+                    </div>
+                    <div className="text-base font-bold text-text-hi truncate group-hover:text-primary transition-colors">
+                      {group.name}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-bold border border-primary/20 group-hover:bg-primary group-hover:text-black transition-all">
+                  <span>{language === 'pl' ? 'Otwórz notatnik' : 'Open notebook'}</span>
+                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Ta sama szerokość, co nagłówek wyżej. Wcześniej nagłówek miał 768 px,
           a listwa kafelków pod nim 672 px — krawędzie nie schodziły się w pionie

@@ -6049,3 +6049,19 @@ tokenowych bez logowania.
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
 npm run build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-22 — Antigravity / Gemini 3.7 Flash
+
+Zadanie: Dokończenie wdrożenia grup kursantów (handover z Claude Code) — zarządzanie grupami w CRM, wspólny notatnik grupy dla kursanta i lektora, fan-out prac domowych dla grup w kreatorze V2.
+
+Zrobione:
+- `components/dashboard/TodayScreen.tsx` — podpięto `getGroupsForStudent(targetId)` oraz wyrenderowano wyróżniony kafel wspólnego notatnika grupy kursanta `[ 📓 Wspólny notatnik grupy: {group.name} ]` otwierający współdzielony dokument w czasie rzeczywistym (`openScratchpadTab(scratchpadId, group.name)`), a także dodano pozycje grupowe do dynamicznej listwy narzędzi `StudentToolBar`.
+- `components/admin/HomeworkComposerV2.tsx` — przełącznik Kursant indywidualny / Grupa, widok członków z checkboxami (domyślnie wszyscy zaznaczeni), fan-out via `assignHomeworkSetV2` z powiadomieniem toast oraz kolejkowaniem modali e-mail.
+- `components/scratchpad/ScratchpadStudentPicker.tsx` — rozszerzono wybór o grupy studentów z automatycznym tworzeniem/otwieraniem notatnika grupowego `ensureGroupScratchpad`.
+- `components/admin/AdminPanel.tsx` & `components/admin/GroupManagementModal.tsx` — zintegrowano zarządzanie grupami z CRM i bazą kursantów.
+- `firestore.rules` — zaktualizowano reguły dla `/groups/{groupId}` (`allow read:` dla członków grupy i admina) oraz `/scratchpads/{scratchpadId}`.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone), npm run build (przechodzi, w tym server.cjs i api/index.js).
+

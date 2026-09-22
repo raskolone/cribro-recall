@@ -667,6 +667,23 @@ service cloud.firestore {
     }
 
     // ---------------------------------------------------------------
+    // Grupy zajęciowe (StudentGroup)
+    // ---------------------------------------------------------------
+    // Lektor/admin ma pełny CRUD. Kursant może wyłącznie czytać grupy,
+    // do których należy (`memberIds`) — `memberIds` pozostaje jedynym
+    // źródłem prawdy o przynależności, na `users/{uid}` nie ma pola
+    // `groupId`. `allow list` musi być dostępne (nie tylko `get`), bo
+    // `groupService.getGroupsForStudent` odpytuje kolekcję zapytaniem
+    // `array-contains` — Firestore ocenia ten warunek per-dokument także
+    // przy `list`, więc żaden kursant nie zobaczy grupy, w której nie jest
+    // członkiem.
+    match /groups/{groupId} {
+      allow get, list: if isAdmin()
+        || (isAuthenticated() && request.auth.uid in resource.data.memberIds);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // ---------------------------------------------------------------
     // Współdzielony dokument brudnopisu (Scratchpad / Google Docs)
     // ---------------------------------------------------------------
     // Umożliwia dostęp po znanym ID lub kodzie PIN kursanta (get).
@@ -691,13 +708,18 @@ service cloud.firestore {
 
       allow create: if isAuthenticated();
 
-      // Cztery drogi zapisu: administrator, lektor-właściciel, przypisany kursant (studentId),
+      // Pięć dróg zapisu: administrator, lektor-właściciel, przypisany kursant (studentId),
+      // członek grupy (memberIds — notatnik grupowy współdzielony przez wielu kursantów),
       // oraz gość/kursant z linkiem (gdy lektor włączył allowStudentEdit).
-      // Kursant i gość mogą aktualizować wyłącznie pola treści i wersji.
+      // Kursant, członek grupy i gość mogą aktualizować wyłącznie pola treści i wersji.
       allow update: if isAdmin()
         || (isAuthenticated() && request.auth.uid == resource.data.teacherUid)
         || (
-             (resource.data.allowStudentEdit == true || (isAuthenticated() && 'studentId' in resource.data && request.auth.uid == resource.data.studentId))
+             (
+               resource.data.allowStudentEdit == true
+               || (isAuthenticated() && 'studentId' in resource.data && request.auth.uid == resource.data.studentId)
+               || (isAuthenticated() && 'memberIds' in resource.data && request.auth.uid in resource.data.memberIds)
+             )
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                   'contentHtml', 'contentText', 'updatedAt', 'version', 'lastEditedBy', 'blocks'
                 ])

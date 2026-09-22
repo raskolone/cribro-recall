@@ -24,7 +24,7 @@ import gsap from 'gsap';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, getDoc, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where, onSnapshot } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
-import { User, PracticeLog, FlashcardSet, LessonRecord, GeneratedLessonScenario, RejectedNotionItem } from '../../types';
+import { User, PracticeLog, FlashcardSet, LessonRecord, GeneratedLessonScenario, RejectedNotionItem, StudentGroup } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { generateLessonSummary, generateBulkLessonSummary } from '../../services/geminiService';
@@ -60,6 +60,8 @@ import { sortChronologically } from '../../utils/lessonDuplicates';
 import { confirmAsync } from '../../utils/appAlert';
 import AdminMailingScreen from './AdminMailingScreen';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
+import GroupManagementModal from './GroupManagementModal';
+import { getGroups, ensureGroupScratchpad } from '../../services/groupService';
 import LessonSummaryEmailModal from './LessonSummaryEmailModal';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
@@ -146,6 +148,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const [assistantOverlayOpen, setAssistantOverlayOpen] = useState(false);
   /** Kafelek "Narzędzia lektora" otwiera lekki podwidok z zestawem narzędzi drugorzędnych. */
   const [toolsDrawerOpen, setToolsDrawerOpen] = useState(false);
+  const [showGroupsModal, setShowGroupsModal] = useState(false);
+  const [homeworkInitialGroupId, setHomeworkInitialGroupId] = useState<string | null>(null);
+  const [teacherGroups, setTeacherGroups] = useState<StudentGroup[]>([]);
+
+  useEffect(() => {
+    getGroups().then(setTeacherGroups).catch(() => {});
+  }, []);
   const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
   /**
    * Która sekcja profilu jest widoczna.
@@ -2493,6 +2502,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { id: 'notatnik', title: 'Notatnik lekcyjny (A4)', icon: FileEdit },
+              { id: 'groups', title: 'Grupy zajęciowe', icon: Users },
               { id: 'homework', title: 'Zadania i testy', icon: ClipboardList },
               { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
               {
@@ -2511,7 +2521,12 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   key={item.id}
                   onClick={() => {
                     setToolsDrawerOpen(false);
-                    handleTileClick(item.id);
+                    if (item.id === 'groups') {
+                      setShowGroupsModal(true);
+                    } else {
+                      setHomeworkInitialGroupId(null);
+                      handleTileClick(item.id);
+                    }
                   }}
                   className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 text-center cursor-pointer transform-gpu ${
                     item.badge
@@ -2672,7 +2687,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               Wróć do strony głównej
             </button>
           </div>
-          <TeacherWorkScreen onBack={() => setActiveTab(null)} />
+          <TeacherWorkScreen
+            initialGroupId={homeworkInitialGroupId}
+            onBack={() => {
+              setActiveTab(null);
+              setHomeworkInitialGroupId(null);
+            }}
+          />
         </div>
       ) : activeTab === 'flashcard-sets' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
@@ -4573,6 +4594,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       </div>
     )}
 
+      {showGroupsModal && currentUser?.id && (
+        <GroupManagementModal
+          isOpen={showGroupsModal}
+          onClose={() => setShowGroupsModal(false)}
+          users={users}
+          currentTeacher={{ uid: currentUser.id, name: currentUser.name || currentUser.displayName || 'Lektor' }}
+          onAssignHomework={(group) => {
+            setShowGroupsModal(false);
+            setHomeworkInitialGroupId(group.id);
+            setActiveTab('homework');
+          }}
+        />
+      )}
+
       {showSpecialTaskModal && selectedUser && (
         <TeacherSpecialTaskModal
           user={selectedUser}
@@ -5974,11 +6009,25 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         isOpen={isNotebookPickerOpen}
         onClose={() => setIsNotebookPickerOpen(false)}
         students={users}
+        groups={teacherGroups}
         title="Wybierz notatnik kursanta"
         subtitle="Otwórz dedykowany notatnik z historii lekcji lub rozpocznij pusty szkic."
         onPick={(picked) => {
           openScratchpadTab(picked.id ? `sp_${picked.id}` : undefined, picked.name);
           setIsNotebookPickerOpen(false);
+        }}
+        onPickGroup={async (group) => {
+          setIsNotebookPickerOpen(false);
+          if (!currentUser?.id) return;
+          try {
+            const scratchpadId = await ensureGroupScratchpad(group, {
+              uid: currentUser.id,
+              name: currentUser.name || currentUser.displayName || 'Lektor',
+            });
+            openScratchpadTab(scratchpadId, group.name);
+          } catch (err) {
+            console.error('[AdminPanel] Błąd otwierania notatnika grupy:', err);
+          }
         }}
         secondaryAction={{
           label: '📝 Otwórz notatnik roboczy (bez kursanta / tryb testowy)',

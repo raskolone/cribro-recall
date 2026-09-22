@@ -3442,6 +3442,15 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513), `npm run build` (przechodzi). Zero weryfikacji wzrokowej w przeglądarce (brak dostępu w tej sesji) — w szczególności wygląd nowych kolumn/tabel na obu motywach papieru i przycisku „Wstaw" w panelu bocznym.
 - Ryzyka: brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach tokenowych bez logowania.
 
+### AZ. Zarządzanie grupami kursantów, wspólny notatnik grupowy i fan-out prac domowych (2026-09-22)
+- **Panel zarządzania grupami w CRM:** `components/admin/AdminPanel.tsx` oraz `components/admin/GroupManagementModal.tsx` — dodano pełną obsługę tworzenia, edycji i usuwania grup kursantów wraz z przypisywaniem lektorów i kursantów.
+- **Wspólny notatnik grupy dla lektora i kursanta:**
+  - `components/scratchpad/ScratchpadStudentPicker.tsx` — lektor może wybrać notatnik grupy; system automatycznie inicjalizuje wspólny dokument `sp_group_${groupId}` (`ensureGroupScratchpad`).
+  - `components/dashboard/TodayScreen.tsx` — kursant należący do grupy widzi dedykowany, wyróżniony kafel `[ 📓 Wspólny notatnik grupy: {group.name} ]` oraz skrót w listwie narzędzi `StudentToolBar`, umożliwiający bezpośrednie przejście do wspólnego notatnika w czasie rzeczywistym (`openScratchpadTab`).
+- **Fan-out prac domowych dla grup w V2:** `components/admin/HomeworkComposerV2.tsx` — dodano przełącznik wyboru adresata (kursant indywidualny / grupa), selekcję członków z checkboxami (domyślnie zaznaczeni wszyscy członkowie grupy) oraz wysyłkę fan-out via `assignHomeworkSetV2` tworzącą powiązane dokumenty `specialTasks` ze wspólnym `groupId` i `homeworkSetId` wraz z obsługą powiadomień toast i kolejkowaniem modali potwierdzenia e-mail.
+- **Reguły Firestore:** `firestore.rules` — dodano regułę `allow read:` dla `/groups/{groupId}` z warunkiem autoryzacji i członkostwa (`request.auth.uid in resource.data.memberIds`) lub uprawnień admina (`isAdmin()`), umożliwiającą zapytania `array-contains` dla kursantów.
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513), `npm run build` (przechodzi).
+
 ---
 
 

@@ -36,6 +36,7 @@ interface TeacherWorkScreenProps {
   initialSection?: 'homework' | 'tests';
   initialTaskId?: string | null;
   initialFilterStatus?: string | null;
+  initialGroupId?: string | null;
   onBack?: () => void;
 }
 
@@ -109,10 +110,13 @@ const TeacherWorkScreen: React.FC<TeacherWorkScreenProps> = ({
   initialSection = 'homework',
   initialTaskId = null,
   initialFilterStatus = null,
+  initialGroupId = null,
   onBack,
 }) => {
   const { user } = useAuth();
-  const [openSection, setOpenSection] = useState<'homework' | 'tests' | null>(initialSection);
+  const [openSection, setOpenSection] = useState<'homework' | 'tests' | null>(
+    initialGroupId ? 'homework' : initialSection
+  );
   const [openTestPart, setOpenTestPart] = useState<'create' | 'all' | 'public' | null>('all');
   const [users, setUsers] = useState<any[]>([]);
   const testsRef = useRef<HTMLDivElement>(null);
@@ -191,6 +195,7 @@ const TeacherWorkScreen: React.FC<TeacherWorkScreenProps> = ({
           headless
           initialTaskId={initialTaskId}
           initialFilterStatus={initialFilterStatus}
+          initialGroupId={initialGroupId}
         />
       </Section>
 

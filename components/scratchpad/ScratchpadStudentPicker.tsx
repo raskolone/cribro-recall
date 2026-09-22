@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { FileEdit, Search, X } from 'lucide-react';
-import { User } from '../../types';
+import { FileEdit, Search, Users, X } from 'lucide-react';
+import { StudentGroup, User } from '../../types';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 
 interface ScratchpadStudentPickerProps {
@@ -8,6 +8,13 @@ interface ScratchpadStudentPickerProps {
   onClose: () => void;
   students: User[];
   onPick: (student: { id?: string; name: string }) => void;
+  /**
+   * Grupy zajęciowe, wyświetlane w osobnej sekcji nad listą kursantów
+   * indywidualnych — każda ma jeden wspólny notatnik (`notebooks/{groupId}`
+   * w opisie zlecenia, w tym repo `sp_group_{groupId}`, patrz `groupService.ts`).
+   */
+  groups?: StudentGroup[];
+  onPickGroup?: (group: StudentGroup) => void;
   title?: string;
   subtitle?: string;
   icon?: React.ReactNode;
@@ -42,6 +49,8 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
   onClose,
   students,
   onPick,
+  groups = [],
+  onPickGroup,
   title = 'Otwórz notatnik',
   subtitle = 'Wybierz kursanta, którego notatki chcesz otworzyć',
   icon,
@@ -62,6 +71,12 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
         .some(field => String(field).toLowerCase().includes(needle))
     );
   }, [students, searchTerm]);
+
+  const matchingGroups = useMemo(() => {
+    const needle = searchTerm.trim().toLowerCase();
+    if (!needle) return groups;
+    return groups.filter(g => g.name.toLowerCase().includes(needle));
+  }, [groups, searchTerm]);
 
   if (!isOpen) return null;
 
@@ -116,6 +131,31 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
         </div>
 
         <div className="flex-1 overflow-y-auto p-2">
+          {matchingGroups.length > 0 && onPickGroup && (
+            <div className="mb-2 pb-2 border-b border-line-soft">
+              <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-text-faint">
+                Grupy zajęciowe
+              </p>
+              {matchingGroups.map(group => (
+                <button
+                  key={group.id}
+                  type="button"
+                  onClick={() => onPickGroup(group)}
+                  className="w-full text-left px-2.5 py-2 rounded-xl flex items-center gap-3 hover:bg-white/[0.07] transition-colors cursor-pointer"
+                >
+                  <span className="w-8 h-8 shrink-0 rounded-xl bg-primary/12 border border-primary/25 text-primary flex items-center justify-center">
+                    <Users size={14} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-semibold text-content truncate">{group.name}</span>
+                    <span className="block text-[11px] text-text-faint truncate">
+                      {group.memberIds.length} kursantów
+                    </span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          )}
           {matches.length === 0 ? (
             <p className="py-10 text-center text-xs text-text-faint">
               Brak kursantów pasujących do wyszukiwania.

@@ -3,9 +3,10 @@ import { collection, getDocs } from 'firebase/firestore';
 import { AlertTriangle, ChevronDown, Loader2, Send, Sparkles } from 'lucide-react';
 
 import { db } from '../../firebase';
-import { LessonRecord, User } from '../../types';
+import { LessonRecord, StudentGroup, User } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { getAllUsers } from '../../services/userService';
+import { getGroups } from '../../services/groupService';
 import { isStudentVisibleLesson } from '../../utils/lessonBlocks';
 import { cleanVocabularyTopic, splitVocabularyLines } from '../../utils/vocabulary';
 import {
@@ -16,6 +17,7 @@ import {
 } from '../../services/homeworkV2/contracts';
 import { assignHomeworkSetV2, generateHomeworkSetV2 } from '../../services/homeworkV2Client';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
+import { showAppAlert } from '../../utils/appAlert';
 
 /**
  * Kreator prac domowych v2 — jeden ekran podglądu i przycisk Wyślij.
@@ -32,6 +34,8 @@ import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
 
 interface HomeworkComposerV2Props {
   initialStudentId?: string;
+  /** Otwiera kreator od razu w trybie „Grupa" z tą grupą wybraną. */
+  initialGroupId?: string;
   onAssigned?: () => void;
 }
 
@@ -60,7 +64,7 @@ const exerciseNoun = (n: number): string => {
   return 'zadań';
 };
 
-const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentId, onAssigned }) => {
+const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentId, initialGroupId, onAssigned }) => {
   const [students, setStudents] = useState<User[]>([]);
   const [studentId, setStudentId] = useState(initialStudentId || '');
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
@@ -70,16 +74,30 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
   const [plannedMinutes, setPlannedMinutes] = useState(15);
   const [dueDate, setDueDate] = useState(() => todayPlusDays(7));
 
+  // --- odbiorca: kursant indywidualny albo grupa (fan-out) -------------------
+  const [recipientMode, setRecipientMode] = useState<'individual' | 'group'>(
+    initialGroupId ? 'group' : 'individual'
+  );
+  const [groups, setGroups] = useState<StudentGroup[]>([]);
+  const [groupId, setGroupId] = useState(initialGroupId || '');
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
   const [error, setError] = useState('');
   const [exercises, setExercises] = useState<ExerciseContractV2[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [pendingEmailTask, setPendingEmailTask] = useState<any>(null);
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  // Kolejka potwierdzeń mailowych — przy grupie każdy kursant dostaje osobny
+  // rekord, więc lektor potwierdza wysyłkę osobno dla każdego z nich (ten sam
+  // wymóg co dla pojedynczego kursanta, patrz HomeworkEmailConfirmationModal).
+  const [emailQueue, setEmailQueue] = useState<Array<{ student: any; task: any }>>([]);
+  const [assignedGroupSummary, setAssignedGroupSummary] = useState<{ groupName: string; count: number } | null>(null);
+  const isEmailModalOpen = emailQueue.length > 0;
+  const currentEmailItem = emailQueue[0] || null;
 
   const student = useMemo(() => students.find((s) => s.id === studentId), [students, studentId]);
+  const group = useMemo(() => groups.find((g) => g.id === groupId), [groups, groupId]);
 
   // --- wczytanie kursantów (cache) ------------------------------------------
   useEffect(() => {
@@ -90,6 +108,30 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
       })
       .catch(() => setError('Nie udało się wczytać listy kursantów.'));
   }, []);
+
+  // --- wczytanie grup ---------------------------------------------------------
+  useEffect(() => {
+    getGroups()
+      .then(setGroups)
+      .catch(() => setError('Nie udało się wczytać listy grup.'));
+  }, []);
+
+  // Wybór grupy: domyślnie zaznaczeni wszyscy członkowie, a materiał (lekcje)
+  // brany jest od pierwszego z nich — lektor może to zmienić przełącznikiem
+  // „Materiał źródłowy" poniżej.
+  useEffect(() => {
+    if (recipientMode !== 'group' || !group) return;
+    setSelectedMemberIds(group.memberIds || []);
+    if (!group.memberIds?.includes(studentId)) {
+      setStudentId(group.memberIds?.[0] || '');
+    }
+  }, [recipientMode, group]);
+
+  const toggleMember = (uid: string) => {
+    setSelectedMemberIds((current) =>
+      current.includes(uid) ? current.filter((id) => id !== uid) : [...current, uid]
+    );
+  };
 
   // --- wczytanie lekcji wybranego kursanta ----------------------------------
   useEffect(() => {
@@ -166,9 +208,20 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
    * w którym ma potwierdzić wysyłkę maila.
    */
   const closeEmailModal = () => {
-    setIsEmailModalOpen(false);
-    setPendingEmailTask(null);
-    onAssigned?.();
+    setEmailQueue((current) => {
+      const rest = current.slice(1);
+      if (rest.length === 0) {
+        if (assignedGroupSummary) {
+          showAppAlert({
+            message: `Przypisano pracę domową dla ${assignedGroupSummary.count} członków grupy ${assignedGroupSummary.groupName}.`,
+            tone: 'success',
+          });
+          setAssignedGroupSummary(null);
+        }
+        onAssigned?.();
+      }
+      return rest;
+    });
   };
 
   /** Świadome dopuszczenie zadania, którego walidator nie przepuścił. */
@@ -179,24 +232,15 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
 
   // --- wysyłka --------------------------------------------------------------
   const handleAssign = async () => {
-    if (!studentId || sendable.length === 0) return;
+    if (sendable.length === 0) return;
+    if (recipientMode === 'individual' && !studentId) return;
+    if (recipientMode === 'group' && (!groupId || selectedMemberIds.length === 0)) return;
     setIsAssigning(true);
     setError('');
     try {
       const sourceLabel = lessons.find((l) => l.id === selectedLessonIds[0]);
       const topic = sourceLabel ? cleanVocabularyTopic(sourceLabel.topic) || sourceLabel.topic : '';
       const title = topic ? `Praca domowa: ${topic}` : 'Praca domowa';
-
-      const resolvedStudentName = student ? studentLabel(student) : 'Kursant';
-      const result = await assignHomeworkSetV2({
-        exercises: sendable,
-        studentUids: [studentId],
-        studentNames: { [studentId]: resolvedStudentName },
-        studentEmails: student?.email ? { [studentId]: student.email } : undefined,
-        studentUsernames: student?.username ? { [studentId]: student.username } : undefined,
-        title,
-        dueDate,
-      });
 
       const selectedLessons = lessons.filter((l) => selectedLessonIds.includes(l.id));
       const lessonTopics = selectedLessons
@@ -209,21 +253,57 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
         }
       });
 
-      // Wysyłkę maila potwierdza lektor w tym samym oknie co w v1.
-      // Zestaw v2 zapisuje `skipAutoEmail`, więc automat nie wyśle nic
-      // za plecami — patrz functions/src/index.ts.
-      setPendingEmailTask({
-        id: result.taskIds[0],
-        studentUid: studentId,
-        studentName: student ? studentLabel(student) : 'Kursant',
-        studentEmail: student?.email || '',
+      // Odbiorcy: albo jeden kursant, albo cała (odznaczona częściowo) grupa —
+      // fan-out tworzy niezależny rekord `specialTasks` na każdego z nich,
+      // patrz `assignHomeworkSetV2` / `assignHomeworkV2`.
+      const recipientIds = recipientMode === 'group' ? selectedMemberIds : [studentId];
+      const recipientStudents = recipientIds.map(
+        (id) => students.find((s) => s.id === id) || (id === studentId ? student : undefined)
+      );
+
+      const studentNames: Record<string, string> = {};
+      const studentEmails: Record<string, string> = {};
+      const studentUsernames: Record<string, string> = {};
+      recipientIds.forEach((id, i) => {
+        const s = recipientStudents[i];
+        studentNames[id] = s ? studentLabel(s) : 'Kursant';
+        if (s?.email) studentEmails[id] = s.email;
+        if (s?.username) studentUsernames[id] = s.username;
+      });
+
+      const result = await assignHomeworkSetV2({
+        exercises: sendable,
+        studentUids: recipientIds,
+        studentNames,
+        studentEmails,
+        studentUsernames,
         title,
         dueDate,
-        sentences: sendable,
-        lessonTopics,
-        vocabularySample: vocabLines.slice(0, 10),
+        groupId: recipientMode === 'group' ? groupId : undefined,
       });
-      setIsEmailModalOpen(true);
+
+      // Wysyłkę maila potwierdza lektor w tym samym oknie co w v1, osobno dla
+      // każdego przypisanego kursanta — zestaw v2 zapisuje `skipAutoEmail`,
+      // więc automat nie wyśle nic za plecami (patrz functions/src/index.ts).
+      const queue = recipientIds.map((id, i) => ({
+        student: recipientStudents[i] || null,
+        task: {
+          id: result.taskIds[i],
+          studentUid: id,
+          studentName: studentNames[id],
+          studentEmail: studentEmails[id] || '',
+          title,
+          dueDate,
+          sentences: sendable,
+          lessonTopics,
+          vocabularySample: vocabLines.slice(0, 10),
+        },
+      }));
+
+      if (recipientMode === 'group' && group) {
+        setAssignedGroupSummary({ groupName: group.name, count: recipientIds.length });
+      }
+      setEmailQueue(queue);
       setExercises([]);
     } catch (e: any) {
       setError(e?.message || 'Nie udało się przypisać zestawu.');
@@ -233,6 +313,9 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
   };
 
   const canGenerate = Boolean(studentId) && selectedLessonIds.length > 0 && types.length > 0;
+  const canAssign =
+    sendable.length > 0 &&
+    (recipientMode === 'individual' ? Boolean(studentId) : Boolean(groupId) && selectedMemberIds.length > 0);
 
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
@@ -243,15 +326,89 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
           Nowa praca domowa
         </h3>
 
+        <div className="flex gap-2">
+          {(['individual', 'group'] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setRecipientMode(m)}
+              className={`flex-1 rounded-xl border px-3 py-2 text-xs font-semibold transition ${
+                recipientMode === m
+                  ? 'border-primary/50 bg-primary/10 text-text-hi'
+                  : 'border-line-strong bg-ink text-text-2'
+              }`}
+            >
+              {m === 'individual' ? 'Kursant indywidualny' : 'Grupa'}
+            </button>
+          ))}
+        </div>
+
+        {recipientMode === 'group' && (
+          <label className="block space-y-1">
+            <span className="text-xs text-text-2">Grupa</span>
+            <select
+              value={groupId}
+              onChange={(e) => setGroupId(e.target.value)}
+              className="w-full rounded-xl border border-line-strong bg-ink px-3 py-2 text-sm text-text-hi"
+            >
+              <option value="">— wybierz —</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name} ({g.memberIds.length})
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+
+        {recipientMode === 'group' && group && (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-text-2">
+                Członkowie grupy ({selectedMemberIds.length}/{group.memberIds.length}) — odznacz nieobecnych
+              </span>
+            </div>
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {group.memberIds.map((uid, i) => {
+                const checked = selectedMemberIds.includes(uid);
+                const name = group.memberNames?.[i] || students.find((s) => s.id === uid)?.name || uid;
+                return (
+                  <label
+                    key={uid}
+                    className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs cursor-pointer transition ${
+                      checked
+                        ? 'border-primary/50 bg-primary/10 text-text-hi'
+                        : 'border-line-strong bg-ink text-text-2'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => toggleMember(uid)}
+                      className="accent-primary"
+                    />
+                    {name}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         <label className="block space-y-1">
-          <span className="text-xs text-text-2">Kursant</span>
+          <span className="text-xs text-text-2">
+            {recipientMode === 'group' ? 'Materiał źródłowy (lekcje kursanta)' : 'Kursant'}
+          </span>
           <select
             value={studentId}
             onChange={(e) => setStudentId(e.target.value)}
             className="w-full rounded-xl border border-line-strong bg-ink px-3 py-2 text-sm text-text-hi"
           >
             <option value="">— wybierz —</option>
-            {students.map((s) => (
+            {(recipientMode === 'group' && group
+              ? students.filter((s) => group.memberIds.includes(s.id))
+              : students
+            ).map((s) => (
               <option key={s.id} value={s.id}>
                 {studentLabel(s)}
               </option>
@@ -491,12 +648,14 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
             <button
               type="button"
               onClick={handleAssign}
-              disabled={sendable.length === 0 || isAssigning}
+              disabled={!canAssign || isAssigning}
               className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-ink disabled:opacity-40 flex items-center justify-center gap-2"
             >
               {isAssigning ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
               {isAssigning
                 ? 'Wysyłam…'
+                : recipientMode === 'group'
+                ? `Przypisz ${sendable.length} ${exerciseNoun(sendable.length)} grupie (${selectedMemberIds.length} os.)`
                 : `Wyślij ${sendable.length} ${exerciseNoun(sendable.length)}`}
             </button>
           </div>
@@ -504,11 +663,13 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
       )}
 
       {/* Ten sam modal co w kreatorze v1 — zestaw v2 zapisuje `skipAutoEmail`,
-          więc pocztę wysyła lektor stąd, a nie wyzwalacz w bazie. */}
+          więc pocztę wysyła lektor stąd, a nie wyzwalacz w bazie. Przy grupie
+          kolejka (`emailQueue`) prowadzi lektora przez potwierdzenie dla
+          każdego przypisanego kursanta po kolei. */}
       <HomeworkEmailConfirmationModal
         isOpen={isEmailModalOpen}
-        student={student || null}
-        task={pendingEmailTask}
+        student={currentEmailItem?.student || null}
+        task={currentEmailItem?.task || null}
         onEmailSent={closeEmailModal}
         onSkip={closeEmailModal}
         onClose={closeEmailModal}

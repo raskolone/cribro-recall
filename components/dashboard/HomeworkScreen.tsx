@@ -74,6 +74,8 @@ import {
 interface HomeworkScreenProps {
   initialTaskId?: string | null;
   initialStudentId?: string | null;
+  /** Otwiera od razu kreator w trybie „Grupa" z tą grupą wybraną (kafelek grupy w CRM). */
+  initialGroupId?: string | null;
   initialFilterStatus?: string | null;
   onBack?: () => void;
   /**
@@ -300,6 +302,7 @@ export const renderExercisePrompt = (item: any, itemType: HomeworkType): React.R
 export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   initialTaskId = null,
   initialStudentId = null,
+  initialGroupId = null,
   initialFilterStatus = null,
   onBack,
   headless = false,
@@ -398,6 +401,12 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       setFilterStudentId(initialStudentId);
     }
   }, [initialStudentId]);
+
+  useEffect(() => {
+    if (initialGroupId) {
+      setActiveTab('create');
+    }
+  }, [initialGroupId]);
   const [homeworkType, setHomeworkType] = useState<HomeworkType>('translation');
   const [title, setTitle] = useState<string>('');
   const [instructions, setInstructions] = useState<string>('');
@@ -1954,6 +1963,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         HOMEWORK_ENGINE_V2 ? (
           <HomeworkComposerV2
             initialStudentId={initialStudentId || undefined}
+            initialGroupId={initialGroupId || undefined}
             onAssigned={() => setActiveTab('list')}
           />
         ) : (

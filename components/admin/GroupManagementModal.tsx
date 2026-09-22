@@ -36,6 +36,7 @@ interface GroupManagementModalProps {
   users: User[];
   currentTeacher: { uid: string; name: string };
   onOpenScratchpad?: (scratchpadId: string) => void;
+  onAssignHomework?: (group: StudentGroup) => void;
 }
 
 export const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
@@ -44,6 +45,7 @@ export const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
   users,
   currentTeacher,
   onOpenScratchpad,
+  onAssignHomework,
 }) => {
   useEscapeModal(isOpen, onClose);
 
@@ -313,14 +315,23 @@ export const GroupManagementModal: React.FC<GroupManagementModalProps> = ({
                       </div>
 
                       {/* Akcje grupy */}
-                      <div className="pt-3 border-t border-line-soft flex items-center justify-between gap-2">
+                      <div className="pt-3 border-t border-line-soft flex items-center gap-2">
                         <Button
                           variant="primary"
                           onClick={() => handleLaunchGroupScratchpad(group)}
                           className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold"
                         >
-                          <BookOpen size={14} /> Otwórz wspólny notatnik
+                          <BookOpen size={14} /> Notatnik
                         </Button>
+                        {onAssignHomework && (
+                          <Button
+                            variant="ghost"
+                            onClick={() => onAssignHomework(group)}
+                            className="flex-1 flex items-center justify-center gap-1.5 text-xs font-bold"
+                          >
+                            <UserPlus size={14} /> Zadaj pracę domową
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
