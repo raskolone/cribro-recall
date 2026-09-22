@@ -19,6 +19,7 @@ import {
   Music,
   Airplay,
   UploadCloud,
+  PlusCircle,
 } from 'lucide-react';
 import { GeneratedLessonScenario, LessonAttachment, ScratchpadDocument } from '../../types';
 import { LessonPlan, PlanSection, InteractiveExercise } from '../../services/lessonPlannerMethod';
@@ -32,6 +33,8 @@ interface ScratchpadTeacherCompanionDrawerProps {
   onLaunchExercise: (exercise: InteractiveExercise) => void;
   onLaunchWheelOfFortune?: () => void;
   onTriggerAiSummary?: (prompt: string) => void;
+  /** Wstawia zwrot/zadanie ze scenariusza bezpośrednio w miejscu kursora na aktywnej stronie A4. */
+  onInsertPhrase?: (text: string) => void;
 }
 
 export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompanionDrawerProps> = ({
@@ -41,6 +44,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
   onLaunchExercise,
   onLaunchWheelOfFortune,
   onTriggerAiSummary,
+  onInsertPhrase,
 }) => {
   const [activeTab, setActiveTab] = useState<'scenario' | 'notes'>('scenario');
   const [activeScenario, setActiveScenario] = useState<GeneratedLessonScenario | null>(null);
@@ -556,12 +560,25 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
                                   )}
 
                                   <div className="flex-1">
-                                    <span
-                                      className={`leading-relaxed ${
-                                        isChecked ? 'line-through text-content-muted' : 'text-text-hi'
-                                      }`}
-                                    >
-                                      {item.text}
+                                    <span className="flex items-start justify-between gap-2">
+                                      <span
+                                        className={`leading-relaxed ${
+                                          isChecked ? 'line-through text-content-muted' : 'text-text-hi'
+                                        }`}
+                                      >
+                                        {item.text}
+                                      </span>
+                                      {onInsertPhrase && item.text?.trim() && (
+                                        <button
+                                          type="button"
+                                          onClick={() => onInsertPhrase(item.text)}
+                                          title="Wstaw do notatki w miejscu kursora"
+                                          className="shrink-0 flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-bold text-primary hover:bg-primary/10 transition-colors cursor-pointer"
+                                        >
+                                          <PlusCircle size={11} />
+                                          Wstaw
+                                        </button>
+                                      )}
                                     </span>
 
                                     {/* Budka suflera / Teacher's Notes */}

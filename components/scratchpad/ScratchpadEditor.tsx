@@ -67,6 +67,8 @@ import {
   Target,
   FileSignature,
   SpellCheck2,
+  Columns,
+  Grid2x2,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate, ScratchpadBlock, LessonAttachment, LessonRecord } from '../../types';
 import { isSharedNotebookV2Enabled } from '../../config/featureFlags';
@@ -1412,6 +1414,21 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     }, 100);
   };
 
+  /**
+   * Wstawia pojedynczy zwrot/zadanie ze scenariusza (panel boczny „Scenariusz
+   * & Notes") w miejscu kursora na aktywnej stronie A4. Re-focus edytora przed
+   * `insertHTML` to ten sam trik co `handleInsertAiMessageToDoc` — przycisk
+   * żyje w osobnym panelu nakładki, więc bez przywrócenia fokusu przeglądarka
+   * nie wie, gdzie (i czy w ogóle w notatniku) wstawić treść.
+   */
+  const handleInsertPhraseToDoc = (text: string) => {
+    if (isReadOnly || !editorRef.current || !text.trim()) return;
+    const escaped = text.trim().replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    editorRef.current.focus();
+    window.document.execCommand('insertHTML', false, `<p>${escaped}</p>`);
+    handleInput();
+  };
+
   const handleInsertAsStructuredLesson = (text: string) => {
     if (isReadOnly || !editorRef.current) return;
 
@@ -1706,6 +1723,37 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
       false,
       '<div><input type="checkbox" style="margin-right:6px;vertical-align:middle;" />&nbsp;</div>'
     );
+    handleInput();
+  };
+
+  /**
+   * Układ 2 kolumn — wstrzykiwany w miejscu kursora. Kończy się pustym
+   * akapitem (`<p><br></p>`), żeby kursant/lektor mógł pisać dalej pod
+   * blokiem bez klikania w martwe pole — bez tego kursor łapał się w
+   * ostatniej komórce siatki i nie dało się zejść niżej.
+   */
+  const handleInsertColumns = () => {
+    if (isReadOnly) return;
+    const html =
+      '<div class="grid grid-cols-2 gap-4 my-3 p-2 rounded border border-slate-800/80 bg-slate-900/40 not-prose">' +
+      '<div class="min-h-[60px] p-2 rounded border border-dashed border-slate-700/60 focus:outline-none" contenteditable="true"><p>Kolumna 1...</p></div>' +
+      '<div class="min-h-[60px] p-2 rounded border border-dashed border-slate-700/60 focus:outline-none" contenteditable="true"><p>Kolumna 2...</p></div>' +
+      '</div><p><br></p>';
+    window.document.execCommand('insertHTML', false, html);
+    handleInput();
+  };
+
+  // Prosta tabela N×2 — ta sama zasada anti-trap (pusty akapit po tabeli)
+  const handleInsertTable = (rowCount: 2 | 3) => {
+    if (isReadOnly) return;
+    const cell = (shaded: boolean) =>
+      `<td class="border border-slate-700 p-2 min-h-[36px] align-top${
+        shaded ? ' bg-slate-800/30' : ''
+      }" contenteditable="true"><p></p></td>`;
+    const rows = Array.from({ length: rowCount }, (_, i) => `<tr>${cell(i === 0)}${cell(i === 0)}</tr>`).join('');
+    const html =
+      `<table class="w-full my-3 border-collapse border border-slate-700 rounded table-fixed text-sm"><tbody>${rows}</tbody></table><p><br></p>`;
+    window.document.execCommand('insertHTML', false, html);
     handleInput();
   };
 
@@ -2699,6 +2747,27 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                       onSelect: handleInsertChecklist,
                     },
                     {
+                      id: 'columns-2',
+                      label: 'Układ 2 kolumn',
+                      description: 'Dwie edytowalne kolumny obok siebie',
+                      icon: <Columns size={14} />,
+                      onSelect: handleInsertColumns,
+                    },
+                    {
+                      id: 'table-2x2',
+                      label: 'Tabela 2×2',
+                      description: 'Prosta tabela, 2 wiersze',
+                      icon: <Grid2x2 size={14} />,
+                      onSelect: () => handleInsertTable(2),
+                    },
+                    {
+                      id: 'table-3x2',
+                      label: 'Tabela 3×2',
+                      description: 'Prosta tabela, 3 wiersze',
+                      icon: <Grid2x2 size={14} />,
+                      onSelect: () => handleInsertTable(3),
+                    },
+                    {
                       id: 'link',
                       label: 'Link',
                       icon: <Link2 size={14} />,
@@ -3577,6 +3646,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           onLaunchExercise={handleLaunchExerciseFromScenario}
           onLaunchWheelOfFortune={handleLaunchWheelOfFortune}
           onTriggerAiSummary={handleTriggerAiFromNotes}
+          onInsertPhrase={handleInsertPhraseToDoc}
         />
       )}
 

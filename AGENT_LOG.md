@@ -6007,3 +6007,45 @@ tokenowych bez logowania.
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
 npm run build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: Notatnik A4 — kolumny/tabele w menu „+ Wstaw", weryfikacja
+kontekstu kursanta, prototyp split-view planu lekcji (zlecenie
+zewnętrzne, patrz opis w konwersacji).
+
+Zrobione:
+- Sprawdzone przed kodowaniem (nie przyjęte na słowo): dwie z trzech
+  dużych funkcji ze zlecenia już istniały w repo, zaimplementowane inaczej
+  niż literalnie opisywało zlecenie, z udokumentowanym uzasadnieniem w
+  komentarzach w kodzie. Zapytany wprost, Maciej potwierdził: zostawić bez
+  zmian (patrz CHANGELOG.md wpis AY dla szczegółów obu decyzji).
+- `components/scratchpad/ScratchpadEditor.tsx` — menu „+ Wstaw" → sekcja
+  „Struktura dokumentu": nowe pozycje „Układ 2 kolumn", „Tabela 2×2",
+  „Tabela 3×2" (`handleInsertColumns`, `handleInsertTable`), wstawiane w
+  miejscu kursora, zawsze zakończone `<p><br></p>` (anti-trap). Nowa
+  funkcja `handleInsertPhraseToDoc` (wzorem istniejącego
+  `handleInsertAiMessageToDoc` — `editorRef.current.focus()` przed
+  `execCommand`, bo wywołanie przychodzi z osobnego panelu nakładki).
+- `components/scratchpad/ScratchpadTeacherCompanionDrawer.tsx` — nowy prop
+  `onInsertPhrase`, przycisk „Wstaw" przy każdym punkcie scenariusza
+  (obok istniejącego „Skopiuj"), wołający `handleInsertPhraseToDoc`.
+
+Nie dokończone / do sprawdzenia: Zero weryfikacji wzrokowej w
+przeglądarce (brak dostępu w tej sesji) — w szczególności wygląd nowych
+kolumn/tabel na obu motywach papieru notatnika i nowego przycisku
+„Wstaw" w panelu bocznym.
+
+Decyzje architektoniczne: Zobacz CHANGELOG.md wpis AY — bramka wyboru
+kursanta i panel boczny NIE przerabiane na literalny opis ze zlecenia
+(modal blokujący / flex-grid push-layout), bo istniejące rozwiązania są
+świadomym, udokumentowanym wyborem, potwierdzonym przez Macieja podczas
+tej sesji.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach
+tokenowych bez logowania.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
+npm run build (przechodzi, w tym server.cjs i api/index.js).
