@@ -188,7 +188,7 @@ export const buildLessonTemplate = (options?: {
       }
     }
 
-    return `<h3 style="${sectionHeadingStyle(paperTheme)}">${section.title}</h3>${innerBody}`;
+    return `<h3 contenteditable="false" class="pad-locked-heading" style="${sectionHeadingStyle(paperTheme)}">${section.title}</h3>${innerBody}`;
   }).join('');
 
   const hasPreviousContent = previous.trim().length > 0 && previous.replace(/<[^>]+>/g, '').trim().length > 0;
@@ -196,6 +196,6 @@ export const buildLessonTemplate = (options?: {
     ? `<div class="pad-page-break" data-page-break="1" contenteditable="false"><span class="pad-page-break-badge">── Strona A4 • Nowa Lekcja ──</span></div>`
     : '';
 
-  return `${pageBreakHtml}<h2 data-toggle="1" data-collapsed="0" style="${lessonTitleStyle(paperTheme)}"><span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>Lesson ${number} — ${date}</h2>${sections}`;
+  return `${pageBreakHtml}<h2 data-toggle="1" data-collapsed="0" contenteditable="false" class="pad-locked-heading" style="${lessonTitleStyle(paperTheme)}"><span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>Lesson ${number} — ${date}</h2>${sections}`;
 };
 

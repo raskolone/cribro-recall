@@ -114,6 +114,21 @@ export const NOTEBOOK_SWATCHES: NotebookColor[] = [
 ];
 
 /**
+ * Rozszerzona paleta pod rozwijaną strzałkę `▾` obok szybkiego dostępu
+ * (`NOTEBOOK_SWATCHES`) — pastelowe odcienie Tailwind (rodzina 400, ta sama
+ * jasność co reszta palety, więc kontrast na obu papierach zostaje w tym
+ * samym, już sprawdzonym zakresie ~3,4:1 / ~4,4:1).
+ */
+export const NOTEBOOK_SWATCHES_EXTENDED: NotebookColor[] = [
+  { name: 'Różowy', value: '#fb7185' },
+  { name: 'Szmaragdowy', value: '#34d399' },
+  { name: 'Bursztynowy', value: '#fbbf24' },
+  { name: 'Błękitny', value: '#38bdf8' },
+  { name: 'Fioletowy (jasny)', value: '#a78bfa' },
+  { name: 'Szary', value: '#94a3b8' },
+];
+
+/**
  * Nagłówki wstawione PRZED podziałem `NOTEBOOK_COLORS` na `{light, dark}`
  * (patrz historia wyżej w tym pliku) mają wpisany wprost w HTML jeden,
  * wspólny hex — dziś przechowywany jako wartość `dark` w `NOTEBOOK_COLORS`

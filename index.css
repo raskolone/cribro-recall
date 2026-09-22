@@ -1077,6 +1077,14 @@ tr.liquid-glass-hover:hover {
   vertical-align: middle;
 }
 .pad-toggle:hover { background: var(--pad-mark); color: var(--pad-h); }
+
+/* Zablokowane nagłówki szablonu lekcji (H2 tytuł, H3 sekcje) — `contenteditable="false"`
+   w treści zabrania wpisywania w środku, to tu tylko odbiera kursorowi wskaźnik tekstu
+   i przycięcie zaznaczenia myszą, żeby nie sugerować, że da się je zaznaczyć/edytować. */
+.pad-locked-heading {
+  cursor: default;
+  user-select: none;
+}
 .pad-paper [data-collapsed="1"] > .pad-toggle { transform: rotate(-90deg); }
 /* Zwinięty rozdział dostaje wielokropek, żeby nie wyglądał na pusty. */
 .pad-paper [data-collapsed="1"]::after {

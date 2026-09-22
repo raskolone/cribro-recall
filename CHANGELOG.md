@@ -181,11 +181,14 @@ włączony motyw.**
 Wpisy sprzed rundy 8 mają stare, jaskrawe barwy nagłówków. Nikt ich nie
 przepisuje za lektorem.
 
-### 🟡 Podział na strony w notatniku to kreska, nie paginacja
-Warstwa nad kartką rysuje kreskę co 1123 px (A4 przy 96 dpi). Nie zna wysokości elementu, przez
-który przechodzi, więc kreska potrafi przeciąć akapit w połowie wiersza, a eksport do PDF/Worda nie
-łamie stron w tych samych miejscach. To jest sygnał długości dokumentu („to już trzecia strona"),
-a nie wierne odwzorowanie wydruku.
+### ✅ (Zmienione 2026-09-22) Podział na strony w notatniku był kreską co 1123px, nie paginacją
+Historyczny wpis. Warstwa nad kartką rysowała kreskę co 1123 px (A4 przy 96 dpi) NIEZALEŻNIE od
+tego, czy to była granica lekcji czy środek akapitu — wyglądało to jak sztywne ucinanie strony,
+mimo że sama kartka (`min-height`, nie `height`) i tak już rosła elastycznie w dół. Od 2026-09-22
+`measurePages` (`ScratchpadEditor.tsx`) nie generuje już tych wirtualnych linii wewnątrz lekcji —
+kontrakt jest teraz dosłownie "1 Lekcja = 1 Strona": liczba stron = liczba fizycznych
+`.pad-page-break` (wstawianych między lekcjami) + 1, kartka rośnie jak canvas bez sztucznych cięć.
+Eksport do PDF/Worda nadal nie łamie stron w tych samych miejscach — to osobny, nienaprawiony temat.
 
 ### 🟡 Stan zwinięcia nagłówków jest częścią treści dokumentu
 Nagłówki zwijane zapisują `style.display` chowanych elementów, czyli stan zwinięcia siedzi w HTML-u
@@ -195,6 +198,40 @@ we dwoje na żywo.
 
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
+
+---
+
+### 🔧 Notatnik A4: naprawa zakreślaczy inline, "Korekta w locie", zablokowane nagłówki szablonu, elastyczny canvas strony (2026-09-22, runda 49)
+
+**Problem:** zaznaczenie fragmentu tekstu przechodzącego przez więcej niż jeden akapit i kliknięcie
+❌ Błąd / ✅ Poprawnie / 💡 Słówko owijało CAŁY zaznaczony `Range` (razem z `<div>`/`<p>` w środku) w
+jeden `<span>` — nielegalny, ale tolerowany przez przeglądarkę układ renderujący się jako
+pełnoszerokie, puste kolorowe pasy zamiast podświetlenia w linii tekstu.
+
+**Naprawa:** `handleHighlight` (`ScratchpadEditor.tsx`) korzysta teraz z nowej `wrapSelectedTextInline`
+— dzieli zaznaczenie na węzły tekstowe (z `Text.splitText` na granicach zaznaczenia) i owija KAŻDY
+z osobna, nigdy nie przenosząc bloków do środka `<span>`.
+
+**Nowe narzędzia paska:**
+- 🧹 Wyczyść zaznaczenie — zdejmuje nałożone `<span style="...">` (zakreślacze/korekty) i
+  `foreColor` z zaznaczonego fragmentu.
+- ⇄ Korekta — przekreśla zaznaczenie i stawia obok puste miejsce na poprawną formę, z kursorem
+  ustawionym od razu w środku.
+- Rozwijana strzałka `▾` obok istniejącej palety kolorów tekstu — dodatkowa siatka pastelowych
+  odcieni (`NOTEBOOK_SWATCHES_EXTENDED` w `utils/notebookPalette.ts`).
+
+**Zablokowane nagłówki szablonu lekcji:** `<h2>`/`<h3>` wstawiane przez `buildLessonTemplate`
+(`utils/lessonTemplate.ts`) dostają `contenteditable="false"` + klasę `pad-locked-heading`. Zmiana
+zachowania: wcześniej treść nagłówka (np. data lekcji) była edytowalna wprost w miejscu — teraz
+trzeba usunąć i wstawić nagłówek od nowa, żeby poprawić literówkę. Świadoma decyzja zgodna z
+briefem ("nagłówki nieedytowalne"), nie inicjatywa agenta.
+
+**Elastyczny canvas strony:** patrz wpis wyżej o `measurePages` — kontrakt "1 Lekcja = 1 Strona".
+
+Zob. `AGENT_LOG.md` (2026-09-22) po pełne detale i uzasadnienie decyzji (m.in. dlaczego kolory
+nowych narzędzi zostały jako inline-style hex, nie klasy Tailwind z briefu — spójność z resztą
+`utils/notebookPalette.ts`). Weryfikacja: `tsc --noEmit` 0 błędów, `npm test` 513/513, `npm run
+build` przechodzi. Brak weryfikacji wzrokowej w przeglądarce.
 
 ---
 

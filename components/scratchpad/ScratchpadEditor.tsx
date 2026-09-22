@@ -104,7 +104,7 @@ import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationMod
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
 import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
-import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
+import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, NOTEBOOK_SWATCHES_EXTENDED, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
 import { generateLessonRevision } from '../../services/scratchpadAiService';
@@ -205,6 +205,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const isReadOnly = explicitReadOnly || (!isTeacher && !docData.allowStudentEdit);
 
   const editorRef = useRef<HTMLDivElement>(null);
+  const extendedPaletteBtnRef = useRef<HTMLButtonElement>(null);
+  const [extendedPalettePos, setExtendedPalettePos] = useState({ top: 0, left: 0 });
   const imageFileInputRef = useRef<HTMLInputElement>(null);
   const isUserTypingRef = useRef(false);
   const typingResetTimeoutRef = useRef<any>(null);
@@ -219,6 +221,25 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [isInsertMenuOpen, setIsInsertMenuOpen] = useState(false);
+  const [isExtendedPaletteOpen, setIsExtendedPaletteOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isExtendedPaletteOpen) return;
+    const btn = extendedPaletteBtnRef.current;
+    if (btn) {
+      const rect = btn.getBoundingClientRect();
+      setExtendedPalettePos({ top: rect.bottom + 8, left: Math.max(12, rect.right - 176) });
+    }
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (extendedPaletteBtnRef.current?.contains(target)) return;
+      const panel = document.getElementById('pad-extended-palette-panel');
+      if (panel?.contains(target)) return;
+      setIsExtendedPaletteOpen(false);
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isExtendedPaletteOpen]);
   const [isShareMenuOpen, setIsShareMenuOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
   const [isCoachOpen, setIsCoachOpen] = useState(false);
@@ -462,61 +483,22 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   const [pageMarkers, setPageMarkers] = useState<PageMarker[]>([]);
 
-  /** Liczba stron i dokładne pozycje podziałów A4 uwzględniające wymuszone podziały lekcji */
+  /**
+   * Liczba stron = liczba lekcji. Kontrakt "1 Lekcja = 1 Strona" traktuje
+   * każdy wpis lekcyjny (rozdzielony `.pad-page-break`) jako jedną,
+   * elastyczną stronę A4 — bez sztywnego ucinania po dokładnie 297mm.
+   * Stąd żadnych wirtualnych linii podziału co `activePageHeight`: kartka
+   * rośnie w dół jak canvas, a jedyna prawdziwa granica strony to fizyczny
+   * podział między lekcjami.
+   */
   const measurePages = useCallback(() => {
     const paper = editorRef.current;
     if (!paper) return;
 
-    const pageBreaks = Array.from(paper.querySelectorAll<HTMLElement>('.pad-page-break'));
-    const markers: PageMarker[] = [];
-    let currentPage = 1;
-
-    if (pageBreaks.length === 0) {
-      const totalHeight = paper.scrollHeight || paper.offsetHeight;
-      const totalPages = Math.max(1, Math.ceil(totalHeight / activePageHeight));
-      for (let i = 1; i < totalPages; i++) {
-        markers.push({
-          id: `virtual-${i}`,
-          topPx: i * activePageHeight,
-          pageNumber: i + 1,
-          label: `Strona ${i + 1}`,
-          isVirtual: true,
-        });
-      }
-      setPageCount(totalPages);
-      setPageMarkers(markers);
-      return;
-    }
-
-    let sectionStartTop = 0;
-
-    for (let bIdx = 0; bIdx <= pageBreaks.length; bIdx++) {
-      const breakEl = pageBreaks[bIdx];
-      const sectionEndTop = breakEl ? breakEl.offsetTop : (paper.scrollHeight || paper.offsetHeight);
-      const sectionHeight = Math.max(0, sectionEndTop - sectionStartTop);
-      const sectionPages = Math.max(1, Math.ceil(sectionHeight / activePageHeight));
-
-      // Wirtualne linie podziału wewnątrz sekcji, jeśli pojedyncza lekcja przekracza 1 stronę A4
-      for (let p = 1; p < sectionPages; p++) {
-        markers.push({
-          id: `sec-${bIdx}-p-${p}`,
-          topPx: sectionStartTop + p * activePageHeight,
-          pageNumber: currentPage + p,
-          label: `Strona ${currentPage + p}`,
-          isVirtual: true,
-        });
-      }
-
-      currentPage += sectionPages;
-
-      if (breakEl) {
-        sectionStartTop = breakEl.offsetTop + breakEl.offsetHeight;
-      }
-    }
-
-    setPageCount(Math.max(1, currentPage - 1));
-    setPageMarkers(markers);
-  }, [activePageHeight]);
+    const pageBreaks = paper.querySelectorAll<HTMLElement>('.pad-page-break').length;
+    setPageCount(pageBreaks + 1);
+    setPageMarkers([]);
+  }, []);
 
   measurePagesRef.current = measurePages;
 
@@ -1463,7 +1445,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
 
     let fullLessonHtml = `
       ${pageBreakHtml}
-      <h2 data-toggle="1" data-collapsed="0" style="${lessonTitleStyle(paperTheme)}">
+      <h2 data-toggle="1" data-collapsed="0" contenteditable="false" class="pad-locked-heading" style="${lessonTitleStyle(paperTheme)}">
         <span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>
         Lesson ${nextNum} — ${lessonDate}${topic ? ` • ${topic}` : ''}
       </h2>
@@ -1480,7 +1462,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     sections.forEach(s => {
       const bodyHtml = s.body.startsWith('<') ? s.body : markdownToHtml(s.body);
       fullLessonHtml += `
-        <h3 style="${sectionHeadingStyle(paperTheme)}">${s.title}</h3>
+        <h3 contenteditable="false" class="pad-locked-heading" style="${sectionHeadingStyle(paperTheme)}">${s.title}</h3>
         <div>${bodyHtml}</div>
       `;
     });
@@ -1575,6 +1557,48 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     refreshTemplates();
   }, [refreshTemplates]);
 
+  /**
+   * Owija każdy fragment tekstu WEWNĄTRZ zaznaczenia własnym `<span>`, zamiast
+   * jednym spanem na cały `range`. Zaznaczenie przechodzące przez więcej niż
+   * jeden blok (np. dwa akapity) w wersji "jeden span na cały range" wyciągało
+   * `<div>`/`<p>` do środka jednego `<span>` — nielegalny, ale tolerowany przez
+   * przeglądarkę układ, który renderował się jako pełnoszerokie, puste
+   * kolorowe pasy zamiast zwykłego podświetlenia w linii. Dzieląc tekst na
+   * węzły i owijając TYLKO fragmenty tekstowe (z podziałem węzła na granicach
+   * zaznaczenia), struktura akapitów nigdy się nie rusza.
+   */
+  const wrapSelectedTextInline = (range: Range, styleFn: (span: HTMLSpanElement) => void) => {
+    let root: Node = range.commonAncestorContainer;
+    if (root.nodeType === Node.TEXT_NODE) root = root.parentNode as Node;
+    if (!root) return;
+
+    const walker = window.document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+      acceptNode: node => (range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
+    });
+
+    const textNodes: Text[] = [];
+    let node: Node | null;
+    while ((node = walker.nextNode())) textNodes.push(node as Text);
+
+    textNodes.forEach(textNode => {
+      const isStart = textNode === range.startContainer;
+      const isEnd = textNode === range.endContainer;
+      const start = isStart ? range.startOffset : 0;
+      const end = isEnd ? range.endOffset : textNode.length;
+      if (start >= end) return;
+
+      let target = textNode;
+      if (end < target.length) target.splitText(end);
+      if (start > 0) target = target.splitText(start);
+      if (!target.textContent || !target.textContent.trim()) return;
+
+      const span = window.document.createElement('span');
+      styleFn(span);
+      target.parentNode?.insertBefore(span, target);
+      span.appendChild(target);
+    });
+  };
+
   // Zakreślacze lektorskie — czysty element liniowy (inline mark / <span>) bez rozbijania akapitu
   const handleHighlight = (bgColor: string, textColor: string) => {
     if (isReadOnly) return;
@@ -1582,22 +1606,78 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
 
     const range = selection.getRangeAt(0);
-    const span = window.document.createElement('span');
-    span.style.backgroundColor = bgColor;
-    span.style.color = textColor;
-    span.style.fontWeight = 'bold';
-    span.style.padding = '1px 4px';
-    span.style.borderRadius = '4px';
-    span.style.display = 'inline';
-
     try {
-      span.appendChild(range.extractContents());
-      range.insertNode(span);
+      wrapSelectedTextInline(range, span => {
+        span.style.backgroundColor = bgColor;
+        span.style.color = textColor;
+        span.style.fontWeight = 'bold';
+        span.style.padding = '1px 4px';
+        span.style.borderRadius = '4px';
+        span.style.display = 'inline';
+      });
       selection.removeAllRanges();
       handleInput();
     } catch (e) {
       execCmd('hiliteColor', bgColor);
     }
+  };
+
+  // Gumka — zdejmuje nałożone przez zakreślacze/korektę/kolor tła style z zaznaczonego fragmentu
+  const handleClearHighlight = () => {
+    if (isReadOnly) return;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+    const range = selection.getRangeAt(0);
+    const editorRoot = editorRef.current;
+    if (!editorRoot) return;
+
+    const styledSpans = Array.from(editorRoot.querySelectorAll<HTMLSpanElement>('span[style]'));
+    styledSpans.forEach(span => {
+      if (!range.intersectsNode(span)) return;
+      const parent = span.parentNode;
+      if (!parent) return;
+      while (span.firstChild) parent.insertBefore(span.firstChild, span);
+      parent.removeChild(span);
+    });
+
+    execCmd('removeFormat');
+    editorRoot.normalize();
+    selection.removeAllRanges();
+    handleInput();
+  };
+
+  // Korekta w locie — przekreśla zaznaczenie i stawia obok puste miejsce na poprawną formę
+  const handleStrikeCorrect = () => {
+    if (isReadOnly) return;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+    const range = selection.getRangeAt(0);
+    if (!range.toString().trim()) return;
+
+    const struck = window.document.createElement('span');
+    struck.style.textDecoration = 'line-through';
+    struck.style.color = '#fb7185';
+    struck.style.textDecorationColor = '#f43f5e';
+    struck.appendChild(range.extractContents());
+
+    const correction = window.document.createElement('span');
+    correction.style.color = '#34d399';
+    correction.style.fontWeight = '600';
+    correction.textContent = ' ';
+
+    const fragment = window.document.createDocumentFragment();
+    fragment.appendChild(struck);
+    fragment.appendChild(window.document.createTextNode(' '));
+    fragment.appendChild(correction);
+    range.insertNode(fragment);
+
+    const newRange = window.document.createRange();
+    newRange.selectNodeContents(correction);
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    handleInput();
   };
 
   // Wstawienie linku
@@ -2407,6 +2487,44 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                   style={{ backgroundColor: swatch.value === 'inherit' ? 'transparent' : swatch.value }}
                 />
               ))}
+              <button
+                ref={extendedPaletteBtnRef}
+                type="button"
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => setIsExtendedPaletteOpen(open => !open)}
+                title="Więcej kolorów"
+                aria-label="Więcej kolorów"
+                aria-expanded={isExtendedPaletteOpen}
+                className="h-4.5 w-4 flex items-center justify-center text-text-2 hover:text-content cursor-pointer shrink-0"
+              >
+                <ChevronDown size={12} className={`transition-transform duration-150 ${isExtendedPaletteOpen ? 'rotate-180' : ''}`} />
+              </button>
+              {typeof window !== 'undefined' &&
+                isExtendedPaletteOpen &&
+                createPortal(
+                  <div
+                    id="pad-extended-palette-panel"
+                    className="fixed z-[500] p-2 rounded-xl bg-ink-2/98 border border-line-strong shadow-ambient-lg backdrop-blur-xl grid grid-cols-3 gap-1.5"
+                    style={{ top: extendedPalettePos.top, left: extendedPalettePos.left, width: 176 }}
+                  >
+                    {NOTEBOOK_SWATCHES_EXTENDED.map(swatch => (
+                      <button
+                        key={swatch.value}
+                        type="button"
+                        onMouseDown={event => event.preventDefault()}
+                        onClick={() => {
+                          execCmd('foreColor', swatch.value);
+                          setIsExtendedPaletteOpen(false);
+                        }}
+                        title={swatch.name}
+                        aria-label={`Kolor tekstu: ${swatch.name}`}
+                        className="h-6 w-6 rounded-full border border-line-strong cursor-pointer transition-transform hover:scale-110 mx-auto"
+                        style={{ backgroundColor: swatch.value }}
+                      />
+                    ))}
+                  </div>,
+                  document.body
+                )}
             </div>
 
             <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
@@ -2439,6 +2557,24 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 title="Wyróżnij nowe słówko"
               >
                 💡 Słówko
+              </button>
+              <button
+                type="button"
+                onMouseDown={event => event.preventDefault()}
+                onClick={handleStrikeCorrect}
+                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-white/[0.04] text-text-2 border border-line-strong hover:bg-white/[0.08] hover:text-content transition-colors cursor-pointer shrink-0"
+                title="Korekta w locie — przekreśl błąd i wpisz poprawną formę obok"
+              >
+                ⇄ Korekta
+              </button>
+              <button
+                type="button"
+                onMouseDown={event => event.preventDefault()}
+                onClick={handleClearHighlight}
+                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-white/[0.04] text-text-2 border border-line-strong hover:bg-white/[0.08] hover:text-content transition-colors cursor-pointer shrink-0"
+                title="Wyczyść formatowanie zaznaczenia"
+              >
+                🧹 Wyczyść zaznaczenie
               </button>
             </div>
 

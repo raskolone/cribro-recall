@@ -5874,3 +5874,78 @@ Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji,
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
 npm run build (przechodzi).
+
+---
+
+2026-09-22 — Claude Code / Sonnet 5
+
+Zadanie: Zestaw poprawek edycyjnych w Notatniku A4 — naprawa znaczników
+inline (Błąd/Poprawnie/Słówko), narzędzie "Korekta w locie", zablokowane
+nagłówki szablonu lekcji, elastyczny canvas strony, rozszerzona paleta
+kolorów.
+
+Zrobione:
+- `components/scratchpad/ScratchpadEditor.tsx`:
+  - `handleHighlight` przepisany na nową pomocniczą `wrapSelectedTextInline`
+    — zamiast owijać CAŁY zaznaczony `Range` (w tym ewentualne `<div>`/`<p>`
+    wewnątrz, gdy zaznaczenie przechodziło przez więcej niż jeden blok) w
+    jeden `<span>`, dzieli zaznaczenie na węzły tekstowe i owija KAŻDY z
+    osobna (z `splitText` na granicach zaznaczenia). To był realny powód
+    "pustych kolorowych pasów" z brief-u: `<span>` z `<div>` w środku
+    renderuje się jako pełnoszeroki blok, mimo `display:inline` na spanie.
+  - Nowy `handleClearHighlight` (przycisk "🧹 Wyczyść zaznaczenie") —
+    zdejmuje wszystkie `<span style="...">` przecinające zaznaczenie
+    (nasze zakreślacze/korekty) + `execCommand('removeFormat')` dla
+    formatowania nałożonego przez `execCmd('foreColor', ...)`.
+  - Nowy `handleStrikeCorrect` (przycisk "⇄ Korekta") — przekreśla
+    zaznaczenie (kolor róż, inline `<span>`), dokleja obok pusty,
+    zielony `<span>` i ustawia w nim kursor.
+  - Nowy rozwijany grid dodatkowych kolorów (przycisk `▾` obok istniejącej
+    palety `NOTEBOOK_SWATCHES`) — `NOTEBOOK_SWATCHES_EXTENDED` w
+    `utils/notebookPalette.ts` (rose/emerald/amber/sky/violet/slate,
+    rodzina Tailwind 400). Panel w portalu (`createPortal`), bo pasek
+    narzędzi ma `overflow-x-auto`, co CSS-owo wymusza `overflow-y: auto`
+    (obcięłoby dropdown pozycjonowany `absolute`).
+  - `measurePages` uproszczone: koniec generowania WIRTUALNYCH linii
+    podziału strony co dokładnie `activePageHeight` px wewnątrz lekcji —
+    to dawało wrażenie "sztywnego ucinania" strony, mimo że kartka
+    (`min-height`, nie `height`) faktycznie już rosła elastycznie w dół.
+    Kontrakt "1 Lekcja = 1 Strona": liczba stron = liczba fizycznych
+    `.pad-page-break` + 1, bez podziałów w środku lekcji.
+- `utils/lessonTemplate.ts` + odpowiadający duplikat budowy szablonu w
+  `ScratchpadEditor.tsx` (import z Worda/tekstu, linie ok. 1466 i 1483) —
+  nagłówki `<h2>` (tytuł lekcji) i `<h3>` (nagłówki sekcji) dostają
+  `contenteditable="false"` i klasę `pad-locked-heading`
+  (`index.css`: `user-select:none; cursor:default;`). ŚWIADOMA ZMIANA
+  ZACHOWANIA: wcześniej treść samego nagłówka (np. tekst "Lesson 3 — data")
+  była edytowalna wprost w miejscu — tylko strzałka zwijania miała
+  `contenteditable="false"` (patrz komentarz przy `.pad-toggle` w
+  `index.css`, który to tłumaczy). Teraz lektor nie poprawi literówki w
+  dacie/numerze bezpośrednio w nagłówku — trzeba usunąć i wstawić od nowa.
+  To była wyraźna prośba brief-u ("nagłówki nieedytowalne"), nie moja
+  inicjatywa.
+- Kolory w `handleStrikeCorrect`/eraserze dobrane inline-style (hex), NIE
+  klasami Tailwind z przykładu w briefie (`text-rose-400` itp.) —
+  konsekwentnie z resztą notatnika: `utils/notebookPalette.ts` tłumaczy
+  wprost, że kolory notatnika muszą być wpisane w HTML dokumentu (nie
+  klasą), bo `execCommand`/szablon i tak to robią, a motyw (jasny/ciemny
+  papier) nie ma jak przestawić koloru PO zapisaniu treści.
+
+Nie dokończone / do sprawdzenia: Zero weryfikacji wzrokowej w
+przeglądarce (brak dostępu do przeglądarki w tej sesji) — w szczególności
+pozycjonowanie nowego dropdownu z dodatkowymi kolorami (obliczane z
+`getBoundingClientRect` przy otwarciu, bez obserwatora resize/scroll jak
+w pełnym `MenuDropdown`) oraz wygląd zablokowanych nagłówków na obu
+motywach papieru.
+
+Decyzje architektoniczne: Nie rozbudowywano współdzielonego
+`components/ui/MenuDropdown.tsx` o layout siatki (użyłby tego tylko nowy
+color picker) — zamiast tego lokalny, jednorazowy panel w portalu w
+`ScratchpadEditor.tsx`, żeby nie zmieniać kontraktu komponentu używanego
+też gdzie indziej w pasku narzędzi.
+
+Ryzyka: Brak zmian w `firestore.rules`, middleware autoryzacji, ścieżkach
+tokenowych bez logowania.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone),
+npm run build (przechodzi, w tym server.cjs i api/index.js).
