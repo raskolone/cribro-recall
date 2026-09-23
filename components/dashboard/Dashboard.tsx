@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
 import { auth, db } from '../../firebase';
-import { doc, updateDoc, collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
+import { doc, updateDoc, collection, collectionGroup, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import TopBar, { TopBarNotice } from '../ui/TopBar';
 import ConfirmModal from '../ui/ConfirmModal';
 import BugReporter from '../ui/BugReporter';
@@ -53,7 +53,6 @@ import HomeworkScreen from './HomeworkScreen';
 import StudentHomeworkScreen from './StudentHomeworkScreen';
 import StudentHomeworkV2Screen from './StudentHomeworkV2Screen';
 import AdminDebuggingScreen from '../admin/AdminDebuggingScreen';
-import TeacherHomeworkNotification from './TeacherHomeworkNotification';
 import StudentHomeworkGradedModal from './StudentHomeworkGradedModal';
 import PasswordChangeSuggestion from './PasswordChangeSuggestion';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
@@ -183,6 +182,42 @@ const Dashboard: React.FC = () => {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(restoredPanelState.activeTaskId ?? null);
   const [activeTestId, setActiveTestId] = useState<string | null>(restoredPanelState.activeTestId ?? null);
   const [homeworkFilterStatus, setHomeworkFilterStatus] = useState<string | null>(restoredPanelState.homeworkFilterStatus ?? null);
+  const [teacherAttentionCount, setTeacherAttentionCount] = useState<number>(0);
+
+  // Nasłuch prac i prób wymagających uwagi lektora — jedno źródło prawdy dla paska górnego
+  useEffect(() => {
+    if (!isTeacher) return;
+
+    let submittedCount = 0;
+    let flaggedCount = 0;
+
+    const updateAttentionTotal = () => setTeacherAttentionCount(submittedCount + flaggedCount);
+
+    const qTasks = query(collection(db, 'specialTasks'), where('status', '==', 'submitted'));
+    const unsubTasks = onSnapshot(
+      qTasks,
+      (snap) => {
+        submittedCount = snap.size;
+        updateAttentionTotal();
+      },
+      (err) => console.warn('Dashboard tasks attention error:', err)
+    );
+
+    const qFlagged = query(collectionGroup(db, 'attempts'), where('requiresTeacherReview', '==', true));
+    const unsubFlagged = onSnapshot(
+      qFlagged,
+      (snap) => {
+        flaggedCount = snap.size;
+        updateAttentionTotal();
+      },
+      (err) => console.warn('Dashboard flagged attempts attention error:', err)
+    );
+
+    return () => {
+      unsubTasks();
+      unsubFlagged();
+    };
+  }, [isTeacher]);
 
   // Kursant nie ma zobaczyć widoku lektora, gdyby ta sama karta przeglądarki
   // (np. współdzielony komputer) nosiła w sessionStorage widok po lektorze —
@@ -683,6 +718,15 @@ const Dashboard: React.FC = () => {
   const notices: TopBarNotice[] = (() => {
     const list: TopBarNotice[] = [];
     if (isTeacher) {
+      if (teacherAttentionCount > 0) {
+        list.push({
+          text: language === 'pl'
+            ? `Wymaga uwagi: ${teacherAttentionCount} ${teacherAttentionCount === 1 ? 'praca czeka' : 'prac czeka'} na sprawdzenie`
+            : `Requires attention: ${teacherAttentionCount} ${teacherAttentionCount === 1 ? 'item' : 'items'} to review`,
+          tone: 'danger',
+          onClick: () => handleNavigate('homework', { filterStatus: 'submitted' }),
+        });
+      }
       if (newBugsCount > 0) {
         list.push({
           text: language === 'pl'
@@ -748,13 +792,6 @@ const Dashboard: React.FC = () => {
           <div className="px-4 pt-4 max-w-5xl mx-auto w-full">
             <PasswordChangeSuggestion onClose={() => setPasswordSuggestionDismissed(true)} />
           </div>
-        )}
-        {isTeacher && (
-          <TeacherHomeworkNotification
-            onOpenHomework={(taskId) =>
-              handleNavigate('homework', { taskId, filterStatus: 'submitted' })
-            }
-          />
         )}
         {!isTeacher && view !== 'homework' && (
           <StudentHomeworkGradedModal

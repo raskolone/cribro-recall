@@ -288,6 +288,25 @@ build` przechodzi. Brak weryfikacji wzrokowej w przeglądarce.
 
 ---
 
+### 🚀 Pakiet 2 Refaktoryzacji Interfejsu (Pulpit Lektora, CRM Glassmorphism, Dedublikacja Powiadomień, Panel Kursanta) (2026-09-23)
+
+**Zadanie:** Realizacja Pakietu 2 refaktoryzacji UI:
+1. Dynamiczne przełączanie widoku i zachowanie Czatu AI (centralny mózg w Cockpicie, ukryty FAB; po przejściu do podmodułów centralny czat znika i pojawia się pływający trigger FAB w lewym dolnym rogu).
+2. Sekcja Narzędzi Lektora (Inline zamiast modal/drawer): po kliknięciu „Moje zasoby" narzędzia wyświetlają się wprost w widoku roboczym pod głównymi kafelkami.
+3. Dedublikacja Powiadomień: usunięto dublujące się popupy z prawego dolnego rogu oraz baner z panelu lektora; pozostawiono JEDNO estetyczne, zbiorcze powiadomienie pigułkowe w TopBarze (`Wymaga uwagi: X`).
+4. Udoskonalenie CRM (`StandaloneStudentDatabaseScreen.tsx`): stylistyka Glassmorphism (`bg-base-200/50 backdrop-blur-md`, `border border-white/10`, delikatny glow), kompaktowy przełącznik sortowania („Ostatnia aktywność" vs „Alfabetycznie A-Z") oraz skompresowany pasek wyszukiwania i filtrów.
+5. Uproszczenie Panelu Kursanta (`StudentHeroHeader.tsx`, `TodayScreen.tsx`): minimalistyczne powitanie „Cześć [Imię]" z motywującym tekstem („Dobrze Ci idzie!"), usunięcie zbędnych liczników i etykiet, pojedynczy Action Hero Card ze stanem zadania od lektora oraz uporządkowana 4-elementowa nawigacja.
+
+**Zmienione:**
+- `components/admin/AdminPanel.tsx` — wycofanie `toolsDrawerOpen` i `GSAPModal` narzędzi lektora; wdrożenie widoku inline pod `activeTab === 'tools'`; synchronizacja `setActiveTab` z `onTabChange`; montowanie centralnego `TeacherAssistant mode="embedded"` wyłącznie przy `!activeTab && !selectedUser`; usunięcie dublującego `TeacherAttentionBanner`.
+- `components/dashboard/Dashboard.tsx` — usunięcie pływającego `TeacherHomeworkNotification` z prawego rogu; wprowadzenie scentralizowanego nasłuchu `teacherAttentionCount` z `specialTasks` i `attempts` w czasie rzeczywistym i podpięcie do pigułki `notices` w `TopBar`.
+- `components/admin/StandaloneStudentDatabaseScreen.tsx` — dodanie sortowania (`activity` vs `alphabetical`), ikonki `ArrowDownAZ`, kompaktowego paska narzędziowego oraz stylistyki Glassmorphism dla kafelków kursantów i grup.
+- `components/dashboard/StudentHeroHeader.tsx` — usunięcie etykiety „Panel kursanta" oraz rozpraszających boxów liczników; wyczyszczenie powitania do „Cześć [Imię]" i „Dobrze Ci idzie!"; wdrożenie pojedynczego Action Hero Card prowadzącego bezpośrednio do zadań od lektora.
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513), `npm run build` (sukces).
+
+---
+
 ### 🌙 Nocny pakiet stabilizacyjny — zakładki prac domowych, logowanie e-mailem, mail powitalny, fix uprawnień odrzucania lekcji, tydzień kalendarzowy, fix Notion fetch-transcripts (2026-09-21, runda 48)
 
 **Zadanie:** zlecenie w pełni autonomicznej sesji obejmujące 7 niezależnych obszarów. Faza 4 (obszar wysokiego ryzyka wg CLAUDE.md sekcja 3) i ogólny zakres zostały najpierw potwierdzone z Maciejem przez `AskUserQuestion` zamiast działania bez pytania — zgodnie z CLAUDE.md, które ma priorytet nad instrukcją zlecenia "nie zatrzymuj się na pytania o zakres".
@@ -3504,7 +3523,26 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - **Reguły Firestore:** `firestore.rules` — dodano regułę `allow read:` dla `/groups/{groupId}` z warunkiem autoryzacji i członkostwa (`request.auth.uid in resource.data.memberIds`) lub uprawnień admina (`isAdmin()`), umożliwiającą zapytania `array-contains` dla kursantów.
 - Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513), `npm run build` (przechodzi).
 
+### BA. Pakiet 2 Refaktoryzacji Interfejsu (Pulpit Lektora, CRM Glassmorphism, Deduplikacja Powiadomień, Panel Kursanta) (2026-09-23)
+- **Pulpit Lektora & Dynamiczny Czat AI (`components/admin/AdminPanel.tsx`, `components/dashboard/Dashboard.tsx`):**
+  - Czat AI (`TeacherAssistant mode="embedded"`) jest centralnym mózgiem w kokpicie (`!activeTab && !selectedUser`), a pływający FAB w lewym dolnym rogu jest ukryty.
+  - Po przełączeniu na moduł kursantów (`students`) lub narzędzi (`tools`), centralne okno znika, a w lewym dolnym rogu natychmiast pojawia się dyskretny pływający trigger (FAB) asystenta AI z zachowaniem kontekstu.
+  - Wycofano modal/drawer narzędzi lektora (`toolsDrawerOpen`); kafelek „Moje zasoby / Narzędzia" renderuje siatkę narzędzi inline wprost w widoku roboczym w ramach animacji `GSAPModuleTransition`.
+- **Deduplikacja Powiadomień (`components/dashboard/Dashboard.tsx`, `components/admin/AdminPanel.tsx`):**
+  - Usunięto powielające się powiadomienia: wycofano pływający popup `TeacherHomeworkNotification` w prawym dolnym rogu oraz baner `TeacherAttentionBanner`.
+  - Wdrożono pojedynczą pigułkę powiadomień zbiorczych w górnym pasku nawigacyjnym (`TopBarNotice`: `"Wymaga uwagi: X"`), która w czasie rzeczywistym zlicza oczekujące prace i flagowane próby z bezpośrednim przejściem do sprawdzania.
+- **Udoskonalenie Widoku CRM (`components/admin/StandaloneStudentDatabaseScreen.tsx`):**
+  - Kafelki kursantów i grup otrzymały stylistykę Glassmorphism (`bg-base-200/50 backdrop-blur-md`, subtelna ramka `border border-white/10`, hover glow).
+  - Wdrożono kompaktowy przełącznik sortowania: „Ostatnia aktywność" (domyślne, po najświeższej dacie lekcji/wpisu) oraz „Alfabetycznie" (A-Z).
+  - Skompresowano pasek wyszukiwania i filtrów do pojedynczego, niskiego paska.
+- **Minimalistyczny Panel Kursanta (`components/dashboard/StudentHeroHeader.tsx`):**
+  - Usunięto etykietę „Panel kursanta" oraz rozpraszające liczniki statystyk.
+  - Wdrożono minimalistyczny nagłówek z powitaniem `Cześć [Imię]` i motywującym hasłem (`Dobrze Ci idzie!`).
+  - Wdrożono pojedynczy Action Hero Card: wyraźny kafelek z informacją „Zadania od lektora" i terminem lub stanem pustym „Brak nowych zadań od lektora. Sprawdź ćwiczenia w Moich zasobach".
+- **Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (513/513 zaliczonych), `npm run build` (przechodzi).
+
 ---
+
 
 
 ## 5. Przewodnik Szybkiego Startu dla Nowych Sesji i AI

@@ -231,206 +231,83 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
       <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
 
-      {/* Top row: Greeting & Real-time Stats */}
-      <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-5 pb-5 border-b border-line-strong">
-        <div className="space-y-1.5 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="text-xl sm:text-2xl font-black tracking-tight text-text-hi">
-              {greeting}
-            </span>
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-primary/20 border border-primary/30 text-primary font-mono text-[11px] font-bold">
-              <Sparkles size={12} />
-              {tText('Panel kursanta', 'Student Dashboard')}
-            </span>
-          </div>
-
-          <p className="text-sm text-content-muted leading-relaxed max-w-xl">
-            {totalTasksDone > 0 || totalSentences > 0 ? (
-              language === 'pl' ? (
-                <>
-                  Świetna regularność! Masz już na swoim koncie{' '}
-                  <strong className="text-text-hi font-bold">{plZadania(totalTasksDone, 'pl')}</strong> oraz{' '}
-                  <strong className="text-primary font-bold">{plZdania(totalSentences, 'pl')}</strong>.
-                </>
-              ) : (
-                <>
-                  Great consistency! You already have{' '}
-                  <strong className="text-text-hi font-bold">{plZadania(totalTasksDone, 'en')}</strong> and{' '}
-                  <strong className="text-primary font-bold">{plZdania(totalSentences, 'en')}</strong> under your belt.
-                </>
-              )
-            ) : (
-              tText(
-                'Twój panel jest gotowy do pracy! Zacznij od dzisiejszych powtórek lub dodatkowych ćwiczeń.',
-                'Your dashboard is ready! Start with today’s reviews or extra practice.'
-              )
-            )}
-          </p>
-        </div>
-
-        {/* Liczniki */}
-        <div className="flex items-stretch gap-2 sm:gap-3 w-full sm:w-auto shrink-0">
-          <div className="glass-tile flex-1 sm:flex-none flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-              <CheckCircle2 size={16} />
-            </div>
-            <div>
-              <div className="font-mono text-base font-black text-text-hi leading-none">
-                {totalTasksDone}
-              </div>
-              <div className="text-[10px] uppercase font-bold text-content-muted tracking-wider mt-0.5">
-                {tText('Zadania', 'Tasks')}
-              </div>
-            </div>
-          </div>
-
-          <div className="glass-tile flex-1 sm:flex-none flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl">
-            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
-              <Languages size={16} />
-            </div>
-            <div>
-              <div className="font-mono text-base font-black text-text-hi leading-none">
-                {totalSentences}
-              </div>
-              <div className="text-[10px] uppercase font-bold text-content-muted tracking-wider mt-0.5">
-                {tText('Zdania', 'Sentences')}
-              </div>
-            </div>
-          </div>
-
-          {!streakHidden && currentStreak > 0 && (
-            <div className="glass-tile flex-1 sm:flex-none flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-2xl text-amber-400">
-              <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-xl bg-amber-500/15 flex items-center justify-center shrink-0">
-                <Flame size={16} />
-              </div>
-              <div>
-                <div className="font-mono text-base font-black text-text-hi leading-none">
-                  {currentStreak}
-                </div>
-                <div className="text-[10px] uppercase font-bold text-amber-300/80 tracking-wider mt-0.5">
-                  {tText('Dni passy', 'Streak days')}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+      {/* Top row: Minimalist Greeting */}
+      <div className="relative z-10 space-y-1 pb-4">
+        <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-hi">
+          {greeting}
+        </h1>
+        <p className="text-sm sm:text-base text-primary font-semibold">
+          {language === 'pl' ? 'Dobrze Ci idzie!' : "You're doing great!"}
+        </p>
       </div>
 
-      {/* Bottom row: Homework Status or Invitation to Extra Practice */}
-      <div className="relative z-10 pt-5">
-        {pendingTasks.length === 0 ? (
-          /* STAN: BRAK PRZYPISANYCH ZADAŃ -> ZACHĘTA DO DODATKOWYCH ĆWICZEŃ */
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-base-100/60 border border-primary/20">
+      {/* Action Hero Card (Pojedynczy Kafelek Akcji) */}
+      <div className="relative z-10 pt-2">
+        {pendingTasks.length > 0 ? (
+          <div
+            onClick={() => onOpenHomework(pendingTasks[0].id)}
+            className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-primary/40 hover:border-primary shadow-lg hover:shadow-[0_0_25px_rgba(114,240,180,0.2)] transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+          >
             <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-              <div className="w-10 h-10 rounded-2xl bg-primary/15 text-primary border border-primary/30 flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
+              <div className="w-11 h-11 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                <BookOpen size={22} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
+                    {tText('Zadania od lektora', 'Teacher assignments')}
+                  </span>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                    {pendingTasks.length} {plZadania(pendingTasks.length, language)}
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-black text-text-hi truncate group-hover:text-primary transition-colors mt-0.5">
+                  {pendingTasks[0].title || (language === 'pl' ? 'Praca domowa' : 'Homework')}
+                </h3>
+                {pendingTasks[0].dueDate && (
+                  <p className="text-xs text-content-muted flex items-center gap-1.5 mt-0.5 font-mono">
+                    <Clock size={12} className="text-warn" />
+                    <span>Termin: {formatTaskDate(pendingTasks[0].dueDate, language)}</span>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-accent-ink font-bold text-xs shadow-btn group-hover:brightness-110 transition-all">
+              <span>{tText('Rozwiąż zadania', 'Solve tasks')}</span>
+              <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+            </div>
+          </div>
+        ) : (
+          <div className="p-4 sm:p-5 rounded-2xl bg-base-100/60 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
+              <div className="w-11 h-11 rounded-2xl bg-primary/15 text-primary border border-primary/30 flex items-center justify-center shrink-0">
                 <CheckCircle2 size={22} />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-bold text-text-hi">
-                    {tText('Brak przypisanych zadań', 'No pending tasks')}
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-primary/20 text-primary uppercase tracking-wide">
-                    {tText('Na bieżąco', 'Up to date')}
-                  </span>
-                </div>
-                <p className="text-xs text-content-muted mt-0.5 leading-relaxed">
+                <span className="text-sm sm:text-base font-bold text-text-hi block">
                   {tText(
-                    'Nie masz obecnie żadnych zaległych prac domowych. To doskonały moment na dodatkową praktykę ze słownictwa z lekcji!',
-                    'You currently have no pending homework. This is a great time to do extra practice with your lesson vocabulary!'
+                    'Brak nowych zadań od lektora. Sprawdź ćwiczenia w Moich zasobach',
+                    'No new homework from your teacher. Check exercises in My Resources'
+                  )}
+                </span>
+                <p className="text-xs text-content-muted mt-0.5">
+                  {tText(
+                    'Wszystkie przypisane prace są wykonane. Możesz powtórzyć materiał w zakładkach poniżej.',
+                    'All assigned tasks are completed. You can practice in the tabs below.'
                   )}
                 </p>
               </div>
             </div>
 
             <button
+              type="button"
               onClick={onOpenExtraPractice}
               className="px-4 py-2.5 rounded-xl bg-primary text-accent-ink hover:bg-primary/90 font-bold text-xs flex items-center justify-center gap-2 shadow-btn transition-all shrink-0 cursor-pointer active:scale-95"
             >
-              <Sparkles size={15} />
-              <span>{tText('Wykonaj dodatkowe ćwiczenia', 'Do extra practice')}</span>
+              <Sparkles size={14} />
+              <span>{tText('Wykonaj ćwiczenia', 'Do exercises')}</span>
             </button>
-          </div>
-        ) : (
-          /* STAN: SĄ PRZYPISANE ZADANIA -> LISTA ZADAŃ I PRZEJŚCIE DO ICH ROZWIĄZANIA */
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="flex h-2.5 w-2.5 relative">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warn opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-warn"></span>
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-text-hi">
-                  {tText('Zadania od lektora', 'Teacher assignments')} ({pendingTasks.length})
-                </span>
-              </div>
-
-              <button
-                onClick={() => onOpenHomework()}
-                className="text-xs font-bold text-primary hover:text-primary/80 flex items-center gap-1 transition-colors cursor-pointer"
-              >
-                <span>{tText('Wszystkie prace domowe', 'All homework')}</span>
-                <ChevronRight size={14} />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {pendingTasks.slice(0, 2).map((task, position) => (
-                <div
-                  key={task.id}
-                  onClick={() => onOpenHomework(task.id)}
-                  className={`glass-tile p-3.5 rounded-2xl cursor-pointer flex-col justify-between gap-3 group ${
-                    position === 0 ? 'flex' : 'hidden sm:flex'
-                  }`}
-                >
-                  <div>
-                    <div className="flex items-center justify-between gap-2 mb-1">
-                      <span className="text-[11px] font-bold text-primary truncate">
-                        {task.type === 'fill_in_the_blank'
-                          ? tText('Znajdź błędy', 'Find errors')
-                          : tText('Tłumaczenie zdań', 'Sentence translation')}
-                      </span>
-                      {task.dueDate && (
-                        <span className="text-[10px] font-medium text-warn flex items-center gap-1 shrink-0 font-mono">
-                          <Clock size={11} />
-                          {formatTaskDate(task.dueDate, language)}
-                        </span>
-                      )}
-                    </div>
-                    <h4 className="text-sm font-bold text-text-hi group-hover:text-primary transition-colors line-clamp-1">
-                      {task.title || tText('Praca domowa', 'Homework')}
-                    </h4>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-line text-[11px] text-content-muted">
-                    <span>
-                      {Array.isArray(task.sentences) && task.sentences.length > 0
-                        ? `${task.sentences.length} ${tText('zdań', 'sentences')}`
-                        : tText('Zadanie', 'Task')}
-                    </span>
-                    <span className="text-primary font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                      {tText('Rozwiąż', 'Solve')} <ArrowRight size={12} />
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="hidden sm:flex items-center justify-between pt-1 px-1 text-xs text-content-muted">
-              <span>
-                {tText(
-                  'Chcesz poćwiczyć więcej zdań poza pracą domową?',
-                  'Want to practice more sentences beyond homework?'
-                )}
-              </span>
-              <button
-                onClick={onOpenExtraPractice}
-                className="font-bold text-primary hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Sparkles size={12} />
-                {tText('Praktyka dodatkowa', 'Extra practice')}
-              </button>
-            </div>
           </div>
         )}
       </div>

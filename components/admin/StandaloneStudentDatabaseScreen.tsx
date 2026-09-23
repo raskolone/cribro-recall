@@ -56,7 +56,8 @@ import {
   ChevronDown,
   ChevronUp,
   LayoutGrid,
-  Table
+  Table,
+  ArrowDownAZ
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
@@ -89,6 +90,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [pageSize, setPageSize] = useState<number | 'all'>(12);
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [sortBy, setSortBy] = useState<'activity' | 'alphabetical'>('activity');
 
   // Modals state
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -193,9 +195,18 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
     await fetchUsersAndLessons(true);
   };
 
-  // Filter users based on active tab and search query
+  // Helper to get recent lesson for a user/group
+  const getRecentLesson = (student: User) => {
+    const sId = student.id;
+    if (!sId) return null;
+    const userLessons = lessons.filter((l) => l.studentId === sId || (l.studentIds && l.studentIds.includes(sId)));
+    if (userLessons.length === 0) return null;
+    return userLessons.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
+  };
+
+  // Filter & Sort users based on active tab, search query, and sortBy
   const filteredUsers = useMemo(() => {
-    return users.filter((s) => {
+    const list = users.filter((s) => {
       // Role filter - only students & groups (exclude pure admins/teachers unless taking lessons)
       if (s.role === 'admin' && !s.isGroup && !s.level) return false;
 
@@ -221,16 +232,25 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
 
       return true;
     });
-  }, [users, activeTab, searchQuery]);
 
-  // Helper to get recent lesson for a user/group
-  const getRecentLesson = (student: User) => {
-    const sId = student.id;
-    if (!sId) return null;
-    const userLessons = lessons.filter((l) => l.studentId === sId || (l.studentIds && l.studentIds.includes(sId)));
-    if (userLessons.length === 0) return null;
-    return userLessons.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
-  };
+    return list.sort((a, b) => {
+      if (sortBy === 'alphabetical') {
+        const nameA = a.displayName || a.name || `${a.firstName || ''} ${a.lastName || ''}`.trim() || a.username || '';
+        const nameB = b.displayName || b.name || `${b.firstName || ''} ${b.lastName || ''}`.trim() || b.username || '';
+        return nameA.localeCompare(nameB, 'pl', { sensitivity: 'base' });
+      }
+
+      // 'activity' (default) - najświeższa data lekcji lub data utworzenia
+      const recentA = getRecentLesson(a);
+      const recentB = getRecentLesson(b);
+      const timeA = recentA?.date ? new Date(recentA.date).getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+      const timeB = recentB?.date ? new Date(recentB.date).getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+      if (timeB !== timeA) return timeB - timeA;
+      const nameA = a.displayName || a.name || a.username || '';
+      const nameB = b.displayName || b.name || b.username || '';
+      return nameA.localeCompare(nameB, 'pl');
+    });
+  }, [users, lessons, activeTab, searchQuery, sortBy]);
 
   // Selection handlers
   const handleToggleSelectUser = (id: string) => {
@@ -746,9 +766,9 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
           </button>
         </div>
 
-        {/* Search & View Mode Switcher */}
-        <div className="flex items-center gap-2.5">
-          <div className="relative min-w-[220px] sm:min-w-[260px] flex-1">
+        {/* Search, Sort & View Mode Switcher */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[200px] sm:min-w-[240px] flex-1">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
             <input
               type="text"
@@ -757,6 +777,38 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
               placeholder="Szukaj kursanta, firmy, poziomu..."
               className="w-full pl-9 pr-3.5 py-1.5 rounded-xl bg-base-200/80 border border-line-strong text-text-hi text-xs placeholder:text-content-muted/60 focus:outline-none focus:border-primary transition-all"
             />
+          </div>
+
+          {/* Przełącznik sortowania: Aktywność vs Alfabet */}
+          <div className="flex items-center p-1 rounded-xl bg-base-200/80 border border-line-strong shrink-0" title="Sortuj listę">
+            <button
+              type="button"
+              onClick={() => setSortBy('activity')}
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                sortBy === 'activity'
+                  ? 'bg-primary text-accent-ink shadow-sm font-bold'
+                  : 'text-content-muted hover:text-text-hi hover:bg-line-soft/60'
+              }`}
+              title="Sortuj wg ostatniej aktywności lekcyjnej"
+              aria-label="Ostatnia aktywność"
+            >
+              <Clock size={13} />
+              <span className="hidden sm:inline text-[11px]">Aktywność</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortBy('alphabetical')}
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                sortBy === 'alphabetical'
+                  ? 'bg-primary text-accent-ink shadow-sm font-bold'
+                  : 'text-content-muted hover:text-text-hi hover:bg-line-soft/60'
+              }`}
+              title="Sortuj alfabetycznie (A-Z)"
+              aria-label="Alfabetycznie"
+            >
+              <ArrowDownAZ size={13} />
+              <span className="hidden sm:inline text-[11px]">A-Z</span>
+            </button>
           </div>
 
           {/* Dyskretny przełącznik widoku: Kafelki / Tabela administracyjna */}
@@ -917,10 +969,10 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                   <div
                     key={sId}
                     onClick={() => onSelectUser(student.id || '', 'profile')}
-                    className={`group relative p-4 rounded-2xl bg-base-200/80 border transition-all duration-200 cursor-pointer flex flex-col justify-between select-none shadow-sm hover:shadow-md ${
+                    className={`group relative p-4 rounded-2xl bg-base-200/50 backdrop-blur-md border transition-all duration-200 cursor-pointer flex flex-col justify-between select-none shadow-sm ${
                       isSelected
-                        ? 'border-primary ring-1 ring-primary bg-primary/[0.04]'
-                        : 'border-line-strong hover:border-primary/50 hover:bg-base-200'
+                        ? 'border-primary ring-2 ring-primary/80 bg-primary/[0.08] shadow-[0_0_20px_rgba(114,240,180,0.2)]'
+                        : 'border-white/10 hover:border-primary/50 hover:shadow-[0_0_20px_rgba(114,240,180,0.15)] hover:bg-base-200/70'
                     }`}
                   >
                     <div>

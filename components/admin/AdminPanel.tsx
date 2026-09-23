@@ -145,8 +145,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   /** Próg `md` (768px) — poniżej niego pulpit lektora zamienia się w Pocket Companion. */
   const isDesktopUI = useIsDesktop();
   const [assistantOverlayOpen, setAssistantOverlayOpen] = useState(false);
-  /** Kafelek "Narzędzia lektora" otwiera lekki podwidok z zestawem narzędzi drugorzędnych. */
-  const [toolsDrawerOpen, setToolsDrawerOpen] = useState(false);
   const [showGroupsModal, setShowGroupsModal] = useState(false);
   const [homeworkInitialGroupId, setHomeworkInitialGroupId] = useState<string | null>(null);
   const [teacherGroups, setTeacherGroups] = useState<StudentGroup[]>([]);
@@ -1893,7 +1891,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   };
 
   // User Profile Edit States
-  const [activeTab, setActiveTab] = useState<string | null>(initialTab || null);
+  const [activeTab, setActiveTabState] = useState<string | null>(initialTab || null);
+  const setActiveTab = (tabOrFn: string | null | ((prev: string | null) => string | null)) => {
+    setActiveTabState((prev) => {
+      const next = typeof tabOrFn === 'function' ? tabOrFn(prev) : tabOrFn;
+      onTabChange?.(next);
+      return next;
+    });
+  };
 
   const [unreadMailingCount, setUnreadMailingCount] = useState<number>(0);
 
@@ -2257,11 +2262,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
 
-      {/* Sygnał "wymaga uwagi" — trwały nad treścią panelu */}
-      <TeacherAttentionBanner
-        onOpenHomework={(filterStatus) => onViewChange?.('homework', { filterStatus })}
-      />
-
       {SHOW_LEGACY_PANEL_TOOLS && <TeacherOverview students={activeUsers} language={language} />}
 
       {/* Pocket Companion — telefon (< md): 3 kafelki + wejście do Asystenta AI w stopce,
@@ -2368,9 +2368,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }
           ].map((tile) => {
             const IconComp = tile.icon;
-            const isActive = tile.id === 'tools'
-              ? toolsDrawerOpen
-              : activeTab === tile.id || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
+            const isActive = activeTab === tile.id || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
@@ -2379,7 +2377,9 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 key={tile.id}
                 data-coach={tile.id === 'tools' ? 'tour-teacher-tools' : undefined}
                 onClick={() =>
-                  tile.id === 'tools' ? setToolsDrawerOpen(true) : handleTileClick(tile.id)
+                  tile.id === 'tools'
+                    ? (activeTab === 'tools' ? setActiveTab(null) : handleTileClick('tools'))
+                    : (activeTab === tile.id ? setActiveTab(null) : handleTileClick(tile.id))
                 }
                 className={`p-4.5 sm:p-5 cursor-pointer flex flex-col justify-between select-none transition-[border-color,box-shadow,background-color] duration-200 rounded-2xl relative overflow-hidden transform-gpu ${
                   hasNotification
@@ -2450,12 +2450,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           })}
         </div>
 
-        {/* Hero Asystenta AI — wpięty na stałe pod siatką kafelków (przywrócony
-            z pełnoekranowej nakładki, gdzie był schowany za przyciskiem).
-            Montowany warunkiem JS (nie samym CSS `hidden md:block`), żeby na
-            telefonie nie odpalał się w tle `buildStudentIndex()` — tam wejście
-            do czatu zostaje przez stopkę `TeacherMobileHub` -> nakładkę. */}
-        {isDesktopUI && (
+        {/* Hero Asystenta AI — centralny mózg widoczny WYŁĄCZNIE gdy żaden moduł ani kursant nie jest otwarty */}
+        {isDesktopUI && !activeTab && !selectedUser && (
           <TeacherAssistant
             mode="embedded"
             onNavigateToModule={handleAssistantNavigate}
@@ -2466,69 +2462,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         )}
       </div>
       </div>
-
-      {/* Podwidok "Narzędzia lektora" — kafelki drugorzędne otwierane z Kafelka 4 */}
-      <GSAPModal isOpen={toolsDrawerOpen} onClose={() => setToolsDrawerOpen(false)} maxWidth="max-w-3xl">
-        <div className="bg-base-200 border border-line-strong rounded-2xl p-5 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-extrabold uppercase tracking-wider text-text-hi flex items-center gap-2">
-              <Layers size={16} className="text-primary" />
-              Moje zasoby
-            </h2>
-            <button
-              type="button"
-              onClick={() => setToolsDrawerOpen(false)}
-              className="p-1.5 rounded-lg border border-line-strong text-content-muted hover:text-text-hi cursor-pointer"
-              aria-label="Zamknij"
-            >
-              <X size={16} />
-            </button>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {[
-              { id: 'notatnik', title: 'Notatnik lekcyjny (A4)', icon: FileEdit },
-              { id: 'homework', title: 'Zadania i testy', icon: ClipboardList },
-              { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
-              {
-                id: 'mailing',
-                title: 'Mailing',
-                icon: Mail,
-                badge: unreadMailingCount > 0 ? String(unreadMailingCount) : undefined,
-              },
-              { id: 'flashcard-sets', title: 'Słownictwo', icon: BookMarked },
-              { id: 'admin-stats', title: 'Statystyki', icon: BarChart2 },
-            ].map((item) => {
-              const IconComp = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setToolsDrawerOpen(false);
-                    setHomeworkInitialGroupId(null);
-                    handleTileClick(item.id);
-                  }}
-                  className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 text-center cursor-pointer transform-gpu ${
-                    item.badge
-                      ? 'border-amber-400/60 bg-amber-500/10 text-amber-200'
-                      : isActive
-                      ? 'border-primary ring-2 ring-primary/80 ring-offset-1 ring-offset-base-300 shadow-[0_0_25px_rgba(114,240,180,0.35)] bg-gradient-to-br from-primary/[0.22] via-primary/[0.08] to-base-200 text-primary font-black'
-                      : 'liquid-glass-tile text-content-muted hover:text-text-hi'
-                  }`}
-                >
-                  {item.badge && (
-                    <span className="absolute -top-1.5 -right-1.5 h-5 min-w-[1.25rem] px-1 rounded-full bg-amber-500 text-accent-ink text-[10px] font-bold flex items-center justify-center border border-black/20">
-                      {item.badge}
-                    </span>
-                  )}
-                  <IconComp size={18} className={isActive ? 'text-primary' : ''} />
-                  <span className="leading-tight">{item.title}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </GSAPModal>
 
       {/* GŁÓWNY WIDOK: MODUŁ MAILING / PLANER / PREZENTACJA / KURSANCI / HISTORIA LEKCJI / ZADANIA / SŁOWNICTWO / STATYSTYKI LUB STRONA GŁÓWNA (CHAT) */}
       <div className="w-full max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8">
@@ -2572,6 +2505,80 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   handleTileClick('topics');
                 }}
               />
+            </div>
+          ) : activeTab === 'tools' ? (
+            <div className="space-y-4 animate-in fade-in duration-200 mt-2 max-w-5xl mx-auto">
+              <div className="flex items-center justify-between pb-2 border-b border-line-strong">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-primary/15 text-primary border border-primary/30">
+                    <Layers size={18} />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-extrabold text-text-hi">Moje zasoby i narzędzia</h2>
+                    <p className="text-xs text-content-muted">Zarządzaj materiałami lekcyjnymi, zadaniami, testami i komunikacją</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab(null)}
+                  className="text-xs text-content-muted hover:text-text-hi flex items-center gap-1 cursor-pointer px-2.5 py-1 rounded-lg border border-line-strong bg-base-200/60"
+                >
+                  <X size={14} /> Zamknij
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5 sm:gap-4">
+                {[
+                  { id: 'notatnik', title: 'Notatnik lekcyjny (A4)', desc: 'Wspólny arkusz notatek z kursantem', icon: FileEdit, action: () => openScratchpadTab(null) },
+                  { id: 'homework', title: 'Zadania i testy', desc: 'Przegląd i ocenianie prac domowych', icon: ClipboardList, action: () => { setHomeworkInitialGroupId(null); handleTileClick('homework'); } },
+                  { id: 'lesson-planner', title: 'Planer lekcji', desc: 'Studio generowania scenariuszy AI', icon: Sparkles, action: () => handleTileClick('lesson-planner') },
+                  {
+                    id: 'mailing',
+                    title: 'Mailing',
+                    desc: 'Komunikacja i szablony e-mail',
+                    icon: Mail,
+                    badge: unreadMailingCount > 0 ? String(unreadMailingCount) : undefined,
+                    action: () => handleTileClick('mailing'),
+                  },
+                  { id: 'flashcard-sets', title: 'Słownictwo & Fiszki', desc: 'Baza słówek i zestawy powtórkowe', icon: BookMarked, action: () => handleTileClick('flashcard-sets') },
+                  { id: 'admin-stats', title: 'Statystyki', desc: 'Analityka aktywności kursantów', icon: BarChart2, action: () => handleTileClick('admin-stats') },
+                ].map((item) => {
+                  const IconComp = item.icon;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={item.action}
+                      className={`group relative flex flex-col justify-between p-4 sm:p-5 rounded-2xl border text-left cursor-pointer transition-all duration-200 ${
+                        item.badge
+                          ? 'border-amber-400/60 bg-amber-500/10 hover:border-amber-400'
+                          : 'bg-base-200/50 backdrop-blur-md border-white/10 hover:border-primary/50 hover:shadow-[0_0_20px_rgba(114,240,180,0.15)]'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="p-2.5 rounded-xl bg-ink/70 text-primary border border-line-strong group-hover:border-primary/40 transition-colors">
+                            <IconComp size={20} />
+                          </div>
+                          {item.badge && (
+                            <span className="px-2 py-0.5 rounded-full bg-amber-500 text-accent-ink text-[10px] font-bold border border-black/20">
+                              {item.badge} NOWYCH
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="font-extrabold text-sm sm:text-base text-text-hi group-hover:text-primary transition-colors">
+                          {item.title}
+                        </h3>
+                        <p className="text-xs text-content-muted mt-1 leading-relaxed line-clamp-2">
+                          {item.desc}
+                        </p>
+                      </div>
+                      <div className="mt-4 pt-2.5 border-t border-line flex items-center justify-between text-xs font-semibold text-content-muted group-hover:text-primary transition-colors">
+                        <span>Otwórz narzędzie</span>
+                        <ChevronRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           ) : activeTab === 'students' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-2">
