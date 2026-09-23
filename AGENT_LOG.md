@@ -6065,3 +6065,18 @@ Zrobione:
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (513/513 zielone), npm run build (przechodzi, w tym server.cjs i api/index.js).
 
+---
+
+2026-09-23 — Antigravity / Gemini 3.7 Flash
+
+Zadanie: Wdrożenie Etapu 2 modułu Lesson Studio MVP w Cribro Recall (Seed Mission Pack 1, silnik personalizacji AI, integracja z UI).
+
+Zrobione:
+- `utils/lessonStudioSeed.ts` (nowy plik) — zdefiniowano `MISSION_PACK_1` i `SEED_LESSON_1_BLUEPRINT` dla lekcji B1 "Explain a Problem and Agree on the Next Step" z 8 blokami oraz kompletem slotów personalizacji (`previous_lesson_recall`, `workplace_context`, `learner_role`, `delivery_item`, `document_type`, `discrepancy`, `consequence`, `urgency`, `target_language`, `scaffolding_level`, `likely_error`, `follow_up_questions`, `people_involved`).
+- `services/lessonStudioAiService.ts` (nowy plik) — potok personalizacji AI oparty o `loadStudentLessonStudioContext` oraz `GoogleGenAI` Structured Output (`gemini-2.5-flash`, `thinkingBudget: 0`), wstrzykujący kontekst kursanta i generujący wyłącznie wartości wyznaczonych slotów JSON bez modyfikowania struktury ani celów lekcji.
+- `server.ts` — dodano endpoint `POST /api/lesson-studio/personalize` (`requireFirebaseAdmin`).
+- `components/lessonStudio/LessonStudioEditor.tsx` — podpięto `SEED_LESSON_1_BLUEPRINT` jako domyślny blueprint, obsłużono akcję `[ ✨ Personalize ]` z loaderem i aktualizacją `customValue` w slotach, a także wdrożono dwukolumnowy widok w Inspektorze bloku (*Base vs Adapted*) z opcją ręcznej edycji i resetu do wartości bazowej.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm run build (przechodzi, w tym server.cjs i api/index.js).
+
+

@@ -3552,7 +3552,14 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
   - Uproszczono treść kafelków CRM: usunięto e-mail, pigułki poziomu, statusy oraz pole „Ostatnia lekcja”; pozostawiono tylko Awatar, Imię i Nazwisko / Nazwę grupy oraz 4 bezpośrednie mikro-ikony prowadzące do kluczowych zakładek (Historia lekcji, Zadania domowe, Notatnik A4, Profil/Notatki).
   - Nadano kafelkom lekki efekt szkła (`liquid-glass-tile`) z wyróżnieniem fioletowego akcentu dla grup zajęciowych.
   - Usunięto filtry firm (JCL, Inspiro, Axell itp.), zwężono wyszukiwarkę i zastąpiono pojedynczy przycisk rozwijanym menu `+ Dodaj` (Nowy kursant / Nowa grupa).
-- **Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (513/513 zaliczonych), `npm run build` (przechodzi).
+- **Wdrożenie Dedykowanego Banera Open Graph (`index.html`, `public/opengraph_recall.jpg`):**
+  - Podpięto grafikę Open Graph (`opengraph_recall.jpg`, 1200x630) z bezwzględnymi ścieżkami URL (`https://app.maciej.pro/`) dla komunikatorów i mediów społecznościowych (WhatsApp, Facebook, Twitter Cards `summary_large_image`).
+- **Lesson Studio MVP — Etap 1 i 2 (`types/lessonStudio.ts`, `utils/lessonStudioSeed.ts`, `services/lessonStudioAiService.ts`, `components/lessonStudio/LessonStudioEditor.tsx`, `server.ts`):**
+  - **Typowanie & Modele:** Utworzono `types/lessonStudio.ts` ze strukturą dla `MissionPack`, `LessonBlueprint`, `LessonBlock`, `PersonalizableSlot`, `PersonalizationSettings` oraz `LessonInstance`.
+  - **Seed Mission Pack 1:** Zdefiniowano szablon lekcji B1 *"Explain a Problem and Agree on the Next Step"* z 8 blokami (`Check-in & Recall`, `Mission Briefing`, `Notice the Language`, `Build the Report`, `Clarification Loop`, `Final Mission`, `Optional Branches`, `Language Harvest`) oraz dedykowanymi slotami personalizacji.
+  - **Silnik Personalizacji AI:** Wdrożono endpoint `POST /api/lesson-studio/personalize` (`requireFirebaseAdmin`), wykorzystujący Gemini 2.5 Flash (`thinkingBudget: 0`) i Structured Output do deterministycznego generowania wartości slotów w oparciu o profil ucznia i historię lekcji.
+  - **Interfejs Studia:** Zaimplementowano edytor `LessonStudioEditor.tsx` z panelem konfiguracji (Context, Focus, Depth), przyciskiem `[ ✨ Personalize ]` oraz dwukolumnowym widokiem slotów w inspektorze bloku (*Base vs Adapted*) z możliwością ręcznej edycji przez lektora.
+- **Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (513/513 zaliczonych), `npm run build` (przechodzi, w tym server.cjs i api/index.js).
 
 ---
 

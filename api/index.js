@@ -307,7 +307,7 @@ import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } fr
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
 import { createHmac } from "crypto";
-import { GoogleGenAI as GoogleGenAI3, Type as Type3 } from "@google/genai";
+import { GoogleGenAI as GoogleGenAI4, Type as Type4 } from "@google/genai";
 
 // services/aiModels.ts
 var PRIMARY_MODEL = "gemini-2.5-flash";
@@ -678,6 +678,143 @@ ${didacticText}`;
   );
 }
 
+// services/lessonStudioAiService.ts
+import { GoogleGenAI as GoogleGenAI2, Type as Type2 } from "@google/genai";
+async function loadStudentLessonStudioContext(adminDb, studentId) {
+  if (!studentId) {
+    return {
+      name: "General Learner",
+      level: "B1",
+      goals: "Improve professional fluency, diplomatic communication and error-free problem framing.",
+      industry: "General Business & Operations",
+      description: "Learner working in international collaboration environments.",
+      frequentErrors: []
+    };
+  }
+  const studentSnap = await adminDb.collection("users").doc(studentId).get();
+  if (!studentSnap.exists) {
+    return {
+      name: "General Learner",
+      level: "B1",
+      goals: "Improve professional fluency and workplace communication.",
+      industry: "General Business",
+      description: "",
+      frequentErrors: []
+    };
+  }
+  const data = studentSnap.data() || {};
+  const name = `${data.firstName || ""} ${data.lastName || ""}`.trim() || data.displayName || data.username || "Student";
+  const level = String(data.level || "B1").trim();
+  const goals = String(data.goals || "").trim();
+  const industry = String(data.industry || "").trim();
+  const description = String(data.description || "").trim();
+  let frequentErrors = [];
+  if (Array.isArray(data.frequentErrors)) {
+    frequentErrors = data.frequentErrors.map((e) => typeof e === "string" ? e : e?.text || e?.error || JSON.stringify(e));
+  }
+  let lastLessonNotes = "";
+  try {
+    const recordsSnap = await adminDb.collection("users").doc(studentId).collection("lessonRecords").orderBy("date", "desc").limit(3).get();
+    if (!recordsSnap.empty) {
+      const records = recordsSnap.docs.map((d) => d.data());
+      lastLessonNotes = records.map((r) => `\u2022 Lekcja (${r.date || "brak daty"}): Temat "${r.topic || "brak"}", S\u0142ownictwo: ${Array.isArray(r.vocabulary) ? r.vocabulary.slice(0, 5).join(", ") : (r.vocabularyText || "").slice(0, 100)}, B\u0142\u0119dy: ${Array.isArray(r.corrections) ? r.corrections.slice(0, 3).map((c) => c.original || c.mistake || c).join("; ") : ""}`).join("\n");
+    }
+  } catch (err) {
+    console.warn("[LessonStudioContext] Failed to load previous lesson records:", err);
+  }
+  return {
+    name,
+    level,
+    goals,
+    industry,
+    description,
+    frequentErrors,
+    lastLessonNotes
+  };
+}
+async function personalizeLessonStudioBlueprint(params) {
+  const { adminDb, geminiApiKey, studentId, blueprint, settings, generateContentWithRetry: generateContentWithRetry2 } = params;
+  const studentContext = await loadStudentLessonStudioContext(adminDb, studentId);
+  const allSlots = [];
+  blueprint.blocks.forEach((block) => {
+    if (Array.isArray(block.personalizableSlots)) {
+      allSlots.push(...block.personalizableSlots);
+    }
+  });
+  if (allSlots.length === 0) {
+    return {};
+  }
+  const properties = {};
+  const requiredFields = [];
+  allSlots.forEach((slot) => {
+    properties[slot.slotId] = {
+      type: Type2.STRING,
+      description: `${slot.name}: ${slot.description || ""} (Domy\u015Blna warto\u015B\u0107 bazowa: "${String(slot.defaultValue)}")`
+    };
+    requiredFields.push(slot.slotId);
+  });
+  const schema = {
+    type: Type2.OBJECT,
+    properties,
+    required: requiredFields
+  };
+  const prompt = `Jeste\u015B ekspertem metodyki nauczania j\u0119zyka angielskiego w platformie Cribro Recall.
+Twoim zadaniem jest SPPERSONALIZOWANIE konkretnych slot\xF3w sytuacyjnych i j\u0119zykowych dla poni\u017Cszego kursanta w ramach szablonu lekcji (Mission Pack).
+
+ZASADA KLUCZOWA:
+Nie zmieniasz struktury lekcji, kolejno\u015Bci blok\xF3w ani cel\xF3w komunikacyjnych.
+Dostosowujesz WY\u0141\u0104CZNIE warto\u015Bci wskazanych slot\xF3w (kluczy JSON), tak aby idealnie rezonowa\u0142y z prac\u0105, bran\u017C\u0105, poziomem zaawansowania oraz zdiagnozowanymi b\u0142\u0119dami kursanta.
+
+PROFIL KURSANTA:
+- Imi\u0119: ${studentContext.name}
+- Poziom CEFR: ${studentContext.level}
+- Bran\u017Ca/Rola: ${studentContext.industry || "Biznes og\xF3lny / Operacje"}
+- Cele nauki: ${studentContext.goals || "P\u0142ynna komunikacja biznesowa i dyplomacja w sytuacjach kryzysowych"}
+- Dodatkowy opis: ${studentContext.description || "Brak"}
+- Typowe b\u0142\u0119dy kursanta: ${studentContext.frequentErrors.length > 0 ? studentContext.frequentErrors.join("; ") : "Brak odnotowanych"}
+- Ostatnie lekcje / notatki:
+${studentContext.lastLessonNotes || "Brak wcze\u015Bniejszych notatek."}
+
+USTAWIENIA PERSONALIZACJI LEKTORA:
+- Tryb kontekstu (Context Mode): ${settings.contextMode} (${settings.contextMode === "work" ? "\u015Arodowisko czysto zawodowe/biznesowe" : settings.contextMode === "life" ? "\u017Bycie codzienne/casual" : "Automatycznie na podstawie profilu"})
+- Obszar skupienia (Focus Area): ${settings.focusArea}
+- G\u0142\u0119bia lekcji (Depth): ${settings.depthLevel}
+${settings.customContextPrompt ? `- Dodatkowa uwaga lektora: ${settings.customContextPrompt}` : ""}
+${settings.studentNotes ? `- Notatki lektora o kursancie: ${settings.studentNotes}` : ""}
+
+SZABLON LEKCJI (MISSION PACK):
+Tytu\u0142: ${blueprint.title || "Lesson Blueprint"}
+Poziom docelowy: ${blueprint.targetLevel || "B1"}
+Liczba blok\xF3w: ${blueprint.blocks.length}
+
+SLOTY DO WYPE\u0141NIENIA (Wype\u0142nij ka\u017Cdy klucz odpowiedni\u0105, wysokiej jako\u015Bci tre\u015Bci\u0105 po angielsku lub polsku, zale\u017Cnie od typu slotu):
+${allSlots.map((s) => `\u2022 [${s.slotId}] ${s.name} (${s.description || ""}) -> Warto\u015B\u0107 bazowa: "${s.defaultValue}"`).join("\n")}
+
+WYMAGANIA DOTYCZ\u0104CE WYGENEROWANYCH TRE\u015ACI:
+1. Zadbaj o naturalny, wysoce immersyjny j\u0119zyk biznesowy / codzienny dopasowany do bran\u017Cy kursanta.
+2. Unikaj pustych frazes\xF3w (synergy, leverage, headspace). Sytuacja w slotach "delivery_item", "discrepancy", "consequence" musi by\u0107 konkretna, namacalna i realistyczna.
+3. Warto\u015Bci maj\u0105 by\u0107 bezpo\u015Brednimi stringami gotowymi do wstrzykni\u0119cia do interfejsu lektora.
+4. Zwr\xF3\u0107 wy\u0142\u0105cznie obiekt JSON \u015Bci\u015Ble zgodny ze schematem.`;
+  const ai = new GoogleGenAI2({ apiKey: geminiApiKey });
+  const response = await generateContentWithRetry2(
+    ai,
+    prompt,
+    {
+      responseMimeType: "application/json",
+      responseSchema: schema,
+      thinkingConfig: { thinkingBudget: 0 }
+    },
+    [PRIMARY_MODEL]
+  );
+  const text = response?.text;
+  if (!text) {
+    throw new Error("Brak odpowiedzi z modelu Gemini podczas personalizacji lekcji.");
+  }
+  const cleanText = String(text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText);
+  return parsed;
+}
+
 // services/studentResolver.ts
 var StudentResolutionError = class extends Error {
   constructor(code, message, candidates) {
@@ -734,7 +871,7 @@ async function resolveStudentRef(adminDb, studentRef) {
 }
 
 // services/scenarioCanvasAiService.ts
-import { GoogleGenAI as GoogleGenAI2, Type as Type2 } from "@google/genai";
+import { GoogleGenAI as GoogleGenAI3, Type as Type3 } from "@google/genai";
 import { randomUUID as randomUUID2 } from "crypto";
 
 // types/scenarioCanvas.ts
@@ -958,22 +1095,22 @@ var CANVAS_BLOCK_LABELS = {
 };
 function plannerBlockSchema() {
   return {
-    type: Type2.OBJECT,
+    type: Type3.OBJECT,
     properties: {
-      blockId: { type: Type2.STRING },
-      objective: { type: Type2.STRING },
+      blockId: { type: Type3.STRING },
+      objective: { type: Type3.STRING },
       items: {
-        type: Type2.ARRAY,
+        type: Type3.ARRAY,
         items: {
-          type: Type2.OBJECT,
+          type: Type3.OBJECT,
           properties: {
-            kind: { type: Type2.STRING, enum: ["question", "task", "note", "rescue_question", "wind_down_question"] },
-            text: { type: Type2.STRING }
+            kind: { type: Type3.STRING, enum: ["question", "task", "note", "rescue_question", "wind_down_question"] },
+            text: { type: Type3.STRING }
           },
           required: ["kind", "text"]
         }
       },
-      teacherNotes: { type: Type2.ARRAY, items: { type: Type2.STRING } }
+      teacherNotes: { type: Type3.ARRAY, items: { type: Type3.STRING } }
     },
     required: ["blockId", "objective", "items"]
   };
@@ -982,7 +1119,7 @@ async function generateScenarioCanvasForStudent(params) {
   const { adminDb, geminiApiKey, studentId, durationMin, generateContentWithRetry: generateContentWithRetry2, geminiModelCascade } = params;
   const { mode, cefr, profileContext, lastLessonContext, hasGrammarContext, grammarContext } = await loadScenarioStudentContext(adminDb, studentId);
   const applicableBlockIds = computeApplicableCanvasBlockIds(mode, hasGrammarContext);
-  const ai = new GoogleGenAI2({ apiKey: geminiApiKey });
+  const ai = new GoogleGenAI3({ apiKey: geminiApiKey });
   const blockListText = applicableBlockIds.map((id, idx) => `${idx + 1}. ${id} \u2014 ${CANVAS_BLOCK_LABELS[id]}`).join("\n");
   const plannerPrompt = `Jeste\u015B do\u015Bwiadczonym metodykiem j\u0119zyka angielskiego (1:1, kursy zawodowe), uk\u0142adaj\u0105cym Canvas KONKRETNEJ lekcji dla konkretnego lektora i kursanta. Piszesz notatki robocze dla lektora, nie podr\u0119cznik ani ankiet\u0119.
 
@@ -1010,9 +1147,9 @@ Blok "main_topic" MUSI dodatkowo zawiera\u0107: dok\u0142adnie 2-3 punkty z "kin
 
 Nie podawaj czas\xF3w trwania ani identyfikator\xF3w \u2014 o to zadba backend.`;
   const plannerSchema = {
-    type: Type2.OBJECT,
+    type: Type3.OBJECT,
     properties: {
-      blocks: { type: Type2.ARRAY, items: plannerBlockSchema() }
+      blocks: { type: Type3.ARRAY, items: plannerBlockSchema() }
     },
     required: ["blocks"]
   };
@@ -1037,7 +1174,7 @@ Nie podawaj czas\xF3w trwania ani identyfikator\xF3w \u2014 o to zadba backend.`
 async function auditScenarioCanvas(canvas, opts) {
   const reviewableItems = canvas.blocks.filter((b) => !b.skipped).flatMap((b) => b.items.map((it) => ({ blockId: b.blockId, itemId: it.itemId, kind: it.kind, text: it.text })));
   if (reviewableItems.length === 0) return canvas;
-  const ai = new GoogleGenAI2({ apiKey: opts.geminiApiKey });
+  const ai = new GoogleGenAI3({ apiKey: opts.geminiApiKey });
   const auditorPrompt = `Jeste\u015B surowym redaktorem scenariuszy lekcji angielskiego (poziom ${opts.cefr}). Poni\u017Cej jest lista punkt\xF3w z gotowego Canvasu lekcji. Twoje JEDYNE zadanie: wskaza\u0107 punkty, kt\xF3re brzmi\u0105 sztucznie, nudno albo jak formularz/ankieta, i poda\u0107 ich POPRAWION\u0104 wersj\u0119 (\u017Cywa, konkretna, naturalna rozmowa).
 
 Zwr\xF3\u0107 patch WY\u0141\u0104CZNIE dla punkt\xF3w wymagaj\u0105cych poprawki \u2014 reszt\u0119 pomi\u0144 (nie zwracaj patcha dla dobrych punkt\xF3w). Nie tw\xF3rz nowych punkt\xF3w, nie zmieniaj ID, nie generuj nowego scenariusza od zera.
@@ -1045,15 +1182,15 @@ Zwr\xF3\u0107 patch WY\u0141\u0104CZNIE dla punkt\xF3w wymagaj\u0105cych poprawk
 PUNKTY:
 ${reviewableItems.map((it) => `- itemId="${it.itemId}" [${it.blockId}/${it.kind}]: ${it.text}`).join("\n")}`;
   const auditorSchema = {
-    type: Type2.OBJECT,
+    type: Type3.OBJECT,
     properties: {
       patches: {
-        type: Type2.ARRAY,
+        type: Type3.ARRAY,
         items: {
-          type: Type2.OBJECT,
+          type: Type3.OBJECT,
           properties: {
-            itemId: { type: Type2.STRING },
-            text: { type: Type2.STRING }
+            itemId: { type: Type3.STRING },
+            text: { type: Type3.STRING }
           },
           required: ["itemId", "text"]
         }
@@ -1080,7 +1217,7 @@ async function refreshScenarioCanvasBlocks(params) {
   const rejected = allItems2.filter((it) => rejectedSet.has(it.itemId));
   const acceptedAnchors = allItems2.filter((it) => it.review.state === "accepted").map((it) => it.text);
   const noteByItemId = new Map(teacherNotes.map((n) => [n.itemId, n.note]));
-  const ai = new GoogleGenAI2({ apiKey: geminiApiKey });
+  const ai = new GoogleGenAI3({ apiKey: geminiApiKey });
   const prompt = `Jeste\u015B metodykiem j\u0119zyka angielskiego. Lektor odrzuci\u0142 poni\u017Csze punkty scenariusza lekcji i poprosi\u0142 o ich podmian\u0119. Zwr\xF3\u0107 DOK\u0141ADNIE tyle nowych wersji, ile jest odrzuconych punkt\xF3w, ka\u017Cd\u0105 przypisan\u0105 do TEGO SAMEGO itemId \u2014 nie dodawaj, nie usuwaj, nie zmieniaj ID.
 
 ODRZUCONE PUNKTY I UWAGI LEKTORA:
@@ -1091,16 +1228,16 @@ ${acceptedAnchors.length ? acceptedAnchors.map((t) => `- ${t}`).join("\n") : "br
 
 Zwr\xF3\u0107 ka\u017Cdy nowy punkt z tym samym "kind" co orygina\u0142, chyba \u017Ce uwaga lektora wyra\u017Anie prosi o inny typ.`;
   const schema = {
-    type: Type2.OBJECT,
+    type: Type3.OBJECT,
     properties: {
       items: {
-        type: Type2.ARRAY,
+        type: Type3.ARRAY,
         items: {
-          type: Type2.OBJECT,
+          type: Type3.OBJECT,
           properties: {
-            itemId: { type: Type2.STRING },
-            kind: { type: Type2.STRING, enum: ["question", "task", "note", "rescue_question", "wind_down_question"] },
-            text: { type: Type2.STRING }
+            itemId: { type: Type3.STRING },
+            kind: { type: Type3.STRING, enum: ["question", "task", "note", "rescue_question", "wind_down_question"] },
+            text: { type: Type3.STRING }
           },
           required: ["itemId", "kind", "text"]
         }
@@ -4963,33 +5100,33 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
   async function extractNotionTranscriptData(transcriptText, fallbackDate) {
     try {
       const apiKey = getGeminiApiKey();
-      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const schema = {
-        type: Type3.OBJECT,
+        type: Type4.OBJECT,
         properties: {
-          topic: { type: Type3.STRING, description: "Zwi\u0119z\u0142y, merytoryczny temat lekcji po angielsku (max 6-8 s\u0142\xF3w)" },
-          date: { type: Type3.STRING, description: "Rzeczywista data spotkania w formacie YYYY-MM-DD, je\u015Bli pada w transkrypcji" },
-          summary: { type: Type3.STRING, description: "2-3 zdania podsumowania po polsku o czym by\u0142a lekcja" },
+          topic: { type: Type4.STRING, description: "Zwi\u0119z\u0142y, merytoryczny temat lekcji po angielsku (max 6-8 s\u0142\xF3w)" },
+          date: { type: Type4.STRING, description: "Rzeczywista data spotkania w formacie YYYY-MM-DD, je\u015Bli pada w transkrypcji" },
+          summary: { type: Type4.STRING, description: "2-3 zdania podsumowania po polsku o czym by\u0142a lekcja" },
           keyLanguage: {
-            type: Type3.ARRAY,
+            type: Type4.ARRAY,
             items: {
-              type: Type3.OBJECT,
+              type: Type4.OBJECT,
               properties: {
-                phrase: { type: Type3.STRING },
-                translation: { type: Type3.STRING },
-                context: { type: Type3.STRING }
+                phrase: { type: Type4.STRING },
+                translation: { type: Type4.STRING },
+                context: { type: Type4.STRING }
               },
               required: ["phrase", "translation"]
             }
           },
           corrections: {
-            type: Type3.ARRAY,
+            type: Type4.ARRAY,
             items: {
-              type: Type3.OBJECT,
+              type: Type4.OBJECT,
               properties: {
-                original: { type: Type3.STRING },
-                correction: { type: Type3.STRING },
-                rule: { type: Type3.STRING }
+                original: { type: Type4.STRING },
+                correction: { type: Type4.STRING },
+                rule: { type: Type4.STRING }
               },
               required: ["original", "correction"]
             }
@@ -5421,7 +5558,7 @@ ${item.rule}` : ""}`).join("\n");
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
       const apiKey = getGeminiApiKey();
-      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       let typeBreakdownInstruction = "";
       if (typeCounts && typeof typeCounts === "object" && Object.keys(typeCounts).length > 0) {
         const parts = Object.entries(typeCounts).filter(([t]) => !selectedTypes || selectedTypes.includes(t)).map(([type, count]) => `- ${type}: DOK\u0141ADNIE 1 ZADANIE ZBIORCZE zawieraj\u0105ce ${count} przyk\u0142ad\xF3w/zda\u0144 w bullet pointach`);
@@ -5533,26 +5670,26 @@ Zwr\xF3\u0107 wynik jako obiekt JSON zawieraj\u0105cy tablic\u0119 obiekt\xF3w p
         contents = [{ text: prompt }];
       }
       const schema = {
-        type: Type3.ARRAY,
+        type: Type4.ARRAY,
         description: "Array of test questions",
         items: {
-          type: Type3.OBJECT,
+          type: Type4.OBJECT,
           properties: {
-            type: { type: Type3.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
-            instruction: { type: Type3.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
-            prompt: { type: Type3.STRING, description: "The question or the sentence to translate/fill" },
+            type: { type: Type4.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
+            instruction: { type: Type4.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
+            prompt: { type: Type4.STRING, description: "The question or the sentence to translate/fill" },
             options: {
-              type: Type3.ARRAY,
-              items: { type: Type3.STRING },
+              type: Type4.ARRAY,
+              items: { type: Type4.STRING },
               description: "Options for multiple_choice, find_mistake or matching pairs."
             },
             wordBank: {
-              type: Type3.ARRAY,
-              items: { type: Type3.STRING },
+              type: Type4.ARRAY,
+              items: { type: Type4.STRING },
               description: "List of words in the word bank for fill_in_blank_bank"
             },
-            correctAnswer: { type: Type3.STRING, description: "The correct answer (exact string)." },
-            hint: { type: Type3.STRING, description: "Optional hint in Polish." }
+            correctAnswer: { type: Type4.STRING, description: "The correct answer (exact string)." },
+            hint: { type: Type4.STRING, description: "Optional hint in Polish." }
           },
           required: ["type", "instruction", "prompt", "correctAnswer"]
         }
@@ -5658,7 +5795,7 @@ tak, \u017Ceby \u0107wiczenie dalej sprawdza\u0142o to samo. Zwr\xF3\u0107 wynik
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const studentsListStr = typeof students === "string" ? students : Array.isArray(students) ? students.map((s) => `ID: ${s.id} | Imi\u0119/Nazwisko: ${s.name || s.username || ""} | Poziom: ${s.level || ""} | Opis: ${s.description || ""}`).join("\n") : "Brak bazy kursant\xF3w";
       let parsedDocText = textContent || "";
       let isPdfFallbackNeeded = false;
@@ -5773,22 +5910,22 @@ Zwr\xF3\u0107 dok\u0142adnie taki kszta\u0142t, bez komentarzy i bez bloku markd
 {"lessons":[{"date":"2024-03-12","studentId":"abc123","studentIds":["abc123"],"lessonTopic":"Present Perfect","revisionNotes":"...","vocabularyText":"deadline - termin\\nto meet - spotka\u0107","studentSpeaking":"...","thingsToImprove":"...","suggestedFollowUp":"..."}]}
 Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 nigdy nie wymy\u015Blaj lekcji, kt\xF3rych nie ma w tek\u015Bcie.`;
       const schema = {
-        type: Type3.OBJECT,
+        type: Type4.OBJECT,
         properties: {
           lessons: {
-            type: Type3.ARRAY,
+            type: Type4.ARRAY,
             items: {
-              type: Type3.OBJECT,
+              type: Type4.OBJECT,
               properties: {
-                date: { type: Type3.STRING },
-                studentId: { type: Type3.STRING },
-                studentIds: { type: Type3.ARRAY, items: { type: Type3.STRING } },
-                lessonTopic: { type: Type3.STRING },
-                revisionNotes: { type: Type3.STRING },
-                vocabularyText: { type: Type3.STRING },
-                studentSpeaking: { type: Type3.STRING },
-                thingsToImprove: { type: Type3.STRING },
-                suggestedFollowUp: { type: Type3.STRING }
+                date: { type: Type4.STRING },
+                studentId: { type: Type4.STRING },
+                studentIds: { type: Type4.ARRAY, items: { type: Type4.STRING } },
+                lessonTopic: { type: Type4.STRING },
+                revisionNotes: { type: Type4.STRING },
+                vocabularyText: { type: Type4.STRING },
+                studentSpeaking: { type: Type4.STRING },
+                thingsToImprove: { type: Type4.STRING },
+                suggestedFollowUp: { type: Type4.STRING }
               },
               required: ["date", "studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
             }
@@ -5836,7 +5973,7 @@ Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 n
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       let parsedDocText = textContent || "";
       let isPdfFallbackNeeded = false;
       if (pdfBase64) {
@@ -5897,27 +6034,27 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
 - aiComment: kr\xF3tkie podsumowanie w 1-2 zdaniach PO POLSKU \u2014 co znalaz\u0142e\u015B i na co lektor powinien zwr\xF3ci\u0107 uwag\u0119.
 - Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny obiekt JSON zgodny ze schematem, bez komentarzy i bloku markdown.`;
       const schema = {
-        type: Type3.OBJECT,
+        type: Type4.OBJECT,
         properties: {
           extractedData: {
-            type: Type3.OBJECT,
+            type: Type4.OBJECT,
             properties: {
-              fullName: { type: Type3.STRING },
-              email: { type: Type3.STRING },
-              level: { type: Type3.STRING },
-              targetGoals: { type: Type3.STRING },
-              industry: { type: Type3.STRING },
-              generalNotes: { type: Type3.STRING },
+              fullName: { type: Type4.STRING },
+              email: { type: Type4.STRING },
+              level: { type: Type4.STRING },
+              targetGoals: { type: Type4.STRING },
+              industry: { type: Type4.STRING },
+              generalNotes: { type: Type4.STRING },
               historicalLessons: {
-                type: Type3.ARRAY,
+                type: Type4.ARRAY,
                 items: {
-                  type: Type3.OBJECT,
+                  type: Type4.OBJECT,
                   properties: {
-                    date: { type: Type3.STRING },
-                    dateAmbiguous: { type: Type3.BOOLEAN },
-                    summary: { type: Type3.STRING },
-                    vocabulary: { type: Type3.ARRAY, items: { type: Type3.STRING } },
-                    corrections: { type: Type3.ARRAY, items: { type: Type3.STRING } }
+                    date: { type: Type4.STRING },
+                    dateAmbiguous: { type: Type4.BOOLEAN },
+                    summary: { type: Type4.STRING },
+                    vocabulary: { type: Type4.ARRAY, items: { type: Type4.STRING } },
+                    corrections: { type: Type4.ARRAY, items: { type: Type4.STRING } }
                   },
                   required: ["date", "summary"]
                 }
@@ -5925,7 +6062,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
             },
             required: ["historicalLessons"]
           },
-          aiComment: { type: Type3.STRING }
+          aiComment: { type: Type4.STRING }
         },
         required: ["extractedData", "aiComment"]
       };
@@ -6165,7 +6302,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured. Please set GEMINI_API_KEY or OPENAI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const studentsListStr = typeof students === "string" ? students : Array.isArray(students) ? students.map((s) => `ID: ${s.id} | Imi\u0119/Nazwisko: ${s.name || s.username || ""} | Poziom: ${s.level || ""} | Opis: ${s.description || ""}`).join("\n") : "Brak bazy kursant\xF3w";
       let promptContext = [];
       if (driveFile) {
@@ -6288,25 +6425,25 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejn\u0105 lekcj\u0119, po polsku)
 `;
       const schema = {
-        type: Type3.OBJECT,
+        type: Type4.OBJECT,
         properties: {
-          studentId: { type: Type3.STRING },
-          studentIds: { type: Type3.ARRAY, items: { type: Type3.STRING } },
-          lessonTopic: { type: Type3.STRING },
-          revisionNotes: { type: Type3.STRING },
-          vocabularyText: { type: Type3.STRING },
-          studentSpeaking: { type: Type3.STRING },
-          thingsToImprove: { type: Type3.STRING },
-          suggestedFollowUp: { type: Type3.STRING },
+          studentId: { type: Type4.STRING },
+          studentIds: { type: Type4.ARRAY, items: { type: Type4.STRING } },
+          lessonTopic: { type: Type4.STRING },
+          revisionNotes: { type: Type4.STRING },
+          vocabularyText: { type: Type4.STRING },
+          studentSpeaking: { type: Type4.STRING },
+          thingsToImprove: { type: Type4.STRING },
+          suggestedFollowUp: { type: Type4.STRING },
           /* Blok 2b i 4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
              pola są opcjonalne, więc schemat jest jeden dla obu trybów.
              Świadomie BEZ homeworkText/homeworkAnswerKey (dawny Blok 3):
              praca domowa żyje wyłącznie w module ćwiczeń, nie w notatce
              z lekcji — nawet jeśli transkrypcja ją zawiera, ma być
              pominięta. */
-          date: { type: Type3.STRING },
-          corrections: { type: Type3.STRING },
-          nextLessonPlan: { type: Type3.STRING }
+          date: { type: Type4.STRING },
+          corrections: { type: Type4.STRING },
+          nextLessonPlan: { type: Type4.STRING }
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
       };
@@ -6334,21 +6471,21 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
       if (!apiKey && !getOpenAIApiKey()) {
         return res.status(500).json({ error: "AI API key not configured." });
       }
-      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const schema = {
-        type: Type3.OBJECT,
+        type: Type4.OBJECT,
         properties: {
           issues: {
-            type: Type3.ARRAY,
+            type: Type4.ARRAY,
             items: {
-              type: Type3.OBJECT,
+              type: Type4.OBJECT,
               properties: {
-                id: { type: Type3.STRING },
-                matchedText: { type: Type3.STRING },
-                contextSnippet: { type: Type3.STRING },
-                suggestion: { type: Type3.STRING },
-                type: { type: Type3.STRING, enum: ["spelling", "grammar", "awkward"] },
-                shortReason: { type: Type3.STRING }
+                id: { type: Type4.STRING },
+                matchedText: { type: Type4.STRING },
+                contextSnippet: { type: Type4.STRING },
+                suggestion: { type: Type4.STRING },
+                type: { type: Type4.STRING, enum: ["spelling", "grammar", "awkward"] },
+                shortReason: { type: Type4.STRING }
               },
               required: ["id", "matchedText", "contextSnippet", "suggestion", "type", "shortReason"]
             }
@@ -6370,6 +6507,32 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
     } catch (error) {
       console.error("[Notebook Spellcheck]", error);
       res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  app2.post("/api/lesson-studio/personalize", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { studentId, blueprint, settings } = req.body;
+      if (!blueprint || !Array.isArray(blueprint.blocks)) {
+        return res.status(400).json({ error: "Nieprawid\u0142owa struktura blueprintu lekcji." });
+      }
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY nie jest skonfigurowany." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const personalizedSlots = await personalizeLessonStudioBlueprint({
+        adminDb,
+        geminiApiKey,
+        studentId: studentId ? String(studentId).trim() : void 0,
+        blueprint,
+        settings: settings || { contextMode: "auto", focusArea: "speaking", depthLevel: "standard" },
+        generateContentWithRetry
+      });
+      return res.json({ success: true, personalizedSlots });
+    } catch (error) {
+      console.error("[LessonStudio Personalize Error]:", error);
+      return res.status(500).json({ error: formatErrorString(error) });
     }
   });
   app2.post("/api/gemini/grade-test", requireFirebaseAuth, async (req, res) => {
@@ -6396,14 +6559,14 @@ Zwr\xF3\u0107 JSON z polami:
 `;
       const apiKey = getGeminiApiKey();
       if (!apiKey && !getOpenAIApiKey()) return res.status(500).json({ error: "AI API key not configured." });
-      const ai = new GoogleGenAI3({ apiKey: apiKey || "dummy" });
+      const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type3.OBJECT,
+          type: Type4.OBJECT,
           properties: {
-            score: { type: Type3.NUMBER },
-            feedback: { type: Type3.STRING }
+            score: { type: Type4.NUMBER },
+            feedback: { type: Type4.STRING }
           },
           required: ["score", "feedback"]
         }
@@ -6423,7 +6586,7 @@ Zwr\xF3\u0107 JSON z polami:
       if (!geminiApiKey && !openaiApiKey) {
         return res.status(500).json({ error: "No AI API key configured. Please set OPENAI_API_KEY or GEMINI_API_KEY in environment variables." });
       }
-      const ai = new GoogleGenAI3({ apiKey: geminiApiKey || "DUMMY" });
+      const ai = new GoogleGenAI4({ apiKey: geminiApiKey || "DUMMY" });
       const isPl = language !== "en";
       const prompt = `Jeste\u015B do\u015Bwiadczonym, empatycznym i wybitnym metodykiem oraz nauczycielem j\u0119zyka angielskiego (ELT Pedagogical Specialist & Language Coach).
 Twoim zadaniem jest przedstawienie kompleksowego, merytorycznego i metodycznego komentarza dla kursanta na podstawie analizy jego wynik\xF3w w \u0107wiczeniach j\u0119zykowych.
@@ -6448,18 +6611,18 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type3.OBJECT,
+          type: Type4.OBJECT,
           properties: {
-            overallTeacherCommentary: { type: Type3.STRING },
+            overallTeacherCommentary: { type: Type4.STRING },
             keyStrengths: {
-              type: Type3.ARRAY,
-              items: { type: Type3.STRING }
+              type: Type4.ARRAY,
+              items: { type: Type4.STRING }
             },
             areasToImprove: {
-              type: Type3.ARRAY,
-              items: { type: Type3.STRING }
+              type: Type4.ARRAY,
+              items: { type: Type4.STRING }
             },
-            pedagogicalTip: { type: Type3.STRING }
+            pedagogicalTip: { type: Type4.STRING }
           },
           required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
         }
@@ -6642,7 +6805,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const geminiKey = getGeminiApiKey();
       if (!finalAudioBuffer && (engine === "auto" || engine === "gemini") && geminiKey) {
         try {
-          const ai = new GoogleGenAI3({ apiKey: geminiKey });
+          const ai = new GoogleGenAI4({ apiKey: geminiKey });
           const voiceName = isMale ? "Puck" : "Kore";
           const modelsToTry = ["gemini-3.1-flash-tts-preview", "gemini-2.5-flash"];
           for (const m of modelsToTry) {
@@ -6791,7 +6954,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
           let gRetries = 2;
           while (gRetries > 0) {
             try {
-              const ai = new GoogleGenAI3({ apiKey: geminiKey });
+              const ai = new GoogleGenAI4({ apiKey: geminiKey });
               let fullPrompt = prompt || "";
               if (!fullPrompt && Array.isArray(messages)) {
                 fullPrompt = messages.map((m) => `${m.role}: ${m.content}`).join("\n");
@@ -6990,7 +7153,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
         let retries = 2;
         while (retries > 0) {
           try {
-            const ai = new GoogleGenAI3({ apiKey });
+            const ai = new GoogleGenAI4({ apiKey });
             const response = await ai.models.generateContent({ model: m, contents, config });
             return res.json({
               text: response?.text ?? "",

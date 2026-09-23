@@ -185,6 +185,7 @@ import {
   LessonScenario,
 } from "./types/scenario";
 import { generateScenarioForStudent } from "./services/scenarioAiService";
+import { personalizeLessonStudioBlueprint } from "./services/lessonStudioAiService";
 import { ScenarioContextError } from "./services/scenarioContextService";
 import { resolveStudentRef, StudentResolutionError } from "./services/studentResolver";
 import { ScenarioCanvasV2 } from "./types/scenarioCanvas";
@@ -4851,6 +4852,44 @@ Zwróć wynik jako JSON z poniższymi polami:
     } catch (error: any) {
       console.error('[Notebook Spellcheck]', error);
       res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════════════════
+     LESSON STUDIO MVP: PERSONALIZACJA BLUEPRINTU LEKCJI (Etap 2)
+     Endpoint chroniony autoryzacją lektora (requireFirebaseAdmin).
+     Wywołuje Gemini 2.5 Flash ze Structured Output, modyfikując
+     wyłącznie wyznaczone sloty personalizacji bez ruszania szkieletu.
+     ═══════════════════════════════════════════════════════════════════ */
+  app.post('/api/lesson-studio/personalize', requireFirebaseAdmin, async (req, res) => {
+    try {
+      const { studentId, blueprint, settings } = req.body;
+
+      if (!blueprint || !Array.isArray(blueprint.blocks)) {
+        return res.status(400).json({ error: 'Nieprawidłowa struktura blueprintu lekcji.' });
+      }
+
+      const geminiApiKey = getGeminiApiKey();
+      if (!geminiApiKey) {
+        return res.status(500).json({ error: 'GEMINI_API_KEY nie jest skonfigurowany.' });
+      }
+
+      const adminApp = getAdminApp();
+      const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      const personalizedSlots = await personalizeLessonStudioBlueprint({
+        adminDb,
+        geminiApiKey,
+        studentId: studentId ? String(studentId).trim() : undefined,
+        blueprint,
+        settings: settings || { contextMode: 'auto', focusArea: 'speaking', depthLevel: 'standard' },
+        generateContentWithRetry
+      });
+
+      return res.json({ success: true, personalizedSlots });
+    } catch (error: any) {
+      console.error('[LessonStudio Personalize Error]:', error);
+      return res.status(500).json({ error: formatErrorString(error) });
     }
   });
 

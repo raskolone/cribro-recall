@@ -21,8 +21,9 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
-import { User, LessonBlock, PersonalizationSettings } from '../../types';
+import { db, auth } from '../../firebase';
+import { User, LessonBlock, PersonalizationSettings, LessonBlueprint } from '../../types';
+import { SEED_LESSON_1_BLUEPRINT, MISSION_PACK_1 } from '../../utils/lessonStudioSeed';
 import Button from '../ui/Button';
 
 interface LessonStudioEditorProps {
@@ -30,77 +31,6 @@ interface LessonStudioEditorProps {
   lessonInstanceId?: string | null;
   mode?: 'new' | 'edit' | 'live';
 }
-
-const DEFAULT_BLOCKS: LessonBlock[] = [
-  {
-    id: 'block_checkin',
-    type: 'check_in',
-    title: '1. Check-in & Warm-up',
-    audience: 'both',
-    interactionMode: 'collaborate',
-    locked: false,
-    baseContent: {
-      description: 'Quick informal conversation and mood check to set a positive tone.',
-      prompts: [
-        'How did your week go?',
-        'Any unexpected English moments recently?',
-        'What is your main energy level today (1-10)?'
-      ]
-    },
-    personalizableSlots: [
-      {
-        slotId: 'warmup_topic',
-        name: 'Warm-up topic context',
-        type: 'choice',
-        defaultValue: 'Recent weekend highlights',
-        customValue: 'Work presentation debrief'
-      }
-    ]
-  },
-  {
-    id: 'block_mission_briefing',
-    type: 'mission_briefing',
-    title: '2. Mission Briefing & Target Vocabulary',
-    audience: 'both',
-    interactionMode: 'view',
-    locked: false,
-    baseContent: {
-      description: 'Define the clear communicative outcome and core lexical chunks for this session.',
-      targetVocab: ['tackle a bottleneck', 'bring up an issue', 'streamline workflow', 'get buy-in'],
-      grammarFocus: 'Diplomatic language & modal hedging (e.g., "Could we perhaps...")'
-    },
-    personalizableSlots: [
-      {
-        slotId: 'domain_scenario',
-        name: 'Industry focus',
-        type: 'text',
-        defaultValue: 'General Business',
-        customValue: 'Tech & Engineering Leadership'
-      }
-    ]
-  },
-  {
-    id: 'block_final_mission',
-    type: 'final_mission',
-    title: '3. Final Mission (Simulation & Production)',
-    audience: 'both',
-    interactionMode: 'student_response',
-    locked: false,
-    baseContent: {
-      description: 'Real-world simulation where the student applies all target phrases under realistic constraints.',
-      instructions: 'Roleplay: Deliver an unscripted pitch / proposal to an executive stakeholder addressing project timeline adjustments.'
-    },
-    personalizableSlots: [
-      {
-        slotId: 'simulation_role',
-        name: 'Simulation partner role',
-        type: 'text',
-        defaultValue: 'Client or Stakeholder',
-        customValue: 'C-level Executive'
-      }
-    ]
-  }
-];
 
 export const LessonStudioEditor: React.FC<LessonStudioEditorProps> = ({
   initialStudentId,
@@ -117,10 +47,12 @@ export const LessonStudioEditor: React.FC<LessonStudioEditorProps> = ({
   const [focusArea, setFocusArea] = useState<'speaking' | 'grammar' | 'vocabulary' | 'fluency' | 'accuracy' | 'pronunciation'>('speaking');
   const [depthLevel, setDepthLevel] = useState<'fast' | 'standard' | 'deep_dive'>('standard');
   const [isPersonalizing, setIsPersonalizing] = useState(false);
+  const [personalizeError, setPersonalizeError] = useState<string | null>(null);
 
-  // Block State
-  const [blocks, setBlocks] = useState<LessonBlock[]>(DEFAULT_BLOCKS);
-  const [selectedBlockId, setSelectedBlockId] = useState<string>(DEFAULT_BLOCKS[0].id);
+  // Active Blueprint & Blocks State
+  const [currentBlueprint, setCurrentBlueprint] = useState<LessonBlueprint>(SEED_LESSON_1_BLUEPRINT);
+  const [blocks, setBlocks] = useState<LessonBlock[]>(SEED_LESSON_1_BLUEPRINT.blocks);
+  const [selectedBlockId, setSelectedBlockId] = useState<string>(SEED_LESSON_1_BLUEPRINT.blocks[0].id);
 
   useEffect(() => {
     if (!studentId && typeof window !== 'undefined') {
@@ -155,11 +87,76 @@ export const LessonStudioEditor: React.FC<LessonStudioEditorProps> = ({
     ? (`${student.firstName || ''} ${student.lastName || ''}`.trim() || student.displayName || student.username)
     : (studentId ? `Kursant (${studentId.slice(0, 6)}…)` : 'Wszyscy kursanci (Szablon)');
 
-  const handlePersonalizeSimulation = () => {
+  const handlePersonalize = async () => {
     setIsPersonalizing(true);
-    setTimeout(() => {
+    setPersonalizeError(null);
+    try {
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : null;
+      if (!token) {
+        throw new Error('Musisz być zalogowany jako lektor/admin.');
+      }
+
+      const settings: PersonalizationSettings = {
+        contextMode,
+        focusArea,
+        depthLevel
+      };
+
+      const payload = {
+        studentId: studentId || undefined,
+        blueprint: {
+          ...currentBlueprint,
+          blocks
+        },
+        settings
+      };
+
+      const response = await fetch('/api/lesson-studio/personalize', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Błąd serwera (${response.status})`);
+      }
+
+      const data = await response.json();
+      const personalizedSlots: Record<string, string> = data.personalizedSlots || {};
+
+      // Aktualizujemy customValue w slotach bloków
+      setBlocks(prevBlocks => 
+        prevBlocks.map(block => ({
+          ...block,
+          personalizableSlots: block.personalizableSlots.map(slot => ({
+            ...slot,
+            customValue: personalizedSlots[slot.slotId] !== undefined 
+              ? personalizedSlots[slot.slotId] 
+              : slot.customValue
+          }))
+        }))
+      );
+    } catch (err: any) {
+      console.error('[LessonStudioEditor] Personalization failed:', err);
+      setPersonalizeError(err.message || 'Nie udało się spersonalizować lekcji.');
+    } finally {
       setIsPersonalizing(false);
-    }, 900);
+    }
+  };
+
+  const handleSlotCustomValueChange = (slotId: string, newValue: string) => {
+    setBlocks(prevBlocks =>
+      prevBlocks.map(block => ({
+        ...block,
+        personalizableSlots: block.personalizableSlots.map(slot =>
+          slot.slotId === slotId ? { ...slot, customValue: newValue } : slot
+        )
+      }))
+    );
   };
 
   const handleBack = () => {
@@ -263,12 +260,12 @@ export const LessonStudioEditor: React.FC<LessonStudioEditorProps> = ({
 
             {/* AI Personalize Action */}
             <button
-              onClick={handlePersonalizeSimulation}
+              onClick={handlePersonalize}
               disabled={isPersonalizing}
               className="px-4 py-2 rounded-xl bg-gradient-to-r from-primary to-primary-focus hover:from-primary-focus hover:to-primary text-accent-ink font-black text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-primary/20 transition-all hover:scale-[1.02] cursor-pointer disabled:opacity-50"
             >
               <Sparkles size={14} className={isPersonalizing ? 'animate-spin' : ''} />
-              <span>{isPersonalizing ? 'Dostosowywanie…' : '✨ Personalize'}</span>
+              <span>{isPersonalizing ? 'Generowanie AI…' : '✨ Personalize'}</span>
             </button>
 
             {/* Start Live Session Button */}
@@ -485,41 +482,108 @@ export const LessonStudioEditor: React.FC<LessonStudioEditorProps> = ({
               {/* Personalizable Slots Section */}
               <div className="pt-3 border-t border-line-strong/80 space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-extrabold uppercase tracking-wider text-text-hi flex items-center gap-1.5">
-                    <Sparkles size={13} className="text-primary" />
-                    <span>Personalizowane Sloty (Dla tego kursanta)</span>
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-primary" />
+                    <h3 className="text-xs font-extrabold uppercase tracking-wider text-text-hi">
+                      Sloty Personalizacji (Base vs Adapted)
+                    </h3>
+                  </div>
                   <span className="text-[11px] text-content-muted">
-                    Dostosowane do profilu
+                    {selectedBlock.personalizableSlots.length} {selectedBlock.personalizableSlots.length === 1 ? 'slot' : 'sloty'}
                   </span>
                 </div>
 
+                {personalizeError && (
+                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-2">
+                    <span>{personalizeError}</span>
+                    <button 
+                      onClick={() => setPersonalizeError(null)}
+                      className="text-[11px] font-bold underline cursor-pointer"
+                    >
+                      Zamknij
+                    </button>
+                  </div>
+                )}
+
                 {selectedBlock.personalizableSlots.length === 0 ? (
                   <div className="p-4 rounded-xl bg-base-100/40 border border-line-strong text-center text-xs text-content-muted">
-                    Ten blok nie wymaga specyficznych slotów personalizacji.
+                    Ten blok nie posiada zdefiniowanych zmiennych slotów personalizacji.
                   </div>
                 ) : (
-                  <div className="space-y-2.5">
-                    {selectedBlock.personalizableSlots.map(slot => (
-                      <div key={slot.slotId} className="p-3.5 rounded-xl bg-base-100/70 border border-line-strong flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="space-y-0.5">
-                          <span className="text-xs font-bold text-text-hi block">
-                            {slot.name}
-                          </span>
-                          <span className="text-[11px] text-content-muted block">
-                            Wartość bazowa: {String(slot.defaultValue)}
-                          </span>
+                  <div className="space-y-3">
+                    {selectedBlock.personalizableSlots.map(slot => {
+                      const isAdapted = slot.customValue !== undefined && slot.customValue !== slot.defaultValue;
+                      return (
+                        <div 
+                          key={slot.slotId} 
+                          className="p-4 rounded-2xl bg-base-100/80 border border-line-strong space-y-3 shadow-inner"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-bold text-text-hi">
+                                  {slot.name}
+                                </span>
+                                <span className="text-[10px] font-mono text-content-muted">
+                                  [{slot.slotId}]
+                                </span>
+                              </div>
+                              {slot.description && (
+                                <p className="text-[11px] text-content-muted">
+                                  {slot.description}
+                                </p>
+                              )}
+                            </div>
+
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${
+                              isAdapted 
+                                ? 'bg-primary/20 text-primary border-primary/30' 
+                                : 'bg-base-200 text-content-muted border-line-strong'
+                            }`}>
+                              {isAdapted ? '✨ Adapted (AI / Custom)' : 'Base (Default)'}
+                            </span>
+                          </div>
+
+                          {/* Base vs Adapted grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+                            {/* BASE VALUE */}
+                            <div className="p-2.5 rounded-xl bg-base-200/60 border border-line-strong/60 space-y-1">
+                              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-content-muted block">
+                                Wartość bazowa (Base):
+                              </span>
+                              <div className="text-xs text-content-muted whitespace-pre-wrap select-all">
+                                {String(slot.defaultValue)}
+                              </div>
+                            </div>
+
+                            {/* ADAPTED VALUE (EDITABLE) */}
+                            <div className="p-2.5 rounded-xl bg-primary/5 border border-primary/25 space-y-1.5">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-primary block">
+                                  Wartość spersonalizowana (Adapted):
+                                </span>
+                                {isAdapted && (
+                                  <button
+                                    onClick={() => handleSlotCustomValueChange(slot.slotId, slot.defaultValue)}
+                                    className="text-[10px] text-content-muted hover:text-text-hi underline cursor-pointer"
+                                    title="Przywróć wartość bazową"
+                                  >
+                                    Reset do Base
+                                  </button>
+                                )}
+                              </div>
+                              <textarea
+                                rows={2}
+                                value={slot.customValue !== undefined ? slot.customValue : slot.defaultValue}
+                                onChange={(e) => handleSlotCustomValueChange(slot.slotId, e.target.value)}
+                                className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-base-100 border border-line-strong focus:border-primary text-text-hi focus:outline-none resize-y min-h-[38px]"
+                                placeholder="Wpisz lub edytuj wartość spersonalizowaną…"
+                              />
+                            </div>
+                          </div>
                         </div>
-                        <div className="sm:max-w-xs w-full">
-                          <input
-                            type="text"
-                            defaultValue={slot.customValue || slot.defaultValue}
-                            className="w-full text-xs font-semibold px-3 py-1.5 rounded-lg bg-base-200 border border-line-strong focus:border-primary text-text-hi focus:outline-none"
-                            placeholder="Wpisz niestandardową wartość…"
-                          />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
