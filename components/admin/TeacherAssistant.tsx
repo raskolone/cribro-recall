@@ -1652,7 +1652,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
             )}
 
             {/* Główna ramka pola czatu */}
-            <div className="relative rounded-3xl border border-line-strong bg-[#0c1424]/90 backdrop-blur-2xl shadow-ambient-md transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_25px_rgba(114,240,180,0.18)] flex flex-col p-3 sm:p-4">
+            <div className="relative rounded-3xl border border-line-strong bg-ink-2/95 backdrop-blur-2xl shadow-ambient-md transition-all focus-within:border-primary/50 focus-within:shadow-[0_0_25px_rgba(114,240,180,0.18)] flex flex-col p-3 sm:p-4">
               {/* Załączniki oczekujące (Chips) */}
               {pendingAttachments.length > 0 && (
                 <div className="pb-2.5 mb-2 border-b border-line flex flex-wrap gap-1.5 items-center">

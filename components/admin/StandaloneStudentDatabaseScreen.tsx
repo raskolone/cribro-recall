@@ -969,10 +969,10 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                   <div
                     key={sId}
                     onClick={() => onSelectUser(student.id || '', 'profile')}
-                    className={`group relative p-4 rounded-2xl bg-base-200/50 backdrop-blur-md border transition-all duration-200 cursor-pointer flex flex-col justify-between select-none shadow-sm ${
+                    className={`liquid-glass-tile group relative p-4.5 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer flex flex-col justify-between select-none ${
                       isSelected
-                        ? 'border-primary ring-2 ring-primary/80 bg-primary/[0.08] shadow-[0_0_20px_rgba(114,240,180,0.2)]'
-                        : 'border-white/10 hover:border-primary/50 hover:shadow-[0_0_20px_rgba(114,240,180,0.15)] hover:bg-base-200/70'
+                        ? 'is-selected border-primary ring-2 ring-primary/80 bg-primary/[0.12] shadow-[0_0_25px_rgba(114,240,180,0.25)] z-10'
+                        : 'border-line-strong hover:border-primary/60 hover:shadow-ambient-md'
                     }`}
                   >
                     <div>

@@ -3541,7 +3541,19 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
   - Wdrożono pojedynczy Action Hero Card: wyraźny kafelek z informacją „Zadania od lektora" i terminem lub stanem pustym „Brak nowych zadań od lektora. Sprawdź ćwiczenia w Moich zasobach".
 - **Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (513/513 zaliczonych), `npm run build` (przechodzi).
 
+### BB. Optymalizacja Kolorystyki Trybu Jasnego, Kontrastu oraz Głębi Szkła CRM (2026-09-23)
+- **Pole Czatu AI w Trybie Jasnym (`components/admin/TeacherAssistant.tsx`):**
+  - Wyeliminowano hardcoded ciemne tło `bg-[#0c1424]/90` na rzecz responsywnego tokenu `bg-ink-2/95` z `backdrop-blur-2xl`. W trybie jasnym pole czatu jest śnieżnobiałe i spójne z resztą widoku, a w trybie ciemnym zachowuje głębię Nocturne Green.
+  - Skorygowano tokeny tekstu na przyciskach akcji na `text-accent-ink`.
+- **Wysoki Kontrast w Trybie Jasnym (WCAG AAA) (`index.css`, `components/admin/AdminPanel.tsx`, `components/admin/TeacherTodayCockpit.tsx`):**
+  - Dodano globalne reguły dla trybu jasnego mapujące blade odcienie `-200`, `-300` i `-400` (amber/żółty, błękitny/sky/blue, fioletowy/purple, szmaragdowy/emerald, różowy/rose) na nasycone, ciemne barwy o kontraście 7:1+ (m.in. `#92400e` dla przypomnień i ostrzeżeń, `#0369a1` dla błękitów/linków/filtrów CRM, `#6b21a8` dla grup, `#065f46` dla sukcesu).
+  - Skorygowano tło sekcji lekcji do potwierdzenia z ciemnego `bg-amber-950/20` na responsywne `bg-amber-500/[0.08] dark:bg-amber-950/20`.
+- **Wyraziste Krawędzie i Efekt Szkła CRM (`components/admin/StandaloneStudentDatabaseScreen.tsx`, `index.css`):**
+  - Przepięto kafelki kursantów i grup w widoku siatki na klasę `.liquid-glass-tile`, zapewniając wyrazisty obrys (`1.5px solid`), rozbłysk górnej krawędzi, soczewkowy refleks światła `::after` oraz głębię cienia `shadow-ambient-md`.
+- **Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (513/513 zaliczonych), `npm run build` (przechodzi).
+
 ---
+
 
 
 

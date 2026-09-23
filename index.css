@@ -133,6 +133,97 @@
   background-color: rgba(15, 23, 32, 0.45);
 }
 
+/* ── KONTRAST KOLORÓW STANU I ETYKIET W TRYBIE JASNYM (WCAG AAA) ──
+   W trybie ciemnym barwy -200, -300 i -400 są nasycone i czytelne na ciemnym tle,
+   natomiast na jasnym/białym tle stają się zbyt blade i zlewają się z tłem.
+   W trybie jasnym mapujemy je na głębokie, wyraziste odcienie o kontraście 7:1+. */
+:root[data-theme="light"] .text-amber-200,
+:root[data-theme="light"] .text-amber-300,
+:root[data-theme="light"] .text-amber-400,
+:root[data-theme="light"] .text-yellow-200,
+:root[data-theme="light"] .text-yellow-300,
+:root[data-theme="light"] .text-yellow-400,
+:root[data-theme="light"] .text-orange-200,
+:root[data-theme="light"] .text-orange-300,
+:root[data-theme="light"] .text-orange-400,
+:root.light .text-amber-200,
+:root.light .text-amber-300,
+:root.light .text-amber-400,
+:root.light .text-yellow-200,
+:root.light .text-yellow-300,
+:root.light .text-yellow-400,
+:root.light .text-orange-200,
+:root.light .text-orange-300,
+:root.light .text-orange-400 {
+  color: #92400e !important;
+}
+
+:root[data-theme="light"] .text-sky-200,
+:root[data-theme="light"] .text-sky-300,
+:root[data-theme="light"] .text-sky-400,
+:root[data-theme="light"] .text-blue-200,
+:root[data-theme="light"] .text-blue-300,
+:root[data-theme="light"] .text-blue-400,
+:root[data-theme="light"] .text-cyan-200,
+:root[data-theme="light"] .text-cyan-300,
+:root[data-theme="light"] .text-cyan-400,
+:root.light .text-sky-200,
+:root.light .text-sky-300,
+:root.light .text-sky-400,
+:root.light .text-blue-200,
+:root.light .text-blue-300,
+:root.light .text-blue-400,
+:root.light .text-cyan-200,
+:root.light .text-cyan-300,
+:root.light .text-cyan-400 {
+  color: #0369a1 !important;
+}
+
+:root[data-theme="light"] .text-purple-200,
+:root[data-theme="light"] .text-purple-300,
+:root[data-theme="light"] .text-purple-400,
+:root[data-theme="light"] .text-indigo-200,
+:root[data-theme="light"] .text-indigo-300,
+:root[data-theme="light"] .text-indigo-400,
+:root.light .text-purple-200,
+:root.light .text-purple-300,
+:root.light .text-purple-400,
+:root.light .text-indigo-200,
+:root.light .text-indigo-300,
+:root.light .text-indigo-400 {
+  color: #6b21a8 !important;
+}
+
+:root[data-theme="light"] .text-emerald-200,
+:root[data-theme="light"] .text-emerald-300,
+:root[data-theme="light"] .text-emerald-400,
+:root[data-theme="light"] .text-green-200,
+:root[data-theme="light"] .text-green-300,
+:root[data-theme="light"] .text-green-400,
+:root.light .text-emerald-200,
+:root.light .text-emerald-300,
+:root.light .text-emerald-400,
+:root.light .text-green-200,
+:root.light .text-green-300,
+:root.light .text-green-400 {
+  color: #065f46 !important;
+}
+
+:root[data-theme="light"] .text-rose-200,
+:root[data-theme="light"] .text-rose-300,
+:root[data-theme="light"] .text-rose-400,
+:root[data-theme="light"] .text-red-200,
+:root[data-theme="light"] .text-red-300,
+:root[data-theme="light"] .text-red-400,
+:root.light .text-rose-200,
+:root.light .text-rose-300,
+:root.light .text-rose-400,
+:root.light .text-red-200,
+:root.light .text-red-300,
+:root.light .text-red-400 {
+  color: #9f1239 !important;
+}
+
 /* Rozbłysk przełącznika motywu.
    Domyślnie View Transitions przenika stary obraz w nowy — przenikanie
    walczyłoby z przycinaniem okręgiem i dawało brudną, szarą klatkę pośrodku.
@@ -439,21 +530,21 @@ html, body, #root { min-height: 100vh; }
   background:
     linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.07) 0%,
-      rgba(255, 255, 255, 0.02) 50%,
-      rgba(255, 255, 255, 0.005) 100%
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.03) 50%,
+      rgba(255, 255, 255, 0.01) 100%
     ),
-    rgba(15, 23, 42, 0.65);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-top: 1px solid rgba(255, 255, 255, 0.30);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    rgba(15, 23, 42, 0.70);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.38);
+  border-bottom: 1.5px solid rgba(255, 255, 255, 0.10);
   border-radius: var(--r-xl);
   backdrop-filter: blur(24px) saturate(180%) contrast(102%);
   -webkit-backdrop-filter: blur(24px) saturate(180%) contrast(102%);
   box-shadow:
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.22),
-    0 2px 8px 0 rgba(0, 0, 0, 0.25),
-    0 8px 24px -4px rgba(0, 0, 0, 0.42);
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.25),
+    0 4px 14px 0 rgba(0, 0, 0, 0.35),
+    0 12px 32px -4px rgba(0, 0, 0, 0.48);
   transition:
     transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
     border-color 0.2s ease,
@@ -475,10 +566,10 @@ html, body, #root { min-height: 100vh; }
   z-index: 1;
   background: radial-gradient(
     ellipse 80% 32% at 50% 0%,
-    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.10) 0%,
     transparent 100%
   );
-  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.20);
+  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.22);
 }
 
 /* Wersja w trybie dziennym (Translucent Frosted Glass) */
@@ -488,18 +579,18 @@ html, body, #root { min-height: 100vh; }
 :root[data-theme="light"] .glass-tile {
   background: linear-gradient(
     180deg,
-    rgba(255, 255, 255, 0.70) 0%,
-    rgba(255, 255, 255, 0.46) 100%
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(255, 255, 255, 0.58) 100%
   );
-  border: 1px solid rgba(15, 23, 42, 0.12);
-  border-top: 1px solid rgba(255, 255, 255, 0.90);
-  border-bottom: 1px solid rgba(15, 23, 42, 0.16);
+  border: 1.5px solid rgba(15, 23, 42, 0.18);
+  border-top: 1.5px solid rgba(255, 255, 255, 0.95);
+  border-bottom: 1.5px solid rgba(15, 23, 42, 0.24);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   box-shadow:
     inset 0 1px 1px 0 #ffffff,
-    0 1px 3px 0 rgba(15, 23, 42, 0.04),
-    0 8px 20px -3px rgba(15, 23, 42, 0.08);
+    0 2px 6px 0 rgba(15, 23, 42, 0.05),
+    0 10px 24px -3px rgba(15, 23, 42, 0.10);
 }
 
 :root.light .liquid-glass-tile::after,
@@ -508,7 +599,7 @@ html, body, #root { min-height: 100vh; }
 :root[data-theme="light"] .glass-tile::after {
   background: radial-gradient(
     ellipse 80% 32% at 50% 0%,
-    rgba(255, 255, 255, 0.35) 0%,
+    rgba(255, 255, 255, 0.40) 0%,
     transparent 100%
   );
   box-shadow: inset 0 1px 0.5px #ffffff;

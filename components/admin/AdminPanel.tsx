@@ -3481,7 +3481,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
 
                       {/* Sekcja: Do potwierdzenia (Notion-style Toggle Heading) */}
                       {pendingLessons.length > 0 && (
-                        <div className="rounded-2xl bg-amber-950/20 border border-amber-500/30 shadow-md overflow-hidden transition-all">
+                        <div className="rounded-2xl bg-amber-500/[0.08] dark:bg-amber-950/20 border border-amber-500/30 shadow-md overflow-hidden transition-all">
                           {/* Toggle Heading Header - Zmniejsza zajmowane miejsce */}
                           <button
                             type="button"
