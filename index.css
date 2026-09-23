@@ -1901,3 +1901,67 @@ tr.liquid-glass-hover:hover {
     min-height: 60vh !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   KAFELEK KURSANTA — WARIANT 3C (Linear Specular Highlight / Compact Flow)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Baza kafelka kursanta - Wariant 3C Compact */
+.specular-student-card {
+  position: relative;
+  overflow: hidden;
+  background-color: #111b2b;
+  border: 1px solid #1a273d;
+  border-radius: 0.75rem;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Górna laserowa linia świetlna (Specular Highlight) */
+.specular-student-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 25%;
+  right: 25%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #34d399, #6ee7b7, transparent);
+  opacity: 0;
+  transition: opacity 0.3s ease, left 0.35s ease, right 0.35s ease;
+  box-shadow: 0 0 10px 1px rgba(52, 211, 153, 0.8);
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Stan Hover */
+.specular-student-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(52, 211, 153, 0.45);
+  background-color: #142236;
+  box-shadow: 0 10px 25px -8px rgba(0, 0, 0, 0.6), 0 0 16px -4px rgba(52, 211, 153, 0.25);
+}
+
+.specular-student-card:hover::before {
+  opacity: 1;
+  left: 0%;
+  right: 0%;
+}
+
+/* Stan zaznaczony / aktywny (Active / Selected Card) */
+.specular-student-card.is-active,
+.specular-student-card.is-selected {
+  border-color: rgba(52, 211, 153, 0.7);
+  background-color: #132433;
+  box-shadow: 0 0 18px -2px rgba(52, 211, 153, 0.35), inset 0 1px 0 rgba(52, 211, 153, 0.5);
+}
+
+/* Pionowy wskaźnik statusu */
+.specular-accent-bar {
+  transition: all 0.25s ease;
+}
+
+.specular-student-card:hover .specular-accent-bar,
+.specular-student-card.is-active .specular-accent-bar {
+  background-color: #34d399;
+  box-shadow: 0 0 10px #34d399;
+}
+

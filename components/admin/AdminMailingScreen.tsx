@@ -1464,10 +1464,7 @@ export const AdminMailingScreen: React.FC<AdminMailingScreenProps> = ({ onBack }
                 <span className="text-primary font-mono text-[11px]">Zsynchronizowana</span>
               </div>
               <p>
-                Przycisk „Sprawdź transkrypcje w Notion" w widoku Historii Lekcji pokazuje podgląd stron
-                Notion dla zaznaczonego kursanta i importuje wyłącznie to, co lektor jawnie zaakceptuje w
-                modalu — nic nie zapisuje się automatycznie w tle (zlecenie 2026-09-21, zastępuje wcześniejszy
-                cykliczny timer co 5 minut).
+                Import lekcji z Notion odbywa się na żądanie lektora w dedykowanych modułach aplikacji — nic nie zapisuje się automatycznie w tle.
               </p>
             </div>
           </Card>

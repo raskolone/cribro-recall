@@ -66,7 +66,6 @@ import LessonSummaryEmailModal from './LessonSummaryEmailModal';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
 import TeacherLessonHistoryView from './TeacherLessonHistoryView';
-import { NotionImportPreviewModal, NotionPreviewItem } from './NotionImportPreviewModal';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { StandaloneStudentDatabaseScreen } from './StandaloneStudentDatabaseScreen';
 import TeacherAssistant from './TeacherAssistant';
@@ -1130,69 +1129,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     }
   };
 
-  /**
-   * Pull-on-Demand z zakładki „Historia Lekcji" profilu kursanta — ten sam
-   * endpoint co w TeacherLessonHistoryView, ale zawsze zawężony do
-   * `selectedUser`, więc nie trzeba dodatkowo wybierać kursanta z listy.
-   */
-  const handleCheckNotionForOpenStudent = async () => {
-    if (!selectedUser) return;
-    setIsCheckingNotionForStudent(true);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/notion/fetch-transcripts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ mode: 'preview', studentId: selectedUser.id }),
-      });
-      const contentType = res.headers.get('content-type') || '';
-      const data: any = contentType.includes('application/json') ? await res.json() : {};
-      if (!res.ok) throw new Error(data.error || 'Nie udało się połączyć z Notion');
 
-      const items = (data.items || []) as NotionPreviewItem[];
-      if (items.length === 0) {
-        showToast('Nie znaleziono nowych transkrypcji w Notion dla tego kursanta.');
-        return;
-      }
-      setNotionPreviewItemsForStudent(items);
-      setIsNotionPreviewOpenForStudent(true);
-    } catch (err: any) {
-      showToast(`Błąd sprawdzania Notion: ${err?.message || String(err)}`);
-    } finally {
-      setIsCheckingNotionForStudent(false);
-    }
-  };
-
-  const handleImportNotionForOpenStudent = async (pageIds: string[], topicOverrides: Record<string, string>) => {
-    if (!selectedUser || pageIds.length === 0) return;
-    setIsImportingNotionForStudent(true);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      const res = await fetch('/api/notion/fetch-transcripts', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({ mode: 'import', studentId: selectedUser.id, pageIds, topicOverrides }),
-      });
-      const contentType = res.headers.get('content-type') || '';
-      const data: any = contentType.includes('application/json') ? await res.json() : {};
-      if (!res.ok) throw new Error(data.error || 'Nie udało się zaimportować z Notion');
-
-      const imported = Number(data.importedCount || 0);
-      setIsNotionPreviewOpenForStudent(false);
-      showToast(`Zaimportowano ${imported} ${imported === 1 ? 'lekcję' : 'lekcji'} z Notion.`);
-      fetchUserLogsAndStats(selectedUser.id);
-    } catch (err: any) {
-      showToast(`Błąd importu z Notion: ${err?.message || String(err)}`);
-    } finally {
-      setIsImportingNotionForStudent(false);
-    }
-  };
 
   const handleConfirmLessonDirectly = async (record: LessonRecord, customDate?: string, studentIdOverride?: string) => {
     const studentId = studentIdOverride || selectedUser?.id;
@@ -1485,10 +1422,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [showRejectedLessonsSection, setShowRejectedLessonsSection] = useState(false);
   const [isRejectingLessonId, setIsRejectingLessonId] = useState<string | null>(null);
   const [isConfirmingLessonId, setIsConfirmingLessonId] = useState<string | null>(null);
-  const [isCheckingNotionForStudent, setIsCheckingNotionForStudent] = useState(false);
-  const [isImportingNotionForStudent, setIsImportingNotionForStudent] = useState(false);
-  const [isNotionPreviewOpenForStudent, setIsNotionPreviewOpenForStudent] = useState(false);
-  const [notionPreviewItemsForStudent, setNotionPreviewItemsForStudent] = useState<NotionPreviewItem[]>([]);
+
   const [groupByMonth, setGroupByMonth] = useState(true);
   const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
   const [userSets, setUserSets] = useState<FlashcardSet[]>([]);
@@ -3253,17 +3187,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       <Zap size={13} className="fill-slate-950" />
                       <span>⚡️ Prepare Next Lesson</span>
                     </button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={handleCheckNotionForOpenStudent}
-                      isLoading={isCheckingNotionForStudent}
-                      className="text-xs flex items-center gap-1.5 py-2 px-3 border-line-strong hover:border-amber-400/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-semibold"
-                      title={`Sprawdź w Notion, czy jest coś nowego do zaimportowania dla: ${selectedUser?.firstName || selectedUser?.username || 'tego kursanta'}`}
-                    >
-                      <RefreshCw size={13} className={isCheckingNotionForStudent ? 'animate-spin' : ''} />
-                      Sprawdź transkrypcje w Notion
-                    </Button>
                     <MenuDropdown
                       align="end"
                       width={292}
@@ -6400,14 +6323,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         />
       )}
 
-      <NotionImportPreviewModal
-        isOpen={isNotionPreviewOpenForStudent}
-        onClose={() => setIsNotionPreviewOpenForStudent(false)}
-        studentName={selectedUser ? formatStudentDisplayName(selectedUser as User) : ''}
-        items={notionPreviewItemsForStudent}
-        isImporting={isImportingNotionForStudent}
-        onConfirmImport={handleImportNotionForOpenStudent}
-      />
     </div>
   );
 };

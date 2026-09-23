@@ -13,6 +13,7 @@ import { StudentImportAnalysis } from '../../types/studentImport';
 import { GroupsManager } from './GroupsManager';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import StudentImportReviewCard from './StudentImportReviewCard';
+import StudentCard from './StudentCard';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import {
@@ -931,140 +932,23 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3">
               {(isExpanded || pageSize === 'all'
                 ? filteredUsers
                 : filteredUsers.slice(0, typeof pageSize === 'number' ? pageSize : 12)
-              ).map((student) => {
-                const sId = student.id || student.username;
-                const sName =
-                  student.displayName ||
-                  student.name ||
-                  `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
-                  student.username;
-                const isGrp = Boolean(student.isGroup || student.lessonType === 'Group');
-                const recentLesson = getRecentLesson(student);
-                const isActive =
-                  !student.isSuspended &&
-                  !student.isArchived &&
-                  student.statusWspolpracy !== 'Nieaktywny';
-                const isSelected = selectedUserIds.includes(student.id || '');
-                const initial = (student.firstName || student.username || (isGrp ? 'G' : '?'))[0].toUpperCase();
-
-                return (
-                  <div
-                    key={sId}
-                    onClick={() => onSelectUser(student.id || '', 'profile')}
-                    className={`liquid-glass-tile group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer flex flex-col justify-between select-none ${
-                      isSelected
-                        ? isGrp
-                          ? 'is-selected border-purple-500 ring-2 ring-purple-500/80 bg-purple-500/[0.15] shadow-[0_0_25px_rgba(168,85,247,0.25)] z-10'
-                          : 'is-selected border-primary ring-2 ring-primary/80 bg-primary/[0.12] shadow-[0_0_25px_rgba(114,240,180,0.25)] z-10'
-                        : isGrp
-                          ? 'border-purple-500/30 hover:border-purple-500/60 bg-purple-950/[0.04] dark:bg-purple-950/20 hover:shadow-ambient-md'
-                          : 'border-line-strong hover:border-primary/60 hover:shadow-ambient-md'
-                    }`}
-                  >
-                    <div>
-                      {/* Top row: Badge typu & Checkbox do zaznaczania */}
-                      <div className="flex items-center justify-between gap-2 mb-3">
-                        <span
-                          className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
-                            isGrp
-                              ? 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/30'
-                              : 'bg-primary/15 text-primary border-primary/30'
-                          }`}
-                        >
-                          {isGrp ? 'Grupa' : 'Kursant'}
-                        </span>
-
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (student.id) handleToggleSelectUser(student.id);
-                          }}
-                          className="p-1 rounded text-content-muted hover:text-primary transition-colors cursor-pointer"
-                          title={isSelected ? 'Odznacz' : 'Zaznacz'}
-                        >
-                          {isSelected ? (
-                            <CheckSquare size={16} className={isGrp ? 'text-purple-400' : 'text-primary'} />
-                          ) : (
-                            <Square size={16} />
-                          )}
-                        </button>
-                      </div>
-
-                      {/* Awatar i Nazwa kursanta / grupy */}
-                      <div className="flex items-center gap-3.5 mb-4">
-                        <div
-                          className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 border shadow-sm ${
-                            isGrp
-                              ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
-                              : 'bg-primary/20 text-primary border-primary/40'
-                          }`}
-                        >
-                          {isGrp ? <Users size={22} /> : initial}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="font-extrabold text-base text-text-hi truncate group-hover:text-primary transition-colors">
-                            {sName}
-                          </h3>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Dół: 4 kompaktowe mikro-ikony prowadzące do kluczowych zakładek */}
-                    <div
-                      className="pt-3 border-t border-line-strong/60 flex items-center justify-between gap-1.5"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {/* 1. Lekcje / Historia */}
-                      <button
-                        type="button"
-                        onClick={() => onSelectUser(student.id || '', 'history')}
-                        title="Historia lekcji"
-                        className="p-2 rounded-xl bg-line-soft hover:bg-primary/20 text-content-muted hover:text-primary transition-colors cursor-pointer flex items-center justify-center flex-1"
-                      >
-                        <BookOpen size={15} />
-                      </button>
-
-                      {/* 2. Zadania domowe */}
-                      <button
-                        type="button"
-                        onClick={() => onSelectUser(student.id || '', 'homework')}
-                        title="Zadania domowe"
-                        className="p-2 rounded-xl bg-line-soft hover:bg-purple-500/20 text-content-muted hover:text-purple-400 transition-colors cursor-pointer flex items-center justify-center flex-1"
-                      >
-                        <ClipboardList size={15} />
-                      </button>
-
-                      {/* 3. Notatnik lekcyjny A4 */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onSelectUser(student.id || '', 'scratchpad');
-                          openScratchpadTab(isGrp ? `sp_group_${student.id}` : `sp_${student.id}`);
-                        }}
-                        title="Wspólny Notatnik A4"
-                        className="p-2 rounded-xl bg-line-soft hover:bg-emerald-500/20 text-content-muted hover:text-emerald-400 transition-colors cursor-pointer flex items-center justify-center flex-1"
-                      >
-                        <FileEdit size={15} />
-                      </button>
-
-                      {/* 4. Profil & Notatki */}
-                      <button
-                        type="button"
-                        onClick={() => onSelectUser(student.id || '', 'profile')}
-                        title="Profil kursanta & notatki"
-                        className="p-2 rounded-xl bg-line-soft hover:bg-sky-500/20 text-content-muted hover:text-sky-400 transition-colors cursor-pointer flex items-center justify-center flex-1"
-                      >
-                        <UserIcon size={15} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+              ).map((student) => (
+                <StudentCard
+                  key={student.id || student.username}
+                  student={student}
+                  isSelected={selectedUserIds.includes(student.id || '')}
+                  onSelect={onSelectUser}
+                  onToggleSelect={handleToggleSelectUser}
+                  onOpenScratchpad={(id, isGrp) => {
+                    onSelectUser(id, 'scratchpad');
+                    openScratchpadTab(isGrp ? `sp_group_${id}` : `sp_${id}`);
+                  }}
+                />
+              ))}
             </div>
           )}
 

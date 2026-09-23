@@ -39,7 +39,6 @@ import {
   ChevronUp
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
-import { NotionImportPreviewModal, NotionPreviewItem } from './NotionImportPreviewModal';
 import { CascadingLessonDetails } from './CascadingLessonDetails';
 
 interface TeacherLessonHistoryViewProps {
@@ -85,16 +84,12 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [previewLesson, setPreviewLesson] = useState<LessonRecord | null>(null);
-  const [isCheckingNotion, setIsCheckingNotion] = useState(false);
-  const [notionCheckMsg, setNotionCheckMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [statusMsg, setStatusMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [lastImportedCount, setLastImportedCount] = useState(0);
   const [isStudentDropdownOpen, setIsStudentDropdownOpen] = useState(false);
   const [studentSearchQuery, setStudentSearchQuery] = useState('');
   const studentDropdownRef = useRef<HTMLDivElement>(null);
-  const [notionPreviewItems, setNotionPreviewItems] = useState<NotionPreviewItem[]>([]);
-  const [isNotionPreviewOpen, setIsNotionPreviewOpen] = useState(false);
-  const [isImportingNotion, setIsImportingNotion] = useState(false);
   const [isCleaningDuplicates, setIsCleaningDuplicates] = useState(false);
 
   // Wpisy „Weryfikacja”, dla których ten sam kursant ma już potwierdzoną lekcję tego samego dnia —
@@ -113,92 +108,16 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
     setIsCleaningDuplicates(true);
     try {
       await onCleanupDuplicatePendingLessons(duplicatePendingLessons);
-      setNotionCheckMsg({
+      setStatusMsg({
         type: 'success',
         text: `Usunięto ${duplicatePendingLessons.length} zdublowanych wpisów „Weryfikacja”.`,
       });
-      setTimeout(() => setNotionCheckMsg(null), 6000);
+      setTimeout(() => setStatusMsg(null), 6000);
     } catch (e: any) {
-      setNotionCheckMsg({ type: 'error', text: `Błąd czyszczenia duplikatów: ${e.message || String(e)}` });
-      setTimeout(() => setNotionCheckMsg(null), 7000);
+      setStatusMsg({ type: 'error', text: `Błąd czyszczenia duplikatów: ${e.message || String(e)}` });
+      setTimeout(() => setStatusMsg(null), 7000);
     } finally {
       setIsCleaningDuplicates(false);
-    }
-  };
-
-  const callNotionSync = async (body: Record<string, unknown>) => {
-    const token = await auth.currentUser?.getIdToken();
-    const res = await fetch('/api/notion/fetch-transcripts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-      body: JSON.stringify(body),
-    });
-    const contentType = res.headers.get('content-type') || '';
-    const data: any = contentType.includes('application/json') ? await res.json() : {};
-    if (!res.ok) {
-      throw new Error(data.error || 'Nie udało się połączyć z Notion');
-    }
-    return data;
-  };
-
-  /**
-   * Pull-on-Demand: krok 1. Tylko PATRZY — nic nie zapisuje. Wymaga
-   * zaznaczonego kursanta, bo import z Notion nie skanuje już całej bazy
-   * naraz w tle, tylko na wyraźne żądanie lektora dla jednej osoby.
-   */
-  const handleCheckNotion = async () => {
-    if (selectedStudentTab === 'all') {
-      setNotionCheckMsg({
-        type: 'error',
-        text: 'Wybierz najpierw kursanta z listy powyżej — sprawdzanie Notion działa dla jednej osoby naraz.',
-      });
-      setTimeout(() => setNotionCheckMsg(null), 6000);
-      return;
-    }
-
-    setIsCheckingNotion(true);
-    setNotionCheckMsg(null);
-    try {
-      const data = await callNotionSync({ mode: 'preview', studentId: selectedStudentTab });
-      setNotionPreviewItems((data.items || []) as NotionPreviewItem[]);
-      setIsNotionPreviewOpen(true);
-    } catch (e: any) {
-      setNotionCheckMsg({
-        type: 'error',
-        text: `Błąd sprawdzania Notion: ${e.message || String(e)}`,
-      });
-      setTimeout(() => setNotionCheckMsg(null), 7000);
-    } finally {
-      setIsCheckingNotion(false);
-    }
-  };
-
-  /** Pull-on-Demand: krok 2. Zapisuje wyłącznie to, co lektor zaznaczył w modalu. */
-  const handleConfirmNotionImport = async (pageIds: string[], topicOverrides: Record<string, string>) => {
-    if (selectedStudentTab === 'all' || pageIds.length === 0) return;
-    setIsImportingNotion(true);
-    try {
-      const data = await callNotionSync({ mode: 'import', studentId: selectedStudentTab, pageIds, topicOverrides });
-      const imported = Number(data.importedCount || 0);
-      setLastImportedCount(imported);
-      setIsNotionPreviewOpen(false);
-      setNotionCheckMsg({
-        type: 'success',
-        text: `Zaimportowano ${imported} ${imported === 1 ? 'lekcję' : 'lekcji'} z Notion dla ${selectedStudentLabel}.`,
-      });
-      if (onRefresh) onRefresh();
-      setTimeout(() => setNotionCheckMsg(null), 6000);
-    } catch (e: any) {
-      setNotionCheckMsg({
-        type: 'error',
-        text: `Błąd importu z Notion: ${e.message || String(e)}`,
-      });
-      setTimeout(() => setNotionCheckMsg(null), 7000);
-    } finally {
-      setIsImportingNotion(false);
     }
   };
 
@@ -362,22 +281,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
 
         {/* Action buttons */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={handleCheckNotion}
-            isLoading={isCheckingNotion}
-            className="text-xs flex items-center gap-1.5 py-1.5 px-3 border-line-strong hover:border-amber-400/40 text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 font-semibold"
-            title={
-              selectedStudentTab === 'all'
-                ? 'Wybierz kursanta z listy, żeby sprawdzić jego transkrypcje w Notion'
-                : `Sprawdź w Notion, czy jest coś nowego do zaimportowania dla: ${selectedStudentLabel}`
-            }
-          >
-            <Database size={13} className={isCheckingNotion ? 'animate-spin' : ''} />
-            Sprawdź transkrypcje w Notion
-          </Button>
-
           {onRefresh && (
             <Button
               variant="secondary"
@@ -418,21 +321,21 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
         </div>
       </div>
 
-      {/* Komunikat ze sprawdzania transkrypcji w Notion */}
-      {notionCheckMsg && (
+      {/* Komunikat statusowy */}
+      {statusMsg && (
         <div
           className={`p-3 rounded-xl border text-xs flex items-center justify-between gap-2 animate-in fade-in duration-200 ${
-            notionCheckMsg.type === 'success'
+            statusMsg.type === 'success'
               ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
               : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
           }`}
         >
           <div className="flex items-center gap-2">
-            {notionCheckMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-            <span>{notionCheckMsg.text}</span>
+            {statusMsg.type === 'success' ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
+            <span>{statusMsg.text}</span>
           </div>
           <button
-            onClick={() => setNotionCheckMsg(null)}
+            onClick={() => setStatusMsg(null)}
             className="p-1 hover:bg-white/10 rounded text-content-muted hover:text-text-hi"
           >
             <X size={12} />
@@ -1069,15 +972,6 @@ export const TeacherLessonHistoryView: React.FC<TeacherLessonHistoryViewProps> =
         </div>
       )}
 
-      {/* Podgląd Pull-on-Demand: lektor zaznacza, co z Notion wejdzie do historii tego kursanta */}
-      <NotionImportPreviewModal
-        isOpen={isNotionPreviewOpen}
-        onClose={() => setIsNotionPreviewOpen(false)}
-        studentName={selectedStudentLabel}
-        items={notionPreviewItems}
-        isImporting={isImportingNotion}
-        onConfirmImport={handleConfirmNotionImport}
-      />
     </div>
   );
 };

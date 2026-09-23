@@ -200,6 +200,32 @@ we dwoje na żywo.
 
 ---
 
+### 🎴 Refaktoring kafelków kursantów (Wariant 3C Compact Flow) & Usunięcie integracji Notion (2026-09-23, runda 53)
+
+1. **Nowy ultrakompaktowy layout kafelków kursanta (`components/admin/StudentCard.tsx`)**:
+   - Wdrożono horyzontalny Wariant 3C (**Linear Specular Highlight / Compact Flow**) o wysokości 70–74px.
+   - Płynny gradient laserowej linii świetlnej (Specular Highlight `#34d399` / `#6ee7b7` z poświatą neonową) na górnej krawędzi podczas najechania kursorem.
+   - Pionowy wskaźnik statusu (`.specular-accent-bar`), podświetlany w stanie hover i aktywności.
+   - Checkbox szybkiego masowego zaznaczania z pełną izolacją zdarzeń (`stopPropagation`).
+   - Awatar typu squircle z bezbłędnym generowaniem 2-literowych inicjałów dla polskich znaków diakrytycznych (np. `ŁK`, `DR`, `ŚŻ`).
+   - Blok tekstowy: imię i nazwisko oraz zwięzła linijka metadanych w formacie `Język • Poziom / Firma`.
+   - Zintegrowany dok mikro-akcji po prawej stronie (Lekcje/Dziennik, Notatnik lekcyjny A4, Profil kursanta).
+2. **Style CSS (`index.css`)**:
+   - Dodano reguły `.specular-student-card`, `.specular-student-card:hover`, `.specular-student-card.is-active`, `.specular-student-card.is-selected` oraz `.specular-accent-bar`.
+   - Zapewniono pełną spójność estetyczną z motywem Nocturne Green.
+3. **Integracja w module bazy kursantów (`components/admin/StandaloneStudentDatabaseScreen.tsx`)**:
+   - Zastąpiono dawny wysoki widok kafelkowy nową, responsywną siatką `grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-3`.
+4. **Czystka architektoniczna — usunięcie integracji z Notion**:
+   - Wycięto przycisk *„Sprawdź transkrypcje w Notion”* oraz nieużywane stany i hooki z `components/admin/AdminPanel.tsx` oraz `components/admin/TeacherLessonHistoryView.tsx`.
+   - Usunięto nieużywany komponent `components/admin/NotionImportPreviewModal.tsx`.
+   - Zaktualizowano opis w `components/admin/AdminMailingScreen.tsx`.
+5. **Weryfikacja jakościowa**:
+   - `npx tsc --noEmit` — 0 błędów typowania.
+   - `npm test` — 513/513 testów jednostkowych zaliczonych.
+   - `npm run build` — produkcyjna kompilacja bundle zakończona powodzeniem.
+
+---
+
 ### 📚 Ekstrakcja i wdrożenie banku Grammar Blueprints oraz Idiomów z plików PDF (2026-09-23, runda 52)
 
 **Zrealizowano pełne zadanie ekstrakcji i wdrożenia bazy materiałów dydaktycznych Grammar Blueprints:**
