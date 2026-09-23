@@ -2566,6 +2566,7 @@ function formatLessonDateDDMMYYYY(dateStr) {
 }
 
 // server.ts
+import crypto from "crypto";
 function mapToActualOpenAIModel(modelName) {
   const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
   if (clean === "gpt-5.6-luna" || clean === "gpt-5.6" || clean.includes("luna")) {
@@ -3072,6 +3073,263 @@ function createApp() {
       const { password } = req.body;
       await adminAuth.updateUser(uid, { password });
       res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  app2.get("/api/groups", requireFirebaseAuth, async (req, res) => {
+    try {
+      const callerUid = req.userUid;
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const userDoc = await adminDb.collection("users").doc(callerUid).get();
+      const userData = userDoc.data() || {};
+      const isTeacherOrAdmin = userData.role === "admin" || userData.role === "teacher";
+      let querySnap;
+      if (isTeacherOrAdmin) {
+        querySnap = await adminDb.collection("groups").where("teacherProfileId", "==", callerUid).get();
+        if (querySnap.empty && userData.role === "admin") {
+          querySnap = await adminDb.collection("groups").get();
+        }
+      } else {
+        querySnap = await adminDb.collection("groups").where("memberProfileIds", "array-contains", callerUid).where("status", "==", "active").get();
+      }
+      const groups = querySnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      res.json({ ok: true, groups });
+    } catch (error) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  app2.get("/api/groups/:id", requireFirebaseAuth, async (req, res) => {
+    try {
+      const groupId = req.params.id;
+      const callerUid = req.userUid;
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const groupDoc = await adminDb.collection("groups").doc(groupId).get();
+      if (!groupDoc.exists) {
+        return res.status(404).json({ error: "not_found", message: "Grupa nie istnieje." });
+      }
+      const groupData = { id: groupDoc.id, ...groupDoc.data() };
+      const userDoc = await adminDb.collection("users").doc(callerUid).get();
+      const userData = userDoc.data() || {};
+      const isTeacherOrAdmin = userData.role === "admin" || groupData.teacherProfileId === callerUid;
+      const isMember = (groupData.memberProfileIds || []).includes(callerUid);
+      if (!isTeacherOrAdmin && !isMember) {
+        return res.status(403).json({ error: "forbidden", message: "Brak dost\u0119pu do tej grupy." });
+      }
+      const memberPreviews = [];
+      const memberIds = groupData.memberProfileIds || [];
+      if (memberIds.length > 0) {
+        const userSnaps = await Promise.all(
+          memberIds.map((uid) => adminDb.collection("users").doc(uid).get())
+        );
+        userSnaps.forEach((uSnap, idx) => {
+          const uData = uSnap.data() || {};
+          const fullName = `${uData.firstName || ""} ${uData.lastName || ""}`.trim() || uData.displayName || uData.username || "Kursant";
+          memberPreviews.push({
+            profileId: memberIds[idx],
+            name: fullName,
+            email: uData.email || "",
+            isActivated: uData.isActivated,
+            isSuspended: uData.isSuspended,
+            isArchived: uData.isArchived
+          });
+        });
+      }
+      const result = {
+        ...groupData,
+        members: memberPreviews
+      };
+      res.json({ ok: true, group: result });
+    } catch (error) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  app2.post("/api/groups", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const teacherUid = req.userUid;
+      const { name, level, company, memberProfileIds, activeScratchpadId } = req.body;
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ error: "invalid_name", message: "Nazwa grupy jest wymagana." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const cleanMemberIds = Array.isArray(memberProfileIds) ? Array.from(new Set(memberProfileIds.map((id) => String(id).trim()).filter(Boolean))) : [];
+      const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+      const newGroupRef = adminDb.collection("groups").doc();
+      const groupId = `grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+      const groupPayload = {
+        id: groupId,
+        name: name.trim(),
+        teacherProfileId: teacherUid,
+        status: "active",
+        level: (level || "B2").trim(),
+        company: company ? String(company).trim() : void 0,
+        memberProfileIds: cleanMemberIds,
+        activeScratchpadId: activeScratchpadId ? String(activeScratchpadId).trim() : void 0,
+        createdAt: nowIso,
+        updatedAt: nowIso
+      };
+      await adminDb.collection("groups").doc(groupId).set(groupPayload);
+      res.json({ ok: true, group: groupPayload });
+    } catch (error) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  app2.put("/api/groups/:id", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const groupId = req.params.id;
+      const teacherUid = req.userUid;
+      const { name, level, company, status, memberProfileIds, activeScratchpadId } = req.body;
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const groupRef = adminDb.collection("groups").doc(groupId);
+      const groupSnap = await groupRef.get();
+      if (!groupSnap.exists) {
+        return res.status(404).json({ error: "not_found", message: "Grupa nie istnieje." });
+      }
+      const existingGroup = groupSnap.data();
+      const userDoc = await adminDb.collection("users").doc(teacherUid).get();
+      const userData = userDoc.data() || {};
+      if (existingGroup.teacherProfileId !== teacherUid && userData.role !== "admin") {
+        return res.status(403).json({ error: "forbidden", message: "Brak uprawnie\u0144 do edycji tej grupy." });
+      }
+      const updates = {
+        updatedAt: (/* @__PURE__ */ new Date()).toISOString()
+      };
+      if (name && typeof name === "string") updates.name = name.trim();
+      if (level && typeof level === "string") updates.level = level.trim();
+      if (company !== void 0) updates.company = company ? String(company).trim() : void 0;
+      if (status === "active" || status === "archived") updates.status = status;
+      if (Array.isArray(memberProfileIds)) {
+        updates.memberProfileIds = Array.from(new Set(memberProfileIds.map((id) => String(id).trim()).filter(Boolean)));
+      }
+      if (activeScratchpadId !== void 0) {
+        updates.activeScratchpadId = activeScratchpadId ? String(activeScratchpadId).trim() : void 0;
+      }
+      await groupRef.update(updates);
+      const updatedSnap = await groupRef.get();
+      res.json({ ok: true, group: { id: updatedSnap.id, ...updatedSnap.data() } });
+    } catch (error) {
+      res.status(500).json({ error: formatErrorString(error) });
+    }
+  });
+  app2.post("/api/groups/:id/assign-homework", requireFirebaseAdmin, async (req, res) => {
+    try {
+      const groupId = req.params.id;
+      const callerUid = req.userUid;
+      const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
+      if (!sentences || !Array.isArray(sentences) || sentences.length === 0) {
+        return res.status(400).json({ error: "missing_sentences", message: "Brak zada\u0144 w pracy domowej." });
+      }
+      const adminApp2 = getAdminApp();
+      const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const groupRef = adminDb.collection("groups").doc(groupId);
+      const groupSnap = await groupRef.get();
+      if (!groupSnap.exists) {
+        return res.status(404).json({ error: "not_found", message: "Grupa nie istnieje." });
+      }
+      const groupData = groupSnap.data();
+      const memberIds = groupData.memberProfileIds || [];
+      if (memberIds.length === 0) {
+        return res.status(400).json({ error: "empty_group", message: "Grupa nie ma przypisanych kursant\xF3w." });
+      }
+      const userSnaps = await Promise.all(
+        memberIds.map((uid) => adminDb.collection("users").doc(uid).get())
+      );
+      const activeMembers = [];
+      const skippedInactive = [];
+      userSnaps.forEach((uSnap, idx) => {
+        const uid = memberIds[idx];
+        if (!uSnap.exists) {
+          skippedInactive.push(uid);
+          return;
+        }
+        const uData = uSnap.data() || {};
+        if (uData.isSuspended || uData.isArchived || uData.statusWspolpracy === "Nieaktywny") {
+          skippedInactive.push(uid);
+          return;
+        }
+        const fullName = `${uData.firstName || ""} ${uData.lastName || ""}`.trim() || uData.displayName || uData.username || "Kursant";
+        activeMembers.push({
+          uid,
+          name: fullName,
+          email: uData.email || ""
+        });
+      });
+      if (activeMembers.length === 0) {
+        return res.status(400).json({
+          error: "no_active_students",
+          message: "Brak aktywnych kursant\xF3w w grupie (wszyscy s\u0105 zarchiwizowani lub zawieszeni).",
+          skippedInactive
+        });
+      }
+      const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+      const homeworkSetId = `hwset_grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+      const expiresAt = accessExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1e3).toISOString();
+      const baseUrl = clientOrigin || "https://app.maciej.pro";
+      const batch = adminDb.batch();
+      const assignments = [];
+      for (const member of activeMembers) {
+        const rawToken = "hw_" + crypto.randomBytes(16).toString("hex");
+        const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
+        const taskId = `task_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+        const taskDocRef = adminDb.collection("specialTasks").doc(taskId);
+        const directTokenRef = adminDb.collection("directHomeworkTokens").doc(tokenHash);
+        const taskPayload = {
+          id: taskId,
+          homeworkSetId,
+          groupId,
+          groupName: groupData.name,
+          studentUid: member.uid,
+          studentId: member.uid,
+          studentName: member.name,
+          studentEmail: member.email,
+          title: title || `Praca domowa \u2014 ${groupData.name}`,
+          type: type || "mixed",
+          types: Array.isArray(types) ? types : [type || "mixed"],
+          instructions: instructions || "",
+          sentences,
+          accessToken: rawToken,
+          // Dla kompatybilności wstecznej z /hw?token=
+          accessTokenHash: tokenHash,
+          accessExpiresAt: expiresAt,
+          status: "assigned",
+          assignedBy: callerUid,
+          createdAt: nowIso,
+          updatedAt: nowIso
+        };
+        batch.set(taskDocRef, taskPayload);
+        batch.set(directTokenRef, {
+          taskId,
+          studentUid: member.uid,
+          groupId,
+          expiresAt,
+          createdAt: nowIso
+        });
+        const userProfileRef = adminDb.collection("users").doc(member.uid);
+        batch.set(userProfileRef, { hasNewHomework: true, lastHomeworkAssignedAt: nowIso }, { merge: true });
+        assignments.push({
+          studentProfileId: member.uid,
+          studentName: member.name,
+          studentEmail: member.email,
+          taskId,
+          accessToken: rawToken,
+          directUrl: `${baseUrl}/hw?token=${rawToken}`
+        });
+      }
+      await batch.commit();
+      const result = {
+        groupId,
+        groupName: groupData.name,
+        homeworkSetId,
+        assignedCount: assignments.length,
+        skippedInactive,
+        assignments,
+        createdAt: nowIso
+      };
+      res.json({ ok: true, result });
     } catch (error) {
       res.status(500).json({ error: formatErrorString(error) });
     }
@@ -6252,8 +6510,8 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       }
       const trimmedText = text.replace(/<[^>]+>/g, "").trim();
       const formattedText = /[.?!]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
-      const crypto = await import("crypto");
-      const hash = crypto.default.createHash("sha256").update(`${formattedText}_${isUK ? "UK" : "US"}_${isMale ? "M" : "F"}_${speed.toFixed(2)}_${engine}`).digest("hex");
+      const crypto2 = await import("crypto");
+      const hash = crypto2.default.createHash("sha256").update(`${formattedText}_${isUK ? "UK" : "US"}_${isMale ? "M" : "F"}_${speed.toFixed(2)}_${engine}`).digest("hex");
       const fileName = `tts_cache/${hash}.mp3`;
       const os = await import("os");
       const path2 = await import("path");

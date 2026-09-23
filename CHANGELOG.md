@@ -199,6 +199,27 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🎨 Refaktoryzacja widoku CRM, bazy kursantów i nawigacji 80/20 (2026-09-23, runda 50)
+
+**Zadanie:** uproszczenie i ujednolicenie architektury CRM oraz bazy kursantów zgodnie z zasadą 80/20:
+1. **Reorganizacja nawigacji głównej pulpitu lektora (`AdminPanel.tsx`)**:
+   - Usunięto z górnej siatki osobny kafelek "Moje lekcje". Historia lekcji dostępna jest bezpośrednio z karty każdego kursanta.
+   - Pasek zredukowany do 3 głównych modułów: `Dzisiaj (Cockpit)`, `Moi kursanci & Grupy` (zaktualizowany opis i badge), `Narzędzia lektora`.
+   - Zaktualizowano samouczek lektora (`tourSteps.ts`) do 3 modułów.
+2. **Domyślny widok kafelkowy (Cards View) w CRM (`StandaloneStudentDatabaseScreen.tsx`)**:
+   - Wprowadzono stan `viewMode: 'cards' | 'table'` z domyślnym ustawieniem `'cards'`.
+   - Dodano obok wyszukiwarki dyskretny przełącznik z ikonami `LayoutGrid` / `Table` (z opisem widoku administracyjnego).
+   - Zaprojektowano estetyczne kafelki w ciemnym motywie (`bg-base-200/80`, `border-line-strong`, hover glow `border-primary/50`) łączące kursantów indywidualnych oraz grupy zajęciowe na jednej siatce z pigułkami typu, poziomu CEFR, kontraktora/firmy, statusu oraz ostatniej lekcji.
+3. **Karta szczegółów kursanta — zmiana na "ID kursanta" oraz historia z Notatnikiem A4 (`StudentProfileHeader.tsx`, `StudentOperationalHub.tsx`, `AdminPanel.tsx`)**:
+   - Zmieniono nagłówki i etykiety z "Profil kursanta" na "ID kursanta".
+   - Do kart lekcji w zakładce *Historia Lekcji* dodano szybki link otwierający Notatnik lekcyjny (A4) (`scratchpad`).
+4. **Unifikacja zarządzania grupami (`StandaloneStudentDatabaseScreen.tsx`, `AdminPanel.tsx`)**:
+   - Usunięto stary przycisk `+ Nowa grupa / para` oraz modal `CreateGroupModal`.
+   - Wprowadzono przycisk `+ Grupy zajęciowe` uruchamiający kanoniczny moduł `GroupsManager.tsx` (bazujący na `groups/{groupId}` i `/api/groups`).
+   - Usunięto zdublowany odnośnik do grup z podwidoku *Narzędzia lektora* (`toolsDrawer`).
+
+Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (513/513 zaliczonych), `npm run build` (przechodzi na czysto).
+
 ---
 
 ### 🔧 Notatnik A4: naprawa zakreślaczy inline, "Korekta w locie", zablokowane nagłówki szablonu, elastyczny canvas strony (2026-09-22, runda 49)

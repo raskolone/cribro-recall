@@ -62,7 +62,12 @@ const StudentProfileHeader: React.FC<StudentProfileHeaderProps> = ({
           </div>
 
           <div className="min-w-0">
-            <h2 className="text-lg sm:text-xl font-extrabold text-text-hi truncate">{fullName}</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30">
+                ID kursanta
+              </span>
+              <h2 className="text-lg sm:text-xl font-extrabold text-text-hi truncate">{fullName}</h2>
+            </div>
             <div className="flex items-center gap-1.5 mt-1 text-[11px] font-semibold">
               <span
                 className={`w-1.5 h-1.5 rounded-full shrink-0 ${

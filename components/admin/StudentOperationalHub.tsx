@@ -174,6 +174,9 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
 
             <div className="space-y-1 min-w-0">
               <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30">
+                  ID kursanta
+                </span>
                 <h1 className="text-xl sm:text-2xl font-black text-text-hi tracking-tight truncate">
                   {fullName}
                 </h1>
@@ -338,7 +341,7 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
           }`}
         >
           <BookOpen size={15} />
-          <span>Cele & Profil kursanta</span>
+          <span>Cele & ID kursanta</span>
         </button>
       </div>
 

@@ -10,7 +10,7 @@ import { createLessonRecordWithVocabularySet, getAllLessonRecordsForTeacher } fr
 import { parseStudentDocument, SUPPORTED_STUDENT_IMPORT_EXTENSIONS } from '../../services/studentImportService';
 import { confirmAsync } from '../../utils/appAlert';
 import { StudentImportAnalysis } from '../../types/studentImport';
-import CreateGroupModal from './CreateGroupModal';
+import { GroupsManager } from './GroupsManager';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import StudentImportReviewCard from './StudentImportReviewCard';
 import Card from '../ui/Card';
@@ -54,7 +54,9 @@ import {
   MinusSquare,
   AlertTriangle,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  LayoutGrid,
+  Table
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
@@ -84,8 +86,9 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [activeTab, setActiveTab] = useState<TabFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [pageSize, setPageSize] = useState<number | 'all'>(10);
+  const [pageSize, setPageSize] = useState<number | 'all'>(12);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
 
   // Modals state
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
@@ -597,14 +600,14 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
             <div className="flex items-center gap-2.5">
               <h1 className="text-xl sm:text-2xl font-black tracking-tight text-text-hi flex items-center gap-2">
                 <Users className="text-primary w-6 h-6" />
-                <span>Profile kursantów & CRM</span>
+                <span>Moi kursanci & Grupy (CRM)</span>
               </h1>
               <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
                 {filteredUsers.length} {filteredUsers.length === 1 ? 'rekord' : 'rekordów'}
               </span>
             </div>
             <p className="text-xs text-content-muted mt-0.5">
-              Zunifikowana baza kursantów indywidualnych, par, trójek i grup firmowych — zarządzanie profilami
+              Zunifikowana baza kursantów indywidualnych oraz grup zajęciowych — profile, historia lekcji i zarządzanie
             </p>
           </div>
         </div>
@@ -624,20 +627,18 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
 
           <Button
             size="sm"
-            onClick={() => {
-              setEditingGroup(null);
-              setIsGroupModalOpen(true);
-            }}
-            className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-xl shadow-btn transition-colors"
+            onClick={() => setIsGroupModalOpen(true)}
+            className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-line-soft hover:bg-line text-text-hi font-bold rounded-xl border border-line-strong transition-colors shadow-sm cursor-pointer"
+            title="Otwórz kanoniczne zarządzanie grupami zajęciowymi"
           >
-            <Users size={14} />
-            + Nowa grupa / para
+            <Users size={14} className="text-primary" />
+            + Grupy zajęciowe
           </Button>
 
           <Button
             size="sm"
             onClick={() => setShowCreateModal(true)}
-            className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-primary hover:bg-primary/90 text-accent-ink font-bold rounded-xl shadow-btn"
+            className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-primary hover:bg-primary/90 text-accent-ink font-bold rounded-xl shadow-btn cursor-pointer"
           >
             <Plus size={15} />
             + Dodaj kursanta
@@ -745,16 +746,50 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
           </button>
         </div>
 
-        {/* Search */}
-        <div className="relative min-w-[240px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Szukaj kursanta, firmy, poziomu..."
-            className="w-full pl-9 pr-3.5 py-1.5 rounded-xl bg-base-200/80 border border-line-strong text-text-hi text-xs placeholder:text-content-muted/60 focus:outline-none focus:border-primary transition-all"
-          />
+        {/* Search & View Mode Switcher */}
+        <div className="flex items-center gap-2.5">
+          <div className="relative min-w-[220px] sm:min-w-[260px] flex-1">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-content-muted" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Szukaj kursanta, firmy, poziomu..."
+              className="w-full pl-9 pr-3.5 py-1.5 rounded-xl bg-base-200/80 border border-line-strong text-text-hi text-xs placeholder:text-content-muted/60 focus:outline-none focus:border-primary transition-all"
+            />
+          </div>
+
+          {/* Dyskretny przełącznik widoku: Kafelki / Tabela administracyjna */}
+          <div className="flex items-center p-1 rounded-xl bg-base-200/80 border border-line-strong shrink-0" title="Przełącz widok: Kafelki lub Tabela administracyjna">
+            <button
+              type="button"
+              onClick={() => setViewMode('cards')}
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'cards'
+                  ? 'bg-primary text-accent-ink shadow-sm'
+                  : 'text-content-muted hover:text-text-hi hover:bg-line-soft/60'
+              }`}
+              title="Widok kafelkowy (Domyślny)"
+              aria-label="Widok kafelkowy"
+            >
+              <LayoutGrid size={15} />
+              <span className="hidden lg:inline text-[11px]">Kafelki</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                viewMode === 'table'
+                  ? 'bg-primary text-accent-ink shadow-sm'
+                  : 'text-content-muted hover:text-text-hi hover:bg-line-soft/60'
+              }`}
+              title="Widok tabeli administracyjnej"
+              aria-label="Widok tabeli administracyjnej"
+            >
+              <Table size={15} />
+              <span className="hidden lg:inline text-[11px]">Tabela</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -846,379 +881,166 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
         </div>
       )}
 
-      {/* Notion Styled CRM Table */}
-      <div className="rounded-2xl border border-line-strong bg-base-200/50 backdrop-blur-md overflow-hidden shadow-xl">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-content-muted border-collapse">
-            <thead>
-              <tr className="border-b border-line-strong bg-base-300/70 font-semibold text-content uppercase tracking-wider text-[10px]">
-                {/* Select All Checkbox */}
-                <th className="py-3 px-3 w-10 text-center">
-                  <button
-                    type="button"
-                    onClick={handleToggleSelectAll}
-                    className="p-1 rounded text-content-muted hover:text-primary transition-colors cursor-pointer"
-                    title={isAllFilteredSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie widoczne'}
+      {/* ── CRM CONTENT: CARDS VIEW LUB NOTION TABLE ── */}
+      {viewMode === 'cards' ? (
+        <div className="space-y-6">
+          {filteredUsers.length === 0 ? (
+            <div className="p-12 text-center rounded-2xl border border-line-strong bg-base-200/50">
+              <Users size={34} className="mx-auto mb-2 opacity-30 text-content-muted" />
+              <p className="font-semibold text-text-hi text-base">Nie znaleziono kursantów ani grup</p>
+              <p className="text-xs text-content-muted mt-1">
+                Zmień filtr lub dodaj nowego kursanta / grupę do bazy.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4">
+              {(isExpanded || pageSize === 'all'
+                ? filteredUsers
+                : filteredUsers.slice(0, typeof pageSize === 'number' ? pageSize : 12)
+              ).map((student) => {
+                const sId = student.id || student.username;
+                const sName =
+                  student.displayName ||
+                  student.name ||
+                  `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
+                  student.username;
+                const isGrp = Boolean(student.isGroup || student.lessonType === 'Group');
+                const recentLesson = getRecentLesson(student);
+                const isActive =
+                  !student.isSuspended &&
+                  !student.isArchived &&
+                  student.statusWspolpracy !== 'Nieaktywny';
+                const isSelected = selectedUserIds.includes(student.id || '');
+                const initial = (student.firstName || student.username || (isGrp ? 'G' : '?'))[0].toUpperCase();
+
+                return (
+                  <div
+                    key={sId}
+                    onClick={() => onSelectUser(student.id || '', 'profile')}
+                    className={`group relative p-4 rounded-2xl bg-base-200/80 border transition-all duration-200 cursor-pointer flex flex-col justify-between select-none shadow-sm hover:shadow-md ${
+                      isSelected
+                        ? 'border-primary ring-1 ring-primary bg-primary/[0.04]'
+                        : 'border-line-strong hover:border-primary/50 hover:bg-base-200'
+                    }`}
                   >
-                    {isAllFilteredSelected ? (
-                      <CheckSquare size={16} className="text-primary" />
-                    ) : isIndeterminate ? (
-                      <MinusSquare size={16} className="text-primary" />
-                    ) : (
-                      <Square size={16} />
-                    )}
-                  </button>
-                </th>
-                <th className="py-3 px-4 min-w-[200px]">Nazwa</th>
-                <th className="py-3 px-3 min-w-[90px]">Typ</th>
-                <th className="py-3 px-3 min-w-[150px]">Poziom / Profil</th>
-                <th className="py-3 px-3 min-w-[180px]">Adresy e-mail & Hasło</th>
-                <th className="py-3 px-3 min-w-[170px]">Zaproszenie & Aktywacja</th>
-                <th className="py-3 px-3 min-w-[95px]">Kontraktor</th>
-                <th className="py-3 px-3 min-w-[120px]">Gdzie pracuje</th>
-                <th className="py-3 px-3 min-w-[170px]">Ostatnia Lekcja</th>
-                <th className="py-3 px-3 min-w-[95px]">Status</th>
-                <th className="py-3 px-3 min-w-[90px]">Typ zajęć</th>
-                <th className="py-3 px-4 text-right min-w-[150px]">Akcje CRM</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-line-soft/40">
-              {filteredUsers.length === 0 ? (
-                <tr>
-                  <td colSpan={12} className="py-12 text-center text-content-muted">
-                    <Users size={30} className="mx-auto mb-2 opacity-30 text-content-muted" />
-                    <p className="font-semibold text-text-hi text-sm">Nie znaleziono kursantów ani grup</p>
-                    <p className="text-xs text-content-muted/80 mt-1">
-                      Zmień filtr lub dodaj nowego kursanta / grupę do bazy.
-                    </p>
-                  </td>
-                </tr>
-              ) : (
-                (isExpanded || pageSize === 'all' ? filteredUsers : filteredUsers.slice(0, typeof pageSize === 'number' ? pageSize : 10)).map((student) => {
-                  const sId = student.id || student.username;
-                  const sName =
-                    student.displayName ||
-                    student.name ||
-                    `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
-                    student.username;
-                  const isGrp = Boolean(student.isGroup || student.lessonType === 'Group');
-                  const recentLesson = getRecentLesson(student);
-                  const isActive =
-                    !student.isSuspended &&
-                    !student.isArchived &&
-                    student.statusWspolpracy !== 'Nieaktywny';
-                  const isSelected = selectedUserIds.includes(student.id || '');
+                    <div>
+                      {/* Top row: Badges & Select */}
+                      <div className="flex items-center justify-between gap-2 mb-3">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span
+                            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                              isGrp
+                                ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
+                                : 'bg-primary/15 text-primary border-primary/30'
+                            }`}
+                          >
+                            {isGrp ? 'Grupa' : 'Kursant'}
+                          </span>
 
-                  return (
-                    <tr
-                      key={sId}
-                      className={`hover:bg-line-soft/40 transition-colors group ${
-                        isSelected ? 'bg-primary/[0.04]' : ''
-                      }`}
-                    >
-                      {/* Checkbox */}
-                      <td className="py-3 px-3 text-center">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleSelectUser(student.id || '')}
-                          className="rounded border-line-strong text-primary focus:ring-primary h-4 w-4 bg-base-100 cursor-pointer"
-                        />
-                      </td>
+                          {student.level && (
+                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-line-soft text-text-hi border border-line-strong">
+                              {student.level}
+                            </span>
+                          )}
 
-                      {/* Nazwa */}
-                      <td className="py-3 px-4">
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${
+                              isActive
+                                ? 'text-emerald-400 bg-emerald-500/10'
+                                : 'text-rose-400 bg-rose-500/10'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isActive ? 'bg-emerald-400' : 'bg-rose-400'
+                              }`}
+                            />
+                            <span>{isActive ? 'Aktywny' : 'Pauza'}</span>
+                          </span>
+                        </div>
+
+                        {/* Checkbox do zaznaczania */}
                         <button
                           type="button"
-                          onClick={() => onSelectUser(student.id || '', 'profile')}
-                          className="flex items-center gap-2.5 text-left text-text-hi font-semibold hover:text-primary transition-colors group-hover:translate-x-0.5 transform duration-150"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (student.id) handleToggleSelectUser(student.id);
+                          }}
+                          className="p-1 rounded text-content-muted hover:text-primary transition-colors cursor-pointer"
+                          title={isSelected ? 'Odznacz' : 'Zaznacz'}
                         >
-                          <div
-                            className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
-                              isGrp
-                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                                : 'bg-primary/10 text-primary border border-primary/20'
-                            }`}
-                          >
-                            {isGrp ? (
-                              <Users size={14} />
-                            ) : student.photoURL ? (
-                              <img
-                                src={student.photoURL}
-                                alt={sName}
-                                className="w-full h-full object-cover rounded-lg"
-                              />
-                            ) : (
-                              <span>{sName[0]?.toUpperCase() || 'U'}</span>
-                            )}
-                          </div>
-                          <div>
-                            <span className="block font-bold leading-tight">{sName}</span>
-                            {isGrp && student.memberNames && student.memberNames.length > 0 && (
-                              <span className="text-[10px] text-content-muted font-normal block truncate max-w-[180px]">
-                                {student.memberNames.join(', ')}
-                              </span>
-                            )}
-                          </div>
+                          {isSelected ? (
+                            <CheckSquare size={16} className="text-primary" />
+                          ) : (
+                            <Square size={16} />
+                          )}
                         </button>
-                      </td>
+                      </div>
 
-                      {/* Typ */}
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                            isGrp
-                              ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-                              : 'bg-sky-500/20 text-sky-300 border-sky-500/30'
-                          }`}
-                        >
-                          {isGrp ? (
-                            student.groupType === 'pair'
-                              ? 'Para (2)'
-                              : student.groupType === 'triplet'
-                              ? 'Trójka (3)'
-                              : 'Grupa'
-                          ) : (
-                            'Kursant'
-                          )}
-                        </span>
-                      </td>
-
-                      {/* Poziom / Profil */}
-                      <td className="py-3 px-3">
-                        <span
-                          className="text-text-hi font-medium block truncate max-w-[150px]"
-                          title={student.level || '-'}
-                        >
-                          {student.level || (
-                            <span className="text-content-muted/50 italic">Brak poziomu</span>
-                          )}
-                        </span>
-                      </td>
-
-                      {/* Adresy E-mail & Hasło */}
-                      <td className="py-3 px-3">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className="text-content-muted block truncate max-w-[160px] font-mono text-[11px]"
-                            title={student.email}
-                          >
-                            {student.email || '-'}
-                          </span>
-                          {student.email && (
-                            <button
-                              type="button"
-                              onClick={() => handleCopyEmail(student.email)}
-                              title="Kopiuj adres e-mail"
-                              className="p-1 rounded text-content-muted hover:text-primary transition-colors shrink-0 cursor-pointer"
-                            >
-                              {copiedEmail === student.email ? (
-                                <Check size={11} className="text-emerald-400" />
-                              ) : (
-                                <Copy size={11} />
-                              )}
-                            </button>
-                          )}
+                      {/* Student / Group Name */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border ${
+                          isGrp
+                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                            : 'bg-primary/20 text-primary border-primary/30'
+                        }`}>
+                          {isGrp ? <Users size={18} /> : initial}
                         </div>
-                        <div className="mt-1">
-                          {student.tempPassword ? (
-                            <button
-                              type="button"
-                              onClick={() => handleCopyPassword(student.id || student.username, student.tempPassword!)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warn/15 hover:bg-warn/25 text-warn font-mono text-[10px] font-bold border border-warn/30 transition-colors cursor-pointer"
-                              title="Hasło startowe — kliknij, aby skopiować"
-                            >
-                              <Key size={10} />
-                              <span>{copiedPasswordId === (student.id || student.username) ? 'Skopiowano!' : 'Kopiuj hasło'}</span>
-                            </button>
-                          ) : student.isGoogleLinked || student.authProvider === 'google' ? (
-                            <span className="text-[10px] text-sky-300/80 font-mono">🌐 Google</span>
-                          ) : (
-                            <span className="text-[10px] text-content-muted/60 font-mono">🔒 Własne</span>
-                          )}
+                        <div className="min-w-0 flex-1">
+                          <h3 className="font-extrabold text-sm text-text-hi truncate group-hover:text-primary transition-colors">
+                            {sName}
+                          </h3>
+                          <p className="text-[11px] text-content-muted truncate mt-0.5">
+                            {student.email || (isGrp ? 'Zajęcia grupowe' : 'brak adresu e-mail')}
+                          </p>
                         </div>
-                      </td>
+                      </div>
 
-                      {/* Zaproszenie & Aktywacja */}
-                      <td className="py-3 px-3">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5">
-                            <span
-                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
-                                student.invitationSent || student.lastInviteSentAt
-                                  ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
-                                  : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
-                              }`}
-                              title={
-                                student.invitationSentAt
-                                  ? `Wysłano: ${new Date(student.invitationSentAt).toLocaleDateString('pl-PL')}`
-                                  : student.lastInviteSentAt
-                                  ? `Wysłano: ${new Date(student.lastInviteSentAt).toLocaleDateString('pl-PL')}`
-                                  : 'Zaproszenie nie zostało wysłane'
-                              }
-                            >
-                              {student.invitationSent || student.lastInviteSentAt ? (
-                                <CheckCircle2 size={10} />
-                              ) : (
-                                <Clock size={10} />
-                              )}
-                              <span>
-                                {student.invitationSent || student.lastInviteSentAt ? 'Zaproszono' : 'Brak'}
-                              </span>
+                      {/* Company & Contractor */}
+                      {(student.company || student.contractor) && (
+                        <div className="flex items-center gap-2 text-[11px] text-content-muted mb-3 flex-wrap">
+                          {student.company && (
+                            <span className="inline-flex items-center gap-1 bg-base-100 px-2 py-0.5 rounded-md border border-line-strong truncate max-w-[150px]">
+                              <Building size={11} className="text-primary shrink-0" />
+                              <span className="truncate">{student.company}</span>
                             </span>
-
-                            <button
-                              type="button"
-                              onClick={() => handleToggleInvitation(student)}
-                              disabled={isUpdatingInviteId === student.id}
-                              className="px-1.5 py-0.5 rounded bg-line-soft hover:bg-base-100 text-[10px] text-content-muted hover:text-text-hi transition-colors cursor-pointer"
-                              title={
-                                student.invitationSent || student.lastInviteSentAt
-                                  ? 'Cofnij oznaczenie zaproszenia'
-                                  : 'Oznacz manualnie jako wysłane'
-                              }
-                            >
-                              {isUpdatingInviteId === student.id ? (
-                                <RefreshCw size={9} className="animate-spin" />
-                              ) : student.invitationSent || student.lastInviteSentAt ? (
-                                'Cofnij'
-                              ) : (
-                                'Oznacz'
-                              )}
-                            </button>
-                          </div>
-
-                          <div>
-                            {(() => {
-                              const isStudentLoggedIn = Boolean(
-                                student.isActivated ||
-                                (student.loginCount && student.loginCount > 0) ||
-                                student.lastLoginDate ||
-                                (student as any).lastLoginAt ||
-                                (student as any).lastActiveAt ||
-                                (student as any).activatedAt ||
-                                (student as any).hasLoggedIn ||
-                                student.firstLoginAt
-                              );
-
-                              const loginDateLabel = (student as any).lastLoginAt || student.lastLoginDate || student.firstLoginAt || (student as any).lastActiveAt || (student as any).activatedAt;
-
-                              return (
-                                <span
-                                  className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                                    isStudentLoggedIn
-                                      ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
-                                      : 'text-content-muted/70 bg-base-100 border border-line-strong'
-                                  }`}
-                                  title={
-                                    loginDateLabel
-                                      ? `Aktywność: ${new Date(loginDateLabel).toLocaleDateString('pl-PL')}`
-                                      : 'Konto oczekuje na pierwsze logowanie'
-                                  }
-                                >
-                                  <span
-                                    className={`w-1.5 h-1.5 rounded-full ${
-                                      isStudentLoggedIn
-                                        ? 'bg-emerald-400'
-                                        : 'bg-content-muted/40'
-                                    }`}
-                                  />
-                                  <span>
-                                    {isStudentLoggedIn ? 'Aktywny' : 'Oczekuje'}
-                                  </span>
-                                </span>
-                              );
-                            })()}
-                          </div>
+                          )}
+                          {student.contractor && (
+                            <span className="inline-flex items-center gap-1 bg-base-100 px-2 py-0.5 rounded-md border border-line-strong text-[10px] font-mono">
+                              🏢 {student.contractor}
+                            </span>
+                          )}
                         </div>
-                      </td>
+                      )}
+                    </div>
 
-                      {/* Kontraktor */}
-                      <td className="py-3 px-3">
-                        {student.contractor ? (
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
-                              student.contractor.toLowerCase() === 'jcl'
-                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
-                                : student.contractor.toLowerCase() === 'inspiro'
-                                ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
-                                : student.contractor.toLowerCase() === 'axell'
-                                ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
-                                : 'bg-line-soft text-text-hi border-line-strong'
-                            }`}
-                          >
-                            {student.contractor}
-                          </span>
-                        ) : (
-                          <span className="text-content-muted/40">-</span>
-                        )}
-                      </td>
-
-                      {/* Gdzie pracuje */}
-                      <td className="py-3 px-3">
-                        <span className="text-text-hi font-medium block truncate max-w-[130px]">
-                          {student.company || '-'}
+                    {/* Bottom: Last lesson info & quick actions */}
+                    <div className="pt-3 border-t border-line-strong/60 space-y-2.5">
+                      <div className="text-[11px]">
+                        <span className="text-content-muted/80 text-[10px] uppercase font-mono tracking-wider block mb-0.5">
+                          Ostatnia lekcja
                         </span>
-                      </td>
-
-                      {/* Ostatnia Lekcja */}
-                      <td className="py-3 px-3">
                         {recentLesson ? (
-                          <div className="truncate max-w-[170px]">
-                            <span
-                              className="text-text-hi font-medium block truncate text-xs"
-                              title={recentLesson.topic}
-                            >
+                          <div className="flex items-center justify-between gap-1.5">
+                            <span className="font-medium text-text-hi truncate text-xs" title={recentLesson.topic}>
                               {recentLesson.topic}
                             </span>
-                            <span className="text-[10px] text-content-muted font-mono">
+                            <span className="text-[10px] font-mono text-content-muted shrink-0">
                               {recentLesson.date}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-content-muted/40 italic">Brak lekcji</span>
+                          <span className="text-content-muted/50 italic text-[11px]">Brak odnotowanych lekcji</span>
                         )}
-                      </td>
+                      </div>
 
-                      {/* Status */}
-                      <td className="py-3 px-3">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                            isActive
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                              : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              isActive ? 'bg-emerald-400' : 'bg-rose-400'
-                            }`}
-                          />
-                          {isActive ? 'Aktywny' : 'Nieaktywny'}
+                      <div className="flex items-center justify-between gap-1 pt-1">
+                        <span className="text-[10px] font-bold text-primary flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                          ID kursanta <ChevronRight size={12} />
                         </span>
-                      </td>
 
-                      {/* Typ zajęć */}
-                      <td className="py-3 px-3">
-                        <span className="text-[11px] font-mono text-content-muted">
-                          {isGrp ? 'Group' : 'Individual'}
-                        </span>
-                      </td>
-
-                      {/* Szybkie Akcje */}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Wejdź do Profilu */}
-                          <button
-                            type="button"
-                            onClick={() => onSelectUser(student.id || '', 'profile')}
-                            title="Otwórz pełny profil kursanta"
-                            className="p-1.5 rounded-lg bg-line-soft hover:bg-primary/20 text-content-muted hover:text-primary transition-colors"
-                          >
-                            <UserIcon size={13} />
-                          </button>
-
-                          {/* Notatnik / Scratchpad */}
+                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                          {/* Notatnik lekcyjny A4 */}
                           {student.id && (
                             <button
                               type="button"
@@ -1226,122 +1048,576 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                                 onSelectUser(student.id || '', 'scratchpad');
                                 openScratchpadTab(`sp_${student.id}`);
                               }}
-                              title="Otwórz Notatnik / Scratchpad"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-emerald-500/20 text-content-muted hover:text-emerald-300 transition-colors"
+                              title="Otwórz Notatnik A4"
+                              className="p-1.5 rounded-lg bg-line-soft hover:bg-emerald-500/20 text-content-muted hover:text-emerald-300 transition-colors cursor-pointer"
                             >
                               <FileEdit size={13} />
                             </button>
                           )}
 
-                          {/* Praca domowa */}
+                          {/* Prace domowe */}
                           {student.id && (
                             <button
                               type="button"
                               onClick={() => onSelectUser(student.id || '', 'homework')}
                               title="Przejdź do prac domowych"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-purple-500/20 text-content-muted hover:text-purple-300 transition-colors"
+                              className="p-1.5 rounded-lg bg-line-soft hover:bg-purple-500/20 text-content-muted hover:text-purple-300 transition-colors cursor-pointer"
                             >
                               <ClipboardList size={13} />
                             </button>
                           )}
 
-                          {/* Planer lekcji */}
-                          {student.id && (
-                            <button
-                              type="button"
-                              onClick={() => onSelectUser(student.id || '', 'lesson-planner')}
-                              title="Planer lekcji AI"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-sky-500/20 text-content-muted hover:text-sky-300 transition-colors"
-                            >
-                              <Sparkles size={13} />
-                            </button>
-                          )}
-
-                          {/* Edycja grupy */}
-                          {isGrp && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingGroup(student);
-                                setIsGroupModalOpen(true);
-                              }}
-                              title="Edytuj skład grupy / pary"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-amber-500/20 text-content-muted hover:text-amber-300 transition-colors"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                          )}
-
-                          {/* Zaproszenie e-mail */}
+                          {/* Zaproszenie e-mail dla kursanta */}
                           {!isGrp && student.email && (
                             <button
                               type="button"
                               onClick={() => setInviteStudent(student)}
                               title="Wyślij e-mail z danymi logowania"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-indigo-500/20 text-content-muted hover:text-indigo-300 transition-colors"
+                              className="p-1.5 rounded-lg bg-line-soft hover:bg-indigo-500/20 text-content-muted hover:text-indigo-300 transition-colors cursor-pointer"
                             >
                               <Send size={13} />
                             </button>
                           )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
-                          {/* Usuń konto */}
+          {/* Pasek rozwijania / limit kafelków */}
+          {filteredUsers.length > (typeof pageSize === 'number' ? pageSize : 12) && (
+            <div className="p-3.5 border-t border-line-strong/60 bg-base-100/50 flex items-center justify-center rounded-2xl">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="px-4 py-2 rounded-xl bg-line-soft hover:bg-line-soft/80 border border-line-strong text-xs font-bold text-content-muted hover:text-text-hi transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:border-primary/40"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp size={15} className="text-primary" />
+                    <span>Zwiń listę kafelków</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={15} className="text-primary" />
+                    <span>Pokaż wszystkich ({filteredUsers.length} pozycji)</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Notion Styled CRM Table */
+        <div className="rounded-2xl border border-line-strong bg-base-200/50 backdrop-blur-md overflow-hidden shadow-xl">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs text-content-muted border-collapse">
+              <thead>
+                <tr className="border-b border-line-strong bg-base-300/70 font-semibold text-content uppercase tracking-wider text-[10px]">
+                  {/* Select All Checkbox */}
+                  <th className="py-3 px-3 w-10 text-center">
+                    <button
+                      type="button"
+                      onClick={handleToggleSelectAll}
+                      className="p-1 rounded text-content-muted hover:text-primary transition-colors cursor-pointer"
+                      title={isAllFilteredSelected ? 'Odznacz wszystkie' : 'Zaznacz wszystkie widoczne'}
+                    >
+                      {isAllFilteredSelected ? (
+                        <CheckSquare size={16} className="text-primary" />
+                      ) : isIndeterminate ? (
+                        <MinusSquare size={16} className="text-primary" />
+                      ) : (
+                        <Square size={16} />
+                      )}
+                    </button>
+                  </th>
+                  <th className="py-3 px-4 min-w-[200px]">Nazwa</th>
+                  <th className="py-3 px-3 min-w-[90px]">Typ</th>
+                  <th className="py-3 px-3 min-w-[150px]">Poziom / Profil</th>
+                  <th className="py-3 px-3 min-w-[180px]">Adresy e-mail & Hasło</th>
+                  <th className="py-3 px-3 min-w-[170px]">Zaproszenie & Aktywacja</th>
+                  <th className="py-3 px-3 min-w-[95px]">Kontraktor</th>
+                  <th className="py-3 px-3 min-w-[120px]">Gdzie pracuje</th>
+                  <th className="py-3 px-3 min-w-[170px]">Ostatnia Lekcja</th>
+                  <th className="py-3 px-3 min-w-[95px]">Status</th>
+                  <th className="py-3 px-3 min-w-[90px]">Typ zajęć</th>
+                  <th className="py-3 px-4 text-right min-w-[150px]">Akcje CRM</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line-soft/40">
+                {filteredUsers.length === 0 ? (
+                  <tr>
+                    <td colSpan={12} className="py-12 text-center text-content-muted">
+                      <Users size={30} className="mx-auto mb-2 opacity-30 text-content-muted" />
+                      <p className="font-semibold text-text-hi text-sm">Nie znaleziono kursantów ani grup</p>
+                      <p className="text-xs text-content-muted/80 mt-1">
+                        Zmień filtr lub dodaj nowego kursanta / grupę do bazy.
+                      </p>
+                    </td>
+                  </tr>
+                ) : (
+                  (isExpanded || pageSize === 'all' ? filteredUsers : filteredUsers.slice(0, typeof pageSize === 'number' ? pageSize : 10)).map((student) => {
+                    const sId = student.id || student.username;
+                    const sName =
+                      student.displayName ||
+                      student.name ||
+                      `${student.firstName || ''} ${student.lastName || ''}`.trim() ||
+                      student.username;
+                    const isGrp = Boolean(student.isGroup || student.lessonType === 'Group');
+                    const recentLesson = getRecentLesson(student);
+                    const isActive =
+                      !student.isSuspended &&
+                      !student.isArchived &&
+                      student.statusWspolpracy !== 'Nieaktywny';
+                    const isSelected = selectedUserIds.includes(student.id || '');
+
+                    return (
+                      <tr
+                        key={sId}
+                        className={`hover:bg-line-soft/40 transition-colors group ${
+                          isSelected ? 'bg-primary/[0.04]' : ''
+                        }`}
+                      >
+                        {/* Checkbox */}
+                        <td className="py-3 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectUser(student.id || '')}
+                            className="rounded border-line-strong text-primary focus:ring-primary h-4 w-4 bg-base-100 cursor-pointer"
+                          />
+                        </td>
+
+                        {/* Nazwa */}
+                        <td className="py-3 px-4">
                           <button
                             type="button"
-                            onClick={() => handleDeleteSingleUser(student)}
-                            title="Usuń konto"
-                            className="p-1.5 rounded-lg hover:bg-rose-500/20 text-content-muted hover:text-rose-400 transition-colors"
+                            onClick={() => onSelectUser(student.id || '', 'profile')}
+                            className="flex items-center gap-2.5 text-left text-text-hi font-semibold hover:text-primary transition-colors group-hover:translate-x-0.5 transform duration-150"
                           >
-                            <Trash2 size={13} />
+                            <div
+                              className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                                isGrp
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                  : 'bg-primary/10 text-primary border border-primary/20'
+                              }`}
+                            >
+                              {isGrp ? (
+                                <Users size={14} />
+                              ) : student.photoURL ? (
+                                <img
+                                  src={student.photoURL}
+                                  alt={sName}
+                                  className="w-full h-full object-cover rounded-lg"
+                                />
+                              ) : (
+                                <span>{sName[0]?.toUpperCase() || 'U'}</span>
+                              )}
+                            </div>
+                            <div>
+                              <span className="block font-bold leading-tight">{sName}</span>
+                              {isGrp && student.memberNames && student.memberNames.length > 0 && (
+                                <span className="text-[10px] text-content-muted font-normal block truncate max-w-[180px]">
+                                  {student.memberNames.join(', ')}
+                                </span>
+                              )}
+                            </div>
                           </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                        </td>
 
-        {/* Pasek rozwijania / limit kursantów */}
-        {filteredUsers.length > (typeof pageSize === 'number' ? pageSize : 10) && (
-          <div className="p-3.5 border-t border-line-strong/60 bg-base-100/50 flex items-center justify-center">
-            <button
-              onClick={() => setIsExpanded(!isExpanded)}
-              className="px-4 py-2 rounded-xl bg-line-soft hover:bg-line-soft/80 border border-line-strong text-xs font-bold text-content-muted hover:text-text-hi transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:border-primary/40"
-            >
-              {isExpanded ? (
-                <>
-                  <ChevronUp size={15} className="text-primary" />
-                  <span>Zwiń listę kursantów</span>
-                </>
-              ) : (
-                <>
-                  <ChevronDown size={15} className="text-primary" />
-                  <span>Pokaż wszystkich kursantów (pokazano {typeof pageSize === 'number' ? pageSize : 10} z {filteredUsers.length})</span>
-                </>
-              )}
-            </button>
+                        {/* Typ */}
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                              isGrp
+                                ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                : 'bg-sky-500/20 text-sky-300 border-sky-500/30'
+                            }`}
+                          >
+                            {isGrp ? (
+                              student.groupType === 'pair'
+                                ? 'Para (2)'
+                                : student.groupType === 'triplet'
+                                ? 'Trójka (3)'
+                                : 'Grupa'
+                            ) : (
+                              'Kursant'
+                            )}
+                          </span>
+                        </td>
+
+                        {/* Poziom / Profil */}
+                        <td className="py-3 px-3">
+                          <span
+                            className="text-text-hi font-medium block truncate max-w-[150px]"
+                            title={student.level || '-'}
+                          >
+                            {student.level || (
+                              <span className="text-content-muted/50 italic">Brak poziomu</span>
+                            )}
+                          </span>
+                        </td>
+
+                        {/* Adresy E-mail & Hasło */}
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className="text-content-muted block truncate max-w-[160px] font-mono text-[11px]"
+                              title={student.email}
+                            >
+                              {student.email || '-'}
+                            </span>
+                            {student.email && (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyEmail(student.email)}
+                                title="Kopiuj adres e-mail"
+                                className="p-1 rounded text-content-muted hover:text-primary transition-colors shrink-0 cursor-pointer"
+                              >
+                                {copiedEmail === student.email ? (
+                                  <Check size={11} className="text-emerald-400" />
+                                ) : (
+                                  <Copy size={11} />
+                                )}
+                              </button>
+                            )}
+                          </div>
+                          <div className="mt-1">
+                            {student.tempPassword ? (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyPassword(student.id || student.username, student.tempPassword!)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-warn/15 hover:bg-warn/25 text-warn font-mono text-[10px] font-bold border border-warn/30 transition-colors cursor-pointer"
+                                title="Hasło startowe — kliknij, aby skopiować"
+                              >
+                                <Key size={10} />
+                                <span>{copiedPasswordId === (student.id || student.username) ? 'Skopiowano!' : 'Kopiuj hasło'}</span>
+                              </button>
+                            ) : student.isGoogleLinked || student.authProvider === 'google' ? (
+                              <span className="text-[10px] text-sky-300/80 font-mono">🌐 Google</span>
+                            ) : (
+                              <span className="text-[10px] text-content-muted/60 font-mono">🔒 Własne</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Zaproszenie & Aktywacja */}
+                        <td className="py-3 px-3">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold border ${
+                                  student.invitationSent || student.lastInviteSentAt
+                                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                                    : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                                }`}
+                                title={
+                                  student.invitationSentAt
+                                    ? `Wysłano: ${new Date(student.invitationSentAt).toLocaleDateString('pl-PL')}`
+                                    : student.lastInviteSentAt
+                                    ? `Wysłano: ${new Date(student.lastInviteSentAt).toLocaleDateString('pl-PL')}`
+                                    : 'Zaproszenie nie zostało wysłane'
+                                }
+                              >
+                                {student.invitationSent || student.lastInviteSentAt ? (
+                                  <CheckCircle2 size={10} />
+                                ) : (
+                                  <Clock size={10} />
+                                )}
+                                <span>
+                                  {student.invitationSent || student.lastInviteSentAt ? 'Zaproszono' : 'Brak'}
+                                </span>
+                              </span>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleInvitation(student)}
+                                disabled={isUpdatingInviteId === student.id}
+                                className="px-1.5 py-0.5 rounded bg-line-soft hover:bg-base-100 text-[10px] text-content-muted hover:text-text-hi transition-colors cursor-pointer"
+                                title={
+                                  student.invitationSent || student.lastInviteSentAt
+                                    ? 'Cofnij oznaczenie zaproszenia'
+                                    : 'Oznacz manualnie jako wysłane'
+                                }
+                              >
+                                {isUpdatingInviteId === student.id ? (
+                                  <RefreshCw size={9} className="animate-spin" />
+                                ) : student.invitationSent || student.lastInviteSentAt ? (
+                                  'Cofnij'
+                                ) : (
+                                  'Oznacz'
+                                )}
+                              </button>
+                            </div>
+
+                            <div>
+                              {(() => {
+                                const isStudentLoggedIn = Boolean(
+                                  student.isActivated ||
+                                  (student.loginCount && student.loginCount > 0) ||
+                                  student.lastLoginDate ||
+                                  (student as any).lastLoginAt ||
+                                  (student as any).lastActiveAt ||
+                                  (student as any).activatedAt ||
+                                  (student as any).hasLoggedIn ||
+                                  student.firstLoginAt
+                                );
+
+                                const loginDateLabel = (student as any).lastLoginAt || student.lastLoginDate || student.firstLoginAt || (student as any).lastActiveAt || (student as any).activatedAt;
+
+                                return (
+                                  <span
+                                    className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                                      isStudentLoggedIn
+                                        ? 'text-emerald-400 bg-emerald-500/10 border border-emerald-500/20'
+                                        : 'text-content-muted/70 bg-base-100 border border-line-strong'
+                                    }`}
+                                    title={
+                                      loginDateLabel
+                                        ? `Aktywność: ${new Date(loginDateLabel).toLocaleDateString('pl-PL')}`
+                                        : 'Konto oczekuje na pierwsze logowanie'
+                                    }
+                                  >
+                                    <span
+                                      className={`w-1.5 h-1.5 rounded-full ${
+                                        isStudentLoggedIn
+                                          ? 'bg-emerald-400'
+                                          : 'bg-content-muted/40'
+                                      }`}
+                                    />
+                                    <span>
+                                      {isStudentLoggedIn ? 'Aktywny' : 'Oczekuje'}
+                                    </span>
+                                  </span>
+                                );
+                              })()}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Kontraktor */}
+                        <td className="py-3 px-3">
+                          {student.contractor ? (
+                            <span
+                              className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold border ${
+                                student.contractor.toLowerCase() === 'jcl'
+                                  ? 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                                  : student.contractor.toLowerCase() === 'inspiro'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                                  : student.contractor.toLowerCase() === 'axell'
+                                  ? 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+                                  : 'bg-line-soft text-text-hi border-line-strong'
+                              }`}
+                            >
+                              {student.contractor}
+                            </span>
+                          ) : (
+                            <span className="text-content-muted/40">-</span>
+                          )}
+                        </td>
+
+                        {/* Gdzie pracuje */}
+                        <td className="py-3 px-3">
+                          <span className="text-text-hi font-medium block truncate max-w-[130px]">
+                            {student.company || '-'}
+                          </span>
+                        </td>
+
+                        {/* Ostatnia Lekcja */}
+                        <td className="py-3 px-3">
+                          {recentLesson ? (
+                            <div className="truncate max-w-[170px]">
+                              <span
+                                className="text-text-hi font-medium block truncate text-xs"
+                                title={recentLesson.topic}
+                              >
+                                {recentLesson.topic}
+                              </span>
+                              <span className="text-[10px] text-content-muted font-mono">
+                                {recentLesson.date}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-content-muted/40 italic">Brak lekcji</span>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="py-3 px-3">
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              isActive
+                                ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                isActive ? 'bg-emerald-400' : 'bg-rose-400'
+                              }`}
+                            />
+                            {isActive ? 'Aktywny' : 'Nieaktywny'}
+                          </span>
+                        </td>
+
+                        {/* Typ zajęć */}
+                        <td className="py-3 px-3">
+                          <span className="text-[11px] font-mono text-content-muted">
+                            {isGrp ? 'Group' : 'Individual'}
+                          </span>
+                        </td>
+
+                        {/* Szybkie Akcje */}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Wejdź do Profilu */}
+                            <button
+                              type="button"
+                              onClick={() => onSelectUser(student.id || '', 'profile')}
+                              title="Otwórz pełny profil kursanta"
+                              className="p-1.5 rounded-lg bg-line-soft hover:bg-primary/20 text-content-muted hover:text-primary transition-colors"
+                            >
+                              <UserIcon size={13} />
+                            </button>
+
+                            {/* Notatnik / Scratchpad */}
+                            {student.id && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  onSelectUser(student.id || '', 'scratchpad');
+                                  openScratchpadTab(`sp_${student.id}`);
+                                }}
+                                title="Otwórz Notatnik / Scratchpad"
+                                className="p-1.5 rounded-lg bg-line-soft hover:bg-emerald-500/20 text-content-muted hover:text-emerald-300 transition-colors"
+                              >
+                                <FileEdit size={13} />
+                              </button>
+                            )}
+
+                            {/* Praca domowa */}
+                            {student.id && (
+                              <button
+                                type="button"
+                                onClick={() => onSelectUser(student.id || '', 'homework')}
+                                title="Przejdź do prac domowych"
+                                className="p-1.5 rounded-lg bg-line-soft hover:bg-purple-500/20 text-content-muted hover:text-purple-300 transition-colors"
+                              >
+                                <ClipboardList size={13} />
+                              </button>
+                            )}
+
+                            {/* Planer lekcji */}
+                            {student.id && (
+                              <button
+                                type="button"
+                                onClick={() => onSelectUser(student.id || '', 'lesson-planner')}
+                                title="Planer lekcji AI"
+                                className="p-1.5 rounded-lg bg-line-soft hover:bg-sky-500/20 text-content-muted hover:text-sky-300 transition-colors"
+                              >
+                                <Sparkles size={13} />
+                              </button>
+                            )}
+
+                            {/* Edycja grupy */}
+                            {isGrp && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingGroup(student);
+                                  setIsGroupModalOpen(true);
+                                }}
+                                title="Edytuj skład grupy / pary"
+                                className="p-1.5 rounded-lg bg-line-soft hover:bg-amber-500/20 text-content-muted hover:text-amber-300 transition-colors"
+                              >
+                                <Edit2 size={13} />
+                              </button>
+                            )}
+
+                            {/* Zaproszenie e-mail */}
+                            {!isGrp && student.email && (
+                              <button
+                                type="button"
+                                onClick={() => setInviteStudent(student)}
+                                title="Wyślij e-mail z danymi logowania"
+                                className="p-1.5 rounded-lg bg-line-soft hover:bg-indigo-500/20 text-content-muted hover:text-indigo-300 transition-colors"
+                              >
+                                <Send size={13} />
+                              </button>
+                            )}
+
+                            {/* Usuń konto */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteSingleUser(student)}
+                              title="Usuń konto"
+                              className="p-1.5 rounded-lg hover:bg-rose-500/20 text-content-muted hover:text-rose-400 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
 
-      {/* Modal: Nowa / Edytuj grupę */}
+          {/* Pasek rozwijania / limit kursantów */}
+          {filteredUsers.length > (typeof pageSize === 'number' ? pageSize : 10) && (
+            <div className="p-3.5 border-t border-line-strong/60 bg-base-100/50 flex items-center justify-center">
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="px-4 py-2 rounded-xl bg-line-soft hover:bg-line-soft/80 border border-line-strong text-xs font-bold text-content-muted hover:text-text-hi transition-all flex items-center gap-2 cursor-pointer shadow-sm hover:border-primary/40"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp size={15} className="text-primary" />
+                    <span>Zwiń listę kursantów</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={15} className="text-primary" />
+                    <span>Pokaż wszystkich kursantów (pokazano {typeof pageSize === 'number' ? pageSize : 10} z {filteredUsers.length})</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modal: Zarządzanie Grupami Zajęciowymi (GroupsManager) */}
       {isGroupModalOpen && (
-        <CreateGroupModal
-          isOpen={isGroupModalOpen}
-          onClose={() => {
-            setIsGroupModalOpen(false);
-            setEditingGroup(null);
-          }}
-          availableStudents={users.filter((u) => !u.isGroup && u.role !== 'admin')}
-          groupToEdit={editingGroup}
-          onGroupSaved={() => {
-            setIsGroupModalOpen(false);
-            setEditingGroup(null);
-            fetchUsersAndLessons();
-          }}
-        />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-md animate-fade-in overflow-y-auto">
+          <div className="relative w-full max-w-5xl bg-base-200 border border-line-strong rounded-3xl shadow-2xl p-4 sm:p-6 my-auto max-h-[92vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-line-strong mb-4">
+              <div className="flex items-center gap-2">
+                <Users className="text-primary w-5 h-5" />
+                <span className="text-sm font-bold text-text-hi uppercase tracking-wider">Moduł Grup Zajęciowych</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsGroupModalOpen(false);
+                  fetchUsersAndLessons();
+                }}
+                className="p-1.5 rounded-lg border border-line-strong text-content-muted hover:text-text-hi cursor-pointer"
+                aria-label="Zamknij"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <GroupsManager
+              students={users}
+              onOpenScratchpad={(scratchpadId) => openScratchpadTab(scratchpadId)}
+            />
+          </div>
+        </div>
       )}
 
       {/* Modal: Wyślij zaproszenie email */}

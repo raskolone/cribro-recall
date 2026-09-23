@@ -63,9 +63,9 @@ export const buildTeacherTourSteps = (): CoachStep[] => [
   {
     coachId: 'tour-teacher-main',
     group: 'Prowadzenie lekcji',
-    title: 'Cztery kafelki, jeden pulpit',
+    title: 'Trzy moduły, jeden pulpit',
     description:
-      'Dzisiaj (Cockpit) do bieżącej roboty, Moi kursanci to Twoja baza CRM, Moje lekcje to notatki i historia, a Narzędzia lektora chowają resztę — notatnik, zadania, planer, mailing, słownictwo i statystyki.',
+      'Dzisiaj (Cockpit) do bieżącej roboty, Moi kursanci & Grupy to Twoja baza CRM z kafelkami i historią lekcji, a Narzędzia lektora chowają resztę — notatnik, zadania, planer, mailing, słownictwo i statystyki.',
     preferredPlacement: 'bottom',
   },
   {

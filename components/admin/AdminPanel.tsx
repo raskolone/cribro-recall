@@ -2345,11 +2345,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        {/* Główne 4 kafelki lektora (Dzisiaj/Cockpit, Moi kursanci, Moje lekcje, Narzędzia lektora) */}
+        {/* Główne 3 moduły lektora (Dzisiaj/Cockpit, Moi kursanci & Grupy, Narzędzia lektora) */}
         <div
           ref={mainMenuRef}
           data-coach="tour-teacher-main"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 max-w-5xl mx-auto w-full justify-center"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 max-w-5xl mx-auto w-full justify-center"
         >
           {[
             {
@@ -2361,17 +2361,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             },
             {
               id: 'students',
-              title: 'Moi kursanci',
-              badge: 'Baza CRM',
-              desc: 'Baza kursantów — profile, postępy, historia współpracy i przypisywanie zadań',
+              title: 'Moi kursanci & Grupy',
+              badge: 'Baza CRM & Grupy',
+              desc: 'Baza kursantów i grup — kafelki, profile, historia lekcji i przypisywanie zadań',
               icon: Users,
-            },
-            {
-              id: 'lesson-history',
-              title: 'Moje lekcje',
-              badge: 'Lekcje i notatki',
-              desc: 'Zrealizowane i zaplanowane lekcje, tematy, notatki oraz materiały powtórkowe',
-              icon: BookOpen,
             },
             {
               id: 'tools',
@@ -2503,7 +2496,6 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {[
               { id: 'notatnik', title: 'Notatnik lekcyjny (A4)', icon: FileEdit },
-              { id: 'groups', title: 'Grupy zajęciowe', icon: Users },
               { id: 'homework', title: 'Zadania i testy', icon: ClipboardList },
               { id: 'lesson-planner', title: 'Planer lekcji', icon: Sparkles },
               {
@@ -2522,12 +2514,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   key={item.id}
                   onClick={() => {
                     setToolsDrawerOpen(false);
-                    if (item.id === 'groups') {
-                      setShowGroupsModal(true);
-                    } else {
-                      setHomeworkInitialGroupId(null);
-                      handleTileClick(item.id);
-                    }
+                    setHomeworkInitialGroupId(null);
+                    handleTileClick(item.id);
                   }}
                   className={`relative flex flex-col items-center justify-center gap-1.5 min-h-[5rem] py-3.5 px-2 rounded-2xl border text-xs sm:text-sm font-semibold transition-[border-color,box-shadow,background-color] duration-200 text-center cursor-pointer transform-gpu ${
                     item.badge
@@ -3546,6 +3534,18 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                         >
                                           <Sparkles className="h-4 w-4 text-primary" />
                                         </button>
+                                        {selectedUser?.id && (
+                                          <button 
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              openScratchpadTab(`sp_${selectedUser.id}`);
+                                            }}
+                                            className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                                            title="Otwórz Notatnik lekcyjny (A4)"
+                                          >
+                                            <FileEdit className="h-4 w-4 text-emerald-400" />
+                                          </button>
+                                        )}
                                         <button 
                                           onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
                                           className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
@@ -3670,6 +3670,18 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                                                             >
                                                               <Sparkles className="h-4 w-4 text-primary" />
                                                             </button>
+                                                            {selectedUser?.id && (
+                                                              <button 
+                                                                onClick={(e) => {
+                                                                  e.stopPropagation();
+                                                                  openScratchpadTab(`sp_${selectedUser.id}`);
+                                                                }}
+                                                                className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-emerald-300 hover:bg-emerald-500/10 transition-colors"
+                                                                title="Otwórz Notatnik lekcyjny (A4)"
+                                                              >
+                                                                <FileEdit className="h-4 w-4 text-emerald-400" />
+                                                              </button>
+                                                            )}
                                                             <button 
                                                               onClick={(e) => { e.stopPropagation(); openLessonRecordModal('edit', record); }}
                                                               className="p-1.5 bg-base-100 rounded-lg text-content-muted hover:text-primary hover:bg-base-200 transition-colors"
