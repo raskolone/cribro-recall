@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { User, LessonRecord } from '../../types';
@@ -70,7 +70,7 @@ interface StandaloneStudentDatabaseScreenProps {
   onRefreshUsers?: () => Promise<void> | void;
 }
 
-type TabFilter = 'all' | 'active' | 'individual' | 'group' | 'jcl' | 'inspiro' | 'axell' | 'direct';
+type TabFilter = 'all' | 'active' | 'individual' | 'group';
 
 export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabaseScreenProps> = ({
   onSelectUser,
@@ -92,7 +92,9 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [sortBy, setSortBy] = useState<'activity' | 'alphabetical'>('activity');
 
-  // Modals state
+  // Modals & Dropdown state
+  const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
+  const addDropdownRef = useRef<HTMLDivElement>(null);
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<User | null>(null);
   const [inviteStudent, setInviteStudent] = useState<User | null>(null);
@@ -176,6 +178,18 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   };
 
   useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (addDropdownRef.current && !addDropdownRef.current.contains(e.target as Node)) {
+        setIsAddDropdownOpen(false);
+      }
+    };
+    if (isAddDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isAddDropdownOpen]);
+
+  useEffect(() => {
     if (initialUsers && initialUsers.length > 0) {
       setUsers(initialUsers);
       if (initialLessons && initialLessons.length > 0) {
@@ -211,10 +225,6 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
       if (s.role === 'admin' && !s.isGroup && !s.level) return false;
 
       // Tab filter
-      if (activeTab === 'jcl' && s.contractor?.toLowerCase() !== 'jcl') return false;
-      if (activeTab === 'inspiro' && s.contractor?.toLowerCase() !== 'inspiro') return false;
-      if (activeTab === 'axell' && s.contractor?.toLowerCase() !== 'axell') return false;
-      if (activeTab === 'direct' && s.contractor?.toLowerCase() !== 'direct') return false;
       if (activeTab === 'individual' && (s.isGroup || s.lessonType === 'Group')) return false;
       if (activeTab === 'group' && !(s.isGroup || s.lessonType === 'Group')) return false;
       if (activeTab === 'active' && (s.isSuspended || s.isArchived || s.statusWspolpracy === 'Nieaktywny')) return false;
@@ -645,24 +655,47 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
             <span>Odśwież</span>
           </Button>
 
-          <Button
-            size="sm"
-            onClick={() => setIsGroupModalOpen(true)}
-            className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-line-soft hover:bg-line text-text-hi font-bold rounded-xl border border-line-strong transition-colors shadow-sm cursor-pointer"
-            title="Otwórz kanoniczne zarządzanie grupami zajęciowymi"
-          >
-            <Users size={14} className="text-primary" />
-            + Grupy zajęciowe
-          </Button>
+          {/* Rozwijane menu + Dodaj */}
+          <div className="relative" ref={addDropdownRef}>
+            <Button
+              size="sm"
+              onClick={() => setIsAddDropdownOpen((prev) => !prev)}
+              className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-primary hover:bg-primary/90 text-accent-ink font-bold rounded-xl shadow-btn cursor-pointer"
+              title="Dodaj nowego kursanta lub grupę"
+            >
+              <Plus size={15} />
+              <span>+ Dodaj</span>
+              <ChevronDown size={13} className={`transition-transform duration-200 ${isAddDropdownOpen ? 'rotate-180' : ''}`} />
+            </Button>
 
-          <Button
-            size="sm"
-            onClick={() => setShowCreateModal(true)}
-            className="text-xs flex items-center gap-1.5 py-2 px-3.5 bg-primary hover:bg-primary/90 text-accent-ink font-bold rounded-xl shadow-btn cursor-pointer"
-          >
-            <Plus size={15} />
-            + Dodaj kursanta
-          </Button>
+            {isAddDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-2xl bg-ink-2/98 backdrop-blur-xl border border-line-strong shadow-ambient-lg p-1.5 z-50 animate-fadeIn">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddDropdownOpen(false);
+                    setShowCreateModal(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-text-hi hover:bg-base-100 hover:text-primary transition-colors text-left cursor-pointer"
+                >
+                  <UserIcon size={14} className="text-primary" />
+                  <span>Nowy kursant</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddDropdownOpen(false);
+                    setEditingGroup(null);
+                    setIsGroupModalOpen(true);
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-semibold text-text-hi hover:bg-base-100 hover:text-purple-400 transition-colors text-left cursor-pointer"
+                >
+                  <Users size={14} className="text-purple-400" />
+                  <span>Nowa grupa</span>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -698,7 +731,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
             onClick={() => setActiveTab('individual')}
             className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'individual'
-                ? 'bg-sky-500/20 text-sky-300 font-bold border border-sky-500/30 shadow-sm'
+                ? 'bg-sky-500/20 text-sky-800 dark:text-sky-300 font-bold border border-sky-500/30 shadow-sm'
                 : 'text-content-muted hover:text-text-hi hover:bg-line-soft/50'
             }`}
           >
@@ -710,59 +743,12 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
             onClick={() => setActiveTab('group')}
             className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ${
               activeTab === 'group'
-                ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30 shadow-sm'
+                ? 'bg-purple-500/20 text-purple-800 dark:text-purple-300 font-bold border border-purple-500/30 shadow-sm'
                 : 'text-content-muted hover:text-text-hi hover:bg-line-soft/50'
             }`}
           >
             <Users size={13} />
             Grupy & Pary
-          </button>
-
-          <div className="h-4 w-[1px] bg-line-strong mx-1 shrink-0" />
-
-          {/* Contractors */}
-          <button
-            onClick={() => setActiveTab('jcl')}
-            className={`px-3 py-1.5 rounded-xl transition-all shrink-0 ${
-              activeTab === 'jcl'
-                ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30 shadow-sm'
-                : 'text-content-muted hover:text-text-hi hover:bg-line-soft/50'
-            }`}
-          >
-            🏢 JCL
-          </button>
-
-          <button
-            onClick={() => setActiveTab('inspiro')}
-            className={`px-3 py-1.5 rounded-xl transition-all shrink-0 ${
-              activeTab === 'inspiro'
-                ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 shadow-sm'
-                : 'text-content-muted hover:text-text-hi hover:bg-line-soft/50'
-            }`}
-          >
-            🏢 Inspiro
-          </button>
-
-          <button
-            onClick={() => setActiveTab('axell')}
-            className={`px-3 py-1.5 rounded-xl transition-all shrink-0 ${
-              activeTab === 'axell'
-                ? 'bg-blue-500/20 text-blue-300 font-bold border border-blue-500/30 shadow-sm'
-                : 'text-content-muted hover:text-text-hi hover:bg-line-soft/50'
-            }`}
-          >
-            🏢 Axell
-          </button>
-
-          <button
-            onClick={() => setActiveTab('direct')}
-            className={`px-3 py-1.5 rounded-xl transition-all shrink-0 ${
-              activeTab === 'direct'
-                ? 'bg-indigo-500/20 text-indigo-300 font-bold border border-indigo-500/30 shadow-sm'
-                : 'text-content-muted hover:text-text-hi hover:bg-line-soft/50'
-            }`}
-          >
-            ⚡ Direct
           </button>
         </div>
 
@@ -969,49 +955,29 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                   <div
                     key={sId}
                     onClick={() => onSelectUser(student.id || '', 'profile')}
-                    className={`liquid-glass-tile group relative p-4.5 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer flex flex-col justify-between select-none ${
+                    className={`liquid-glass-tile group relative p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer flex flex-col justify-between select-none ${
                       isSelected
-                        ? 'is-selected border-primary ring-2 ring-primary/80 bg-primary/[0.12] shadow-[0_0_25px_rgba(114,240,180,0.25)] z-10'
-                        : 'border-line-strong hover:border-primary/60 hover:shadow-ambient-md'
+                        ? isGrp
+                          ? 'is-selected border-purple-500 ring-2 ring-purple-500/80 bg-purple-500/[0.15] shadow-[0_0_25px_rgba(168,85,247,0.25)] z-10'
+                          : 'is-selected border-primary ring-2 ring-primary/80 bg-primary/[0.12] shadow-[0_0_25px_rgba(114,240,180,0.25)] z-10'
+                        : isGrp
+                          ? 'border-purple-500/30 hover:border-purple-500/60 bg-purple-950/[0.04] dark:bg-purple-950/20 hover:shadow-ambient-md'
+                          : 'border-line-strong hover:border-primary/60 hover:shadow-ambient-md'
                     }`}
                   >
                     <div>
-                      {/* Top row: Badges & Select */}
+                      {/* Top row: Badge typu & Checkbox do zaznaczania */}
                       <div className="flex items-center justify-between gap-2 mb-3">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span
-                            className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
-                              isGrp
-                                ? 'bg-purple-500/15 text-purple-300 border-purple-500/30'
-                                : 'bg-primary/15 text-primary border-primary/30'
-                            }`}
-                          >
-                            {isGrp ? 'Grupa' : 'Kursant'}
-                          </span>
+                        <span
+                          className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-md border ${
+                            isGrp
+                              ? 'bg-purple-500/15 text-purple-800 dark:text-purple-300 border-purple-500/30'
+                              : 'bg-primary/15 text-primary border-primary/30'
+                          }`}
+                        >
+                          {isGrp ? 'Grupa' : 'Kursant'}
+                        </span>
 
-                          {student.level && (
-                            <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-line-soft text-text-hi border border-line-strong">
-                              {student.level}
-                            </span>
-                          )}
-
-                          <span
-                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold ${
-                              isActive
-                                ? 'text-emerald-400 bg-emerald-500/10'
-                                : 'text-rose-400 bg-rose-500/10'
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                isActive ? 'bg-emerald-400' : 'bg-rose-400'
-                              }`}
-                            />
-                            <span>{isActive ? 'Aktywny' : 'Pauza'}</span>
-                          </span>
-                        </div>
-
-                        {/* Checkbox do zaznaczania */}
                         <button
                           type="button"
                           onClick={(e) => {
@@ -1022,116 +988,79 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                           title={isSelected ? 'Odznacz' : 'Zaznacz'}
                         >
                           {isSelected ? (
-                            <CheckSquare size={16} className="text-primary" />
+                            <CheckSquare size={16} className={isGrp ? 'text-purple-400' : 'text-primary'} />
                           ) : (
                             <Square size={16} />
                           )}
                         </button>
                       </div>
 
-                      {/* Student / Group Name */}
-                      <div className="flex items-start gap-3 mb-3">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 border ${
-                          isGrp
-                            ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
-                            : 'bg-primary/20 text-primary border-primary/30'
-                        }`}>
-                          {isGrp ? <Users size={18} /> : initial}
+                      {/* Awatar i Nazwa kursanta / grupy */}
+                      <div className="flex items-center gap-3.5 mb-4">
+                        <div
+                          className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-base shrink-0 border shadow-sm ${
+                            isGrp
+                              ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                              : 'bg-primary/20 text-primary border-primary/40'
+                          }`}
+                        >
+                          {isGrp ? <Users size={22} /> : initial}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <h3 className="font-extrabold text-sm text-text-hi truncate group-hover:text-primary transition-colors">
+                          <h3 className="font-extrabold text-base text-text-hi truncate group-hover:text-primary transition-colors">
                             {sName}
                           </h3>
-                          <p className="text-[11px] text-content-muted truncate mt-0.5">
-                            {student.email || (isGrp ? 'Zajęcia grupowe' : 'brak adresu e-mail')}
-                          </p>
                         </div>
                       </div>
-
-                      {/* Company & Contractor */}
-                      {(student.company || student.contractor) && (
-                        <div className="flex items-center gap-2 text-[11px] text-content-muted mb-3 flex-wrap">
-                          {student.company && (
-                            <span className="inline-flex items-center gap-1 bg-base-100 px-2 py-0.5 rounded-md border border-line-strong truncate max-w-[150px]">
-                              <Building size={11} className="text-primary shrink-0" />
-                              <span className="truncate">{student.company}</span>
-                            </span>
-                          )}
-                          {student.contractor && (
-                            <span className="inline-flex items-center gap-1 bg-base-100 px-2 py-0.5 rounded-md border border-line-strong text-[10px] font-mono">
-                              🏢 {student.contractor}
-                            </span>
-                          )}
-                        </div>
-                      )}
                     </div>
 
-                    {/* Bottom: Last lesson info & quick actions */}
-                    <div className="pt-3 border-t border-line-strong/60 space-y-2.5">
-                      <div className="text-[11px]">
-                        <span className="text-content-muted/80 text-[10px] uppercase font-mono tracking-wider block mb-0.5">
-                          Ostatnia lekcja
-                        </span>
-                        {recentLesson ? (
-                          <div className="flex items-center justify-between gap-1.5">
-                            <span className="font-medium text-text-hi truncate text-xs" title={recentLesson.topic}>
-                              {recentLesson.topic}
-                            </span>
-                            <span className="text-[10px] font-mono text-content-muted shrink-0">
-                              {recentLesson.date}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-content-muted/50 italic text-[11px]">Brak odnotowanych lekcji</span>
-                        )}
-                      </div>
+                    {/* Dół: 4 kompaktowe mikro-ikony prowadzące do kluczowych zakładek */}
+                    <div
+                      className="pt-3 border-t border-line-strong/60 flex items-center justify-between gap-1.5"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {/* 1. Lekcje / Historia */}
+                      <button
+                        type="button"
+                        onClick={() => onSelectUser(student.id || '', 'history')}
+                        title="Historia lekcji"
+                        className="p-2 rounded-xl bg-line-soft hover:bg-primary/20 text-content-muted hover:text-primary transition-colors cursor-pointer flex items-center justify-center flex-1"
+                      >
+                        <BookOpen size={15} />
+                      </button>
 
-                      <div className="flex items-center justify-between gap-1 pt-1">
-                        <span className="text-[10px] font-bold text-primary flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                          ID kursanta <ChevronRight size={12} />
-                        </span>
+                      {/* 2. Zadania domowe */}
+                      <button
+                        type="button"
+                        onClick={() => onSelectUser(student.id || '', 'homework')}
+                        title="Zadania domowe"
+                        className="p-2 rounded-xl bg-line-soft hover:bg-purple-500/20 text-content-muted hover:text-purple-400 transition-colors cursor-pointer flex items-center justify-center flex-1"
+                      >
+                        <ClipboardList size={15} />
+                      </button>
 
-                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                          {/* Notatnik lekcyjny A4 */}
-                          {student.id && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onSelectUser(student.id || '', 'scratchpad');
-                                openScratchpadTab(`sp_${student.id}`);
-                              }}
-                              title="Otwórz Notatnik A4"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-emerald-500/20 text-content-muted hover:text-emerald-300 transition-colors cursor-pointer"
-                            >
-                              <FileEdit size={13} />
-                            </button>
-                          )}
+                      {/* 3. Notatnik lekcyjny A4 */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onSelectUser(student.id || '', 'scratchpad');
+                          openScratchpadTab(isGrp ? `sp_group_${student.id}` : `sp_${student.id}`);
+                        }}
+                        title="Wspólny Notatnik A4"
+                        className="p-2 rounded-xl bg-line-soft hover:bg-emerald-500/20 text-content-muted hover:text-emerald-400 transition-colors cursor-pointer flex items-center justify-center flex-1"
+                      >
+                        <FileEdit size={15} />
+                      </button>
 
-                          {/* Prace domowe */}
-                          {student.id && (
-                            <button
-                              type="button"
-                              onClick={() => onSelectUser(student.id || '', 'homework')}
-                              title="Przejdź do prac domowych"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-purple-500/20 text-content-muted hover:text-purple-300 transition-colors cursor-pointer"
-                            >
-                              <ClipboardList size={13} />
-                            </button>
-                          )}
-
-                          {/* Zaproszenie e-mail dla kursanta */}
-                          {!isGrp && student.email && (
-                            <button
-                              type="button"
-                              onClick={() => setInviteStudent(student)}
-                              title="Wyślij e-mail z danymi logowania"
-                              className="p-1.5 rounded-lg bg-line-soft hover:bg-indigo-500/20 text-content-muted hover:text-indigo-300 transition-colors cursor-pointer"
-                            >
-                              <Send size={13} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                      {/* 4. Profil & Notatki */}
+                      <button
+                        type="button"
+                        onClick={() => onSelectUser(student.id || '', 'profile')}
+                        title="Profil kursanta & notatki"
+                        className="p-2 rounded-xl bg-line-soft hover:bg-sky-500/20 text-content-muted hover:text-sky-400 transition-colors cursor-pointer flex items-center justify-center flex-1"
+                      >
+                        <UserIcon size={15} />
+                      </button>
                     </div>
                   </div>
                 );
