@@ -52,6 +52,12 @@ export const HOMEWORK_ENGINE_V2 = false;
  */
 export const SHARED_NOTEBOOK_V2 = false;
 
+/**
+ * MVP Lesson Studio (First Vertical Slice).
+ * Domyślnie włączone (true) na środowisku dev, ukryte za flagą dla bezpieczeństwa.
+ */
+export const LESSON_STUDIO_MVP = true;
+
 const readLocalStorageFlag = (key: string): boolean | null => {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return null;
@@ -79,6 +85,19 @@ export const isSharedNotebookV2Enabled = (): boolean => {
   }
 
   return SHARED_NOTEBOOK_V2;
+};
+
+export const isLessonStudioEnabled = (): boolean => {
+  const fromLocalStorage = readLocalStorageFlag('lesson_studio_mvp');
+  if (fromLocalStorage !== null) return fromLocalStorage;
+
+  const env: any = (typeof import.meta !== 'undefined' && (import.meta as any)?.env) || (typeof process !== 'undefined' && process.env) || {};
+  const fromEnv = env.VITE_LESSON_STUDIO_MVP;
+  if (typeof fromEnv === 'string' && fromEnv.trim() !== '') {
+    return fromEnv.trim().toLowerCase() === 'true';
+  }
+
+  return LESSON_STUDIO_MVP;
 };
 
 export const MODULE_VISIBILITY: ModuleVisibility = {

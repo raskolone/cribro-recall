@@ -27,7 +27,8 @@ import {
   ExternalLink,
   Plus,
   Brain,
-  RotateCcw
+  RotateCcw,
+  Zap
 } from 'lucide-react';
 import {
   StudentOperationalHubData,
@@ -214,11 +215,22 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
           {/* ── Główny Pasek Działań (Action Bar) ── */}
           <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={() => onOpenPlanner(studentId)}
-              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-primary to-primary-focus hover:from-primary-focus hover:to-primary text-accent-ink font-black text-sm flex items-center gap-2 shadow-lg shadow-primary/25 transition-all hover:scale-[1.02] cursor-pointer"
+              onClick={() => {
+                window.location.href = `/teacher/lesson-studio/new?studentId=${studentId}`;
+              }}
+              className="px-5 py-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm flex items-center gap-2 shadow-lg shadow-amber-500/20 transition-all hover:scale-[1.02] cursor-pointer"
+              title="Otwórz Lesson Studio MVP"
             >
-              <Sparkles size={17} />
-              <span>✨ Przygotuj kolejną lekcję</span>
+              <Zap size={17} className="fill-slate-950" />
+              <span>⚡️ Prepare Next Lesson</span>
+            </button>
+
+            <button
+              onClick={() => onOpenPlanner(studentId)}
+              className="px-4 py-3 rounded-2xl bg-gradient-to-r from-primary to-primary-focus hover:from-primary-focus hover:to-primary text-accent-ink font-bold text-xs sm:text-sm flex items-center gap-2 shadow-sm transition-all hover:scale-[1.02] cursor-pointer"
+            >
+              <Sparkles size={16} />
+              <span>Planer AI</span>
             </button>
 
             <button
@@ -405,13 +417,26 @@ export const StudentOperationalHub: React.FC<StudentOperationalHubProps> = ({
               <p className="text-xs text-content-muted">Przeglądaj historię spotkań, poruszone zagadnienia i słownictwo bez potrzeby wchodzenia do Notion.</p>
             </div>
 
-            <button
-              onClick={() => onOpenPlanner(studentId)}
-              className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-focus text-accent-ink text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
-            >
-              <Plus size={14} />
-              <span>Nowa lekcja</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => {
+                  window.location.href = `/teacher/lesson-studio/new?studentId=${studentId}`;
+                }}
+                className="px-3 py-2 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-sm hover:scale-[1.02] cursor-pointer"
+                title="Przygotuj kolejną lekcję w Lesson Studio"
+              >
+                <Zap size={14} className="fill-slate-950" />
+                <span>⚡️ Prepare Next Lesson</span>
+              </button>
+
+              <button
+                onClick={() => onOpenPlanner(studentId)}
+                className="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-focus text-accent-ink text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Plus size={14} />
+                <span>Nowa lekcja</span>
+              </button>
+            </div>
           </div>
 
           {(hubData?.lastLessons?.length || 0) === 0 ? (

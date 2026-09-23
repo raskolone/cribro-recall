@@ -21,7 +21,9 @@ import UnsubscribeScreen from './components/auth/UnsubscribeScreen';
 import DirectHomeworkScreen from './components/dashboard/DirectHomeworkScreen';
 import LiveJoinScreen from './components/presentation/LiveJoinScreen';
 import ScratchpadPage from './components/scratchpad/ScratchpadPage';
+import LessonStudioEditor from './components/lessonStudio/LessonStudioEditor';
 import { getAiConfig } from './services/aiConfigService';
+import { isLessonStudioEnabled } from './config/featureFlags';
 
 
 const App: React.FC = () => {
@@ -137,6 +139,51 @@ const AppContent: React.FC = () => {
     return (
       <SettingsProvider>
         <ScratchpadPage />
+      </SettingsProvider>
+    );
+  }
+
+  // Lesson Studio MVP (Kreator, edytor i tryb prowadzenia dla lektora)
+  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/teacher/lesson-studio')) {
+    if (!isLessonStudioEnabled()) {
+      return (
+        <div className="min-h-screen flex items-center justify-center p-6 text-center">
+          <p className="text-sm font-bold text-content-muted">Moduł Lesson Studio jest obecnie wyłączony.</p>
+        </div>
+      );
+    }
+
+    if (!isAuthReady) {
+      return (
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      );
+    }
+
+    const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
+    if (!isTeacher) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
+          <h2 className="text-lg font-bold text-text-hi">Dostęp ograniczony</h2>
+          <p className="text-xs text-content-muted">Moduł Lesson Studio jest dostępny wyłącznie dla lektorów i administratorów.</p>
+          <a href="/" className="px-4 py-2 rounded-xl bg-primary text-accent-ink text-xs font-bold">Wróć na stronę główną</a>
+        </div>
+      );
+    }
+
+    const path = window.location.pathname;
+    const isNew = path === '/teacher/lesson-studio/new' || path === '/teacher/lesson-studio/new/';
+    const isLive = path.endsWith('/live');
+    const pathParts = path.split('/').filter(Boolean); // ['teacher', 'lesson-studio', ...]
+    const instanceId = pathParts.length >= 3 && !['new'].includes(pathParts[2]) ? pathParts[2] : null;
+
+    return (
+      <SettingsProvider>
+        <LessonStudioEditor 
+          mode={isLive ? 'live' : isNew ? 'new' : 'edit'} 
+          lessonInstanceId={instanceId}
+        />
       </SettingsProvider>
     );
   }

@@ -84,7 +84,7 @@ import {
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay, Mail, Database, Wand2,
   AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, FileEdit, Mic,
-  ClipboardList, Brain, Building, ArrowLeft
+  ClipboardList, Brain, Building, ArrowLeft, Zap
 } from 'lucide-react';
 
 import i18n from "i18next";
@@ -3240,6 +3240,19 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 count={lessonRecords.length}
                 actions={
                   <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (selectedUser?.id) {
+                          window.location.href = `/teacher/lesson-studio/new?studentId=${selectedUser.id}`;
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 text-xs font-black flex items-center gap-1.5 transition-all shadow-sm hover:scale-[1.02] cursor-pointer"
+                      title="Przygotuj kolejną spersonalizowaną lekcję w Lesson Studio"
+                    >
+                      <Zap size={13} className="fill-slate-950" />
+                      <span>⚡️ Prepare Next Lesson</span>
+                    </button>
                     <Button
                       variant="secondary"
                       size="sm"
