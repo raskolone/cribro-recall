@@ -200,6 +200,36 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Skonsolidowany sprint: Baza wzorców w pracach domowych, Day/Dark mode w kafelkach oraz likwidacja Notion (2026-09-23, runda 54)
+
+1. **Baza wzorców w kreatorze prac domowych (`AssignHomeworkModal.tsx`)**:
+   - W typach `SpecialTask` (`types.ts`) uczyniono `lessonId` oraz `lessonNoteId` opcjonalnymi (`lessonId?: string`, `lessonNoteId?: string`), co umożliwia zadawanie prac bezpośrednio z bazy wiedzy bez powiązania z wcześniejszą lekcją.
+   - Wprowadzono przełącznik źródła materiału w modalu zadawania pracy: `[ 📝 Notatka lekcyjna ]` | `[ 📚 Wzorce Gramatyczne ]`.
+   - W trybie wzorców zintegrowano `services/blueprintService.ts`:
+     * Selektor poziomu CEFR (A1–C2) zaciągający tematy z `getBlueprintIndex()`.
+     * Asynchroniczne pobieranie zdań wybranego rozdziału (`getChapterDetails`) z dynamicznym ładowaniem JSON.
+     * Interaktywna lista par zdań PL/EN z checkboxami oraz przyciskiem *„Zaznacz pierwsze 6”* / *„Wyczyść”*.
+     * Opcjonalne pole kontekstu tematycznego (np. podróże, zakupy, IT).
+     * Generowanie bezpiecznego tokenu zadania (`generateSecureHomeworkToken`), zapis w Firestore `users/{studentId}/specialTasks` i bezpośrednie wywołanie modalu wysyłki email (`HomeworkEmailConfirmationModal`).
+2. **Naprawa styli kafelków kursantów (Wariant 3C — Day & Dark Mode)**:
+   - **Tryb jasny (Day Mode)**:
+     * Kafelki mają białe tło (`bg-white`), czytelną szarą ramkę (`border-slate-300` / `#cbd5e1`) oraz ciemne teksty (`text-slate-900` dla imienia, `text-slate-600` dla metadanych).
+     * Prawa pigułka akcji: `bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200 hover:text-emerald-600`.
+     * Mikro-wskaźnik i checkbox dostosowane do jasnego tła.
+   - **Tryb ciemny (Dark Mode)**:
+     * Wyraźniejsza spoczynkowa ramka `#263852` (zamiast zlewającego się granatu).
+     * Podkręcony o 10% efekt `:hover` i Specular Highlight: `border-color: rgba(52, 211, 153, 0.65)`, laserowa linia `box-shadow: 0 0 12px 2px rgba(52, 211, 153, 0.9)`, poświata `rgba(52, 211, 153, 0.38)`.
+3. **Likwidacja pozostałości integracji z Notion**:
+   - Zaktualizowano podtytuł historii lekcji w `AdminPanel.tsx`: *„Transkrypcje z Sifta i wpisy ręczne — jedna oś czasu”*.
+   - Zaktualizowano `components/admin/LessonSourceBar.tsx` — usunięto wzmianki i karty Notion, wyeksponowano źródła Sift oraz Wpisy ręczne / archiwalne.
+   - Zaktualizowano etykiety akcji w menu `AdminPanel.tsx` i `TeacherTodayCockpit.tsx`.
+4. **Weryfikacja techniczna**:
+   - `npx tsc --noEmit` — 0 błędów typowania.
+   - `npm test` — 513/513 testów jednostkowych zaliczonych.
+   - `npm run build` — czysty build produkcyjny (PWA + SSR).
+
+---
+
 ### 🎴 Refaktoring kafelków kursantów (Wariant 3C Compact Flow) & Usunięcie integracji Notion (2026-09-23, runda 53)
 
 1. **Nowy ultrakompaktowy layout kafelków kursanta (`components/admin/StudentCard.tsx`)**:

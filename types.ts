@@ -814,6 +814,9 @@ export interface SpecialTask {
   studentUid?: string;
   studentId: string;
   studentName?: string;
+  /** Opcjonalne powiązanie z odbytą lekcją — zadania z bazy wzorców nie wymagają lekcji */
+  lessonId?: string;
+  lessonNoteId?: string;
   /** Znacznik wysłania powiadomienia e-mail, zapisywany przez Cloud Function. */
   notificationSentAt?: any;
   assignedBy?: string;

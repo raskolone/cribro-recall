@@ -78,7 +78,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
       } ${isActive ? 'is-active' : ''}`}
     >
       {/* 1. Mikro-wskaźnik statusu */}
-      <div className="w-1 h-6 bg-slate-700 rounded-full specular-accent-bar shrink-0" />
+      <div className="w-1 h-6 bg-slate-300 dark:bg-slate-700 rounded-full specular-accent-bar shrink-0" />
 
       {/* 2. Checkbox masowego zaznaczania */}
       <input
@@ -89,28 +89,28 @@ export const StudentCard: React.FC<StudentCardProps> = ({
           if (student.id) onToggleSelect(student.id);
         }}
         onClick={(e) => e.stopPropagation()}
-        className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-emerald-400 focus:ring-0 cursor-pointer accent-emerald-400 shrink-0"
+        className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-emerald-600 dark:text-emerald-400 focus:ring-0 cursor-pointer accent-emerald-600 dark:accent-emerald-400 shrink-0"
         title={isSelected ? 'Odznacz' : 'Zaznacz'}
       />
 
       {/* 3. Awatar z inicjałami (Squircle) */}
-      <div className="w-9 h-9 rounded-lg bg-emerald-950/80 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 tracking-wide font-sans">
+      <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 tracking-wide font-sans">
         {isGrp ? <Users className="w-4 h-4" /> : initials}
       </div>
 
       {/* 4. Blok tekstowy (Imię + Metadane) */}
       <div className="min-w-0 flex-1 flex flex-col justify-center">
-        <h3 className="text-xs font-semibold text-white group-hover:text-emerald-300 truncate transition-colors">
+        <h3 className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 truncate transition-colors">
           {sName}
         </h3>
-        <p className="text-[11px] text-slate-400 truncate">
+        <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
           {metaText}
         </p>
       </div>
 
       {/* 5. Zintegrowany dok mikro-akcji */}
       <div
-        className="flex items-center gap-0.5 shrink-0 bg-slate-900/70 group-hover:bg-slate-900 border border-slate-800 group-hover:border-emerald-500/30 rounded-lg p-0.5 transition"
+        className="flex items-center gap-0.5 shrink-0 bg-slate-100 dark:bg-slate-900/70 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-900 border border-slate-200 dark:border-slate-800 group-hover:border-emerald-500/30 rounded-lg p-0.5 transition"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 1. Lekcje / Dziennik */}
@@ -121,7 +121,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             onSelect(student.id || student.username || '', 'history');
           }}
           title="Lekcje / Dziennik"
-          className="p-1 text-slate-400 hover:text-emerald-300 hover:bg-slate-800 rounded transition cursor-pointer"
+          className="p-1 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition cursor-pointer"
         >
           <BookOpen className="w-3.5 h-3.5" />
         </button>
@@ -138,7 +138,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             }
           }}
           title="Notatki lekcyjne"
-          className="p-1 text-slate-400 hover:text-emerald-300 hover:bg-slate-800 rounded transition cursor-pointer"
+          className="p-1 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition cursor-pointer"
         >
           <FileEdit className="w-3.5 h-3.5" />
         </button>
@@ -151,7 +151,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             onSelect(student.id || student.username || '', 'profile');
           }}
           title="Profil kursanta"
-          className="p-1 text-slate-400 hover:text-emerald-300 hover:bg-slate-800 rounded transition cursor-pointer"
+          className="p-1 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition cursor-pointer"
         >
           <UserIcon className="w-3.5 h-3.5" />
         </button>

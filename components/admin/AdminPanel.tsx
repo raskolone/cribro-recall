@@ -3169,7 +3169,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   dotyczą. */}
               <StudentPanelSection
                 title={i18n.t("Historia lekcji")}
-                subtitle="Notatki z Notion, transkrypcje z Sifta i wpisy ręczne — jedna oś czasu"
+                subtitle="Transkrypcje z Sifta i wpisy ręczne — jedna oś czasu"
                 icon={<Clock size={16} />}
                 count={lessonRecords.length}
                 actions={
@@ -3234,7 +3234,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                           items: [
                             {
                               id: 'clean',
-                              label: 'Uporządkuj lekcje (Notion)',
+                              label: 'Uporządkuj lekcje',
                               description: 'Przepisz stare wpisy na 4 bloki',
                               icon: <Wand2 size={14} />,
                               onSelect: () => setShowCleanLessonsModal(true),

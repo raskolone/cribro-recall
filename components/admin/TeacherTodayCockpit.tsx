@@ -143,10 +143,10 @@ export const TeacherTodayCockpit: React.FC<TeacherTodayCockpitProps> = ({
             <button
               onClick={() => setIsNotionImportOpen(true)}
               className="px-4 py-2.5 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary-focus text-xs font-bold flex items-center gap-2 transition-colors cursor-pointer shadow-sm"
-              title="Wklej notatki ze spotkania z Notion AI i wygeneruj lekcję"
+              title="Wklej notatki ze spotkania lub transkrypcję i wygeneruj lekcję"
             >
               <FileText size={15} />
-              <span>Wklej z Notion AI</span>
+              <span>Wklej notatki / AI</span>
             </button>
             <button
               onClick={() => onOpenPlanner()}
