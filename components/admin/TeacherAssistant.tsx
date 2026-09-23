@@ -1836,6 +1836,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
   /* ═══════════════════════════════════════════════════════════════════
      TRYB FLOATING — PŁYWAJĄCY DYMEK W LEWYM DOLNYM ROGU EKRANU
      ═══════════════════════════════════════════════════════════════════ */
+  if (mode === 'floating' && hidden) {
+    return null;
+  }
+
   const panel = (
     <div
       className="fixed bottom-0 left-3 sm:left-4 z-[9998] pointer-events-none flex flex-col items-start justify-end max-h-[100dvh]"

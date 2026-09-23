@@ -63,17 +63,17 @@ export const buildTeacherTourSteps = (): CoachStep[] => [
   {
     coachId: 'tour-teacher-main',
     group: 'Prowadzenie lekcji',
-    title: 'Trzy moduły, jeden pulpit',
+    title: 'Dwa moduły, jeden pulpit',
     description:
-      'Dzisiaj (Cockpit) do bieżącej roboty, Moi kursanci & Grupy to Twoja baza CRM z kafelkami i historią lekcji, a Narzędzia lektora chowają resztę — notatnik, zadania, planer, mailing, słownictwo i statystyki.',
+      'Moi kursanci & Grupy to Twoja zintegrowana baza CRM z kafelkami i zarządzaniem grupami, a Moje zasoby gromadzą materiały, testy, bank ćwiczeń, planer i mailing. W centrum czuwa Asystent AI.',
     preferredPlacement: 'bottom',
   },
   {
     coachId: 'tour-teacher-tools',
     group: 'Reszta panelu',
-    title: 'Narzędzia lektora',
+    title: 'Moje zasoby',
     description:
-      'Notatnik na żywo, zadania i testy, planer lekcji, mailing, słownictwo i statystyki — jeden kafelek otwiera lekki podwidok ze wszystkimi naraz, więc nie zaśmiecają strony głównej.',
+      'Materiały, testy, bank ćwiczeń, planer lekcji, notatnik, mailing, słownictwo i statystyki — jeden kafelek otwiera podręczne centrum zasobów lektora.',
     tip: 'Kursant do notatnika wchodzi linkiem albo PIN-em, bez logowania.',
   },
 ];

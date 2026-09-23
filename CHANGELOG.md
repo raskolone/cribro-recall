@@ -199,6 +199,38 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🚀 Pakiet 1: Architektura Cockpitu AI i Karta Kursanta ID Card Master-Detail (2026-09-23, runda 51)
+
+**Zrealizowano pełny Pakiet 1 refaktoryzacji interfejsu Cribro Recall:**
+1. **Uproszczenie Pulpitu Głównego (Dashboard / AdminPanel)**:
+   - Zredukowano górne kafelki nawigacyjne do **DWOCH głównych modułów**:
+     * Moduł 1: **"Moi kursanci & Grupy"** (`id: 'students'`) — zintegrowana baza CRM, widok kafelkowy, zarządzanie grupami.
+     * Moduł 2: **"Moje zasoby"** (`id: 'tools'`) — materiały, testy, bank ćwiczeń, planer lekcji, mailing, baza słownictwa i statystyki.
+   - Siatka wyśrodkowana w układzie `grid-cols-1 sm:grid-cols-2 max-w-4xl`.
+   - Czat asystenta AI (`TeacherAssistant` w trybie `mode="embedded"`) stanowi centralny element strony głównej Cockpitu lektora (mózg operacyjny lektora).
+   - Zapewniono automatyczne ukrywanie pływającej ikony FAB asystenta AI w lewym dolnym rogu ekranu (`mode="floating"`), gdy użytkownik znajduje się na widoku głównym Cockpitu (brak dublowania czatu na ekranie).
+   - Zaktualizowano przewodnik samouczka lektora (`tourSteps.ts`) do 2 modułów.
+2. **Likwidacja "Centrum Kursanta" i wdrożenie układu Master-Detail**:
+   - Całkowicie wycofano poziomy briefing/komponent "Centrum Kursanta" (`StudentOperationalHub`) oraz poziomy pasek zakładek.
+   - Wdrożono dwukolumnowy układ Master-Detail (`max-w-[1640px]`):
+     * **LEWA KOLUMNA** (~320-360px / `w-full lg:w-80 xl:w-96`):
+       - Karta w formacie **"ID Card"**: awatar/inicjał, imię i nazwisko, username, pigułka poziomu CEFR, firma/kontraktor, e-mail, status współpracy, ostatnia wizyta oraz przycisk powrotu do CRM.
+       - Wertykalne kafelki nawigacji z subtelnymi akcentami kolorystycznymi:
+         1. **"Historia lekcji"** (akcent indigo/fiolet, licznik lekcji, domyślnie aktywny widok).
+         2. **"Dane podstawowe"** (akcent emerald/zielony, edycja profilu, kontaktu, notatek lektora, CEFR i AI).
+         3. **"Prace domowe"** (akcent amber/pomarańczowy, zadania i statusy).
+         4. **"Notatnik lekcyjny (A4)"** (akcent sky/błękitny, szybkie przejście do wspólnego notatnika kursanta).
+     * **PRAWA KOLUMNA** (`flex-1 min-w-0`):
+       - Pełny obszar roboczy wybranego widoku z lewej kolumny.
+3. **Ciągłość funkcji w Historii Lekcji**:
+   - Zachowano nienaruszony komplet akcji lektora: przegląd wpisów lekcyjnych, transkrypcje w Notion, wpis ręczny, porządkowanie lekcji w Notion na 4 bloki oraz eksport do pliku PDF.
+4. **Weryfikacja**:
+   - `npx tsc --noEmit` — 0 błędów typowania.
+   - `npm test` — 513/513 testów przechodzi pomyślnie.
+   - `npm run build` — bundle buduje się bez problemów.
+
+---
+
 ### 🎨 Refaktoryzacja widoku CRM, bazy kursantów i nawigacji 80/20 (2026-09-23, runda 50)
 
 **Zadanie:** uproszczenie i ujednolicenie architektury CRM oraz bazy kursantów zgodnie z zasadą 80/20:

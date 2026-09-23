@@ -52,7 +52,6 @@ import { createPresentationFromScenario, savePresentationToStorage } from '../..
 import LessonSourceBar from './LessonSourceBar';
 import MenuDropdown from '../ui/MenuDropdown';
 import StudentPanelSection from './StudentPanelSection';
-import StudentProfileHeader from './StudentProfileHeader';
 import StudentInviteEmailModal from './StudentInviteEmailModal';
 import CleanLessonsModal from './CleanLessonsModal';
 import LessonDuplicatesPanel from './LessonDuplicatesPanel';
@@ -76,7 +75,6 @@ import TeacherTodayCockpit from './TeacherTodayCockpit';
 import TeacherMobileHub from './TeacherMobileHub';
 import DesktopOnlyNotice from '../ui/DesktopOnlyNotice';
 import { useIsDesktop } from '../../hooks/useMediaQuery';
-import StudentOperationalHub from './StudentOperationalHub';
 import { StudentRecallHub } from '../recall/StudentRecallHub';
 import GSAPModuleTransition from '../ui/GSAPModuleTransition';
 import { useLanguage } from '../../context/LanguageContext';
@@ -86,7 +84,7 @@ import {
   BookOpen, BookMarked, UserCheck, Filter, Award, Activity, Calendar, 
   RefreshCw, Plus, Eye, Shield, Target, CalendarClock, Layers, Link as LinkIcon, Airplay, Mail, Database, Wand2,
   AlertTriangle, Edit3, Save, Bell, BellOff, Lock, Copy, Key, Send, Archive, CheckSquare, Square, FileEdit, Mic,
-  ClipboardList, Brain
+  ClipboardList, Brain, Building, ArrowLeft
 } from 'lucide-react';
 
 import i18n from "i18next";
@@ -314,8 +312,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     setSelectedUser(user);
     // 'context' zniknął z tej listy razem z zakładką — kontekst przed lekcją
     // jest kafelkiem pulpitu z własnym wyborem kursanta (PreLessonContextModal).
-    const validStudentTabs = ['hub', 'profile', 'history', 'homework', 'vocabulary', 'tests', 'stats'];
-    const nextTab = targetTab || (activeTab && validStudentTabs.includes(activeTab) ? activeTab : 'hub');
+    const validStudentTabs = ['history', 'profile', 'homework', 'vocabulary', 'tests', 'stats'];
+    const nextTab = targetTab || (activeTab && validStudentTabs.includes(activeTab) ? activeTab : 'history');
     setActiveTab(nextTab);
     if (onUserSelect) onUserSelect(user.id);
     fetchUserLogsAndStats(user.id);
@@ -2345,32 +2343,25 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           )}
         </div>
 
-        {/* Główne 3 moduły lektora (Dzisiaj/Cockpit, Moi kursanci & Grupy, Narzędzia lektora) */}
+        {/* Główne 2 moduły lektora (Moi kursanci & Grupy, Moje zasoby) */}
         <div
           ref={mainMenuRef}
           data-coach="tour-teacher-main"
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4 max-w-5xl mx-auto w-full justify-center"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 max-w-4xl mx-auto w-full justify-center"
         >
           {[
-            {
-              id: 'today',
-              title: 'Dzisiaj (Cockpit)',
-              badge: 'Centrum dnia',
-              desc: 'Operacyjny widok dnia — rozkład zajęć, zadania do sprawdzenia, szybki briefing',
-              icon: Calendar,
-            },
             {
               id: 'students',
               title: 'Moi kursanci & Grupy',
               badge: 'Baza CRM & Grupy',
-              desc: 'Baza kursantów i grup — kafelki, profile, historia lekcji i przypisywanie zadań',
+              desc: 'Zintegrowana baza CRM, widok kafelkowy, zarządzanie grupami i przypisywanie zadań',
               icon: Users,
             },
             {
               id: 'tools',
-              title: 'Narzędzia lektora',
-              badge: 'Zestaw narzędzi',
-              desc: 'Notatnik na żywo, zadania i testy, planer lekcji, mailing, baza słownictwa i statystyki',
+              title: 'Moje zasoby',
+              badge: 'Materiały i narzędzia',
+              desc: 'Materiały, testy, bank ćwiczeń, planer lekcji, mailing, baza słownictwa i statystyki',
               icon: Layers,
               hasNotification: unreadMailingCount > 0,
               notificationCount: unreadMailingCount,
@@ -2379,7 +2370,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             const IconComp = tile.icon;
             const isActive = tile.id === 'tools'
               ? toolsDrawerOpen
-              : activeTab === tile.id || (tile.id === 'today' && activeTab === 'cockpit') || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
+              : activeTab === tile.id || (tile.id === 'lesson-history' && (activeTab === 'lesson-history' || activeTab === 'history'));
             const hasNotification = Boolean((tile as any).hasNotification);
             const notificationCount = Number((tile as any).notificationCount || 0);
 
@@ -2482,7 +2473,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-extrabold uppercase tracking-wider text-text-hi flex items-center gap-2">
               <Layers size={16} className="text-primary" />
-              Narzędzia lektora
+              Moje zasoby
             </h2>
             <button
               type="button"
@@ -2550,7 +2541,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 lessons={allTeacherLessons}
                 onSelectStudent={(sId, targetTab) => {
                   const u = users.find((x) => x.id === sId);
-                  if (u) handleSelectUser(u as UserWithId, targetTab || 'hub');
+                  if (u) handleSelectUser(u as UserWithId, targetTab || 'history');
                 }}
                 onOpenPlanner={(sId) => {
                   if (sId) {
@@ -2909,132 +2900,256 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </>
       )}
 
-      {/* SEKCJA KURSANTA (ZAKŁADKI NA GÓRZE I DANE PROFILOWE) */}
+      {/* SEKCJA KURSANTA — UKŁAD MASTER-DETAIL (ID CARD + PIONOWA NAWIGACJA / OBSZAR ROBOCZY) */}
       {!selectedUser ? null : (
-        <div ref={profileContainerRef} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4 pt-1">
-          {/* NAGŁÓWEK KURSANTA — patrz components/admin/StudentProfileHeader.tsx */}
-          <StudentProfileHeader
-            student={selectedUser}
-            onBack={() => {
-              setSelectedUser(null);
-              setActiveTab(null);
-              if (onUserSelect) onUserSelect(null);
-              if (onViewChange) onViewChange('admin');
-              setPracticeLogs([]);
-              setLessonRecords([]);
-            }}
-            onChangeStudent={() => setIsStudentPickerOpen(true)}
-            onEditContact={() => {
-              setActiveTab('profile');
-              setProfileSection('mail');
-              setTimeout(() => {
-                tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 150);
-            }}
-            onEditLevel={() => {
-              setActiveTab('profile');
-              setProfileSection('level');
-              setTimeout(() => {
-                tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 150);
-            }}
-            onToggleInvitationSent={(sent) => {
-              const nowIso = new Date().toISOString();
-              setSelectedUser(prev => prev ? { ...prev, invitationSent: sent, ...(sent ? { invitationSentAt: nowIso } : {}) } : null);
-              setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, invitationSent: sent, ...(sent ? { invitationSentAt: nowIso } : {}) } : u));
-            }}
-          />
-
-          {/* PASEK ZAKŁADEK NA SAMEJ GÓRZE PROFILU KURSANTA — scalone do 4 głównych
-              zakładek. Recall, Słownictwo & AI, Testy AI i osobne Statystyki nie
-              zostały usunięte (SHOW_LEGACY_STUDENT_TABS === false tylko chowa
-              przyciski), ich treść nadal się renderuje niżej i wchłaniają je Hub
-              (metryki Recall) oraz „Profil & Dane" (metryki aktywności). */}
-          <div className="flex items-center gap-1.5 p-1.5 rounded-2xl bg-base-200/90 border border-line-strong backdrop-blur-md overflow-x-auto no-scrollbar shadow-inner select-none">
-            {[
-              { id: 'hub', label: 'Centrum kursanta (Hub)', icon: Target },
-              { id: 'history', label: 'Historia Lekcji', icon: Clock, count: lessonRecords.length },
-              { id: 'homework', label: 'Praca domowa', icon: BookOpen, count: specialTasks.length },
-              { id: 'profile', label: 'Profil & Dane', icon: UserIcon },
-              { id: 'recall', label: 'Spaced Repetition (Recall)', icon: Brain, hidden: true },
-              { id: 'vocabulary', label: 'Słownictwo & AI', icon: BookMarked, count: userSets.length, hidden: true },
-              { id: 'tests', label: 'Testy AI', icon: Award, hidden: true },
-              { id: 'stats', label: 'Statystyki & Wyniki', icon: BarChart2, hidden: true },
-            ].filter((tab) => SHOW_LEGACY_STUDENT_TABS || !tab.hidden).map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setActiveTab(tab.id);
-                    setTimeout(() => {
-                      tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    }, 100);
-                  }}
-                  className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer shrink-0 ${
-                    isActive
-                      ? 'bg-primary text-accent-ink font-extrabold shadow-md shadow-primary/20 border border-primary/50'
-                      : 'text-content-muted hover:text-text-hi hover:bg-line-soft border border-transparent'
-                  }`}
-                >
-                  <Icon size={16} className={isActive ? 'text-accent-ink' : 'text-primary'} />
-                  <span>{tab.label}</span>
-                  {typeof tab.count === 'number' && tab.count > 0 && (
+        <div ref={profileContainerRef} className="max-w-[1640px] mx-auto px-3 sm:px-6 lg:px-8 pt-1">
+          <div className="flex flex-col lg:flex-row items-start gap-5 sm:gap-6">
+            {/* LEWA KOLUMNA: WĄSKI SŁUPEK NAWIGACYJNO-INFORMACYJNY (~320-360px) */}
+            <aside className="w-full lg:w-80 xl:w-96 shrink-0 space-y-4">
+              {/* KARTA W FORMACIE "ID CARD" */}
+              <div className="rounded-2xl border border-line-strong bg-base-200/80 shadow-ambient-sm overflow-hidden">
+                {/* Górny pasek karty z akcentem wizualnym */}
+                <div className="px-4 py-3.5 bg-gradient-to-r from-primary/15 via-base-100/40 to-transparent border-b border-line-strong flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30">
+                      ID Kursanta
+                    </span>
                     <span
-                      className={`text-[10px] font-mono px-1.5 py-0.5 rounded-full font-bold ${
-                        isActive ? 'bg-accent-ink/15 text-accent-ink' : 'bg-line-soft text-primary'
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border ${
+                        selectedUser.isSuspended || selectedUser.isArchived || selectedUser.statusWspolpracy === 'Nieaktywny'
+                          ? 'text-rose-400 bg-rose-500/10 border-rose-500/20'
+                          : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
                       }`}
                     >
-                      {tab.count}
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          selectedUser.isSuspended || selectedUser.isArchived || selectedUser.statusWspolpracy === 'Nieaktywny'
+                            ? 'bg-rose-400'
+                            : 'bg-emerald-400'
+                        }`}
+                      />
+                      <span>
+                        {selectedUser.statusWspolpracy || (selectedUser.isSuspended ? 'Zawieszony' : selectedUser.isArchived ? 'Archiwalny' : 'Aktywny')}
+                      </span>
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                  </div>
 
-          {/* ZAWARTOŚĆ ZAKŁADKI KURSANTA */}
-          <div ref={tabContentRef} className="pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsStudentPickerOpen(true)}
+                    className="p-1.5 rounded-lg border border-line-strong bg-base-100/60 text-content-muted hover:text-text-hi hover:border-primary/40 transition-colors cursor-pointer text-xs flex items-center gap-1"
+                    title="Zmień kursanta"
+                  >
+                    <UserCheck size={13} />
+                    <span className="text-[11px] font-semibold hidden sm:inline">Zmień</span>
+                  </button>
+                </div>
 
-          {activeTab === 'hub' && (
-            <StudentOperationalHub
-              studentId={selectedUser.id}
-              cachedStudent={selectedUser}
-              currentUser={currentUser}
-              onBack={() => setSelectedUser(null)}
-              onOpenPlanner={(_sId, _lessonId) => {
-                handleSelectUser(selectedUser as UserWithId, 'lesson-planner');
-                setActiveTab('lesson-planner');
-              }}
-              onOpenHistory={(_sId, _lessonId) => {
-                setActiveTab('history');
-              }}
-              onOpenHomeworkModal={(_sId) => {
-                setActiveTab('homework');
-                setShowSpecialTaskModal(true);
-              }}
-              onOpenRecall={(_sId) => {
-                setActiveTab('recall');
-              }}
-              onEditContact={() => {
-                setActiveTab('profile');
-                setProfileSection('basic');
-              }}
-              onEditLevel={() => {
-                setActiveTab('profile');
-                setProfileSection('level');
-              }}
-            />
-          )}
+                {/* Główny korpus karty tożsamości */}
+                <div className="p-4 sm:p-5 space-y-4">
+                  <div className="flex items-start gap-3.5">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/25 to-primary/5 border border-primary/40 flex items-center justify-center font-extrabold text-primary text-xl shrink-0 overflow-hidden shadow-inner">
+                      {selectedUser.photoURL ? (
+                        <img src={selectedUser.photoURL} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        (selectedUser.firstName || selectedUser.username || '?')[0].toUpperCase()
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <h2 className="text-lg font-extrabold text-text-hi truncate leading-tight">
+                          {`${selectedUser.firstName || ''} ${selectedUser.lastName || ''}`.trim() || selectedUser.username}
+                        </h2>
+                      </div>
+                      {selectedUser.username && (
+                        <p className="text-xs font-mono text-content-muted truncate">
+                          @{selectedUser.username}
+                        </p>
+                      )}
+                      {selectedUser.level && (
+                        <div className="mt-2">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
+                            CEFR: {selectedUser.level}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Informacje kontaktowe i organizacyjne */}
+                  <div className="space-y-2 pt-2 border-t border-line-strong/60 text-xs">
+                    {/* E-mail */}
+                    <div className="flex items-center gap-2 text-content-muted truncate">
+                      <Mail size={13} className="shrink-0 text-content-muted/80" />
+                      <span className="truncate" title={selectedUser.email || 'Brak e-maila'}>
+                        {selectedUser.email || 'Brak adresu e-mail'}
+                      </span>
+                    </div>
+
+                    {/* Firma / Kontraktor */}
+                    {(selectedUser.company || selectedUser.contractor) && (
+                      <div className="flex items-center gap-2 text-content-muted flex-wrap">
+                        {selectedUser.company && (
+                          <span className="inline-flex items-center gap-1 bg-base-100/80 px-2 py-0.5 rounded-md border border-line-strong truncate max-w-[170px]" title={selectedUser.company}>
+                            <Building size={11} className="text-primary shrink-0" />
+                            <span className="truncate">{selectedUser.company}</span>
+                          </span>
+                        )}
+                        {selectedUser.contractor && (
+                          <span className="inline-flex items-center gap-1 bg-base-100/80 px-2 py-0.5 rounded-md border border-line-strong font-mono text-[10px]">
+                            🏢 {selectedUser.contractor}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Ostatnia wizyta */}
+                    <div className="flex items-center gap-2 text-[11px] text-content-muted pt-1">
+                      <Activity size={12} className="shrink-0 text-content-muted/70" />
+                      <span>
+                        {selectedUser.lastLoginDate
+                          ? `Ost. wizyta: ${new Date(selectedUser.lastLoginDate).toLocaleDateString('pl-PL')}`
+                          : 'Oczekuje na 1. logowanie'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Przycisk powrotu do CRM */}
+                  <div className="pt-2 border-t border-line-strong/60">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedUser(null);
+                        setActiveTab(null);
+                        if (onUserSelect) onUserSelect(null);
+                        if (onViewChange) onViewChange('admin');
+                        setPracticeLogs([]);
+                        setLessonRecords([]);
+                      }}
+                      className="w-full py-2 px-3 rounded-xl border border-line-strong bg-base-100/60 hover:bg-base-100 text-content-muted hover:text-text-hi hover:border-primary/40 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <ArrowLeft size={14} />
+                      <span>Wróć do bazy kursantów</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* WERTYKALNE KAFELKI WYBORU WIDOKU Z UNIKALNYMI AKCENTAMI KOLORYSTYCZNYMI */}
+              <nav aria-label="Nawigacja kursanta" className="space-y-2">
+                {[
+                  {
+                    id: 'history',
+                    label: 'Historia lekcji',
+                    desc: 'Notatki, wpisy z Notion, PDF',
+                    icon: Clock,
+                    count: lessonRecords.length,
+                    accentColor: 'indigo',
+                    activeStyle: 'border-indigo-500/80 bg-gradient-to-r from-indigo-500/20 via-base-200/90 to-base-200 text-indigo-200 ring-1 ring-indigo-500/40 shadow-sm',
+                    inactiveStyle: 'hover:border-indigo-500/40 hover:bg-indigo-500/5 text-content-muted hover:text-text-hi',
+                    badgeStyle: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/40',
+                    iconColor: 'text-indigo-400',
+                  },
+                  {
+                    id: 'profile',
+                    label: 'Dane podstawowe',
+                    desc: 'Profil, kontakt, notatki, CEFR & AI',
+                    icon: UserIcon,
+                    accentColor: 'emerald',
+                    activeStyle: 'border-emerald-500/80 bg-gradient-to-r from-emerald-500/20 via-base-200/90 to-base-200 text-emerald-200 ring-1 ring-emerald-500/40 shadow-sm',
+                    inactiveStyle: 'hover:border-emerald-500/40 hover:bg-emerald-500/5 text-content-muted hover:text-text-hi',
+                    badgeStyle: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40',
+                    iconColor: 'text-emerald-400',
+                  },
+                  {
+                    id: 'homework',
+                    label: 'Prace domowe',
+                    desc: 'Zadania kursanta i statusy',
+                    icon: BookOpen,
+                    count: specialTasks.length,
+                    accentColor: 'amber',
+                    activeStyle: 'border-amber-500/80 bg-gradient-to-r from-amber-500/20 via-base-200/90 to-base-200 text-amber-200 ring-1 ring-amber-500/40 shadow-sm',
+                    inactiveStyle: 'hover:border-amber-500/40 hover:bg-amber-500/5 text-content-muted hover:text-text-hi',
+                    badgeStyle: 'bg-amber-500/20 text-amber-300 border-amber-500/40',
+                    iconColor: 'text-amber-400',
+                  },
+                  {
+                    id: 'scratchpad',
+                    label: 'Notatnik lekcyjny (A4)',
+                    desc: 'Szybkie przejście do notatnika',
+                    icon: FileEdit,
+                    accentColor: 'sky',
+                    activeStyle: 'border-sky-500/80 bg-gradient-to-r from-sky-500/20 via-base-200/90 to-base-200 text-sky-200 ring-1 ring-sky-500/40 shadow-sm',
+                    inactiveStyle: 'hover:border-sky-500/40 hover:bg-sky-500/5 text-content-muted hover:text-text-hi',
+                    badgeStyle: 'bg-sky-500/20 text-sky-300 border-sky-500/40',
+                    iconColor: 'text-sky-400',
+                    isAction: true,
+                  },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => {
+                        if (item.isAction) {
+                          openScratchpadTab(`sp_${selectedUser.id}`);
+                          return;
+                        }
+                        setActiveTab(item.id);
+                        setTimeout(() => {
+                          tabContentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 100);
+                      }}
+                      className={`w-full p-3.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer flex items-center justify-between gap-3 group relative overflow-hidden ${
+                        isActive
+                          ? item.activeStyle
+                          : `bg-base-200/60 border-line-strong ${item.inactiveStyle}`
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-2.5 rounded-xl transition-colors ${
+                          isActive
+                            ? 'bg-base-100/80 shadow-sm ' + item.iconColor
+                            : 'bg-base-100/50 ' + item.iconColor
+                        }`}>
+                          <Icon size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <span className={`block text-xs sm:text-sm font-extrabold truncate ${isActive ? 'text-text-hi' : 'text-text-hi group-hover:text-primary transition-colors'}`}>
+                            {item.label}
+                          </span>
+                          <span className="block text-[11px] text-content-muted truncate mt-0.5">
+                            {item.desc}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {typeof item.count === 'number' && item.count > 0 && (
+                          <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold border ${item.badgeStyle}`}>
+                            {item.count}
+                          </span>
+                        )}
+                        <ChevronRight size={15} className={`text-content-muted transition-transform group-hover:translate-x-0.5 ${isActive ? 'text-text-hi' : ''}`} />
+                      </div>
+                    </button>
+                  );
+                })}
+              </nav>
+            </aside>
+
+            {/* PRAWA KOLUMNA: GŁÓWNY OBSZAR ROBOCZY MASTER-DETAIL */}
+            <main ref={tabContentRef} className="flex-1 min-w-0 w-full space-y-4">
 
           {activeTab === 'recall' && (
             <div className="space-y-5 animate-fade-in">
               <StudentRecallHub
                 studentId={selectedUser.id}
                 studentName={selectedUser.displayName || selectedUser.firstName || selectedUser.username}
-                onClose={() => setActiveTab('hub')}
+                onClose={() => setActiveTab('history')}
               />
             </div>
           )}
@@ -4625,9 +4740,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               </StudentPanelSection>
             </div>
           )}
+            </main>
+          </div>
         </div>
-      </div>
-    )}
+      )}
 
       {showGroupsModal && currentUser?.id && (
         <GroupManagementModal
