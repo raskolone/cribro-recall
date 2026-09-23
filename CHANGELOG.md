@@ -195,9 +195,46 @@ Nagłówki zwijane zapisują `style.display` chowanych elementów, czyli stan zw
 zapisywanym w Firestore. Wynika z tego, że zwinięcie rozdziału u lektora **zwija go też u kursanta**
 po drugiej stronie linku. Zamierzone (dokument ma wyglądać tak samo u obu stron), ale niesprawdzone
 we dwoje na żywo.
-
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
+
+---
+
+### 📚 Ekstrakcja i wdrożenie banku Grammar Blueprints oraz Idiomów z plików PDF (2026-09-23, runda 52)
+
+**Zrealizowano pełne zadanie ekstrakcji i wdrożenia bazy materiałów dydaktycznych Grammar Blueprints:**
+1. **Zabezpieczenie Git i środowiska**:
+   - Dodano katalog `scripts/source_pdfs/` do `.gitignore`, zabezpieczając pliki binarne PDF przed śledzeniem w repozytorium.
+   - Wykorzystano `pdf-parse` wraz z runnerem `tsx` do ekstrakcji zawartości.
+2. **Definicje typów TypeScript (`types/blueprints.ts`, `src/types/blueprints.ts`)**:
+   - Zdefiniowano interfejsy `CEFRLevel` (`'A1' | 'A2' | 'B1' | 'B2' | 'C1' | 'C2'`), `BlueprintSentence`, `BlueprintChapter`, `BlueprintTopicMeta` oraz `IdiomItem`.
+3. **Niezawodny skrypt ekstrakcji (`scripts/parseGrammarPdfs.ts`)**:
+   - Skuteczna sanityzacja stopek, nagłówków stron i usuwanie rozbić słów powstałych przez łamanie linii w PDF.
+   - Parsowanie 6 tomów podręcznika „Angielski w tłumaczeniach — Gramatyka” (A1–C2) oraz pliku `Idiomy.pdf`.
+   - Wyniki parsowania:
+     * **Tom 1 (A1)**: 36/36 rozdziałów, 1258 sparowanych zdań, 0 braków.
+     * **Tom 2 (A2)**: 36/36 rozdziałów, 1258 sparowanych zdań, 0 braków.
+     * **Tom 3 (B1)**: 36/36 rozdziałów, 1258 sparowanych zdań, 0 braków.
+     * **Tom 4 (B2)**: 36/36 rozdziałów, 1258 sparowanych zdań, 0 braków.
+     * **Tom 5 (C1)**: 36/36 rozdziałów, 1258 sparowanych zdań, 0 braków.
+     * **Tom 6 (C2)**: 36/36 rozdziałów, 1256 sparowanych zdań, 0 braków.
+     * **Idiomy**: 20 idiomów z polskim znaczeniem i przykładami zdań.
+     * **Łącznie**: 216 rozdziałów (ponad 200 tematów w `index.json`) i 7546 zdań wzorcowych.
+4. **Struktura danych JSON (`data/blueprints/`, `src/data/blueprints/`)**:
+   - `index.json` — lekki indeks metadanych 216 tematów.
+   - `level_1_a1.json` do `level_6_c2.json` — pełne zbiory zdań podzielone na tomy.
+   - `idioms.json` — zestaw idiomów dla poziomu A2-B1.
+5. **Serwis pobierania wzorców z Code Splitting (`services/blueprintService.ts`, `src/services/blueprintService.ts`)**:
+   - `getBlueprintIndex()` — synchroniczny odczyt indeksu metadanych.
+   - `getTopicsByLevel(level)` — filtrowanie tematów według poziomu CEFR.
+   - `getChapterDetails(level, chapterId)` — dynamiczny import odpowiedniego pliku JSON na żądanie.
+   - `getIdioms()` — asynchroniczne pobieranie bazy idiomów.
+6. **Weryfikacja jakościowa**:
+   - `npx tsc --noEmit` — 0 błędów typowania.
+   - `npm test` — 513/513 testów jednostkowych zaliczonych.
+   - `npm run build` — produkcyjna kompilacja bundle zakończona sukcesem.
+
+---
 
 ### 🚀 Pakiet 1: Architektura Cockpitu AI i Karta Kursanta ID Card Master-Detail (2026-09-23, runda 51)
 

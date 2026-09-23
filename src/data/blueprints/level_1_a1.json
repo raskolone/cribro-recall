@@ -1,0 +1,6652 @@
+[
+  {
+    "id": "g1_ch01_useful_expressions",
+    "bookNumber": 1,
+    "chapterNumber": 1,
+    "level": "A1",
+    "titlePl": "Przydatne wyrażenia",
+    "titleEn": "Useful expressions",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Tak. / Nie.",
+        "english": "Yes. / No."
+      },
+      {
+        "id": 2,
+        "polish": "Może.",
+        "english": "Maybe."
+      },
+      {
+        "id": 3,
+        "polish": "Dziękuję.",
+        "english": "Thank you."
+      },
+      {
+        "id": 4,
+        "polish": "Cześć.",
+        "english": "Hello. / Hi."
+      },
+      {
+        "id": 5,
+        "polish": "Dzień dobry.",
+        "english": "Good morning."
+      },
+      {
+        "id": 6,
+        "polish": "Dzień dobry (po południu).",
+        "english": "Good afternoon."
+      },
+      {
+        "id": 7,
+        "polish": "Dobry wieczór.",
+        "english": "Good evening."
+      },
+      {
+        "id": 8,
+        "polish": "Do widzenia.",
+        "english": "Goodbye."
+      },
+      {
+        "id": 9,
+        "polish": "Dobranoc.",
+        "english": "Good night."
+      },
+      {
+        "id": 10,
+        "polish": "Do zobaczenia wkrótce.",
+        "english": "See you soon."
+      },
+      {
+        "id": 11,
+        "polish": "Do zobaczenia jutro. / Do jutra.",
+        "english": "See you tomorrow."
+      },
+      {
+        "id": 12,
+        "polish": "Jak się masz?",
+        "english": "How are you?"
+      },
+      {
+        "id": 13,
+        "polish": "Mam się dobrze, dziękuję. A ty?",
+        "english": "I’m fine, thank you. And you?"
+      },
+      {
+        "id": 14,
+        "polish": "Przepraszam.",
+        "english": "I am sorry. / Sorry."
+      },
+      {
+        "id": 15,
+        "polish": "Przykro mi.",
+        "english": "I am sorry."
+      },
+      {
+        "id": 16,
+        "polish": "Jak się nazywasz?",
+        "english": "What’s your name?"
+      },
+      {
+        "id": 17,
+        "polish": "Nazywam się…",
+        "english": "My name is…"
+      },
+      {
+        "id": 18,
+        "polish": "Miło cię poznać.",
+        "english": "(It’s) nice to meet you."
+      },
+      {
+        "id": 19,
+        "polish": "– 20 funtów, proszę. – Proszę.",
+        "english": "– 20 pounds, please. – Here you are."
+      },
+      {
+        "id": 20,
+        "polish": "Jestem… Nie jestem…",
+        "english": "I am… I am not…"
+      },
+      {
+        "id": 21,
+        "polish": "Mam… Nie mam…",
+        "english": "I have… / I have got (I’ve got)… I don’t have… / I haven’t got…"
+      },
+      {
+        "id": 22,
+        "polish": "Mogę… Nie mogę…",
+        "english": "I can… I can’t…"
+      },
+      {
+        "id": 23,
+        "polish": "Muszę…",
+        "english": "I must… / I have to…"
+      },
+      {
+        "id": 24,
+        "polish": "Powinienem… / Powinnam…",
+        "english": "I should…"
+      },
+      {
+        "id": 25,
+        "polish": "Chcę… Nie chcę…",
+        "english": "I want… I don’t want…"
+      },
+      {
+        "id": 26,
+        "polish": "Chciałbym… / Chciałabym…",
+        "english": "I would like…"
+      },
+      {
+        "id": 27,
+        "polish": "Lubię… / Podoba mi się… Nie lubię… / Nie podoba mi się…",
+        "english": "I like… I don’t like…"
+      },
+      {
+        "id": 28,
+        "polish": "Gdzie jest…?",
+        "english": "Where is…?"
+      },
+      {
+        "id": 29,
+        "polish": "Jak powiedzieć po angielsku…?",
+        "english": "How do you say… in English?"
+      },
+      {
+        "id": 30,
+        "polish": "Przykro mi, ale nie rozumiem.",
+        "english": "I’m sorry, but I don’t understand."
+      },
+      {
+        "id": 31,
+        "polish": "Nie wiem.",
+        "english": "I don’t know."
+      },
+      {
+        "id": 32,
+        "polish": "Witamy w Londynie!",
+        "english": "Welcome to London!"
+      },
+      {
+        "id": 33,
+        "polish": "Wspaniale!",
+        "english": "Great!"
+      },
+      {
+        "id": 34,
+        "polish": "Powodzenia!",
+        "english": "Good luck!"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch02_the_verb_to_be",
+    "bookNumber": 1,
+    "chapterNumber": 2,
+    "level": "A1",
+    "titlePl": "Czasownik być",
+    "titleEn": "The verb to be",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Jestem tutaj.",
+        "english": "I am here."
+      },
+      {
+        "id": 2,
+        "polish": "Ona jest tam.",
+        "english": "She is there."
+      },
+      {
+        "id": 3,
+        "polish": "Jestem głodny/głodna.",
+        "english": "I am hungry."
+      },
+      {
+        "id": 4,
+        "polish": "On jest nauczycielem.",
+        "english": "He is a teacher."
+      },
+      {
+        "id": 5,
+        "polish": "Oni są szczęśliwi. My też jesteśmy szczęśliwi.",
+        "english": "They are happy. We are happy too."
+      },
+      {
+        "id": 6,
+        "polish": "On jest w kuchni.",
+        "english": "He is in the kitchen."
+      },
+      {
+        "id": 7,
+        "polish": "– Czy to prawda? – Nie.",
+        "english": "– Is it true? – No, it isn’t. / No, it’s not."
+      },
+      {
+        "id": 8,
+        "polish": "Jesteś gotowy? / Jesteście gotowi?",
+        "english": "Are you ready?"
+      },
+      {
+        "id": 9,
+        "polish": "– Czy on jest w szkole? – Tak, jest.",
+        "english": "– Is he at school? – Yes, he is."
+      },
+      {
+        "id": 10,
+        "polish": "– Czy ona jest z Londynu? – Nie, nie jest.",
+        "english": "– Is she from London? – No, she isn’t. / No, she’s not."
+      },
+      {
+        "id": 11,
+        "polish": "Mam 29 lat, a ty?",
+        "english": "I’m 29 [twenty nine] years old, and you?"
+      },
+      {
+        "id": 12,
+        "polish": "Oni są w pracy.",
+        "english": "They are at work."
+      },
+      {
+        "id": 13,
+        "polish": "Dzieci są w szkole.",
+        "english": "The children are at school."
+      },
+      {
+        "id": 14,
+        "polish": "To jest bardzo długi film.",
+        "english": "It is a very long film/movie."
+      },
+      {
+        "id": 15,
+        "polish": "Czy on jest wysoki, czy niski?",
+        "english": "Is he tall or short?"
+      },
+      {
+        "id": 16,
+        "polish": "Ona jest wysoka i bardzo ładna.",
+        "english": "She is tall and very pretty."
+      },
+      {
+        "id": 17,
+        "polish": "Ona nie jest Amerykanką.",
+        "english": "She is not American."
+      },
+      {
+        "id": 18,
+        "polish": "Jesteśmy teraz bardzo zajęci.",
+        "english": "We are very busy now."
+      },
+      {
+        "id": 19,
+        "polish": "Jesteś zajęty/zajęta?",
+        "english": "Are you busy?"
+      },
+      {
+        "id": 20,
+        "polish": "John i ja jesteśmy zadowoleni z rezultatu/ wyniku.",
+        "english": "John and I are happy with the result."
+      },
+      {
+        "id": 21,
+        "polish": "Czy jest zimno?",
+        "english": "Is it cold?"
+      },
+      {
+        "id": 22,
+        "polish": "Czy oni są bogaci?",
+        "english": "Are they rich?"
+      },
+      {
+        "id": 23,
+        "polish": "To jest fantastyczne.",
+        "english": "It’s fantastic."
+      },
+      {
+        "id": 24,
+        "polish": "Nie ma nas teraz w domu.",
+        "english": "We aren’t at home now."
+      },
+      {
+        "id": 25,
+        "polish": "– Jak się masz? – Dobrze, a ty?",
+        "english": "– How are you? – I’m fine, and you?"
+      },
+      {
+        "id": 26,
+        "polish": "Jest gorąco.",
+        "english": "It’s hot."
+      },
+      {
+        "id": 27,
+        "polish": "Piękny dzisiaj dzień.",
+        "english": "It’s a beautiful day today."
+      },
+      {
+        "id": 28,
+        "polish": "Jesteśmy spóźnieni.",
+        "english": "We’re late."
+      },
+      {
+        "id": 29,
+        "polish": "Londyn jest bardzo duży. To jest bardzo fajne miasto.",
+        "english": "London is very big. It’s a very nice city."
+      },
+      {
+        "id": 30,
+        "polish": "George jest bardzo dobrym uczniem.",
+        "english": "George is a very good student."
+      },
+      {
+        "id": 31,
+        "polish": "Czy twoi rodzice są Polakami?",
+        "english": "Are your parents Polish?"
+      },
+      {
+        "id": 32,
+        "polish": "To jest łatwe. To nie jest trudne.",
+        "english": "It’s easy. It’s not difficult."
+      },
+      {
+        "id": 33,
+        "polish": "Nie jestem głodny/głodna.",
+        "english": "I’m not hungry."
+      },
+      {
+        "id": 34,
+        "polish": "Czy jesteś zmęczony/zmęczona?",
+        "english": "Are you tired?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch03_this_that",
+    "bookNumber": 1,
+    "chapterNumber": 3,
+    "level": "A1",
+    "titlePl": "To i tamto",
+    "titleEn": "This & that",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "To jest słownik, a tamto to kalendarz.",
+        "english": "This is a dictionary, and that is a calendar."
+      },
+      {
+        "id": 2,
+        "polish": "Co to jest?",
+        "english": "What is this? / What’s this?"
+      },
+      {
+        "id": 3,
+        "polish": "To jest telefon.",
+        "english": "It’s a phone."
+      },
+      {
+        "id": 4,
+        "polish": "To jest nowy telefon.",
+        "english": "It’s a new phone."
+      },
+      {
+        "id": 5,
+        "polish": "Co to jest (tam daleko)?",
+        "english": "What is that? / What’s that?"
+      },
+      {
+        "id": 6,
+        "polish": "To jest budzik.",
+        "english": "It’s an alarm clock."
+      },
+      {
+        "id": 7,
+        "polish": "Czy to jest niebieski długopis (ten tutaj)?",
+        "english": "Is this a blue pen?"
+      },
+      {
+        "id": 8,
+        "polish": "Tak, ten jest niebieski, a tamten czarny.",
+        "english": "Yes, this one is blue, and that one is black."
+      },
+      {
+        "id": 9,
+        "polish": "To jest moje biurko.",
+        "english": "This is my desk."
+      },
+      {
+        "id": 10,
+        "polish": "– Czy to twoja książka (tam daleko)? – Oczywiście, żetak!",
+        "english": "– Is that your book? – Of course it is!"
+      },
+      {
+        "id": 11,
+        "polish": "Tamta kobieta jest piękna.",
+        "english": "That woman is beautiful."
+      },
+      {
+        "id": 12,
+        "polish": "To jest bardzo dobry pomysł.",
+        "english": "This/It is a very good idea."
+      },
+      {
+        "id": 13,
+        "polish": "To jest mój przyjaciel Mark.",
+        "english": "This is my friend, Mark."
+      },
+      {
+        "id": 14,
+        "polish": "To nie jest dobry znak.",
+        "english": "This/It is not a good sign."
+      },
+      {
+        "id": 15,
+        "polish": "Ta kurtka jest bardzo fajna.",
+        "english": "This jacket is very nice."
+      },
+      {
+        "id": 16,
+        "polish": "Tamta jest brzydka.",
+        "english": "That one is ugly."
+      },
+      {
+        "id": 17,
+        "polish": "Przepraszam, czy to krzesło jest wolne?",
+        "english": "Excuse me, is this chair free?"
+      },
+      {
+        "id": 18,
+        "polish": "– Czy to jest jakiś ważny dokument? – Tak.",
+        "english": "– Is this an important document? – Yes, it is."
+      },
+      {
+        "id": 19,
+        "polish": "Czy (tamten) to twój parasol?",
+        "english": "Is that your umbrella?"
+      },
+      {
+        "id": 20,
+        "polish": "To jest Maria, a tam jest Tom.",
+        "english": "This is Maria, and that is Tom."
+      },
+      {
+        "id": 21,
+        "polish": "Czy to (jest) twoja siostra (tam daleko)?",
+        "english": "Is that your sister?"
+      },
+      {
+        "id": 22,
+        "polish": "To nie jest dobre rozwiązanie.",
+        "english": "It isn’t a good solution."
+      },
+      {
+        "id": 23,
+        "polish": "Czy to jest nowa książka (ta tutaj)?",
+        "english": "Is this a new book?"
+      },
+      {
+        "id": 24,
+        "polish": "Ta jest nowa, a tamta stara.",
+        "english": "This one is new, and that one is old."
+      },
+      {
+        "id": 25,
+        "polish": "To świetnie.",
+        "english": "That’s great."
+      },
+      {
+        "id": 26,
+        "polish": "To jest mój szef.",
+        "english": "This is my boss."
+      },
+      {
+        "id": 27,
+        "polish": "Tamta książka jest bardzo droga.",
+        "english": "That book is very expensive."
+      },
+      {
+        "id": 28,
+        "polish": "Ten samochód jest czerwony. Tamten jest niebieski.",
+        "english": "This car is red. That one is blue."
+      },
+      {
+        "id": 29,
+        "polish": "Czy to jest dla mnie?",
+        "english": "Is this for me?"
+      },
+      {
+        "id": 30,
+        "polish": "Ile to kosztuje (to tam)?",
+        "english": "How much is that?"
+      },
+      {
+        "id": 31,
+        "polish": "Ta koszulka jest bardzo droga, ale tamta jest tania.",
+        "english": "This t-shirt is very expensive, but that one is cheap."
+      },
+      {
+        "id": 32,
+        "polish": "Ten zegarek jest zepsuty i tamten też.",
+        "english": "This watch is broken, and that one too."
+      },
+      {
+        "id": 33,
+        "polish": "Ta kobieta jest bardzo uprzejma, ale tamta nie.",
+        "english": "This woman is very polite, but that one is not."
+      },
+      {
+        "id": 34,
+        "polish": "Ten rower jest fajny, ale tamten nie (jest).",
+        "english": "This bike is nice, but that one is not."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch04_numbers_plural_nouns",
+    "bookNumber": 1,
+    "chapterNumber": 4,
+    "level": "A1",
+    "titlePl": "Liczby i rzeczowniki w liczbie mnogiej",
+    "titleEn": "Numbers & plural nouns",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Pięć ołówków.",
+        "english": "Five pencils."
+      },
+      {
+        "id": 2,
+        "polish": "Szesnaście róż.",
+        "english": "Sixteen roses."
+      },
+      {
+        "id": 3,
+        "polish": "Dwadzieścia jeden krzeseł.",
+        "english": "Twenty-one chairs."
+      },
+      {
+        "id": 4,
+        "polish": "Siedemdziesiąt książek.",
+        "english": "Seventy books."
+      },
+      {
+        "id": 5,
+        "polish": "Czternaście pudeł.",
+        "english": "Fourteen boxes."
+      },
+      {
+        "id": 6,
+        "polish": "Cztery kościoły.",
+        "english": "Four churches."
+      },
+      {
+        "id": 7,
+        "polish": "Siedem miast.",
+        "english": "Seven cities."
+      },
+      {
+        "id": 8,
+        "polish": "Siedemnastu chłopaków.",
+        "english": "Seventeen boys."
+      },
+      {
+        "id": 9,
+        "polish": "Czterdzieści autobusów.",
+        "english": "Forty buses."
+      },
+      {
+        "id": 10,
+        "polish": "Dwanaście jajek.",
+        "english": "Twelve eggs."
+      },
+      {
+        "id": 11,
+        "polish": "Osiemnaście lat.",
+        "english": "Eighteen years."
+      },
+      {
+        "id": 12,
+        "polish": "Sześć długopisów.",
+        "english": "Six pens."
+      },
+      {
+        "id": 13,
+        "polish": "Trzydzieści stołów.",
+        "english": "Thirty tables."
+      },
+      {
+        "id": 14,
+        "polish": "Osiemdziesiąt mil.",
+        "english": "Eighty miles."
+      },
+      {
+        "id": 15,
+        "polish": "Trzydzieści osiem punktów.",
+        "english": "Thirty-eight points."
+      },
+      {
+        "id": 16,
+        "polish": "Pięć razy.",
+        "english": "Five times."
+      },
+      {
+        "id": 17,
+        "polish": "Trzy godziny i czterdzieści pięć minut.",
+        "english": "Three hours and forty-five minutes."
+      },
+      {
+        "id": 18,
+        "polish": "Dziesięć noży.",
+        "english": "Ten knives."
+      },
+      {
+        "id": 19,
+        "polish": "Trzy kobiety.",
+        "english": "Three women."
+      },
+      {
+        "id": 20,
+        "polish": "Jedenastu mężczyzn.",
+        "english": "Eleven men."
+      },
+      {
+        "id": 21,
+        "polish": "Dwadzieścia osób.",
+        "english": "Twenty people."
+      },
+      {
+        "id": 22,
+        "polish": "Dwie stopy.",
+        "english": "Two feet."
+      },
+      {
+        "id": 23,
+        "polish": "Osiem psów.",
+        "english": "Eight dogs."
+      },
+      {
+        "id": 24,
+        "polish": "Dziewięć żyć.",
+        "english": "Nine lives."
+      },
+      {
+        "id": 25,
+        "polish": "Trzynaścioro dzieci.",
+        "english": "Thirteen children."
+      },
+      {
+        "id": 26,
+        "polish": "Sześćdziesiąt szklanek.",
+        "english": "Sixty glasses."
+      },
+      {
+        "id": 27,
+        "polish": "Sto euro.",
+        "english": "A hundred euros."
+      },
+      {
+        "id": 28,
+        "polish": "Tysiąc funtów.",
+        "english": "A thousand pounds."
+      },
+      {
+        "id": 29,
+        "polish": "Piętnaście zębów.",
+        "english": "Fifteen teeth."
+      },
+      {
+        "id": 30,
+        "polish": "Pięćdziesiąt zabawek.",
+        "english": "Fifty toys."
+      },
+      {
+        "id": 31,
+        "polish": "Dziewiętnaście krajów.",
+        "english": "Nineteen countries."
+      },
+      {
+        "id": 32,
+        "polish": "Dziewięćdziesiąt kilometrów.",
+        "english": "Ninety kilometres."
+      },
+      {
+        "id": 33,
+        "polish": "Dwieście dolarów.",
+        "english": "Two hundred dollars."
+      },
+      {
+        "id": 34,
+        "polish": "Dwadzieścia dwie stacje metra.",
+        "english": "Twenty-two metro stations."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch05_these_those",
+    "bookNumber": 1,
+    "chapterNumber": 5,
+    "level": "A1",
+    "titlePl": "Ci i tamci / Te i tamte",
+    "titleEn": "These & those",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Te książki są interesujące.",
+        "english": "These books are interesting."
+      },
+      {
+        "id": 2,
+        "polish": "Tamte książki są o historii.",
+        "english": "Those books are about history."
+      },
+      {
+        "id": 3,
+        "polish": "Te obrazy są dobrze znane.",
+        "english": "These paintings are well-known."
+      },
+      {
+        "id": 4,
+        "polish": "Tamte ubrania są bardzo eleganckie.",
+        "english": "Those clothes are very elegant."
+      },
+      {
+        "id": 5,
+        "polish": "Tamte walizki są bardzo ciężkie.",
+        "english": "Those suitcases are very heavy."
+      },
+      {
+        "id": 6,
+        "polish": "Czy te krzesła są wolne?",
+        "english": "Are these chairs free?"
+      },
+      {
+        "id": 7,
+        "polish": "Tamte kolczyki są bardzo ładne.",
+        "english": "Those earrings are very pretty."
+      },
+      {
+        "id": 8,
+        "polish": "– Te? – Nie, tamte.",
+        "english": "– These ones? – No, those ones."
+      },
+      {
+        "id": 9,
+        "polish": "To są moje walizki.",
+        "english": "These are my suitcases."
+      },
+      {
+        "id": 10,
+        "polish": "Tamte dokumenty są bardzo ważne.",
+        "english": "Those documents are very important."
+      },
+      {
+        "id": 11,
+        "polish": "Czy (tamte) to twoje okulary?",
+        "english": "Are those your glasses?"
+      },
+      {
+        "id": 12,
+        "polish": "Te frytki są zimne.",
+        "english": "These chips are cold."
+      },
+      {
+        "id": 13,
+        "polish": "Kim są tamte kobiety?",
+        "english": "Who are those women?"
+      },
+      {
+        "id": 14,
+        "polish": "A ci mężczyźni?",
+        "english": "And these men?"
+      },
+      {
+        "id": 15,
+        "polish": "Ci ludzie to Amerykanie, a tamci to Brytyjczycy.",
+        "english": "These people are American, and those are British."
+      },
+      {
+        "id": 16,
+        "polish": "Te schody są niebezpieczne.",
+        "english": "These stairs are dangerous."
+      },
+      {
+        "id": 17,
+        "polish": "Czy te kwiaty są dla mnie? Dziękuję.",
+        "english": "Are these flowers for me? Thank you."
+      },
+      {
+        "id": 18,
+        "polish": "– Czy te pomidory są świeże? – Tak, są.",
+        "english": "– Are these tomatoes fresh? – Yes, they are."
+      },
+      {
+        "id": 19,
+        "polish": "– Czy tamci ludzie są z nami? – Nie, nie są.",
+        "english": "– Are those people with us? – No, they aren’t."
+      },
+      {
+        "id": 20,
+        "polish": "Ile kosztują te buty?",
+        "english": "How much are these shoes?"
+      },
+      {
+        "id": 21,
+        "polish": "Ile kosztują tamte okulary?",
+        "english": "How much are those glasses?"
+      },
+      {
+        "id": 22,
+        "polish": "Te samochody są szybkie, a tamte są wolne.",
+        "english": "These cars are fast, and those ones are slow."
+      },
+      {
+        "id": 23,
+        "polish": "Co to (są) za rzeczy?",
+        "english": "What are these things?"
+      },
+      {
+        "id": 24,
+        "polish": "To są moje dokumenty.",
+        "english": "They are my documents."
+      },
+      {
+        "id": 25,
+        "polish": "– Kim są tamci ludzie? – To są moi przyjaciele.",
+        "english": "– Who are those people? – They are my friends."
+      },
+      {
+        "id": 26,
+        "polish": "– Czy ci mężczyźni są twoimi przyjaciółmi? – Tak, są.",
+        "english": "– Are these men your friends? – Yes, they are."
+      },
+      {
+        "id": 27,
+        "polish": "Czy to są twoje klucze?",
+        "english": "Are these your keys?"
+      },
+      {
+        "id": 28,
+        "polish": "Czy (tamte) to twoje skarpetki?",
+        "english": "Are those your socks?"
+      },
+      {
+        "id": 29,
+        "polish": "Tamte komputery nie są na sprzedaż.",
+        "english": "Those computers aren’t for sale."
+      },
+      {
+        "id": 30,
+        "polish": "Czy tamte pudełka są puste?",
+        "english": "Are those boxes empty?"
+      },
+      {
+        "id": 31,
+        "polish": "Te zdjęcia są stare, ale tamte nie.",
+        "english": "These photos are old, but those ones are not."
+      },
+      {
+        "id": 32,
+        "polish": "Tamte buty są bardzo eleganckie, ale te nie.",
+        "english": "Those shoes are very elegant, but these ones are not."
+      },
+      {
+        "id": 33,
+        "polish": "Te filmy są bardzo interesujące, a tamte są nudne.",
+        "english": "These films are very interesting, and those ones are boring."
+      },
+      {
+        "id": 34,
+        "polish": "Czy te bułki są dobre? A tamte?",
+        "english": "Are these bread rolls good? And those ones?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch06_possessive_adjectives",
+    "bookNumber": 1,
+    "chapterNumber": 6,
+    "level": "A1",
+    "titlePl": "Zaimki dzierżawcze przymiotne",
+    "titleEn": "Possessive adjectives",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Moja walizka jest w twoim samochodzie.",
+        "english": "My suitcase is in your car."
+      },
+      {
+        "id": 2,
+        "polish": "Gdzie jest twój bagaż?",
+        "english": "Where is your luggage?"
+      },
+      {
+        "id": 3,
+        "polish": "Jego dom jest bardzo duży.",
+        "english": "His house is very big."
+      },
+      {
+        "id": 4,
+        "polish": "Jej klucze są na stole.",
+        "english": "Her keys are on the table."
+      },
+      {
+        "id": 5,
+        "polish": "Moje pieniądze są w banku.",
+        "english": "My money is in the bank."
+      },
+      {
+        "id": 6,
+        "polish": "To twoja decyzja.",
+        "english": "It’s your decision."
+      },
+      {
+        "id": 7,
+        "polish": "Rzym jest znany ze swojej historii.",
+        "english": "Rome is famous for its history."
+      },
+      {
+        "id": 8,
+        "polish": "Paryż jest znany ze swojej sztuki.",
+        "english": "Paris is famous for its art."
+      },
+      {
+        "id": 9,
+        "polish": "– Czy to jest twoja książka (tam)? – Tak. To moja książka.",
+        "english": "– Is that your book? – Yes, it is. It’s my book."
+      },
+      {
+        "id": 10,
+        "polish": "Twoja suknia ślubna jest świetna!",
+        "english": "Your wedding dress is great!"
+      },
+      {
+        "id": 11,
+        "polish": "Nasza wycieczka jest niezwykła.",
+        "english": "Our trip is amazing."
+      },
+      {
+        "id": 12,
+        "polish": "Ich rozwiązanie jest najlepsze.",
+        "english": "Their solution is the best."
+      },
+      {
+        "id": 13,
+        "polish": "On jest ze swoją siostrą w domu.",
+        "english": "He is with his sister at home."
+      },
+      {
+        "id": 14,
+        "polish": "Moi uczniowie są bardzo inteligentni.",
+        "english": "My students are very intelligent."
+      },
+      {
+        "id": 15,
+        "polish": "Wasze bilety są w kopercie.",
+        "english": "Your tickets are in the envelope."
+      },
+      {
+        "id": 16,
+        "polish": "Nasz samochód jest czerwony, a ich samochód jest ciemnoniebieski.",
+        "english": "Our car is red, and their car is dark blue."
+      },
+      {
+        "id": 17,
+        "polish": "Czy to pani torebka?",
+        "english": "Is this your handbag, madam?"
+      },
+      {
+        "id": 18,
+        "polish": "Moi rodzice są na wakacjach.",
+        "english": "My parents are on holiday."
+      },
+      {
+        "id": 19,
+        "polish": "Jego rower jest zepsuty. To jest jej rower.",
+        "english": "His bike is broken. This is her bike."
+      },
+      {
+        "id": 20,
+        "polish": "Mary jest na zewnątrz ze swoimi koleżankami.",
+        "english": "Mary is outside with her friends."
+      },
+      {
+        "id": 21,
+        "polish": "Jakie są twoje plany?",
+        "english": "What are your plans?"
+      },
+      {
+        "id": 22,
+        "polish": "Pańska rezerwacja jest gotowa.",
+        "english": "Your reservation is ready."
+      },
+      {
+        "id": 23,
+        "polish": "Gdzie są moje pieniądze?",
+        "english": "Where is my money?"
+      },
+      {
+        "id": 24,
+        "polish": "To jest nasz problem.",
+        "english": "It’s our problem."
+      },
+      {
+        "id": 25,
+        "polish": "Czyje to jest krzesło?",
+        "english": "Whose chair is it?"
+      },
+      {
+        "id": 26,
+        "polish": "Czyj to jest samochód?",
+        "english": "Whose car is it?"
+      },
+      {
+        "id": 27,
+        "polish": "Czy (tamten) to twój samochód?",
+        "english": "Is that your car?"
+      },
+      {
+        "id": 28,
+        "polish": "Ich zajęcia z francuskiego są bardzo interesujące/ciekawe.",
+        "english": "Their French classes are very interesting."
+      },
+      {
+        "id": 29,
+        "polish": "Jej pomysł jest bardzo dobry.",
+        "english": "Her idea is very good."
+      },
+      {
+        "id": 30,
+        "polish": "Jego pomysły też są świetne.",
+        "english": "His ideas are great, too."
+      },
+      {
+        "id": 31,
+        "polish": "To nie jest mój rozmiar.",
+        "english": "This is not my size."
+      },
+      {
+        "id": 32,
+        "polish": "Moje buty są w kącie. Gdzie są jego buty?",
+        "english": "My shoes are in the corner. Where are his shoes?"
+      },
+      {
+        "id": 33,
+        "polish": "Ich bilety są nieważne. Czy nasze bilety są w porządku?",
+        "english": "Their tickets are not valid. Are our tickets OK?"
+      },
+      {
+        "id": 34,
+        "polish": "Piłka nożna to jego ulubiony sport. Jaki jest twój ulubiony sport?",
+        "english": "Football is his favourite sport. What’s your favouritesport?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch07_days_months_time",
+    "bookNumber": 1,
+    "chapterNumber": 7,
+    "level": "A1",
+    "titlePl": "Dni, miesiące i czas",
+    "titleEn": "Days, months & time",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Jaki dziś jest dzień?",
+        "english": "What day is it today? / What day is today?"
+      },
+      {
+        "id": 2,
+        "polish": "Dzisiaj jest poniedziałek.",
+        "english": "It’s Monday today. / Today is Monday."
+      },
+      {
+        "id": 3,
+        "polish": "Jutro jest wtorek.",
+        "english": "Tomorrow is Tuesday."
+      },
+      {
+        "id": 4,
+        "polish": "Sobota jest zawsze bardzo krótka.",
+        "english": "Saturday is always very short."
+      },
+      {
+        "id": 5,
+        "polish": "Spotkanie jest w środę.",
+        "english": "The meeting is on Wednesday."
+      },
+      {
+        "id": 6,
+        "polish": "Czy spotkanie jest w czwartek, czy w piątek?",
+        "english": "Is the meeting on Thursday or on Friday?"
+      },
+      {
+        "id": 7,
+        "polish": "Dziś jest niedziela, 21 sierpnia.",
+        "english": "Today is Sunday, 21st August (the twenty first of August)."
+      },
+      {
+        "id": 8,
+        "polish": "Koncert jest w niedzielę o dziewiątej wieczorem.",
+        "english": "The concert is on Sunday at nine p.m."
+      },
+      {
+        "id": 9,
+        "polish": "Ślub jest w sobotę.",
+        "english": "The wedding is on Saturday."
+      },
+      {
+        "id": 10,
+        "polish": "Moje urodziny są w grudniu, 6 grudnia.",
+        "english": "My birthday is in December, on the sixth of December."
+      },
+      {
+        "id": 11,
+        "polish": "Jej urodziny są 22 marca.",
+        "english": "Her birthday is on the twenty-second of March."
+      },
+      {
+        "id": 12,
+        "polish": "Jego urodziny są 3 lipca.",
+        "english": "His birthday is on the third of July."
+      },
+      {
+        "id": 13,
+        "polish": "Walentynki są 14 lutego.",
+        "english": "Saint Valentine’s Day is on the fourteenth of February."
+      },
+      {
+        "id": 14,
+        "polish": "Sylwester jest 31 grudnia.",
+        "english": "New Year’s Eve is on the thirty-first of December."
+      },
+      {
+        "id": 15,
+        "polish": "Boże Narodzenie jest 25 grudnia.",
+        "english": "Christmas Day is on the twenty-fifth of December."
+      },
+      {
+        "id": 16,
+        "polish": "W lecie pogoda jest ładna (dosł. dobra). W zimie jestbardzo zimno.",
+        "english": "In summer, the weather is good. In winter, it’s very cold."
+      },
+      {
+        "id": 17,
+        "polish": "Wiosną jest słonecznie. Jesienią jest wietrznie.",
+        "english": "In spring, it’s sunny. In autumn, it’s windy."
+      },
+      {
+        "id": 18,
+        "polish": "Zajęcia są rano.",
+        "english": "The classes are in the morning."
+      },
+      {
+        "id": 19,
+        "polish": "Mecz jest po południu.",
+        "english": "The match is in the afternoon."
+      },
+      {
+        "id": 20,
+        "polish": "Spotkanie jest wieczorem.",
+        "english": "The meeting is in the evening."
+      },
+      {
+        "id": 21,
+        "polish": "Która jest godzina?",
+        "english": "What time is it?"
+      },
+      {
+        "id": 22,
+        "polish": "Jest jedenasta.",
+        "english": "It’s eleven o’clock."
+      },
+      {
+        "id": 23,
+        "polish": "Jest za piętnaście ósma.",
+        "english": "It’s a quarter to eight."
+      },
+      {
+        "id": 24,
+        "polish": "Jest wpół do dwunastej.",
+        "english": "It’s half past eleven."
+      },
+      {
+        "id": 25,
+        "polish": "Jest piętnaście po dziesiątej.",
+        "english": "It’s a quarter past ten."
+      },
+      {
+        "id": 26,
+        "polish": "Spotkanie jest o czternastej.",
+        "english": "The meeting is at two p.m."
+      },
+      {
+        "id": 27,
+        "polish": "Jest za dziesięć jedenasta.",
+        "english": "It’s ten (minutes) to eleven."
+      },
+      {
+        "id": 28,
+        "polish": "Jest pięć po szóstej.",
+        "english": "It’s five (minutes) past six."
+      },
+      {
+        "id": 29,
+        "polish": "Jest za cztery druga (po południu).",
+        "english": "It’s four minutes to two (p.m.)."
+      },
+      {
+        "id": 30,
+        "polish": "Jest wpół do drugiej.",
+        "english": "It’s half past one."
+      },
+      {
+        "id": 31,
+        "polish": "O której godzinie jest spotkanie?",
+        "english": "What time is the meeting?"
+      },
+      {
+        "id": 32,
+        "polish": "– O której godzinie są zajęcia z angielskiego? – O wpół do dziewiątej rano.",
+        "english": "– What time is the English class? – It’s at half pasteight in the morning."
+      },
+      {
+        "id": 33,
+        "polish": "Jestem bardzo zajęty w tym tygodniu.",
+        "english": "I’m very busy this week."
+      },
+      {
+        "id": 34,
+        "polish": "Moje przyjęcie urodzinowe jest w ten weekend.",
+        "english": "My birthday party is this weekend."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch08_questions",
+    "bookNumber": 1,
+    "chapterNumber": 8,
+    "level": "A1",
+    "titlePl": "Pytania",
+    "titleEn": "Questions",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Gdzie on jest?",
+        "english": "Where is he?"
+      },
+      {
+        "id": 2,
+        "polish": "Ile masz lat?",
+        "english": "How old are you?"
+      },
+      {
+        "id": 3,
+        "polish": "Skąd jesteś?",
+        "english": "Where are you from?"
+      },
+      {
+        "id": 4,
+        "polish": "Skąd on jest?",
+        "english": "Where is he from?"
+      },
+      {
+        "id": 5,
+        "polish": "Gdzie ja jestem?",
+        "english": "Where am I?"
+      },
+      {
+        "id": 6,
+        "polish": "Jakiej ona jest narodowości?",
+        "english": "What nationality is she?"
+      },
+      {
+        "id": 7,
+        "polish": "Ile on ma wzrostu? / Jak wysoki on jest?",
+        "english": "How tall is he?"
+      },
+      {
+        "id": 8,
+        "polish": "Gdzie jest twój samochód?",
+        "english": "Where is your car?"
+      },
+      {
+        "id": 9,
+        "polish": "Czyj jest ten samochód? / Czyj to (jest) samochód?",
+        "english": "Whose car is this/it?"
+      },
+      {
+        "id": 10,
+        "polish": "Czyje to jest?",
+        "english": "Whose is it?"
+      },
+      {
+        "id": 11,
+        "polish": "Kto cię uczy angielskiego (dosł. Kto jest twoim nauczycielem angielskiego), John czy Michael?",
+        "english": "Who is your English teacher, John or Michael?"
+      },
+      {
+        "id": 12,
+        "polish": "Gdzie jest twoja książka?",
+        "english": "Where is your book?"
+      },
+      {
+        "id": 13,
+        "polish": "Która jest moja? Czy to ta, czy tamta?",
+        "english": "Which one is mine? Is it this one or that one?"
+      },
+      {
+        "id": 14,
+        "polish": "Jak ma na imię twoja siostra? Jak ona się miewa?",
+        "english": "What is your sister’s name? How is she?"
+      },
+      {
+        "id": 15,
+        "polish": "Jaki jest jej numer telefonu?",
+        "english": "What is her telephone number?"
+      },
+      {
+        "id": 16,
+        "polish": "Jaki jest jego adres e-mail?",
+        "english": "What is his e-mail address?"
+      },
+      {
+        "id": 17,
+        "polish": "Jaki jest ich adres?",
+        "english": "What is their address?"
+      },
+      {
+        "id": 18,
+        "polish": "Kto to jest?",
+        "english": "Who is that?"
+      },
+      {
+        "id": 19,
+        "polish": "Kim jest ta dziewczyna na zdjęciu?",
+        "english": "Who is that girl in the photo?"
+      },
+      {
+        "id": 20,
+        "polish": "Kiedy jest spotkanie?",
+        "english": "When is the meeting?"
+      },
+      {
+        "id": 21,
+        "polish": "O której jest spotkanie?",
+        "english": "What time is the meeting?"
+      },
+      {
+        "id": 22,
+        "polish": "Dlaczego tu jesteśmy?",
+        "english": "Why are we here?"
+      },
+      {
+        "id": 23,
+        "polish": "Jak duże jest wasze mieszkanie?",
+        "english": "How big is your flat?"
+      },
+      {
+        "id": 24,
+        "polish": "Kiedy są twoje urodziny?",
+        "english": "When is your birthday?"
+      },
+      {
+        "id": 25,
+        "polish": "Gdzie jest stacja kolejowa?",
+        "english": "Where is the train station?"
+      },
+      {
+        "id": 26,
+        "polish": "Dlaczego Marii tutaj nie ma?",
+        "english": "Why isn’t Maria here?"
+      },
+      {
+        "id": 27,
+        "polish": "Jakiego koloru jest jego samochód?",
+        "english": "What colour is his car?"
+      },
+      {
+        "id": 28,
+        "polish": "Dlaczego on jest spóźniony?",
+        "english": "Why is he late?"
+      },
+      {
+        "id": 29,
+        "polish": "Dlaczego jesteś smutny?",
+        "english": "Why are you sad?"
+      },
+      {
+        "id": 30,
+        "polish": "Kto jest tutaj szefem? / Kto tu rządzi?",
+        "english": "Who is the boss here?"
+      },
+      {
+        "id": 31,
+        "polish": "Gdzie jest moja torebka?",
+        "english": "Where is my handbag?"
+      },
+      {
+        "id": 32,
+        "polish": "Kim są tamte kobiety?",
+        "english": "Who are those women?"
+      },
+      {
+        "id": 33,
+        "polish": "Skąd jest Paul?",
+        "english": "Where is Paul from?"
+      },
+      {
+        "id": 34,
+        "polish": "Kiedy jest koncert?",
+        "english": "When is the concert?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch09_prepositions_of_place",
+    "bookNumber": 1,
+    "chapterNumber": 9,
+    "level": "A1",
+    "titlePl": "Przyimki miejsca",
+    "titleEn": "Prepositions of place",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Kawa jest na stole.",
+        "english": "The coffee is on the table."
+      },
+      {
+        "id": 2,
+        "polish": "Gdzie jest Mark?",
+        "english": "Where is Mark?"
+      },
+      {
+        "id": 3,
+        "polish": "Czy on jest w pracy?",
+        "english": "Is he at work?"
+      },
+      {
+        "id": 4,
+        "polish": "Nie. Jest chory i leży w łóżku.",
+        "english": "No, he isn’t. He’s sick, and he’s in bed."
+      },
+      {
+        "id": 5,
+        "polish": "Czy Kate jest w swoim pokoju?",
+        "english": "Is Kate in her room?"
+      },
+      {
+        "id": 6,
+        "polish": "Jej kot jest pod biurkiem.",
+        "english": "Her cat is under the desk."
+      },
+      {
+        "id": 7,
+        "polish": "Kto to jest na tamtym obrazku?",
+        "english": "Who is that in that picture?"
+      },
+      {
+        "id": 8,
+        "polish": "To mój tata w Nowym Yorku, w taksówce.",
+        "english": "It’s my dad in New York, in a taxi."
+      },
+      {
+        "id": 9,
+        "polish": "Czy Laura jest teraz w domu?",
+        "english": "Is Laura at home now?"
+      },
+      {
+        "id": 10,
+        "polish": "Nie. Jest w szkole.",
+        "english": "No, she isn’t. She is at school."
+      },
+      {
+        "id": 11,
+        "polish": "Buty są w pudełku.",
+        "english": "The shoes are in the box."
+      },
+      {
+        "id": 12,
+        "polish": "Pudełko jest pod łóżkiem.",
+        "english": "The box is under the bed."
+      },
+      {
+        "id": 13,
+        "polish": "Łóżko jest obok okna.",
+        "english": "The bed is next to the window."
+      },
+      {
+        "id": 14,
+        "polish": "Okno jest za tobą.",
+        "english": "The window is behind you."
+      },
+      {
+        "id": 15,
+        "polish": "Poczta jest na pierwszym piętrze.",
+        "english": "The post office is on the first floor."
+      },
+      {
+        "id": 16,
+        "polish": "Winda jest przed tobą.",
+        "english": "The lift is in front of you."
+      },
+      {
+        "id": 17,
+        "polish": "Supermarket jest naprzeciwko banku i obok komisariatupolicji.",
+        "english": "The supermarket is opposite the bank, and next to thepolice station."
+      },
+      {
+        "id": 18,
+        "polish": "To wino jest z Kalifornii.",
+        "english": "This wine is from California."
+      },
+      {
+        "id": 19,
+        "polish": "Jestem za tobą.",
+        "english": "I’m behind you."
+      },
+      {
+        "id": 20,
+        "polish": "Co jest w tej reklamówce na podłodze?",
+        "english": "What’s in that plastic bag on the floor?"
+      },
+      {
+        "id": 21,
+        "polish": "Ona jest w kinie.",
+        "english": "She’s at the cinema."
+      },
+      {
+        "id": 22,
+        "polish": "Skąd jesteś?",
+        "english": "Where are you from?"
+      },
+      {
+        "id": 23,
+        "polish": "Dokumenty są na najwyższej półce.",
+        "english": "The documents are on the top shelf."
+      },
+      {
+        "id": 24,
+        "polish": "Przystanek jest tuż przed naszym domem.",
+        "english": "The bus stop is just/right in front of our house."
+      },
+      {
+        "id": 25,
+        "polish": "Jesteśmy w Grecji. Pozdrowienia z Aten.",
+        "english": "We are in Greece. Greetings from Athens."
+      },
+      {
+        "id": 26,
+        "polish": "Ona jest w Portugalii.",
+        "english": "She’s in Portugal."
+      },
+      {
+        "id": 27,
+        "polish": "Jestem w kuchni.",
+        "english": "I’m in the kitchen."
+      },
+      {
+        "id": 28,
+        "polish": "Lampa jest nad stołem, nie na stole.",
+        "english": "The lamp is over/above the table, not on the table."
+      },
+      {
+        "id": 29,
+        "polish": "Moje biurko jest pomiędzy twoim regałem (na książki) ajego biurkiem.",
+        "english": "My desk is between your bookcase and his desk."
+      },
+      {
+        "id": 30,
+        "polish": "Mój samochód jest pomiędzy tym czerwonym a niebieskim (samochodem).",
+        "english": "My car is between the red one and the blue one."
+      },
+      {
+        "id": 31,
+        "polish": "Klucze są na stole, pod gazetą.",
+        "english": "The keys are on the table, under the newspaper."
+      },
+      {
+        "id": 32,
+        "polish": "Stacja metra jest obok mojego domu.",
+        "english": "The metro station is next to my house."
+      },
+      {
+        "id": 33,
+        "polish": "Bilet jest w kopercie.",
+        "english": "The ticket is in the envelope."
+      },
+      {
+        "id": 34,
+        "polish": "Winda jest po prawej stronie, na końcu korytarza.",
+        "english": "The lift is on the right, at the end of the corridor."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch10_present_simple",
+    "bookNumber": 1,
+    "chapterNumber": 10,
+    "level": "A1",
+    "titlePl": "Czas teraźniejszy prosty",
+    "titleEn": "Present Simple",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Pracuję codziennie.",
+        "english": "I work every day."
+      },
+      {
+        "id": 2,
+        "polish": "Jeździmy w góry w każdy piątek.",
+        "english": "We go to the mountains every Friday."
+      },
+      {
+        "id": 3,
+        "polish": "On wychodzi co wieczór.",
+        "english": "He goes out every night."
+      },
+      {
+        "id": 4,
+        "polish": "Potrzebuję skanera i drukarki.",
+        "english": "I need a scanner and a printer."
+      },
+      {
+        "id": 5,
+        "polish": "On przychodzi tutaj codziennie.",
+        "english": "He comes here every day."
+      },
+      {
+        "id": 6,
+        "polish": "Ona mieszka w Nowym Jorku.",
+        "english": "She lives in New York."
+      },
+      {
+        "id": 7,
+        "polish": "Aptekę otwierają o ósmej rano.",
+        "english": "They open the chemist’s/the pharmacy at eight a.m."
+      },
+      {
+        "id": 8,
+        "polish": "Masz fajny samochód.",
+        "english": "You have a nice car."
+      },
+      {
+        "id": 9,
+        "polish": "Myślę, że to prawda. Co ty myślisz?",
+        "english": "I think that it is true. What do you think?"
+      },
+      {
+        "id": 10,
+        "polish": "Czy masz prawo jazdy?",
+        "english": "Do you have a driving license?"
+      },
+      {
+        "id": 11,
+        "polish": "Znasz tamtego mężczyznę?",
+        "english": "Do you know that man?"
+      },
+      {
+        "id": 12,
+        "polish": "Czy piszesz jakieś e-maile po angielsku?",
+        "english": "Do you write any e-mails in English?"
+      },
+      {
+        "id": 13,
+        "polish": "Czego potrzebujesz?",
+        "english": "What do you need?"
+      },
+      {
+        "id": 14,
+        "polish": "Jak dojeżdżasz do pracy?",
+        "english": "How do you get to work?"
+      },
+      {
+        "id": 15,
+        "polish": "Gdzie mieszkasz? Czy mieszkasz ze swoimi rodzicami?",
+        "english": "Where do you live? Do you live with your parents?"
+      },
+      {
+        "id": 16,
+        "polish": "Czy on mówi po francusku?",
+        "english": "Does he speak French?"
+      },
+      {
+        "id": 17,
+        "polish": "W poniedziałki on wychodzi z pracy o 6:30. O której tywychodzisz z pracy?",
+        "english": "On Mondays, he leaves work at half past six. What timedo you leave work?"
+      },
+      {
+        "id": 18,
+        "polish": "Gdzie mieszka twoja siostra?",
+        "english": "Where does your sister live?"
+      },
+      {
+        "id": 19,
+        "polish": "Tom dzwoni do mnie co tydzień. Dzwoni też do ciebie?",
+        "english": "Tom calls me every week. Does he call you, too?"
+      },
+      {
+        "id": 20,
+        "polish": "Gdzie pracujecie? Pracujecie razem?",
+        "english": "Where do you work? Do you work together?"
+      },
+      {
+        "id": 21,
+        "polish": "Czy oni chodzą razem do szkoły?",
+        "english": "Do they go to school together?"
+      },
+      {
+        "id": 22,
+        "polish": "Czy oni dostają kieszonkowe?",
+        "english": "Do they get pocket money?"
+      },
+      {
+        "id": 23,
+        "polish": "Co oni sprzedają?",
+        "english": "What do they sell?"
+      },
+      {
+        "id": 24,
+        "polish": "Nie wiem, co oni sprzedają.",
+        "english": "I don’t know what they sell."
+      },
+      {
+        "id": 25,
+        "polish": "Czy on pracuje z tobą?",
+        "english": "Does he work with you?"
+      },
+      {
+        "id": 26,
+        "polish": "Tak, ale nie widuję go codziennie.",
+        "english": "Yes, he does, but I don’t see him every day."
+      },
+      {
+        "id": 27,
+        "polish": "Nie rozumiem.",
+        "english": "I don’t understand."
+      },
+      {
+        "id": 28,
+        "polish": "Ona nie mówi po angielsku.",
+        "english": "She doesn’t speak English."
+      },
+      {
+        "id": 29,
+        "polish": "On nie przyjeżdża do biura codziennie.",
+        "english": "He doesn’t come to the office every day."
+      },
+      {
+        "id": 30,
+        "polish": "Oni nie wiedzą, gdzie mieszkam.",
+        "english": "They don’t know where I live."
+      },
+      {
+        "id": 31,
+        "polish": "– Czym się zajmujesz? – Jestem nauczycielem.",
+        "english": "– What do you do? – I’m a teacher."
+      },
+      {
+        "id": 32,
+        "polish": "– Czym on się zajmuje? – Jest mechanikiem.",
+        "english": "– What does he do? – He’s a mechanic."
+      },
+      {
+        "id": 33,
+        "polish": "Czy twoje dzieci uczą się angielskiego w szkole?",
+        "english": "Do your children learn English at school?"
+      },
+      {
+        "id": 34,
+        "polish": "Co to znaczy? Wiesz?",
+        "english": "What does it mean? Do you know?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch11_the_verb_to_have",
+    "bookNumber": 1,
+    "chapterNumber": 11,
+    "level": "A1",
+    "titlePl": "Czasownik mieć",
+    "titleEn": "The verb to have",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Przepraszam, mam pytanie.",
+        "english": "Excuse me, I have a question."
+      },
+      {
+        "id": 2,
+        "polish": "– Czy ona ma samochód? – Tak, ma. / Nie, nie ma.",
+        "english": "– Does she have a car? – Yes, she does. / No, she doesn’t."
+      },
+      {
+        "id": 3,
+        "polish": "Oni nie mają dużego domu.",
+        "english": "They don’t have a big house."
+      },
+      {
+        "id": 4,
+        "polish": "Czy masz z tym problem?",
+        "english": "Do you have a problem with it?"
+      },
+      {
+        "id": 5,
+        "polish": "Jaki oni mają komputer?",
+        "english": "What kind of computer do they have?"
+      },
+      {
+        "id": 6,
+        "polish": "Czy ta firma ma biuro w Londynie?",
+        "english": "Does this company have an office in London?"
+      },
+      {
+        "id": 7,
+        "polish": "Nie mam prawa jazdy.",
+        "english": "I don’t have a driving license."
+      },
+      {
+        "id": 8,
+        "polish": "Czy oni mają teraz czas?",
+        "english": "Do they have time now?"
+      },
+      {
+        "id": 9,
+        "polish": "Nie mam teraz czasu. Jestem bardzo zajęty.",
+        "english": "I don’t have time now. I’m very busy."
+      },
+      {
+        "id": 10,
+        "polish": "Masz telefon komórkowy?",
+        "english": "Do you have a mobile phone?"
+      },
+      {
+        "id": 11,
+        "polish": "Czy on ma ciemne włosy?",
+        "english": "Does he have dark hair?"
+      },
+      {
+        "id": 12,
+        "polish": "Moja siostra ma blond włosy i niebieskie oczy.",
+        "english": "My sister has blond hair and blue eyes."
+      },
+      {
+        "id": 13,
+        "polish": "Mój brat nie ma pracy. Ma dużo wolnego czasu.",
+        "english": "My brother doesn’t have a job. He has a lot of free time."
+      },
+      {
+        "id": 14,
+        "polish": "Gdy mam problem, dzwonię do mamy.",
+        "english": "When I have a problem, I call my mum."
+      },
+      {
+        "id": 15,
+        "polish": "Czy oni mają dzieci?",
+        "english": "Do they have children?"
+      },
+      {
+        "id": 16,
+        "polish": "Czy ona ma dzisiaj jakieś spotkanie?",
+        "english": "Does she have a meeting today?"
+      },
+      {
+        "id": 17,
+        "polish": "Czy mają państwo rezerwację?",
+        "english": "Do you have a reservation?"
+      },
+      {
+        "id": 18,
+        "polish": "Nie mam rezerwacji. Macie jakieś wolne miejsca?",
+        "english": "I don’t have a reservation. Do you have any vacancies?"
+      },
+      {
+        "id": 19,
+        "polish": "Czy masz/macie jakieś pytania?",
+        "english": "Do you have any questions?"
+      },
+      {
+        "id": 20,
+        "polish": "On nie ma wielu przyjaciół.",
+        "english": "He doesn’t have many friends."
+      },
+      {
+        "id": 21,
+        "polish": "Czy ona ma długie włosy? Jakiego koloru są jej oczy?",
+        "english": "Does she have long hair? What colour are her eyes?"
+      },
+      {
+        "id": 22,
+        "polish": "On ma dużo pieniędzy, ale nie jest szczęśliwy.",
+        "english": "He has a lot of money, but he is not happy."
+      },
+      {
+        "id": 23,
+        "polish": "Czy masz/macie jego numer telefonu?",
+        "english": "Do you have his phone number?"
+      },
+      {
+        "id": 24,
+        "polish": "Mam tylko jego adres e-mail.",
+        "english": "I only have his e-mail address."
+      },
+      {
+        "id": 25,
+        "polish": "O której jecie kolację?",
+        "english": "What time do you have dinner?"
+      },
+      {
+        "id": 26,
+        "polish": "Co jecie na kolację?",
+        "english": "What do you have for dinner?"
+      },
+      {
+        "id": 27,
+        "polish": "Gdzie jesz śniadanie? W domu czy w biurze?",
+        "english": "Where do you have breakfast? At home or in the office?"
+      },
+      {
+        "id": 28,
+        "polish": "W domu piję kawę, a śniadanie jem w biurze.",
+        "english": "I have a coffee at home, and I have breakfast in the office."
+      },
+      {
+        "id": 29,
+        "polish": "Jesz obiad ze swoimi kolegami z pracy?",
+        "english": "Do you have lunch with your workmates?"
+      },
+      {
+        "id": 30,
+        "polish": "Biorę prysznic, zanim idę spać.",
+        "english": "I have a shower before I go to bed."
+      },
+      {
+        "id": 31,
+        "polish": "Gdy boli mnie głowa, biorę tabletkę przeciwbólową, a potem idę do łóżka.",
+        "english": "When I have a headache, I take a painkiller, and thenI go to bed."
+      },
+      {
+        "id": 32,
+        "polish": "Ja mam tylko pięć euro. Czy wy macie jakieś pieniądze?",
+        "english": "I only have five euros. Do you have any money?"
+      },
+      {
+        "id": 33,
+        "polish": "On ma bardzo dobrą pracę.",
+        "english": "He has a very good job."
+      },
+      {
+        "id": 34,
+        "polish": "Ona nie ma biletu na (ten) koncert.",
+        "english": "She doesn’t have a ticket for the concert."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch12_the_verbs_to_like_to_want",
+    "bookNumber": 1,
+    "chapterNumber": 12,
+    "level": "A1",
+    "titlePl": "Czasowniki: lubić, chcieć",
+    "titleEn": "The verbs: to like, to want",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Lubię piłkę nożną.",
+        "english": "I like football."
+      },
+      {
+        "id": 2,
+        "polish": "Lubię chodzić na zakupy.",
+        "english": "I like going shopping."
+      },
+      {
+        "id": 3,
+        "polish": "Ona lubi czytać książki. Lubi kryminały.",
+        "english": "She likes reading books. She likes detective stories."
+      },
+      {
+        "id": 4,
+        "polish": "Oni lubią tu przychodzić.",
+        "english": "They like coming here."
+      },
+      {
+        "id": 5,
+        "polish": "Lubimy słuchać dobrej muzyki, a wy?",
+        "english": "We like listening to good music, and you?"
+      },
+      {
+        "id": 6,
+        "polish": "On lubi pić czarną kawę. Ja nie.",
+        "english": "He likes drinking black coffee. I don’t."
+      },
+      {
+        "id": 7,
+        "polish": "Nie lubię prowadzić (samochodu), ale on tak.",
+        "english": "I don’t like driving, but he does."
+      },
+      {
+        "id": 8,
+        "polish": "Czy lubisz podróżować?",
+        "english": "Do you like travelling?"
+      },
+      {
+        "id": 9,
+        "polish": "Czy ona lubi gotować?",
+        "english": "Does she like cooking?"
+      },
+      {
+        "id": 10,
+        "polish": "Oni nie lubią kupować drogich prezentów.",
+        "english": "They don’t like buying expensive presents/gifts."
+      },
+      {
+        "id": 11,
+        "polish": "Nie lubię tego. / Nie podoba mi się to. To jest dziwne.",
+        "english": "I don’t like it. It’s strange."
+      },
+      {
+        "id": 12,
+        "polish": "Ona nie lubi oglądać telewizji.",
+        "english": "She doesn’t like watching TV."
+      },
+      {
+        "id": 13,
+        "polish": "My lubimy grać w piłkę nożną, ale oni nie.",
+        "english": "We like playing football, but they don’t."
+      },
+      {
+        "id": 14,
+        "polish": "Jaki rodzaj muzyki lubisz?",
+        "english": "What kind of music do you like?"
+      },
+      {
+        "id": 15,
+        "polish": "Lubię muzykę rockową, ale moja siostra nie.",
+        "english": "I like rock music, but my sister doesn’t."
+      },
+      {
+        "id": 16,
+        "polish": "Moja babcia lubi słuchać radia.",
+        "english": "My grandmother likes listening to the radio."
+      },
+      {
+        "id": 17,
+        "polish": "Gdzie oni są? Nie lubię czekać.",
+        "english": "Where are they? I don’t like waiting."
+      },
+      {
+        "id": 18,
+        "polish": "Chcę pojechać do Londynu.",
+        "english": "I want to go to London."
+      },
+      {
+        "id": 19,
+        "polish": "Dlaczego chcesz jechać za granicę?",
+        "english": "Why do you want to go abroad?"
+      },
+      {
+        "id": 20,
+        "polish": "Co chcesz robić/zrobić?",
+        "english": "What do you want to do?"
+      },
+      {
+        "id": 21,
+        "polish": "Jaki samochód / Jaki rodzaj samochodu on chce kupić?",
+        "english": "What kind of car does he want to buy?"
+      },
+      {
+        "id": 22,
+        "polish": "Nie chcemy mieszkać w mieszkaniu. Chcemy mieć dom z ogrodem.",
+        "english": "We don’t want to live in a flat. We want to have a house with a garden."
+      },
+      {
+        "id": 23,
+        "polish": "Nie chcę herbaty. Chcę wodę niegazowaną.",
+        "english": "I don’t want tea. I want still water."
+      },
+      {
+        "id": 24,
+        "polish": "Dlaczego on chce się uczyć angielskiego?",
+        "english": "Why does he want to learn English?"
+      },
+      {
+        "id": 25,
+        "polish": "Chcecie zapłacić gotówką czy kartą?",
+        "english": "Do you want to pay cash or by card?"
+      },
+      {
+        "id": 26,
+        "polish": "Ona nie chce iść/chodzić do szkoły.",
+        "english": "She doesn’t want to go to school."
+      },
+      {
+        "id": 27,
+        "polish": "Oni nie chcą odrabiać (swojej) pracy domowej. Chcą siętylko bawić.",
+        "english": "They don’t want to do their homework. They just want to play."
+      },
+      {
+        "id": 28,
+        "polish": "Chcemy otrzymywać/dostawać więcej pieniędzy.",
+        "english": "We want to receive/get more money."
+      },
+      {
+        "id": 29,
+        "polish": "Czego oni chcą od tamtego chłopaka?",
+        "english": "What do they want from that boy?"
+      },
+      {
+        "id": 30,
+        "polish": "Co chcesz dostać pod choinkę?",
+        "english": "What do you want to get for Christmas?"
+      },
+      {
+        "id": 31,
+        "polish": "Ona chce dostać nowe buty, a ja chcę nowy aparat fotograficzny.",
+        "english": "She wants to get new shoes, and I want a new camera."
+      },
+      {
+        "id": 32,
+        "polish": "Nie chcę ci przeszkadzać. Chcę tylko z tobą porozmawiać. Masz chwilę?",
+        "english": "I don’t want to disturb you. I just want to talk to you. Do you have a minute?"
+      },
+      {
+        "id": 33,
+        "polish": "Nie chcę być niegrzeczny.",
+        "english": "I don’t want to be rude."
+      },
+      {
+        "id": 34,
+        "polish": "Chcę pomagać innym.",
+        "english": "I want to help others."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch13_object_pronouns",
+    "bookNumber": 1,
+    "chapterNumber": 13,
+    "level": "A1",
+    "titlePl": "Zaimki dopełnieniowe",
+    "titleEn": "Object pronouns",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Nie rozumiem go.",
+        "english": "I don’t understand him."
+      },
+      {
+        "id": 2,
+        "polish": "Czy wy zawsze na nich czekacie?",
+        "english": "Do you always wait for them?"
+      },
+      {
+        "id": 3,
+        "polish": "On mnie uczy angielskiego.",
+        "english": "He teaches me English."
+      },
+      {
+        "id": 4,
+        "polish": "Piszę do nich na święta.",
+        "english": "I write to them at Christmas."
+      },
+      {
+        "id": 5,
+        "polish": "On ją kocha, ale ona jego nie (kocha).",
+        "english": "He loves her, but she doesn’t love him."
+      },
+      {
+        "id": 6,
+        "polish": "Nie lubię ich.",
+        "english": "I don’t like them."
+      },
+      {
+        "id": 7,
+        "polish": "Chcesz iść z nami czy zostać z nimi?",
+        "english": "Do you want to come with us, or stay with them?"
+      },
+      {
+        "id": 8,
+        "polish": "Mam coś dla ciebie.",
+        "english": "I have something for you."
+      },
+      {
+        "id": 9,
+        "polish": "Dla mnie? Naprawdę?",
+        "english": "For me? Really?"
+      },
+      {
+        "id": 10,
+        "polish": "Widzę go codziennie rano na przystanku.",
+        "english": "I see him every morning at the bus stop."
+      },
+      {
+        "id": 11,
+        "polish": "Dzwonię do niego, gdy mam problem.",
+        "english": "I call him when I have a problem."
+      },
+      {
+        "id": 12,
+        "polish": "Daj mi trochę czasu, proszę.",
+        "english": "Give me some time, please."
+      },
+      {
+        "id": 13,
+        "polish": "Znasz ją?",
+        "english": "Do you know her?"
+      },
+      {
+        "id": 14,
+        "polish": "Rozumiesz to?",
+        "english": "Do you understand it?"
+      },
+      {
+        "id": 15,
+        "polish": "Oni nie chcą z nami pracować.",
+        "english": "They don’t want to work with us."
+      },
+      {
+        "id": 16,
+        "polish": "Nie znam ich. Czy oni nas znają?",
+        "english": "I don’t know them. Do they know us?"
+      },
+      {
+        "id": 17,
+        "polish": "Odwiedzasz ją?",
+        "english": "Do you visit her?"
+      },
+      {
+        "id": 18,
+        "polish": "Mamy dla was prezent.",
+        "english": "We have a present/gift for you."
+      },
+      {
+        "id": 19,
+        "polish": "Chcesz mi pomóc z walizkami?",
+        "english": "Do you want to help me with the suitcases?"
+      },
+      {
+        "id": 20,
+        "polish": "On jest z nią, nie z nami.",
+        "english": "He’s with her, not with us."
+      },
+      {
+        "id": 21,
+        "polish": "Opowiedz mi o swoich problemach.",
+        "english": "Tell me about your problems."
+      },
+      {
+        "id": 22,
+        "polish": "Czy ona jest z wami, czy z nimi?",
+        "english": "Is she with you or with them?"
+      },
+      {
+        "id": 23,
+        "polish": "To jest dla niej, a tamto dla niego.",
+        "english": "This is for her, and that is for him."
+      },
+      {
+        "id": 24,
+        "polish": "Zawsze zadaję im te same pytania.",
+        "english": "I always ask them the same questions."
+      },
+      {
+        "id": 25,
+        "polish": "Ale oni mnie nie rozumieją.",
+        "english": "But they don’t understand me."
+      },
+      {
+        "id": 26,
+        "polish": "Chcę z nim jechać.",
+        "english": "I want to go with him."
+      },
+      {
+        "id": 27,
+        "polish": "Zaczekaj na nas.",
+        "english": "Wait for us."
+      },
+      {
+        "id": 28,
+        "polish": "Powiedz jej, nie jemu.",
+        "english": "Tell her, not him."
+      },
+      {
+        "id": 29,
+        "polish": "Chcę sprzedać swój samochód. Chcesz go kupić?",
+        "english": "I want to sell my car. Do you want to buy it?"
+      },
+      {
+        "id": 30,
+        "polish": "Podobają wam się te buty? Chcę je kupić.",
+        "english": "Do you like these shoes? I want to buy them."
+      },
+      {
+        "id": 31,
+        "polish": "Nie lubię tych spodni. Chcesz je?",
+        "english": "I don’t like these trousers. Do you want them?"
+      },
+      {
+        "id": 32,
+        "polish": "On nas nie rozumie, gdy mówimy po francusku.",
+        "english": "He doesn’t understand us when we speak French."
+      },
+      {
+        "id": 33,
+        "polish": "Potrzebuję ich, a oni potrzebują mnie.",
+        "english": "I need them, and they need me."
+      },
+      {
+        "id": 34,
+        "polish": "Chodź ze mną, jeśli chcesz.",
+        "english": "Come with me if you want."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch14_frequency_adverbs",
+    "bookNumber": 1,
+    "chapterNumber": 14,
+    "level": "A1",
+    "titlePl": "Przysłówki wyrażające częstotliwość",
+    "titleEn": "Frequency adverbs",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Ona zawsze jest zadowolona/szczęśliwa.",
+        "english": "She’s always happy."
+      },
+      {
+        "id": 2,
+        "polish": "Nigdy nie jestem zły/zła.",
+        "english": "I’m never angry."
+      },
+      {
+        "id": 3,
+        "polish": "Oni często są zajęci i rzadko mają dla nas czas.",
+        "english": "They’re often busy, and they rarely have time for us."
+      },
+      {
+        "id": 4,
+        "polish": "Zwykle jesteśmy zmęczeni po pracy.",
+        "english": "We’re usually tired after work."
+      },
+      {
+        "id": 5,
+        "polish": "Zawsze wspólnie jemy śniadanie.",
+        "english": "We always have breakfast together."
+      },
+      {
+        "id": 6,
+        "polish": "Zawsze czekam na autobus co najmniej piętnaście minut.",
+        "english": "I always wait at least fifteen minutes for the bus."
+      },
+      {
+        "id": 7,
+        "polish": "Prawie nigdy ich nie widujemy/widzimy.",
+        "english": "We hardly ever see them."
+      },
+      {
+        "id": 8,
+        "polish": "Ona nigdy nie jeździ do pracy pociągiem.",
+        "english": "She never goes to work by train."
+      },
+      {
+        "id": 9,
+        "polish": "Czy często wychodzisz/wychodzicie?",
+        "english": "Do you often go out?"
+      },
+      {
+        "id": 10,
+        "polish": "On nigdy nie wychodzi w soboty.",
+        "english": "He never goes out on Saturdays."
+      },
+      {
+        "id": 11,
+        "polish": "Jak często Peter cię odwiedza?",
+        "english": "How often does Peter visit you?"
+      },
+      {
+        "id": 12,
+        "polish": "Oni rzadko z nami rozmawiają.",
+        "english": "They rarely/seldom speak to us."
+      },
+      {
+        "id": 13,
+        "polish": "– Jak często oglądasz wiadomości? – Zwykle raz w tygodniu.",
+        "english": "– How often do you watch the news? – Usually once a week."
+      },
+      {
+        "id": 14,
+        "polish": "Autobus zawsze przyjeżdża na czas.",
+        "english": "The bus always arrives on time."
+      },
+      {
+        "id": 15,
+        "polish": "Jak często chodzisz do dentysty?",
+        "english": "How often do you go to the dentist?"
+      },
+      {
+        "id": 16,
+        "polish": "Ona sprawdza pocztę co pięć minut.",
+        "english": "She checks her e-mail every five minutes."
+      },
+      {
+        "id": 17,
+        "polish": "Czy codziennie wcześnie wstajesz?",
+        "english": "Do you get up early every day?"
+      },
+      {
+        "id": 18,
+        "polish": "Jeżdżę do Londynu co trzy miesiące.",
+        "english": "I go to London every three months."
+      },
+      {
+        "id": 19,
+        "polish": "Ja jeżdżę tam raz w miesiącu.",
+        "english": "I go there once a month."
+      },
+      {
+        "id": 20,
+        "polish": "Odwiedzam moich dziadków dwa razy w miesiącu.",
+        "english": "I visit my grandparents twice a month."
+      },
+      {
+        "id": 21,
+        "polish": "Myję samochód trzy razy w miesiącu.",
+        "english": "I wash my car three times a month."
+      },
+      {
+        "id": 22,
+        "polish": "Zwykle śpię osiem godzin dziennie.",
+        "english": "I usually sleep eight hours a day."
+      },
+      {
+        "id": 23,
+        "polish": "– Jak często oni do ciebie dzwonią? – Dzwonią do mniepięć razy w tygodniu.",
+        "english": "– How often do they call you? – They call me five times a week."
+      },
+      {
+        "id": 24,
+        "polish": "Często tutaj pada.",
+        "english": "It often rains here."
+      },
+      {
+        "id": 25,
+        "polish": "Ile razy w tygodniu ich widujesz?",
+        "english": "How many times a week do you see them?"
+      },
+      {
+        "id": 26,
+        "polish": "Ile razy w roku wyjeżdżasz za granicę?",
+        "english": "How many times a year do you travel abroad?"
+      },
+      {
+        "id": 27,
+        "polish": "Rzadko wyjeżdżam za granicę.",
+        "english": "I rarely/seldom travel abroad."
+      },
+      {
+        "id": 28,
+        "polish": "Ona czasami mi pomaga, ale nie za często.",
+        "english": "She sometimes helps me, but not very often."
+      },
+      {
+        "id": 29,
+        "polish": "Moi znajomi są zawsze spóźnieni.",
+        "english": "My friends are always late."
+      },
+      {
+        "id": 30,
+        "polish": "Codziennie uczymy się nowego słówka.",
+        "english": "We learn a new word every day."
+      },
+      {
+        "id": 31,
+        "polish": "Czy często grasz w piłkę nożną?",
+        "english": "Do you often play football?"
+      },
+      {
+        "id": 32,
+        "polish": "Czy on często tu przychodzi?",
+        "english": "Does he often come here?"
+      },
+      {
+        "id": 33,
+        "polish": "Chodzę na zajęcia z angielskiego raz na dwa tygodnie.",
+        "english": "I go to English classes once every two weeks."
+      },
+      {
+        "id": 34,
+        "polish": "Często pijemy razem kawę, ale nigdy nie jemy razem lunchu.",
+        "english": "We often have coffee together, but we never have lunchtogether."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch15_there_is_there_are",
+    "bookNumber": 1,
+    "chapterNumber": 15,
+    "level": "A1",
+    "titlePl": "Konstrukcje jest/są",
+    "titleEn": "There is / There are",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Jest list do ciebie.",
+        "english": "There is a letter for you."
+      },
+      {
+        "id": 2,
+        "polish": "Jest problem.",
+        "english": "There is a problem."
+      },
+      {
+        "id": 3,
+        "polish": "Jest kilka problemów.",
+        "english": "There are some problems."
+      },
+      {
+        "id": 4,
+        "polish": "Jest parę osób w biurze.",
+        "english": "There are some people in the office."
+      },
+      {
+        "id": 5,
+        "polish": "Niedaleko stąd jest stacja kolejowa.",
+        "english": "There is a train station near here."
+      },
+      {
+        "id": 6,
+        "polish": "Jest autobus do centrum o 9:30.",
+        "english": "There is a bus to the city centre at 9:30."
+      },
+      {
+        "id": 7,
+        "polish": "– Czy jest lotnisko w tym mieście? – Tak, jest.",
+        "english": "– Is there an airport in this city? – Yes, there is."
+      },
+      {
+        "id": 8,
+        "polish": "– Czy jest jakaś książka na stole? – Nie, nie ma.",
+        "english": "– Is there a book on the table? – No, there isn’t."
+      },
+      {
+        "id": 9,
+        "polish": "Ile jest dni w roku?",
+        "english": "How many days are there in a year?"
+      },
+      {
+        "id": 10,
+        "polish": "Czy jest jakaś dobra restauracja w pobliżu?",
+        "english": "Is there a good restaurant near here?"
+      },
+      {
+        "id": 11,
+        "polish": "Czy są jakieś dokumenty w szufladzie?",
+        "english": "Are there any documents in the drawer?"
+      },
+      {
+        "id": 12,
+        "polish": "Czy są jakieś pieniądze w domu?",
+        "english": "Is there any money in the house?"
+      },
+      {
+        "id": 13,
+        "polish": "Dziś wieczorem jest dobry program w telewizji.",
+        "english": "There’s a good program on TV tonight."
+      },
+      {
+        "id": 14,
+        "polish": "Czy jest tutaj jakiś komputer?",
+        "english": "Is there a computer here?"
+      },
+      {
+        "id": 15,
+        "polish": "W klasie jest pięciu uczniów.",
+        "english": "There are five students in the class."
+      },
+      {
+        "id": 16,
+        "polish": "Czy jest jakieś mleko w lodówce?",
+        "english": "Is there any milk in the fridge?"
+      },
+      {
+        "id": 17,
+        "polish": "W lodówce jest trochę mleka, ale niedużo.",
+        "english": "There is some milk in the fridge, but not much."
+      },
+      {
+        "id": 18,
+        "polish": "Na półkach nie ma żadnych książek.",
+        "english": "There aren’t any books on the shelves. / There are nobooks on the shelves."
+      },
+      {
+        "id": 19,
+        "polish": "Tutaj nie ma żadnych pieniędzy.",
+        "english": "There isn’t any money here. / There is no money here."
+      },
+      {
+        "id": 20,
+        "polish": "Czy są jakieś wolne miejsca w tym hotelu?",
+        "english": "Are there any vacancies in this hotel?"
+      },
+      {
+        "id": 21,
+        "polish": "W szufladzie są jakieś klucze.",
+        "english": "There are some keys in the drawer."
+      },
+      {
+        "id": 22,
+        "polish": "W moim mieście są dwa szpitale.",
+        "english": "There are two hospitals in my town."
+      },
+      {
+        "id": 23,
+        "polish": "Czy jest jakaś woda w tej butelce?",
+        "english": "Is there any water in this bottle?"
+      },
+      {
+        "id": 24,
+        "polish": "Tak, jest trochę.",
+        "english": "Yes, there is some."
+      },
+      {
+        "id": 25,
+        "polish": "Nie, nie ma (żadnej).",
+        "english": "No, there isn’t any."
+      },
+      {
+        "id": 26,
+        "polish": "W centrum miasta nie ma żadnych drzew.",
+        "english": "There aren’t any trees in the city centre. / There areno trees in the city centre."
+      },
+      {
+        "id": 27,
+        "polish": "Czy są jakieś wolne krzesła?",
+        "english": "Are there any free chairs?"
+      },
+      {
+        "id": 28,
+        "polish": "Czy w pobliżu jest jakieś centrum handlowe?",
+        "english": "Is there a shopping centre near here?"
+      },
+      {
+        "id": 29,
+        "polish": "Nie ma dziś żadnych zajęć.",
+        "english": "There are no classes today."
+      },
+      {
+        "id": 30,
+        "polish": "W kuchni jest lodówka, kuchenka, zmywarka i parę talerzy.",
+        "english": "In the kitchen, there is a fridge, a cooker, a dishwasher and some plates."
+      },
+      {
+        "id": 31,
+        "polish": "Czy jest jakiś hotel niedaleko waszego biura?",
+        "english": "Is there a hotel near your office?"
+      },
+      {
+        "id": 32,
+        "polish": "W tym pokoju nie ma klimatyzacji.",
+        "english": "There is no air conditioning in this room. / There isn’t any air conditioning in this room."
+      },
+      {
+        "id": 33,
+        "polish": "Czy w pokoju jest telewizor?",
+        "english": "Is there a TV set in the room?"
+      },
+      {
+        "id": 34,
+        "polish": "Czy można tutaj robić jakieś ciekawe rzeczy (dosł. Czysą tutaj jakieś ciekawe rzeczy do robienia)?",
+        "english": "Are there any interesting things to do here?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch16_imperative",
+    "bookNumber": 1,
+    "chapterNumber": 16,
+    "level": "A1",
+    "titlePl": "Tryb rozkazujący",
+    "titleEn": "Imperative",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Zrób to.",
+        "english": "Do it."
+      },
+      {
+        "id": 2,
+        "polish": "Nie rób tego.",
+        "english": "Don’t do it."
+      },
+      {
+        "id": 3,
+        "polish": "Bądź grzeczny. / Bądźcie grzeczni.",
+        "english": "Be good."
+      },
+      {
+        "id": 4,
+        "polish": "Nie spóźnij się. / Nie spóźnijcie się.",
+        "english": "Don’t be late."
+      },
+      {
+        "id": 5,
+        "polish": "Sprawdź pocztę.",
+        "english": "Check your e-mail."
+      },
+      {
+        "id": 6,
+        "polish": "Skręć w lewo.",
+        "english": "Turn left."
+      },
+      {
+        "id": 7,
+        "polish": "Zapal światło.",
+        "english": "Turn on the light."
+      },
+      {
+        "id": 8,
+        "polish": "Jedź prosto. To nie jest daleko.",
+        "english": "Go straight ahead. It’s not far."
+      },
+      {
+        "id": 9,
+        "polish": "Nie mów jej, proszę. To sekret.",
+        "english": "Don’t tell her, please. It’s a secret."
+      },
+      {
+        "id": 10,
+        "polish": "Nie otwieraj okna. Jest zimno.",
+        "english": "Don’t open the window. It’s cold."
+      },
+      {
+        "id": 11,
+        "polish": "Przynieś mi butelkę wody. Chce mi się pić (dosł. Jestem spragniona).",
+        "english": "Bring me a bottle of water. I’m thirsty."
+      },
+      {
+        "id": 12,
+        "polish": "Zamknij drzwi.",
+        "english": "Close the door."
+      },
+      {
+        "id": 13,
+        "polish": "Nie idź tam.",
+        "english": "Don’t go there."
+      },
+      {
+        "id": 14,
+        "polish": "Nie martw się. Uśmiechnij się!",
+        "english": "Don’t worry. Smile!"
+      },
+      {
+        "id": 15,
+        "polish": "Pomóż mi. Potrzymaj to, proszę.",
+        "english": "Help me. Hold it, please."
+      },
+      {
+        "id": 16,
+        "polish": "Nie czekaj na mnie.",
+        "english": "Don’t wait for me."
+      },
+      {
+        "id": 17,
+        "polish": "Usiądź, proszę.",
+        "english": "Sit down, please."
+      },
+      {
+        "id": 18,
+        "polish": "Chodźmy do kina.",
+        "english": "Let’s go to the cinema."
+      },
+      {
+        "id": 19,
+        "polish": "Świętujmy.",
+        "english": "Let’s celebrate."
+      },
+      {
+        "id": 20,
+        "polish": "Zapytajmy go.",
+        "english": "Let’s ask him."
+      },
+      {
+        "id": 21,
+        "polish": "Mówmy po angielsku.",
+        "english": "Let’s speak English."
+      },
+      {
+        "id": 22,
+        "polish": "Kupmy ten.",
+        "english": "Let’s buy this one."
+      },
+      {
+        "id": 23,
+        "polish": "Zadzwońmy do niego. Nie czekajmy.",
+        "english": "Let’s call him. Let’s not wait."
+      },
+      {
+        "id": 24,
+        "polish": "Nie gaś światła.",
+        "english": "Don’t turn off the light."
+      },
+      {
+        "id": 25,
+        "polish": "Chodź tutaj, ale najpierw zdejmij buty.",
+        "english": "Come here, but first take off your shoes."
+      },
+      {
+        "id": 26,
+        "polish": "Bądź ostrożny.",
+        "english": "Be careful."
+      },
+      {
+        "id": 27,
+        "polish": "Miłego dnia. Do zobaczenia wkrótce.",
+        "english": "Have a nice day. See you soon."
+      },
+      {
+        "id": 28,
+        "polish": "Smacznego.",
+        "english": "Enjoy your meal."
+      },
+      {
+        "id": 29,
+        "polish": "Miłego lotu.",
+        "english": "Have a nice flight."
+      },
+      {
+        "id": 30,
+        "polish": "Miłej zabawy!",
+        "english": "Have fun! / Have a good time!"
+      },
+      {
+        "id": 31,
+        "polish": "Zażywaj ten lek dwa razy dziennie.",
+        "english": "Take this medicine twice a day."
+      },
+      {
+        "id": 32,
+        "polish": "Nie dotykaj tego. To zabronione.",
+        "english": "Don’t touch this/it. It’s forbidden."
+      },
+      {
+        "id": 33,
+        "polish": "– Nie zostawiaj mnie. Zostań ze mną. – Zapomnij.",
+        "english": "– Don’t leave me. Stay with me. – Forget it."
+      },
+      {
+        "id": 34,
+        "polish": "Nie zapomnij parasola.",
+        "english": "Don’t forget your umbrella."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch17_present_continuous",
+    "bookNumber": 1,
+    "chapterNumber": 17,
+    "level": "A1",
+    "titlePl": "Czas teraźniejszy ciągły",
+    "titleEn": "Present Continuous",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "W tym momencie prowadzę samochód.",
+        "english": "I am driving at the moment."
+      },
+      {
+        "id": 2,
+        "polish": "Ona gra teraz na pianinie.",
+        "english": "She is playing the piano now."
+      },
+      {
+        "id": 3,
+        "polish": "W tym momencie on myje swój samochód.",
+        "english": "He is washing his car at the moment."
+      },
+      {
+        "id": 4,
+        "polish": "Pada deszcz. A właściwie zaczyna padać.",
+        "english": "It is raining. Well, actually, it is starting to rain."
+      },
+      {
+        "id": 5,
+        "polish": "Oni oglądają teraz mecz piłki nożnej.",
+        "english": "They are watching a football match now."
+      },
+      {
+        "id": 6,
+        "polish": "Myślę o tobie.",
+        "english": "I am thinking about you."
+      },
+      {
+        "id": 7,
+        "polish": "Słuchamy teraz muzyki.",
+        "english": "We are listening to music now."
+      },
+      {
+        "id": 8,
+        "polish": "Co teraz robisz/robicie?",
+        "english": "What are you doing now?"
+      },
+      {
+        "id": 9,
+        "polish": "Ona nie odpowiada.",
+        "english": "She isn’t answering."
+      },
+      {
+        "id": 10,
+        "polish": "Dlaczego do niej dzwonisz?",
+        "english": "Why are you calling her?"
+      },
+      {
+        "id": 11,
+        "polish": "Uczysz się? Masz jutro egzamin?",
+        "english": "Are you studying? Do you have an exam tomorrow?"
+      },
+      {
+        "id": 12,
+        "polish": "Nie uczę się, bo jestem zmęczony. Idę spać (dosł. Idędo łóżka).",
+        "english": "I’m not studying, because I’m tired. I’m going to bed."
+      },
+      {
+        "id": 13,
+        "polish": "– Pada śnieg? – Nie, nie pada. Świeci słońce.",
+        "english": "– Is it snowing? – No, it isn’t. / No, it’s not. The sun is shining."
+      },
+      {
+        "id": 14,
+        "polish": "Co oni planują? Wiesz?",
+        "english": "What are they planning? Do you know?"
+      },
+      {
+        "id": 15,
+        "polish": "Czy oni idą z nami?",
+        "english": "Are they coming with us?"
+      },
+      {
+        "id": 16,
+        "polish": "Jaką książkę czytasz?",
+        "english": "What book are you reading?"
+      },
+      {
+        "id": 17,
+        "polish": "Wychodzę. Do zobaczenia jutro.",
+        "english": "I’m leaving. See you tomorrow."
+      },
+      {
+        "id": 18,
+        "polish": "Ona nie rozmawia z tobą. Ona rozmawia ze mną.",
+        "english": "She isn’t talking to you. She’s talking to me."
+      },
+      {
+        "id": 19,
+        "polish": "– Gdzie idziesz? – Idę do domu.",
+        "english": "– Where are you going? – I’m going home."
+      },
+      {
+        "id": 20,
+        "polish": "Czekam na autobus. O, jedzie.",
+        "english": "I’m waiting for the bus. Oh, it’s coming."
+      },
+      {
+        "id": 21,
+        "polish": "Nie idziemy dziś do kina.",
+        "english": "We’re not going to the cinema today."
+      },
+      {
+        "id": 22,
+        "polish": "Mój szef przychodzi tu dziś po południu.",
+        "english": "My boss is coming here this afternoon."
+      },
+      {
+        "id": 23,
+        "polish": "Co się dzieje?",
+        "english": "What is happening?"
+      },
+      {
+        "id": 24,
+        "polish": "On patrzy na nią.",
+        "english": "He’s looking at her."
+      },
+      {
+        "id": 25,
+        "polish": "Szukam (moich) kluczy.",
+        "english": "I’m looking for my keys."
+      },
+      {
+        "id": 26,
+        "polish": "Pracujesz dziś?",
+        "english": "Are you working today?"
+      },
+      {
+        "id": 27,
+        "polish": "Ten komputer nie działa.",
+        "english": "This computer isn’t working."
+      },
+      {
+        "id": 28,
+        "polish": "Czy mówię za szybko?",
+        "english": "Am I speaking too fast?"
+      },
+      {
+        "id": 29,
+        "polish": "Dobrze się bawimy.",
+        "english": "We’re having a good time."
+      },
+      {
+        "id": 30,
+        "polish": "Proszę, poczekajcie na nas. Właśnie wychodzimy.",
+        "english": "Please, wait for us. We are just leaving."
+      },
+      {
+        "id": 31,
+        "polish": "Czy dzieci już śpią?",
+        "english": "Are the children already sleeping?"
+      },
+      {
+        "id": 32,
+        "polish": "Co oglądasz? / Co oglądacie?",
+        "english": "What are you watching?"
+      },
+      {
+        "id": 33,
+        "polish": "Co oni jedzą? Chcę zamówić to samo.",
+        "english": "What are they having/eating? I want to order the same."
+      },
+      {
+        "id": 34,
+        "polish": "Ona ma na sobie czerwoną sukienkę.",
+        "english": "She is wearing a red dress."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch18_can",
+    "bookNumber": 1,
+    "chapterNumber": 18,
+    "level": "A1",
+    "titlePl": "Móc/umieć/potrafić",
+    "titleEn": "Can",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Możesz wziąć mój samochód.",
+        "english": "You can take my car."
+      },
+      {
+        "id": 2,
+        "polish": "Nie mogę iść.",
+        "english": "I can’t go."
+      },
+      {
+        "id": 3,
+        "polish": "Nie możesz / Nie możecie tam iść.",
+        "english": "You can’t go there."
+      },
+      {
+        "id": 4,
+        "polish": "Czy możesz mi pomóc?",
+        "english": "Can you help me?"
+      },
+      {
+        "id": 5,
+        "polish": "Czy możemy porozmawiać?",
+        "english": "Can we talk?"
+      },
+      {
+        "id": 6,
+        "polish": "Czy możesz mi dać swój numer telefonu?",
+        "english": "Can you give me your telephone number?"
+      },
+      {
+        "id": 7,
+        "polish": "Czy możesz mi kupić butelkę wody niegazowanej?",
+        "english": "Can you buy me a bottle of still water?"
+      },
+      {
+        "id": 8,
+        "polish": "On nie może ci pomóc.",
+        "english": "He can’t help you."
+      },
+      {
+        "id": 9,
+        "polish": "Umiesz mówić po hiszpańsku?",
+        "english": "Can you speak Spanish?"
+      },
+      {
+        "id": 10,
+        "polish": "On nie potrafi pływać.",
+        "english": "He can’t swim."
+      },
+      {
+        "id": 11,
+        "polish": "Umiesz tańczyć?",
+        "english": "Can you dance?"
+      },
+      {
+        "id": 12,
+        "polish": "Ona ma tylko pięć lat, a umie bardzo dobrze czytać.",
+        "english": "She’s only five (years old), but she can read very well."
+      },
+      {
+        "id": 13,
+        "polish": "– Czy mogę tutaj usiąść? – Oczywiście, że tak.",
+        "english": "– Can I sit here? – Of course, you can."
+      },
+      {
+        "id": 14,
+        "polish": "Czy on może tutaj przyjść?",
+        "english": "Can he come here?"
+      },
+      {
+        "id": 15,
+        "polish": "Czy mogę użyć / skorzystać z twojego komputera?",
+        "english": "Can I use your computer?"
+      },
+      {
+        "id": 16,
+        "polish": "Czy twój syn umie grać na pianinie?",
+        "english": "Can your son play the piano?"
+      },
+      {
+        "id": 17,
+        "polish": "Ona nie może przyjść na przyjęcie.",
+        "english": "She can’t come to the party."
+      },
+      {
+        "id": 18,
+        "polish": "Czy może mi pan otworzyć drzwi?",
+        "english": "Can you open the door for me, please?"
+      },
+      {
+        "id": 19,
+        "polish": "Czy mogę prosić menu?",
+        "english": "Can I have the menu?"
+      },
+      {
+        "id": 20,
+        "polish": "Czy mogę prosić filiżankę kawy?",
+        "english": "Can I have a cup of coffee?"
+      },
+      {
+        "id": 21,
+        "polish": "Czy mogę prosić rybę z frytkami?",
+        "english": "Can I have fish and chips?"
+      },
+      {
+        "id": 22,
+        "polish": "Czy możemy prosić trochę sosu pomidorowego?",
+        "english": "Can we have some tomato sauce, please?"
+      },
+      {
+        "id": 23,
+        "polish": "Czy możesz być cicho?",
+        "english": "Can you be quiet?"
+      },
+      {
+        "id": 24,
+        "polish": "Widzisz go?",
+        "english": "Can you see him?"
+      },
+      {
+        "id": 25,
+        "polish": "– Słyszysz mnie? – Przykro mi, ale nie słyszę cię.",
+        "english": "– Can you hear me? – I’m sorry, but I can’t hear you."
+      },
+      {
+        "id": 26,
+        "polish": "Czy możemy tutaj zostać?",
+        "english": "Can we stay here?"
+      },
+      {
+        "id": 27,
+        "polish": "Nie mogę ci tego wysłać, przykro mi.",
+        "english": "I can’t send you that, I’m sorry."
+      },
+      {
+        "id": 28,
+        "polish": "Czy możesz mi wyświadczyć przysługę?",
+        "english": "Can you do me a favour?"
+      },
+      {
+        "id": 29,
+        "polish": "Czy możesz podać mi sól?",
+        "english": "Can you pass me the salt, please?"
+      },
+      {
+        "id": 30,
+        "polish": "Czy może pan sprawdzić moją rezerwację?",
+        "english": "Can you check my reservation, please?"
+      },
+      {
+        "id": 31,
+        "polish": "Nie mogę się dzisiaj z tobą spotkać.",
+        "english": "I can’t meet with you today."
+      },
+      {
+        "id": 32,
+        "polish": "Czy możemy to przełożyć do przyszłego tygodnia?",
+        "english": "Can we postpone it until next week?"
+      },
+      {
+        "id": 33,
+        "polish": "Niestety, nie mogę tego zrobić.",
+        "english": "Unfortunately, I can’t do it."
+      },
+      {
+        "id": 34,
+        "polish": "Czy mogę coś powiedzieć?",
+        "english": "Can I say something?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch19_saxon_genitive",
+    "bookNumber": 1,
+    "chapterNumber": 19,
+    "level": "A1",
+    "titlePl": "Dopełniacz saksoński",
+    "titleEn": "Saxon genitive",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Laura ma nowe mieszkanie. To jest mieszkanie Laury.",
+        "english": "Laura has a new flat. It’s Laura’s flat."
+      },
+      {
+        "id": 2,
+        "polish": "Czy to jest naprawdę mieszkanie Laury?",
+        "english": "Is it really Laura’s flat?"
+      },
+      {
+        "id": 3,
+        "polish": "To jest przyjaciółka mojej siostry, Jane.",
+        "english": "This is my sister’s friend, Jane."
+      },
+      {
+        "id": 4,
+        "polish": "Urodziny mojej mamy są 27 czerwca.",
+        "english": "My mother’s birthday is on the 27th of June."
+      },
+      {
+        "id": 5,
+        "polish": "Biurko mojej asystentki jest na środku pokoju.",
+        "english": "My assistant’s desk is in the middle of the room."
+      },
+      {
+        "id": 6,
+        "polish": "Gdzie jest płaszcz Adama?",
+        "english": "Where is Adam’s coat?"
+      },
+      {
+        "id": 7,
+        "polish": "Czy telefon Barbary jest włączony?",
+        "english": "Is Barbara’s phone on?"
+      },
+      {
+        "id": 8,
+        "polish": "Telefon Barbary jest wyłączony, ale możesz użyć telefonu Jamesa.",
+        "english": "Barbara’s phone is off, but you can use James’s phone."
+      },
+      {
+        "id": 9,
+        "polish": "Raport jest na biurku szefa.",
+        "english": "The report is on the boss’s desk."
+      },
+      {
+        "id": 10,
+        "polish": "Czy (tamten) to samochód Roberta?",
+        "english": "Is that Robert’s car?"
+      },
+      {
+        "id": 11,
+        "polish": "Jak ma na imię twoja dziewczyna?",
+        "english": "What’s your girlfriend’s name?"
+      },
+      {
+        "id": 12,
+        "polish": "Moja dziewczyna ma na imię Elizabeth.",
+        "english": "My girlfriend’s name is Elizabeth."
+      },
+      {
+        "id": 13,
+        "polish": "Siostra mojej dziewczyny też ma na imię Elizabeth.",
+        "english": "My girlfriend’s sister’s name is also Elizabeth."
+      },
+      {
+        "id": 14,
+        "polish": "Zarobki naszych pracowników są całkiem wysokie.",
+        "english": "Our workers’ salaries are quite high."
+      },
+      {
+        "id": 15,
+        "polish": "Czy to są zabawki twoich dzieci?",
+        "english": "Are these your children’s toys?"
+      },
+      {
+        "id": 16,
+        "polish": "Ubrania dla mężczyzn są zwykle na dole (na niższym piętrze).",
+        "english": "Men’s clothes are usually downstairs."
+      },
+      {
+        "id": 17,
+        "polish": "Ubrania dla dzieci są zwykle na górze (na górnym piętrze).",
+        "english": "Kids’ clothes are usually upstairs."
+      },
+      {
+        "id": 18,
+        "polish": "Czy to jest pomysł Johna?",
+        "english": "Is it John’s idea?"
+      },
+      {
+        "id": 19,
+        "polish": "To jest sukienka mojej mamy.",
+        "english": "This is my mother’s dress."
+      },
+      {
+        "id": 20,
+        "polish": "Czy jest (jakieś) spotkanie nauczycieli w poniedziałek?",
+        "english": "Is there a teachers’ meeting on Monday?"
+      },
+      {
+        "id": 21,
+        "polish": "Masz dzisiejszą gazetę?",
+        "english": "Do you have today’s newspaper?"
+      },
+      {
+        "id": 22,
+        "polish": "Jutrzejszy lot do Paryża jest odwołany.",
+        "english": "Tomorrow’s flight to Paris is cancelled."
+      },
+      {
+        "id": 23,
+        "polish": "To jest mieszkanie mojego brata.",
+        "english": "This is my brother’s flat."
+      },
+      {
+        "id": 24,
+        "polish": "To jest mieszkanie moich braci.",
+        "english": "This is my brothers’ flat."
+      },
+      {
+        "id": 25,
+        "polish": "Tutaj jest numer telefonu (tego) lekarza.",
+        "english": "Here is the doctor’s telephone number."
+      },
+      {
+        "id": 26,
+        "polish": "Pieniądze ludzi są w rękach rządu.",
+        "english": "People’s money is in the government’s hands."
+      },
+      {
+        "id": 27,
+        "polish": "Dom moich przyjaciół jest na północy Londynu.",
+        "english": "My friends’ house is in the north of London."
+      },
+      {
+        "id": 28,
+        "polish": "To są dzieci Jacka i Susan.",
+        "english": "Those are Jack and Susan’s children."
+      },
+      {
+        "id": 29,
+        "polish": "Podobają mi się obrazy Picassa.",
+        "english": "I like Picasso’s paintings."
+      },
+      {
+        "id": 30,
+        "polish": "Nie pamiętam numeru telefonu Andy’ego, ale pamiętam Laury.",
+        "english": "I don’t remember Andy’s telephone number, but I remember Laura’s."
+      },
+      {
+        "id": 31,
+        "polish": "Gdzie jest pokój Marka Smitha?",
+        "english": "Where is Mark Smith’s room?"
+      },
+      {
+        "id": 32,
+        "polish": "Nie znam imienia dziewczyny mojego brata.",
+        "english": "I don’t know my brother’s girlfriend’s name."
+      },
+      {
+        "id": 33,
+        "polish": "Znam wszystkich przyjaciół moich dzieci.",
+        "english": "I know all my children’s friends."
+      },
+      {
+        "id": 34,
+        "polish": "Czyj to jest zeszyt? Laury?",
+        "english": "Whose notebook is it? Laura’s?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch20_preposition_of",
+    "bookNumber": 1,
+    "chapterNumber": 20,
+    "level": "A1",
+    "titlePl": "Przyimek of",
+    "titleEn": "Preposition of",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Czy mogę prosić szklankę wody albo puszkę coli?",
+        "english": "Can I have a glass of water or a can of coke?"
+      },
+      {
+        "id": 2,
+        "polish": "Znasz już wynik testu?",
+        "english": "Do you already know the result of the test?"
+      },
+      {
+        "id": 3,
+        "polish": "Podoba mi się kolor ścian.",
+        "english": "I like the colour of the walls."
+      },
+      {
+        "id": 4,
+        "polish": "Jaki jest tytuł twojej prezentacji?",
+        "english": "What’s the title of your presentation?"
+      },
+      {
+        "id": 5,
+        "polish": "To jest stare zdjęcie mojego psa.",
+        "english": "This is an old photo of my dog."
+      },
+      {
+        "id": 6,
+        "polish": "Nie rozumiem pierwszej części artykułu.",
+        "english": "I don’t understand the first part of the article."
+      },
+      {
+        "id": 7,
+        "polish": "Jaka jest cena benzyny?",
+        "english": "What is the price of petrol?"
+      },
+      {
+        "id": 8,
+        "polish": "On ma kolekcję znaczków.",
+        "english": "He has a collection of stamps."
+      },
+      {
+        "id": 9,
+        "polish": "Stan tego samochodu jest bardzo zły.",
+        "english": "The condition of this car is very bad."
+      },
+      {
+        "id": 10,
+        "polish": "On dzwoni do mnie czasami w środku nocy.",
+        "english": "He sometimes calls me in the middle of the night."
+      },
+      {
+        "id": 11,
+        "polish": "Mieszkam w centrum Londynu.",
+        "english": "I live in the centre of London."
+      },
+      {
+        "id": 12,
+        "polish": "Podoba mi się koniec/zakończenie filmu.",
+        "english": "I like the end of the film."
+      },
+      {
+        "id": 13,
+        "polish": "Mieszkam na końcu tej ulicy.",
+        "english": "I live at the end of this street."
+      },
+      {
+        "id": 14,
+        "polish": "Na początku lekcji zawsze robimy ćwiczenia gramatyczne.",
+        "english": "At the beginning of the class we always do grammar exercises."
+      },
+      {
+        "id": 15,
+        "polish": "Jaki jest tytuł jego nowego filmu?",
+        "english": "What is the title of his new film?"
+      },
+      {
+        "id": 16,
+        "polish": "Jak się nazywa ten samochód?",
+        "english": "What is the name of this car?"
+      },
+      {
+        "id": 17,
+        "polish": "Jakie miasto jest stolicą Francji? Wiesz?",
+        "english": "What’s the capital of France? Do you know?"
+      },
+      {
+        "id": 18,
+        "polish": "Jaki rodzaj muzyki lubisz?",
+        "english": "What kind of music do you like?"
+      },
+      {
+        "id": 19,
+        "polish": "Jakie / Jakiego rodzaju filmy zwykle oglądasz?",
+        "english": "What kind of films do you usually watch?"
+      },
+      {
+        "id": 20,
+        "polish": "Na północy miasta jest fajny park.",
+        "english": "There’s a nice park in the north of the city."
+      },
+      {
+        "id": 21,
+        "polish": "Na południu kraju zawsze pada.",
+        "english": "It always rains in the south of the country."
+      },
+      {
+        "id": 22,
+        "polish": "Przynieś mi trochę cukru.",
+        "english": "Bring me a bit of sugar. / Bring me some sugar."
+      },
+      {
+        "id": 23,
+        "polish": "Znasz szefa tej firmy?",
+        "english": "Do you know the boss of this company?"
+      },
+      {
+        "id": 24,
+        "polish": "Wiele dzieci chodzi do tej szkoły.",
+        "english": "A lot of children go to this school."
+      },
+      {
+        "id": 25,
+        "polish": "Czy możesz kupić kilogram pomidorów?",
+        "english": "Can you buy a kilo of tomatoes, please?"
+      },
+      {
+        "id": 26,
+        "polish": "Przed moim domem jest przystanek autobusowy.",
+        "english": "There’s a bus stop in front of my house."
+      },
+      {
+        "id": 27,
+        "polish": "Jak się nazywa reżyser tego filmu? Pamiętasz?",
+        "english": "What is the name of the director of this film? Do youremember?"
+      },
+      {
+        "id": 28,
+        "polish": "Zróbmy listę rzeczy, które musimy zrobić.",
+        "english": "Let’s make a list of the things that we have to do."
+      },
+      {
+        "id": 29,
+        "polish": "Znacie przyczynę wypadku?",
+        "english": "Do you know the cause of the accident?"
+      },
+      {
+        "id": 30,
+        "polish": "Pamiętasz nazwę swojego hotelu?",
+        "english": "Do you remember the name of your hotel?"
+      },
+      {
+        "id": 31,
+        "polish": "Jaki jest numer twojego pokoju?",
+        "english": "What’s the number of your room?"
+      },
+      {
+        "id": 32,
+        "polish": "Rączka od mojej walizki jest zepsuta.",
+        "english": "The handle of my suitcase is broken."
+      },
+      {
+        "id": 33,
+        "polish": "Moje urodziny są pierwszego sierpnia.",
+        "english": "My birthday is on the first of August."
+      },
+      {
+        "id": 34,
+        "polish": "Kiedy jest pierwszy dzień wiosny?",
+        "english": "When is the first day of spring?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch21_countable_uncountable_nouns_much_many_a_lot_of",
+    "bookNumber": 1,
+    "chapterNumber": 21,
+    "level": "A1",
+    "titlePl": "Rzeczowniki policzalne i niepoliczalne; much, many, a lot of",
+    "titleEn": "Countable & uncountable nouns; much, many, a lot of",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Mam dużo problemów w pracy.",
+        "english": "I have a lot of problems at work."
+      },
+      {
+        "id": 2,
+        "polish": "Wiele ludzi o tym nie wie.",
+        "english": "Many people don’t know about it."
+      },
+      {
+        "id": 3,
+        "polish": "Parę osób już wie.",
+        "english": "Some people already know."
+      },
+      {
+        "id": 4,
+        "polish": "Wydaję dużo pieniędzy.",
+        "english": "I spend a lot of money."
+      },
+      {
+        "id": 5,
+        "polish": "Mam dzisiaj dużo pracy.",
+        "english": "I have a lot of work today."
+      },
+      {
+        "id": 6,
+        "polish": "Masz wielu przyjaciół w Brystolu?",
+        "english": "Do you have many friends in Bristol?"
+      },
+      {
+        "id": 7,
+        "polish": "W tym kraju jest wielu bogatych ludzi.",
+        "english": "There are a lot of rich people in this country."
+      },
+      {
+        "id": 8,
+        "polish": "Nie ma wielu samochodów, ale jest dużo hałasu.",
+        "english": "There aren’t many cars, but there’s a lot of noise."
+      },
+      {
+        "id": 9,
+        "polish": "– Ile pieniędzy wydajesz miesięcznie? – Dużo.",
+        "english": "– How much money do you spend a month? – A lot."
+      },
+      {
+        "id": 10,
+        "polish": "Spędzam dużo czasu przed komputerem.",
+        "english": "I spend a lot of time in front of a computer."
+      },
+      {
+        "id": 11,
+        "polish": "Ile czasu macie dla nas?",
+        "english": "How much time do you have for us?"
+      },
+      {
+        "id": 12,
+        "polish": "Nie mamy dzisiaj dużo czasu.",
+        "english": "We don’t have much time today."
+      },
+      {
+        "id": 13,
+        "polish": "– Właściwie to mamy dzisiaj dużo wolnego czasu. – To świetnie.",
+        "english": "– Actually, we have a lot of free time today. – That’sgreat."
+      },
+      {
+        "id": 14,
+        "polish": "On dużo zarabia.",
+        "english": "He earns a lot."
+      },
+      {
+        "id": 15,
+        "polish": "Potrzebuję mąki, mleka i kilku jajek.",
+        "english": "I need flour, milk and some eggs."
+      },
+      {
+        "id": 16,
+        "polish": "Idę do sklepu. Chcę kupić kilogram jabłek, trochę szynki, butelkę wody i trochę chleba.",
+        "english": "I’m going to the shop. I want to buy a kilo of apples, some ham, a bottle of water and some bread."
+      },
+      {
+        "id": 17,
+        "polish": "Chcę filiżankę kawy i croissanta.",
+        "english": "I want a cup of coffee and a croissant."
+      },
+      {
+        "id": 18,
+        "polish": "Nie lubię kawy. Czy mogę prosić butelkę wody gazowanej?",
+        "english": "I don’t like coffee. Can I have a bottle of sparklingwater?"
+      },
+      {
+        "id": 19,
+        "polish": "– Ile macie dzieci? – Mamy troje dzieci.",
+        "english": "– How many children do you have? – We have three children."
+      },
+      {
+        "id": 20,
+        "polish": "Ile pokoi jest w twoim domu?",
+        "english": "How many rooms are there in your house?"
+      },
+      {
+        "id": 21,
+        "polish": "W moim domu nie ma dużo miejsca.",
+        "english": "There isn’t much space in my house."
+      },
+      {
+        "id": 22,
+        "polish": "Czy są jakieś krzesła w sali konferencyjnej?",
+        "english": "Are there any chairs in the conference room?"
+      },
+      {
+        "id": 23,
+        "polish": "Jest parę, ale niewiele.",
+        "english": "There are some, but not many."
+      },
+      {
+        "id": 24,
+        "polish": "Przynieś kilka krzeseł, proszę.",
+        "english": "Bring some chairs, please."
+      },
+      {
+        "id": 25,
+        "polish": "– Ile chcesz? – Przynieś dziesięć.",
+        "english": "– How many do you want? – Bring ten."
+      },
+      {
+        "id": 26,
+        "polish": "Nie piję dużo herbaty. Wolę kawę.",
+        "english": "I don’t drink much tea. I prefer coffee."
+      },
+      {
+        "id": 27,
+        "polish": "Jadę za granicę na jakiś czas.",
+        "english": "I’m going abroad for some time."
+      },
+      {
+        "id": 28,
+        "polish": "Nie ma dzisiaj dużo śniegu, ale jest bardzo zimno.",
+        "english": "There isn’t much snow today, but it’s very cold."
+      },
+      {
+        "id": 29,
+        "polish": "Nie mam dużo bagażu, ponieważ nie mam ze sobą wielu ubrań.",
+        "english": "I don’t have much baggage because I don’t have many clothes with me."
+      },
+      {
+        "id": 30,
+        "polish": "Ile czasu potrzebujesz, żeby skończyć?",
+        "english": "How much time do you need to finish?"
+      },
+      {
+        "id": 31,
+        "polish": "Ile osób tam jest?",
+        "english": "How many people are there?"
+      },
+      {
+        "id": 32,
+        "polish": "Ile książek chcesz kupić?",
+        "english": "How many books do you want to buy?"
+      },
+      {
+        "id": 33,
+        "polish": "Jestem bardzo głodny, ale w lodówce nie ma dużo jedzenia.",
+        "english": "I’m very hungry, but there isn’t much food in the fridge."
+      },
+      {
+        "id": 34,
+        "polish": "Jest tylko jogurt, trochę sera i (jeden) pomidor.",
+        "english": "There’s only yoghurt, some cheese and a tomato."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch22_some_any_no",
+    "bookNumber": 1,
+    "chapterNumber": 22,
+    "level": "A1",
+    "titlePl": "Jakieś, żadne",
+    "titleEn": "Some, any, no",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Są jacyś ludzie na zewnątrz.",
+        "english": "There are some people outside."
+      },
+      {
+        "id": 2,
+        "polish": "Nie ma tam żadnych ludzi.",
+        "english": "There aren’t any people there. / There are no people there."
+      },
+      {
+        "id": 3,
+        "polish": "Czy macie jakieś pytania?",
+        "english": "Do you have any questions?"
+      },
+      {
+        "id": 4,
+        "polish": "Nie mam żadnych pytań.",
+        "english": "I don’t have any questions. / I have no questions."
+      },
+      {
+        "id": 5,
+        "polish": "Czy masz przy sobie jakieś pieniądze?",
+        "english": "Do you have any money on you?"
+      },
+      {
+        "id": 6,
+        "polish": "Nie mam żadnych pieniędzy na moim koncie bankowym.",
+        "english": "I have no money in my bank account. / I don’t have anymoney in my bank account."
+      },
+      {
+        "id": 7,
+        "polish": "Mamy jeszcze trochę czasu. Chodźmy na kawę.",
+        "english": "We still have some time. Let’s go for a coffee."
+      },
+      {
+        "id": 8,
+        "polish": "Autobus właśnie teraz odjeżdża. Nie mamy czasu.",
+        "english": "The bus is leaving just now. We have no time. / We don’t have any time."
+      },
+      {
+        "id": 9,
+        "polish": "Czy masz jakieś drobne?",
+        "english": "Do you have any change?"
+      },
+      {
+        "id": 10,
+        "polish": "Musimy wprowadzić jakieś zmiany.",
+        "english": "We have to introduce some changes."
+      },
+      {
+        "id": 11,
+        "polish": "Żadne zmiany nie są potrzebne.",
+        "english": "No changes are necessary."
+      },
+      {
+        "id": 12,
+        "polish": "Czy mogę prosić trochę/kilka jabłek? Nie chcę żadnychgruszek, dziękuję.",
+        "english": "Can I have some apples, please? I don’t want any pears, thank you."
+      },
+      {
+        "id": 13,
+        "polish": "Czy ma pani jakiś bagaż podręczny?",
+        "english": "Do you have any hand luggage?"
+      },
+      {
+        "id": 14,
+        "polish": "Nie mamy żadnego bagażu podręcznego.",
+        "english": "We have no hand luggage. / We don’t have any hand luggage."
+      },
+      {
+        "id": 15,
+        "polish": "Czy masz/macie jakieś wątpliwości?",
+        "english": "Do you have any doubts?"
+      },
+      {
+        "id": 16,
+        "polish": "Zakaz palenia.",
+        "english": "No smoking."
+      },
+      {
+        "id": 17,
+        "polish": "Zakaz parkowania.",
+        "english": "No parking."
+      },
+      {
+        "id": 18,
+        "polish": "Nie mam żadnych eleganckich butów.",
+        "english": "I have no elegant shoes. / I don’t have any elegant shoes."
+      },
+      {
+        "id": 19,
+        "polish": "Zrób jakieś ćwiczenia (gimnastyczne).",
+        "english": "Do some exercise."
+      },
+      {
+        "id": 20,
+        "polish": "Nie jedz żadnych słodyczy.",
+        "english": "Don’t eat any sweets."
+      },
+      {
+        "id": 21,
+        "polish": "Weź jakieś pieniądze tak na wszelki wypadek.",
+        "english": "Take some money just in case."
+      },
+      {
+        "id": 22,
+        "polish": "Nie pożyczaj mu żadnych pieniędzy.",
+        "english": "Don’t lend him any money."
+      },
+      {
+        "id": 23,
+        "polish": "Muszę trochę schudnąć (dosł. zgubić trochę wagi).",
+        "english": "I have to lose some weight."
+      },
+      {
+        "id": 24,
+        "polish": "Szukam jakichś eleganckich spodni.",
+        "english": "I’m looking for some elegant trousers."
+      },
+      {
+        "id": 25,
+        "polish": "Przykro mi, ale nie mamy żadnych.",
+        "english": "I’m sorry, but we don’t have any/ we haven’t got any."
+      },
+      {
+        "id": 26,
+        "polish": "Czy potrzebujesz reklamówki?",
+        "english": "Do you need a plastic bag?"
+      },
+      {
+        "id": 27,
+        "polish": "Potrzebuję trochę żelu pod prysznic. Masz trochę/jakiś?",
+        "english": "I need some shower gel. Do you have any?"
+      },
+      {
+        "id": 28,
+        "polish": "Nie ma tutaj żadnej dobrej restauracji. Nie ma tutaj żadnych dobrych restauracji.",
+        "english": "There isn’t a/any good restaurant here. There aren’t any good restaurants here."
+      },
+      {
+        "id": 29,
+        "polish": "Nie mam tutaj żadnych przyjaciół.",
+        "english": "I don’t have any friends here. / I have no friends here."
+      },
+      {
+        "id": 30,
+        "polish": "Czy możesz mi wysłać kilka zdjęć z wczorajszej nocy?",
+        "english": "Can you send me some photos from last night?"
+      },
+      {
+        "id": 31,
+        "polish": "Czy możesz dodać trochę soli?",
+        "english": "Can you add some salt?"
+      },
+      {
+        "id": 32,
+        "polish": "Chcesz trochę wody?",
+        "english": "Do you want some water?"
+      },
+      {
+        "id": 33,
+        "polish": "Chcesz posłuchać jakiejś muzyki?",
+        "english": "Do you want to listen to some music?"
+      },
+      {
+        "id": 34,
+        "polish": "Czy możesz mi pożyczyć trochę pieniędzy?",
+        "english": "Can you lend me some money?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch23_must_have_to",
+    "bookNumber": 1,
+    "chapterNumber": 23,
+    "level": "A1",
+    "titlePl": "Musieć",
+    "titleEn": "Must & have to",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Musisz tutaj przyjść.",
+        "english": "You have to come here. / You must come here."
+      },
+      {
+        "id": 2,
+        "polish": "Czy musisz iść na to spotkanie?",
+        "english": "Do you have to go to the meeting?"
+      },
+      {
+        "id": 3,
+        "polish": "Nie musisz tutaj być. Możesz iść do domu.",
+        "english": "You don’t have to be here. You can go home."
+      },
+      {
+        "id": 4,
+        "polish": "Nie wolno (ci) tutaj parkować.",
+        "english": "You mustn’t park here."
+      },
+      {
+        "id": 5,
+        "polish": "Czy muszę zmieniać hasło?",
+        "english": "Do I have to change the password?"
+      },
+      {
+        "id": 6,
+        "polish": "Nie wolno (ci) palić w tym biurze.",
+        "english": "You mustn’t smoke in this office."
+      },
+      {
+        "id": 7,
+        "polish": "Musisz to zapamiętać.",
+        "english": "You must remember that."
+      },
+      {
+        "id": 8,
+        "polish": "O której musisz wstać?",
+        "english": "What time do you have to get up?"
+      },
+      {
+        "id": 9,
+        "polish": "On musi mi pomóc.",
+        "english": "He must help me."
+      },
+      {
+        "id": 10,
+        "polish": "Co on ma zrobić (dosł. Co on musi zrobić)?",
+        "english": "What does he have to do?"
+      },
+      {
+        "id": 11,
+        "polish": "Nie wolno (ci) tego dotykać.",
+        "english": "You mustn’t touch that."
+      },
+      {
+        "id": 12,
+        "polish": "To wydaje się skomplikowane. Muszę przeczytać instrukcję.",
+        "english": "It seems complicated. I must read the instructions."
+      },
+      {
+        "id": 13,
+        "polish": "Musisz zapiąć pas.",
+        "english": "You have to fasten your seat belt."
+      },
+      {
+        "id": 14,
+        "polish": "– Czy oni muszą podpisać ten dokument? – Tak, muszą. I ona też musi go podpisać.",
+        "english": "– Do they have to sign this document? – Yes, they do. And she has to sign it, too."
+      },
+      {
+        "id": 15,
+        "polish": "Czy musisz/musicie już iść?",
+        "english": "Do you have to go now?"
+      },
+      {
+        "id": 16,
+        "polish": "Nie wolno im wchodzić do tamtego pokoju.",
+        "english": "They mustn’t enter that room."
+      },
+      {
+        "id": 17,
+        "polish": "(Oni) nie muszą tego robić.",
+        "english": "They don’t have to do that/it."
+      },
+      {
+        "id": 18,
+        "polish": "Musisz iść do lekarza.",
+        "english": "You must go to the doctor."
+      },
+      {
+        "id": 19,
+        "polish": "Czy ona też musi zapłacić za bilet?",
+        "english": "Does she have to pay for the ticket, too?"
+      },
+      {
+        "id": 20,
+        "polish": "Komputer musi być włączony.",
+        "english": "The computer has to be on."
+      },
+      {
+        "id": 21,
+        "polish": "Czy ja też muszę jechać?",
+        "english": "Do I have to go, too?"
+      },
+      {
+        "id": 22,
+        "polish": "Muszę skończyć ten raport na jutro. Nie mogę (dosł. Nie wolno mi) zapomnieć.",
+        "english": "I must finish this report for tomorrow. I mustn’t forget."
+      },
+      {
+        "id": 23,
+        "polish": "O której musimy wyjść?",
+        "english": "What time do we have to leave?"
+      },
+      {
+        "id": 24,
+        "polish": "Mamy jeszcze czas. Nie musimy dzwonić po taksówkę. Możemy pojechać metrem.",
+        "english": "We still have time. We don’t have to call a taxi. We can take the metro."
+      },
+      {
+        "id": 25,
+        "polish": "O której musimy tam być?",
+        "english": "What time do we have to be there?"
+      },
+      {
+        "id": 26,
+        "polish": "Musimy być na lotnisku dwie godziny przed odlotem.",
+        "english": "We have to be at the airport two hours before departure."
+      },
+      {
+        "id": 27,
+        "polish": "Gdzie mam podpisać?",
+        "english": "Where do I have to sign?"
+      },
+      {
+        "id": 28,
+        "polish": "Nie musisz dzwonić do hydraulika. Mogę to naprawić sam.",
+        "english": "You don’t have to call the plumber. I can fix it myself."
+      },
+      {
+        "id": 29,
+        "polish": "Musimy się pośpieszyć.",
+        "english": "We have to hurry up."
+      },
+      {
+        "id": 30,
+        "polish": "Musisz przyjść prosto do domu.",
+        "english": "You must come straight home."
+      },
+      {
+        "id": 31,
+        "polish": "Czy możesz powiedzieć szefowi, że muszę dzisiaj wyjśćo trzeciej?",
+        "english": "Can you tell the boss that I have to leave at three today?"
+      },
+      {
+        "id": 32,
+        "polish": "Co musimy/mamy zrobić, żeby wygrać?",
+        "english": "What do we have to do to win?"
+      },
+      {
+        "id": 33,
+        "polish": "Muszę z tobą porozmawiać. Masz teraz chwilę?",
+        "english": "I have to talk to you. Do you have a minute now?"
+      },
+      {
+        "id": 34,
+        "polish": "Najpierw musisz skręcić w lewo, a potem w prawo.",
+        "english": "First you have to turn left and then right."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch24_possessive_pronouns",
+    "bookNumber": 1,
+    "chapterNumber": 24,
+    "level": "A1",
+    "titlePl": "Zaimki dzierżawcze",
+    "titleEn": "Possessive pronouns",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Ten komputer jest mój.",
+        "english": "This computer is mine."
+      },
+      {
+        "id": 2,
+        "polish": "Czy tamte dokumenty są nasze?",
+        "english": "Are those documents ours?"
+      },
+      {
+        "id": 3,
+        "polish": "Czy tamta książka jest twoja?",
+        "english": "Is that book yours?"
+      },
+      {
+        "id": 4,
+        "polish": "Tamta książka jest moja.",
+        "english": "That book is mine."
+      },
+      {
+        "id": 5,
+        "polish": "Tamten portfel jest mój, nie jego.",
+        "english": "That wallet is mine, not his."
+      },
+      {
+        "id": 6,
+        "polish": "Tamten pokój jest twój, nie ich.",
+        "english": "That room is yours, not theirs."
+      },
+      {
+        "id": 7,
+        "polish": "Ten zegarek jest jego, nie jej.",
+        "english": "This watch is his, not hers."
+      },
+      {
+        "id": 8,
+        "polish": "To jest moja torebka, nie twoja.",
+        "english": "This is my handbag, not yours."
+      },
+      {
+        "id": 9,
+        "polish": "To jest wasza wina, nie nasza.",
+        "english": "This is your fault, not ours."
+      },
+      {
+        "id": 10,
+        "polish": "To jest jej telefon, nie wasz.",
+        "english": "This is her telephone, not yours."
+      },
+      {
+        "id": 11,
+        "polish": "Ten telefon jest jej.",
+        "english": "This telephone is hers."
+      },
+      {
+        "id": 12,
+        "polish": "(Tamten) to jego zegarek, nie mój.",
+        "english": "That’s his watch, not mine."
+      },
+      {
+        "id": 13,
+        "polish": "To jest nasze biuro, nie wasze.",
+        "english": "This is our office, not yours."
+      },
+      {
+        "id": 14,
+        "polish": "To biuro jest nasze, nie ich.",
+        "english": "This office is ours, not theirs."
+      },
+      {
+        "id": 15,
+        "polish": "Czy tamten samochód jest twój/wasz?",
+        "english": "Is that car yours?"
+      },
+      {
+        "id": 16,
+        "polish": "To jest ich hotel, nie jego.",
+        "english": "This is their hotel, not his."
+      },
+      {
+        "id": 17,
+        "polish": "To jest twój obowiązek, nie mój.",
+        "english": "This is your responsibility/duty, not mine."
+      },
+      {
+        "id": 18,
+        "polish": "– Czyje to pudło (to tam)? – Moje.",
+        "english": "– Whose box is that? – (It’s) mine."
+      },
+      {
+        "id": 19,
+        "polish": "– Czyj to ręcznik? – Ten jest mój, a tamten jest jego.",
+        "english": "– Whose towel is it? – This one is mine, and that oneis his."
+      },
+      {
+        "id": 20,
+        "polish": "Ten po lewej jest jej, a ten po prawej jest ich.",
+        "english": "The one on the left is hers, and the one on the rightis theirs."
+      },
+      {
+        "id": 21,
+        "polish": "Daj mi swój adres e-mail. Chcesz też mój?",
+        "english": "Give me your e-mail address. Do you want mine, too?"
+      },
+      {
+        "id": 22,
+        "polish": "Czy możesz mi pożyczyć swoją komórkę? Moja jest zepsuta.",
+        "english": "Can you lend me your mobile? Mine is broken."
+      },
+      {
+        "id": 23,
+        "polish": "Czyj to samochód (ten tam)? Wygląda jak twój.",
+        "english": "Whose car is that? It looks like yours."
+      },
+      {
+        "id": 24,
+        "polish": "Szukam kluczy. Te nie są moje, tylko jej.",
+        "english": "I’m looking for my keys. These ones are not mine, buthers."
+      },
+      {
+        "id": 25,
+        "polish": "Nie podoba mi się jej projekt, ale podoba mi się jego (projekt).",
+        "english": "I don’t like her project, but I like his."
+      },
+      {
+        "id": 26,
+        "polish": "Nasze dzieci chodzą do tej samej szkoły co wasze.",
+        "english": "Our children go to the same school as yours."
+      },
+      {
+        "id": 27,
+        "polish": "To twój wybór, nie mój.",
+        "english": "It is your choice, not mine."
+      },
+      {
+        "id": 28,
+        "polish": "Nasz interes nie idzie dobrze. A wasz?",
+        "english": "Our business is not going well. What about yours?"
+      },
+      {
+        "id": 29,
+        "polish": "Widzisz tamte miejsca? Czy one są nasze?",
+        "english": "Can you see those seats? Are they ours?"
+      },
+      {
+        "id": 30,
+        "polish": "Czyja (jest) teraz kolej? Moja czy twoja?",
+        "english": "Whose turn is it now? Mine or yours?"
+      },
+      {
+        "id": 31,
+        "polish": "Myślę, że jego pomysł jest trochę dziwny. Myślę, że jej (pomysł) jest lepszy.",
+        "english": "I think his idea is a bit strange. I think that hers is better."
+      },
+      {
+        "id": 32,
+        "polish": "Czy twoi znajomi przychodzą dzisiaj? A jego (znajomi)?",
+        "english": "Are your friends coming today? And his?"
+      },
+      {
+        "id": 33,
+        "polish": "Nasza córka ma już 15 lat. A wasza? A ich?",
+        "english": "Our daughter is already 15. What about yours? And theirs?"
+      },
+      {
+        "id": 34,
+        "polish": "Jego dziadek i mój są braćmi.",
+        "english": "His grandfather and mine are brothers."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch25_comparative_adjectives",
+    "bookNumber": 1,
+    "chapterNumber": 25,
+    "level": "A1",
+    "titlePl": "Stopień wyższy przymiotnika",
+    "titleEn": "Comparative adjectives",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Jego komputer jest szybszy od twojego.",
+        "english": "His computer is faster than yours."
+      },
+      {
+        "id": 2,
+        "polish": "Twój pokój jest ciemniejszy od mojego.",
+        "english": "Your room is darker than mine."
+      },
+      {
+        "id": 3,
+        "polish": "Czy Paryż jest większy od Londynu?",
+        "english": "Is Paris bigger than London?"
+      },
+      {
+        "id": 4,
+        "polish": "To jest trudniejsze, niż się wydaje.",
+        "english": "It’s more difficult than it seems."
+      },
+      {
+        "id": 5,
+        "polish": "Mój zegarek jest droższy od twojego.",
+        "english": "My watch is more expensive than yours."
+      },
+      {
+        "id": 6,
+        "polish": "Twój jest tańszy od mojego.",
+        "english": "Yours is cheaper than mine."
+      },
+      {
+        "id": 7,
+        "polish": "To jest prostsze, niż myślisz.",
+        "english": "It’s easier than you think."
+      },
+      {
+        "id": 8,
+        "polish": "Dziś jest bardziej słonecznie niż wczoraj.",
+        "english": "It’s sunnier today than yesterday."
+      },
+      {
+        "id": 9,
+        "polish": "Laptopy są lepsze i lżejsze od komputerów stacjonarnych.",
+        "english": "Laptops are better and lighter than desktop computers."
+      },
+      {
+        "id": 10,
+        "polish": "Ten film jest gorszy od poprzedniego.",
+        "english": "This movie is worse than the previous one."
+      },
+      {
+        "id": 11,
+        "polish": "Jesteś wyższy od mojego ojca.",
+        "english": "You’re taller than my father."
+      },
+      {
+        "id": 12,
+        "polish": "Wolę to krzesło, bo jest wygodniejsze.",
+        "english": "I prefer this chair because it’s more comfortable."
+      },
+      {
+        "id": 13,
+        "polish": "Tutaj jest cieplej.",
+        "english": "It’s warmer here."
+      },
+      {
+        "id": 14,
+        "polish": "Podoba mi się ten obrazek, bo jest większy.",
+        "english": "I like this picture because it’s bigger."
+      },
+      {
+        "id": 15,
+        "polish": "Jestem silniejszy od ciebie.",
+        "english": "I’m stronger than you (are)."
+      },
+      {
+        "id": 16,
+        "polish": "Nie jestem bogatszy od ciebie.",
+        "english": "I’m not richer than you (are)."
+      },
+      {
+        "id": 17,
+        "polish": "Warzywa są tańsze i zdrowsze od mięsa.",
+        "english": "Vegetables are cheaper and healthier than meat."
+      },
+      {
+        "id": 18,
+        "polish": "Moje włosy są dłuższe od twoich.",
+        "english": "My hair is longer than yours."
+      },
+      {
+        "id": 19,
+        "polish": "Hiszpania jest bardziej gorąca niż Anglia.",
+        "english": "Spain is hotter than England."
+      },
+      {
+        "id": 20,
+        "polish": "Maria jest starsza od swojego brata.",
+        "english": "Maria is older than her brother."
+      },
+      {
+        "id": 21,
+        "polish": "Moja walizka jest cięższa od twojej.",
+        "english": "My suitcase is heavier than yours."
+      },
+      {
+        "id": 22,
+        "polish": "Czy jesteś starszy od swojej siostry?",
+        "english": "Are you older than your sister?"
+      },
+      {
+        "id": 23,
+        "polish": "Dzisiaj jest zimniej niż wczoraj.",
+        "english": "It’s colder today than (it was) yesterday."
+      },
+      {
+        "id": 24,
+        "polish": "Czy chiński jest trudniejszy od japońskiego?",
+        "english": "Is Chinese more difficult than Japanese?"
+      },
+      {
+        "id": 25,
+        "polish": "Pociągi są szybsze od autobusów.",
+        "english": "Trains are faster than buses."
+      },
+      {
+        "id": 26,
+        "polish": "Nil jest dłuższy od Wisły.",
+        "english": "The Nile is longer than the Vistula."
+      },
+      {
+        "id": 27,
+        "polish": "Która książka jest ciekawsza / bardziej interesująca?",
+        "english": "Which book is more interesting?"
+      },
+      {
+        "id": 28,
+        "polish": "Który film jest zabawniejszy?",
+        "english": "Which film is funnier?"
+      },
+      {
+        "id": 29,
+        "polish": "Mój pomysł jest lepszy od jego (pomysłu).",
+        "english": "My idea is better than his."
+      },
+      {
+        "id": 30,
+        "polish": "Sytuacja jest gorsza, niż myślicie.",
+        "english": "The situation is worse than you think."
+      },
+      {
+        "id": 31,
+        "polish": "Chodźmy do kina. Jest bliżej niż teatr.",
+        "english": "Let’s go to the cinema. It’s closer than the theatre."
+      },
+      {
+        "id": 32,
+        "polish": "W niedzielę chodzimy spać wcześniej niż w sobotę.",
+        "english": "On Sunday we go to bed earlier than on Saturday."
+      },
+      {
+        "id": 33,
+        "polish": "Ten hotel jest tańszy od tamtego, ale jest dalej od centrum miasta.",
+        "english": "This hotel is cheaper than that one, but it’s furtherfrom the city centre."
+      },
+      {
+        "id": 34,
+        "polish": "Więcej informacji (dosł. dalsze informa- cje) możesz znaleźć na naszej stronie internetowej.",
+        "english": "You can find further information on our website."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch26_adverbs",
+    "bookNumber": 1,
+    "chapterNumber": 26,
+    "level": "A1",
+    "titlePl": "Przysłówki",
+    "titleEn": "Adverbs",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Pięknie śpiewasz.",
+        "english": "You sing beautifully."
+      },
+      {
+        "id": 2,
+        "polish": "Musimy szybko skończyć ten raport.",
+        "english": "We have to finish this report quickly."
+      },
+      {
+        "id": 3,
+        "polish": "Oni jeżdżą bardzo niebezpiecznie.",
+        "english": "They drive very dangerously."
+      },
+      {
+        "id": 4,
+        "polish": "– Bardzo dobrze mówisz po angielsku. – Poważnie? (Serio?)",
+        "english": "– You speak English very well. – Seriously?"
+      },
+      {
+        "id": 5,
+        "polish": "Dzieci ładnie się bawią.",
+        "english": "The children are playing nicely."
+      },
+      {
+        "id": 6,
+        "polish": "On zawsze odpowiada na moje pytania ze złością.",
+        "english": "He always answers my questions angrily."
+      },
+      {
+        "id": 7,
+        "polish": "Czekaj cierpliwie. On już idzie.",
+        "english": "Wait patiently. He’s coming."
+      },
+      {
+        "id": 8,
+        "polish": "Dzisiaj grają bardzo źle.",
+        "english": "Today they are playing very badly."
+      },
+      {
+        "id": 9,
+        "polish": "Poproś uprzejmie/grzecznie.",
+        "english": "Ask politely."
+      },
+      {
+        "id": 10,
+        "polish": "Ona perfekcyjnie mówi po hiszpańsku i ludzie myślą, żejest z Hiszpanii.",
+        "english": "She speaks Spanish perfectly, and people think that she’s from Spain."
+      },
+      {
+        "id": 11,
+        "polish": "Nasz nauczyciel mówi wyraźnie i bardzo dobrze wszystkowyjaśnia.",
+        "english": "Our teacher speaks clearly and explains everything very well."
+      },
+      {
+        "id": 12,
+        "polish": "On znowu musi nagle wyjść.",
+        "english": "He has to leave suddenly again."
+      },
+      {
+        "id": 13,
+        "polish": "Ich córka pięknie maluje.",
+        "english": "Their daughter paints beautifully."
+      },
+      {
+        "id": 14,
+        "polish": "Ona dobrze uczy.",
+        "english": "She teaches well."
+      },
+      {
+        "id": 15,
+        "polish": "Okropnie/Niesamowicie mi przykro.",
+        "english": "I am terribly sorry."
+      },
+      {
+        "id": 16,
+        "polish": "Moje dzieci bez trudu zdają wszystkie egzaminy.",
+        "english": "My children pass all their exams easily."
+      },
+      {
+        "id": 17,
+        "polish": "Nie możesz śpiewać głośno, bo dzieci śpią.",
+        "english": "You can’t sing loudly because the children are sleeping."
+      },
+      {
+        "id": 18,
+        "polish": "Jestem całkowicie pewna.",
+        "english": "I am completely sure."
+      },
+      {
+        "id": 19,
+        "polish": "Teraz czuję się lepiej.",
+        "english": "I feel better now."
+      },
+      {
+        "id": 20,
+        "polish": "Czy może pan mówić wolniej?",
+        "english": "Can you speak more slowly, please?"
+      },
+      {
+        "id": 21,
+        "polish": "Czy możesz jechać szybciej? Jestem spóźniony.",
+        "english": "Can you drive faster? I’m late."
+      },
+      {
+        "id": 22,
+        "polish": "Mówisz po angielsku lepiej niż Tom.",
+        "english": "You speak English better than Tom."
+      },
+      {
+        "id": 23,
+        "polish": "To jest absolutnie fantastyczne.",
+        "english": "This is absolutely fantastic."
+      },
+      {
+        "id": 24,
+        "polish": "Musimy pilnie rozwiązać ten problem.",
+        "english": "We need to solve this problem urgently."
+      },
+      {
+        "id": 25,
+        "polish": "– Sam zachowuje się dziś trochę lepiej. – Masz absolutną rację.",
+        "english": "– Sam is behaving a bit better today. – You are absolutely right."
+      },
+      {
+        "id": 26,
+        "polish": "On naprawdę cię lubi. / Ty naprawdę mu się podobasz.",
+        "english": "He really likes you."
+      },
+      {
+        "id": 27,
+        "polish": "Ta książka jest szczególnie interesująca.",
+        "english": "This book is especially interesting."
+      },
+      {
+        "id": 28,
+        "polish": "Całkowicie się zgadzam. Zupełnie / W ogóle się nie zgadzam.",
+        "english": "I completely agree. I completely disagree."
+      },
+      {
+        "id": 29,
+        "polish": "Co to dokładnie znaczy?",
+        "english": "What exactly does it mean?"
+      },
+      {
+        "id": 30,
+        "polish": "Jesteś wcześnie. Jeszcze nie jestem gotowa.",
+        "english": "You are early. I’m not ready yet."
+      },
+      {
+        "id": 31,
+        "polish": "– To jest całkiem łatwe, szczerze. – Hmm, nie jestem tego taki pewien.",
+        "english": "– It’s quite easy, honestly. – Well, I’m not so sure."
+      },
+      {
+        "id": 32,
+        "polish": "On ciężko pracuje, ale na szczęście ma wolne weekendy.",
+        "english": "He works hard, but fortunately he has free weekends."
+      },
+      {
+        "id": 33,
+        "polish": "Mówisz za szybko. Ledwie mogę cię zrozumieć.",
+        "english": "You speak too fast. I can hardly understand you."
+      },
+      {
+        "id": 34,
+        "polish": "– To jest właściwie / w zasadzie wszystko. – Naprawdę?",
+        "english": "– This is basically it. – Really?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch27_reflexive_pronouns",
+    "bookNumber": 1,
+    "chapterNumber": 27,
+    "level": "A1",
+    "titlePl": "Zaimki zwrotne",
+    "titleEn": "Reflexive pronouns",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Czasem mówię do siebie, gdy jadę samochodem.",
+        "english": "I sometimes talk to myself when I’m driving."
+      },
+      {
+        "id": 2,
+        "polish": "Przedstaw się, proszę.",
+        "english": "Introduce yourself, please."
+      },
+      {
+        "id": 3,
+        "polish": "Nie poparz się!",
+        "english": "Don’t burn yourself!"
+      },
+      {
+        "id": 4,
+        "polish": "Ona patrzy na siebie w lustrze codziennie rano.",
+        "english": "She looks at herself in the mirror every morning."
+      },
+      {
+        "id": 5,
+        "polish": "On zawsze się zacina, gdy się goli.",
+        "english": "He always cuts himself when he shaves."
+      },
+      {
+        "id": 6,
+        "polish": "Potrafisz sam naprawić swój telefon?",
+        "english": "Can you repair your telephone yourself?"
+      },
+      {
+        "id": 7,
+        "polish": "Ona myśli tylko o sobie.",
+        "english": "She only thinks about herself."
+      },
+      {
+        "id": 8,
+        "polish": "Nie obwiniaj się za ten wypadek.",
+        "english": "Don’t blame yourself for the accident."
+      },
+      {
+        "id": 9,
+        "polish": "Wysyłam ten dokument do siebie, żeby mieć kopię.",
+        "english": "I’m sending this document to myself to have a copy."
+      },
+      {
+        "id": 10,
+        "polish": "Pomalujmy pokój sami.",
+        "english": "Let’s paint the room ourselves."
+      },
+      {
+        "id": 11,
+        "polish": "Oni robią to sami.",
+        "english": "They do it themselves."
+      },
+      {
+        "id": 12,
+        "polish": "On nie może sam sobie pomóc.",
+        "english": "He can’t help himself."
+      },
+      {
+        "id": 13,
+        "polish": "On ciągle mówi o sobie.",
+        "english": "He constantly talks about himself."
+      },
+      {
+        "id": 14,
+        "polish": "Nie bawię się zbyt dobrze.",
+        "english": "I’m not enjoying myself."
+      },
+      {
+        "id": 15,
+        "polish": "Popatrz na siebie.",
+        "english": "Look at yourself."
+      },
+      {
+        "id": 16,
+        "polish": "Daj sobie dwa tygodnie.",
+        "english": "Give yourself two weeks."
+      },
+      {
+        "id": 17,
+        "polish": "Ona jest na siebie zła.",
+        "english": "She is angry with herself."
+      },
+      {
+        "id": 18,
+        "polish": "Oni patrzą na siebie.",
+        "english": "They are looking at each other."
+      },
+      {
+        "id": 19,
+        "polish": "Oni rozmawiają ze sobą.",
+        "english": "They are speaking to each other."
+      },
+      {
+        "id": 20,
+        "polish": "Moja siostra i jego brat nie znają się.",
+        "english": "My sister and his brother don’t know each other."
+      },
+      {
+        "id": 21,
+        "polish": "Kate co miesiąc kupuje sobie parę jeansów.",
+        "english": "Kate buys (herself) a pair of jeans every month."
+      },
+      {
+        "id": 22,
+        "polish": "Sami musimy to przeczytać.",
+        "english": "We have to read it ourselves."
+      },
+      {
+        "id": 23,
+        "polish": "On odrabia pracę domową samodzielnie.",
+        "english": "He does his homework himself."
+      },
+      {
+        "id": 24,
+        "polish": "Zrób sobie kawę, jeśli chcesz.",
+        "english": "Make yourself a coffee if you want."
+      },
+      {
+        "id": 25,
+        "polish": "Zrób to sam.",
+        "english": "Do it yourself."
+      },
+      {
+        "id": 26,
+        "polish": "Bawcie się dobrze.",
+        "english": "Enjoy yourselves."
+      },
+      {
+        "id": 27,
+        "polish": "Poczęstuj się.",
+        "english": "Help yourself."
+      },
+      {
+        "id": 28,
+        "polish": "Oni przygotowują się do podróży.",
+        "english": "They are preparing (themselves) for the journey."
+      },
+      {
+        "id": 29,
+        "polish": "Bądź sobą.",
+        "english": "Be yourself."
+      },
+      {
+        "id": 30,
+        "polish": "Mój pies może się obronić sam. A twój? Może się sam obronić?",
+        "english": "My dog can defend itself. And yours? Can it defend itself?"
+      },
+      {
+        "id": 31,
+        "polish": "On nie jest sobą, gdy jest z nią.",
+        "english": "He is not himself when he is with her."
+      },
+      {
+        "id": 32,
+        "polish": "Nie mów im. Chcę sam im powiedzieć.",
+        "english": "Don’t tell them. I want to tell them myself."
+      },
+      {
+        "id": 33,
+        "polish": "Musisz się kontrolować.",
+        "english": "You must control yourself."
+      },
+      {
+        "id": 34,
+        "polish": "Zróbmy to sami.",
+        "english": "Let’s do it ourselves."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch28_articles",
+    "bookNumber": 1,
+    "chapterNumber": 28,
+    "level": "A1",
+    "titlePl": "Przedimki",
+    "titleEn": "Articles",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Mamy problem.",
+        "english": "We have a problem."
+      },
+      {
+        "id": 2,
+        "polish": "(Ten) problem jest bardzo poważny.",
+        "english": "The problem is very serious."
+      },
+      {
+        "id": 3,
+        "polish": "Moi rodzice mają samochód.",
+        "english": "My parents have a car."
+      },
+      {
+        "id": 4,
+        "polish": "(Ten) samochód jest nowy i wygodny.",
+        "english": "The car is new and comfortable."
+      },
+      {
+        "id": 5,
+        "polish": "Jej mąż pracuje w (jakimś) biurze.",
+        "english": "Her husband works in an office."
+      },
+      {
+        "id": 6,
+        "polish": "W biurze jest bardzo gorąco. Otwórz okno.",
+        "english": "It’s very hot in the office. Open the window."
+      },
+      {
+        "id": 7,
+        "polish": "Czy znasz jakąś dobrą księgarnię?",
+        "english": "Do you know a good bookshop?"
+      },
+      {
+        "id": 8,
+        "polish": "Kupmy mu prezent w księgarni za rogiem.",
+        "english": "Let’s buy a gift for him in the bookshop round the corner."
+      },
+      {
+        "id": 9,
+        "polish": "Oni mieszkają w dużym domu.",
+        "english": "They live in a big house."
+      },
+      {
+        "id": 10,
+        "polish": "Londyn to piękne miasto. / Londyn jest pięknym miastem.",
+        "english": "London is a beautiful city."
+      },
+      {
+        "id": 11,
+        "polish": "Słyszę dziwny dźwięk. Ty też go słyszysz?",
+        "english": "I can hear a strange noise. Can you hear it, too?"
+      },
+      {
+        "id": 12,
+        "polish": "To świetny pomysł.",
+        "english": "That’s a great idea."
+      },
+      {
+        "id": 13,
+        "polish": "Chcę kupić niebieską koszulę i czarne spodnie.",
+        "english": "I want to buy a blue shirt and black trousers."
+      },
+      {
+        "id": 14,
+        "polish": "– Gdzie jesteś? – Jestem w salonie.",
+        "english": "– Where are you? – I’m in the living room."
+      },
+      {
+        "id": 15,
+        "polish": "Madryt jest stolicą Hiszpanii.",
+        "english": "Madrid is the capital of Spain."
+      },
+      {
+        "id": 16,
+        "polish": "Chcę obejrzeć (jakiś) film.",
+        "english": "I want to watch a film tonight."
+      },
+      {
+        "id": 17,
+        "polish": "To jest (ten) film, który chcę obejrzeć.",
+        "english": "This is the film that I want to watch."
+      },
+      {
+        "id": 18,
+        "polish": "Chcę kupić jakieś buty.",
+        "english": "I want to buy some shoes."
+      },
+      {
+        "id": 19,
+        "polish": "Nie podobają mi się buty, które masz na sobie.",
+        "english": "I don’t like the shoes that you are wearing."
+      },
+      {
+        "id": 20,
+        "polish": "Widzę na ulicy (jednego) mężczyznę i kilka kobiet.",
+        "english": "I can see a man and some women in the street."
+      },
+      {
+        "id": 21,
+        "polish": "Rozmawiają z policjantem.",
+        "english": "They are talking to a policeman."
+      },
+      {
+        "id": 22,
+        "polish": "Policjant coś zapisuje.",
+        "english": "The policeman is writing something down."
+      },
+      {
+        "id": 23,
+        "polish": "Mam (pewien) pomysł.",
+        "english": "I have an idea."
+      },
+      {
+        "id": 24,
+        "polish": "Czy mogę prosić lampkę wina?",
+        "english": "Can I have a glass of wine?"
+      },
+      {
+        "id": 25,
+        "polish": "On ma mieszkanie w centrum miasta i dwa domy na obrzeżach miasta.",
+        "english": "He has a flat in the city centre and two houses in thesuburbs."
+      },
+      {
+        "id": 26,
+        "polish": "Poczekaj chwilę. Idę do łazienki.",
+        "english": "Wait a moment. I’m going to the toilet."
+      },
+      {
+        "id": 27,
+        "polish": "John jest nauczycielem, a jego żona jest lekarzem.",
+        "english": "John is a teacher and his wife is a doctor."
+      },
+      {
+        "id": 28,
+        "polish": "Gdzie jest nauczyciel?",
+        "english": "Where’s the teacher?"
+      },
+      {
+        "id": 29,
+        "polish": "Za rogiem jest supermarket i kilka restauracji.",
+        "english": "There’s a supermarket and some restaurants (a)round the corner."
+      },
+      {
+        "id": 30,
+        "polish": "Idę do supermarketu.",
+        "english": "I’m going to the supermarket."
+      },
+      {
+        "id": 31,
+        "polish": "To jest dobre pytanie.",
+        "english": "That’s a good question."
+      },
+      {
+        "id": 32,
+        "polish": "W kuchni jest lodówka.",
+        "english": "There’s a fridge in the kitchen."
+      },
+      {
+        "id": 33,
+        "polish": "W lodówce są jajka i trochę mleka.",
+        "english": "There are eggs and some milk in the fridge."
+      },
+      {
+        "id": 34,
+        "polish": "Ile kosztuje (jakaś, jakakolwiek) gra komputerowa?",
+        "english": "How much is a computer game?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch29_to_be_going_to_do_something_konstrukcja_to_be_going_to_do_sth",
+    "bookNumber": 1,
+    "chapterNumber": 29,
+    "level": "A1",
+    "titlePl": "wyrażanie zamiaru",
+    "titleEn": "To be going to do something — Konstrukcja to be going to do sth",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "– Gdzie idziesz? – Idę do kuchni.",
+        "english": "– Where are you going? – I am going to the kitchen."
+      },
+      {
+        "id": 2,
+        "polish": "– Będziesz robić kawę? / Zamierzasz robić kawę? – Tak.",
+        "english": "– Are you going to make coffee? – Yes, I am."
+      },
+      {
+        "id": 3,
+        "polish": "– Możesz zrobić jedną dla mnie? – Oczywiście, że tak.",
+        "english": "– Can you make one for me? – Of course I can."
+      },
+      {
+        "id": 4,
+        "polish": "– Urządzasz przyjęcie dziś wieczorem? – Ja nie, ale Maria tak.",
+        "english": "– Are you going to have a party tonight? – I am not, but Maria is."
+      },
+      {
+        "id": 5,
+        "polish": "– Czy ona zamierza mnie zaprosić? – Nie wiem, zapytaj ją.",
+        "english": "– Is she going to invite me? – I don’t know, ask her."
+      },
+      {
+        "id": 6,
+        "polish": "Zapytam ją więc.",
+        "english": "I’m going to ask her then."
+      },
+      {
+        "id": 7,
+        "polish": "– Czy Jack będzie na tym przyjęciu? – Raczej nie.",
+        "english": "– Is Jack going to be at the party? – Rather not."
+      },
+      {
+        "id": 8,
+        "polish": "Zamierzam kupić sobie nowy aparat.",
+        "english": "I’m going to buy a new camera."
+      },
+      {
+        "id": 9,
+        "polish": "– Który zamierzasz kupić? – Nie mogę się zdecydować.",
+        "english": "– Which one are you going to buy? – I can’t decide."
+      },
+      {
+        "id": 10,
+        "polish": "Mamy zamiar iść na mecz piłki nożnej.",
+        "english": "We are going to go to a football match."
+      },
+      {
+        "id": 11,
+        "polish": "Zamierzacie wziąć ich ze sobą?",
+        "english": "Are you going to take them with you?"
+      },
+      {
+        "id": 12,
+        "polish": "Jeśli nie idziesz na przyjęcie, chodź z nami.",
+        "english": "If you’re not going to the party, come with us."
+      },
+      {
+        "id": 13,
+        "polish": "Zamierzam tu zostać trochę dłużej.",
+        "english": "I’m going to stay here a bit longer."
+      },
+      {
+        "id": 14,
+        "polish": "On też będzie tu do późna.",
+        "english": "He is going to be here until late, too."
+      },
+      {
+        "id": 15,
+        "polish": "Nie zamierzam tu spać.",
+        "english": "I’m not going to sleep here."
+      },
+      {
+        "id": 16,
+        "polish": "Więc o której masz zamiar wyjść?",
+        "english": "So what time are you going to leave?"
+      },
+      {
+        "id": 17,
+        "polish": "Mamy spotkanie o siódmej. Zamierzam wyjść po spotkaniu.",
+        "english": "We have a meeting at seven. I’m going to leave after the meeting."
+      },
+      {
+        "id": 18,
+        "polish": "Niebawem skończymy. / Już za chwilę będziemy kończyć.",
+        "english": "We’re going to finish in a moment."
+      },
+      {
+        "id": 19,
+        "polish": "On nie dostanie awansu.",
+        "english": "He is not going to get a promotion."
+      },
+      {
+        "id": 20,
+        "polish": "Czy zamierzasz zmienić pracę?",
+        "english": "Are you going to change your job?"
+      },
+      {
+        "id": 21,
+        "polish": "Zamierzam ciężko pracować.",
+        "english": "I’m going to work hard."
+      },
+      {
+        "id": 22,
+        "polish": "Zamierzam zrobić sobie przerwę. / Zrobię sobie przerwę.",
+        "english": "I’m going to have/take a break."
+      },
+      {
+        "id": 23,
+        "polish": "(My) nie mamy zamiaru się poddać.",
+        "english": "We’re not going to give up."
+      },
+      {
+        "id": 24,
+        "polish": "Zamierzasz wyjść tak ubrany?",
+        "english": "Are you going to go out dressed like that?"
+      },
+      {
+        "id": 25,
+        "polish": "Nie zamierzam wychodzić (na zewnątrz), bo będzie padać.",
+        "english": "I’m not going to go out because it’s going to rain."
+      },
+      {
+        "id": 26,
+        "polish": "Jutro ma być słonecznie.",
+        "english": "It’s going to be sunny tomorrow."
+      },
+      {
+        "id": 27,
+        "polish": "Ona jest w ciąży. Będzie mieć dziecko.",
+        "english": "She’s pregnant. She’s going to have a baby."
+      },
+      {
+        "id": 28,
+        "polish": "Patrz! On zaraz spadnie.",
+        "english": "Look! He’s going to fall down."
+      },
+      {
+        "id": 29,
+        "polish": "To będzie trudne.",
+        "english": "It’s going to be difficult."
+      },
+      {
+        "id": 30,
+        "polish": "Posłuchaj mnie uważnie. Nie mam zamiaru powtarzać pytania.",
+        "english": "Listen to me carefully. I’m not going to repeat my question."
+      },
+      {
+        "id": 31,
+        "polish": "Czy oni mają zamiar coś z tym zrobić?",
+        "english": "Are they going to do anything about it?"
+      },
+      {
+        "id": 32,
+        "polish": "Czy oni mają zamiar iść z nami na koncert, czy nie?",
+        "english": "Are they going to go to the concert with us or not?"
+      },
+      {
+        "id": 33,
+        "polish": "Spróbuję jeszcze raz. Trzymaj kciuki.",
+        "english": "I’m going to try again. Keep your fingers crossed."
+      },
+      {
+        "id": 34,
+        "polish": "Kiedy macie zamiar wrócić?",
+        "english": "When are you going to come back?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch30_asking_questions",
+    "bookNumber": 1,
+    "chapterNumber": 30,
+    "level": "A1",
+    "titlePl": "Zadawanie pytań",
+    "titleEn": "Asking questions",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Jesteś zajęty? Czy Peter też jest zajęty?",
+        "english": "Are you busy? Is Peter busy too?"
+      },
+      {
+        "id": 2,
+        "polish": "Czy jestem starszy od ciebie?",
+        "english": "Am I older than you?"
+      },
+      {
+        "id": 3,
+        "polish": "Potrzebujesz mnie? A on? Czy on mnie potrzebuje?",
+        "english": "Do you need me? What about him? Does he need me?"
+      },
+      {
+        "id": 4,
+        "polish": "Czy oni często tutaj przychodzą? Czy ona przychodzi z nimi?",
+        "english": "Do they often come here? Does she come with them?"
+      },
+      {
+        "id": 5,
+        "polish": "Czy oni mieszkają razem? Czy są szczęśliwi?",
+        "english": "Do they live together? Are they happy?"
+      },
+      {
+        "id": 6,
+        "polish": "Ile masz lat? Masz 22 lata. Mam rację?",
+        "english": "How old are you? You are 22. Am I right?"
+      },
+      {
+        "id": 7,
+        "polish": "Czy oni dzisiaj przychodzą? O której przychodzą?",
+        "english": "Are they coming tonight? What time are they coming?"
+      },
+      {
+        "id": 8,
+        "polish": "Czy twój brat wciąż szuka pracy?",
+        "english": "Is your brother still looking for a job?"
+      },
+      {
+        "id": 9,
+        "polish": "Czy twoi znajomi na nas czekają?",
+        "english": "Are your friends waiting for us?"
+      },
+      {
+        "id": 10,
+        "polish": "Mówisz do mnie?",
+        "english": "Are you talking to me?"
+      },
+      {
+        "id": 11,
+        "polish": "Czy jest tu w pobliżu jakiś szpital?",
+        "english": "Is there a hospital near here?"
+      },
+      {
+        "id": 12,
+        "polish": "Czy są jakieś błędy w mojej pracy?",
+        "english": "Are there any mistakes in my work?"
+      },
+      {
+        "id": 13,
+        "polish": "Ile osób jest w poczekalni?",
+        "english": "How many people are there in the waiting room?"
+      },
+      {
+        "id": 14,
+        "polish": "Czy możesz potrzymać moją torebkę? Idę do łazienki.",
+        "english": "Can you hold my bag? I’m going to the toilet."
+      },
+      {
+        "id": 15,
+        "polish": "Czy twój tata może podpisać ten dokument?",
+        "english": "Can your father sign the document?"
+      },
+      {
+        "id": 16,
+        "polish": "Czy twoi rodzice umieją mówić po angielsku?",
+        "english": "Can your parents speak English?"
+      },
+      {
+        "id": 17,
+        "polish": "Te muffinki wyglądają pysznie. Mogę jedną?",
+        "english": "These muffins look delicious. Can I have one?"
+      },
+      {
+        "id": 18,
+        "polish": "Czy on musi tutaj być?",
+        "english": "Does he have to be here?"
+      },
+      {
+        "id": 19,
+        "polish": "Czy oni muszą rozmawiać tak głośno?",
+        "english": "Do they have to talk so loudly?"
+      },
+      {
+        "id": 20,
+        "polish": "Kiedy wrócisz?",
+        "english": "When are you going to come back?"
+      },
+      {
+        "id": 21,
+        "polish": "Ile dni tu zostaniesz? / Ile dni masz zamiar tutaj zostać?",
+        "english": "How many days are you going to stay here?"
+      },
+      {
+        "id": 22,
+        "polish": "Jak mogę się dostać na stację kolejową?",
+        "english": "How can I get to the train station?"
+      },
+      {
+        "id": 23,
+        "polish": "Gdzie twoi rodzice chcą spędzić swoją rocznicę ślubu?",
+        "english": "Where do your parents want to spend their wedding anniversary?"
+      },
+      {
+        "id": 24,
+        "polish": "Czy mają jakieś plany?",
+        "english": "Do they have any plans?"
+      },
+      {
+        "id": 25,
+        "polish": "Kiedy jedziesz do Londynu?",
+        "english": "When are you going to London?"
+      },
+      {
+        "id": 26,
+        "polish": "Kiedy on wraca?",
+        "english": "When is he coming back?"
+      },
+      {
+        "id": 27,
+        "polish": "Kogo chcesz zaprosić na imprezę urodzinową?",
+        "english": "Who do you want to invite to your birthday party?"
+      },
+      {
+        "id": 28,
+        "polish": "Jak masz zamiar ich poinformować?",
+        "english": "How are you going to inform them?"
+      },
+      {
+        "id": 29,
+        "polish": "Dlaczego to jest takie trudne?",
+        "english": "Why is it so difficult?"
+      },
+      {
+        "id": 30,
+        "polish": "Którą książkę wolisz: tę czy tamtą?",
+        "english": "Which book do you prefer: this one or that one?"
+      },
+      {
+        "id": 31,
+        "polish": "Co możesz zrobić, żeby poprawić swój angielski?",
+        "english": "What can you do to improve your English?"
+      },
+      {
+        "id": 32,
+        "polish": "Jak mogę ci pomóc? / W czym mogę pomóc?",
+        "english": "How can I help you?"
+      },
+      {
+        "id": 33,
+        "polish": "Dlaczego musisz wyjść tak wcześnie? Czy to jest jedynypociąg do Birmingham?",
+        "english": "Why do you have to leave so early? Is it the only train to Birmingham?"
+      },
+      {
+        "id": 34,
+        "polish": "Kiedy ponownie nas odwiedzisz? Wiesz już?",
+        "english": "When are you going to visit us again? Do you know yet?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch31_negative_questions",
+    "bookNumber": 1,
+    "chapterNumber": 31,
+    "level": "A1",
+    "titlePl": "Pytania przeczące",
+    "titleEn": "Negative questions",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Dlaczego Marii nie ma w pracy?",
+        "english": "Why isn’t Mary at work?"
+      },
+      {
+        "id": 2,
+        "polish": "Nie ma jej w domu?",
+        "english": "Isn’t she at home?"
+      },
+      {
+        "id": 3,
+        "polish": "Czyż ten obraz nie jest piękny?",
+        "english": "Isn’t this picture beautiful?"
+      },
+      {
+        "id": 4,
+        "polish": "Dlaczego oni nie przychodzą?",
+        "english": "Why aren’t they coming?"
+      },
+      {
+        "id": 5,
+        "polish": "Dlaczego nie ma tu drukarki?",
+        "english": "Why isn’t there a printer here?"
+      },
+      {
+        "id": 6,
+        "polish": "Dlaczego do niego nie zadzwonisz?",
+        "english": "Why don’t you call him?"
+      },
+      {
+        "id": 7,
+        "polish": "Dlaczego nie mamy lepszego samochodu?",
+        "english": "Why don’t we have a better car?"
+      },
+      {
+        "id": 8,
+        "polish": "Dlaczego nie bierzesz tego poważnie?",
+        "english": "Why don’t you take it seriously?"
+      },
+      {
+        "id": 9,
+        "polish": "Dlaczego szef nie jest zadowolony?",
+        "english": "Why isn’t the boss happy?"
+      },
+      {
+        "id": 10,
+        "polish": "Dlaczego się nie zgadzasz?",
+        "english": "Why don’t you agree?"
+      },
+      {
+        "id": 11,
+        "polish": "Dlaczego nie jedziesz z nami?",
+        "english": "Why aren’t you going with us?"
+      },
+      {
+        "id": 12,
+        "polish": "Dlaczego nie ma tu więcej krzeseł?",
+        "english": "Why aren’t there more chairs here?"
+      },
+      {
+        "id": 13,
+        "polish": "Dlaczego jeszcze nie jesteś gotowy?",
+        "english": "Why aren’t you ready yet?"
+      },
+      {
+        "id": 14,
+        "polish": "Czy on tu nie pracuje?",
+        "english": "Doesn’t he work here?"
+      },
+      {
+        "id": 15,
+        "polish": "Nie ma lotu bezpośredniego?",
+        "english": "Isn’t there a direct flight?"
+      },
+      {
+        "id": 16,
+        "polish": "Nie zamierzasz na nich poczekać?",
+        "english": "Aren’t you going to wait for them?"
+      },
+      {
+        "id": 17,
+        "polish": "Dlaczego ona nam nie pomaga?",
+        "english": "Why isn’t she helping us?"
+      },
+      {
+        "id": 18,
+        "polish": "Dlaczego ich tutaj nie ma?",
+        "english": "Why aren’t they here?"
+      },
+      {
+        "id": 19,
+        "polish": "Czy ta torebka nie jest twoja?",
+        "english": "Isn’t this handbag yours?"
+      },
+      {
+        "id": 20,
+        "polish": "Nie zamierzasz spróbować?",
+        "english": "Aren’t you going to try?"
+      },
+      {
+        "id": 21,
+        "polish": "Czy oni nie mają tutaj klimatyzacji?",
+        "english": "Don’t they have air conditioning here?"
+      },
+      {
+        "id": 22,
+        "polish": "Dlaczego to nie działa?",
+        "english": "Why isn’t it working?"
+      },
+      {
+        "id": 23,
+        "polish": "Nie jesteś zmęczony?",
+        "english": "Aren’t you tired?"
+      },
+      {
+        "id": 24,
+        "polish": "Dlaczego nie ma cię tutaj?",
+        "english": "Why aren’t you here?"
+      },
+      {
+        "id": 25,
+        "polish": "Dlaczego nie możesz przyjść?",
+        "english": "Why can’t you come?"
+      },
+      {
+        "id": 26,
+        "polish": "Dlaczego nie ma tutaj żadnych ludzi?",
+        "english": "Why aren’t there any people here?"
+      },
+      {
+        "id": 27,
+        "polish": "Dlaczego ci się to nie podoba?",
+        "english": "Why don’t you like it?"
+      },
+      {
+        "id": 28,
+        "polish": "Dlaczego z nim nie porozmawiasz?",
+        "english": "Why don’t you talk to him?"
+      },
+      {
+        "id": 29,
+        "polish": "Dlaczego on nie może zadzwonić?",
+        "english": "Why can’t he call?"
+      },
+      {
+        "id": 30,
+        "polish": "Dlaczego nie chcesz sprzedać swojego samochodu?",
+        "english": "Why don’t you want to sell your car?"
+      },
+      {
+        "id": 31,
+        "polish": "– Nie znasz go? – Nie. On jest tu nowy, nie sądzisz?",
+        "english": "– Don’t you know him? – No, I don’t. He’s new here, don’t you think?"
+      },
+      {
+        "id": 32,
+        "polish": "Czy oni nie mają jakiejś wolnej posady?",
+        "english": "Don’t they have a vacancy?"
+      },
+      {
+        "id": 33,
+        "polish": "Czy nie uważasz, że to jest trochę drogie?",
+        "english": "Don’t you think it’s a bit expensive?"
+      },
+      {
+        "id": 34,
+        "polish": "Czy to nie jest trochę za drogie?",
+        "english": "Isn’t it a bit too expensive?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch32_gerund_infinitive",
+    "bookNumber": 1,
+    "chapterNumber": 32,
+    "level": "A1",
+    "titlePl": "Czasownik z końcówką -ing oraz bezokolicznik",
+    "titleEn": "Gerund & infinitive",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Chcę się czegoś napić.",
+        "english": "I want to drink something."
+      },
+      {
+        "id": 2,
+        "polish": "Chcesz kupić nowe mieszkanie?",
+        "english": "Do you want to buy a new flat?"
+      },
+      {
+        "id": 3,
+        "polish": "Chcesz iść do kina?",
+        "english": "Do you want to go to the cinema?"
+      },
+      {
+        "id": 4,
+        "polish": "Piszę, żeby ci powiedzieć, że spotkanie jest o czwartejpo południu.",
+        "english": "I’m writing to tell you that the meeting is at four p. m."
+      },
+      {
+        "id": 5,
+        "polish": "Dzwonię do ciebie, żeby zaprosić cię na imprezę.",
+        "english": "I’m calling you to invite you to the party."
+      },
+      {
+        "id": 6,
+        "polish": "Jestem tutaj, żeby ci pomóc.",
+        "english": "I’m here to help you."
+      },
+      {
+        "id": 7,
+        "polish": "Musisz się nauczyć angielskiego, żeby dostać lepszą pracę.",
+        "english": "You have to learn English to get a better job."
+      },
+      {
+        "id": 8,
+        "polish": "Lubisz podróżować?",
+        "english": "Do you like travelling?"
+      },
+      {
+        "id": 9,
+        "polish": "Czy oni lubią pracować z dziećmi?",
+        "english": "Do they like working with children?"
+      },
+      {
+        "id": 10,
+        "polish": "Nie zamierzam z tobą rozmawiać.",
+        "english": "I’m not going to talk to you."
+      },
+      {
+        "id": 11,
+        "polish": "Palenie jest niezdrowe.",
+        "english": "Smoking is unhealthy."
+      },
+      {
+        "id": 12,
+        "polish": "Zdrowe odżywianie się jest bardzo ważne.",
+        "english": "Healthy eating is very important."
+      },
+      {
+        "id": 13,
+        "polish": "Uwielbiam oglądać horrory.",
+        "english": "I love watching horror movies."
+      },
+      {
+        "id": 14,
+        "polish": "Musisz już iść?",
+        "english": "Do you have to go now? / Do you need to go now?"
+      },
+      {
+        "id": 15,
+        "polish": "Ona nie musi jechać, jeśli nie chce.",
+        "english": "She doesn’t have to go if she doesn’t want to."
+      },
+      {
+        "id": 16,
+        "polish": "On jest tutaj, żeby nam pokazać (ten) nowy system.",
+        "english": "He’s here to show us the new system."
+      },
+      {
+        "id": 17,
+        "polish": "Nienawidzę prowadzić.",
+        "english": "I hate driving."
+      },
+      {
+        "id": 18,
+        "polish": "Moja babcia lubi oglądać telewizję.",
+        "english": "My grandmother likes watching TV."
+      },
+      {
+        "id": 19,
+        "polish": "Nie chcę ci przeszkadzać.",
+        "english": "I don’t want to disturb you."
+      },
+      {
+        "id": 20,
+        "polish": "Piszę do pana, żeby podziękować za spotkanie.",
+        "english": "I’m writing to you to thank you for the meeting."
+      },
+      {
+        "id": 21,
+        "polish": "Dlaczego do niego dzwonisz?",
+        "english": "Why are you calling him?"
+      },
+      {
+        "id": 22,
+        "polish": "Żeby mu coś powiedzieć.",
+        "english": "To tell him something."
+      },
+      {
+        "id": 23,
+        "polish": "Uczenie się języków jest bardzo ważne w dzisiejszych czasach.",
+        "english": "Learning languages is very important these days."
+      },
+      {
+        "id": 24,
+        "polish": "– Muszę już iść. – Dlaczego?",
+        "english": "– I have to go now. – Why?"
+      },
+      {
+        "id": 25,
+        "polish": "Chcę odwiedzić moją siostrę.",
+        "english": "I want to visit my sister."
+      },
+      {
+        "id": 26,
+        "polish": "Po co?",
+        "english": "What for?"
+      },
+      {
+        "id": 27,
+        "polish": "Lubię ją odwiedzać.",
+        "english": "I like visiting her."
+      },
+      {
+        "id": 28,
+        "polish": "Idę do sklepu, żeby kupić coś do jedzenia.",
+        "english": "I’m going to the shop to buy something to eat."
+      },
+      {
+        "id": 29,
+        "polish": "Mój mąż uwielbia chodzić na zakupy.",
+        "english": "My husband loves going shopping."
+      },
+      {
+        "id": 30,
+        "polish": "Muszę zmienić koło. Jest przebite. Nie mam czasu robićtego sam.",
+        "english": "I need/have to change the wheel. It’s flat. I don’t have time to do it myself."
+      },
+      {
+        "id": 31,
+        "polish": "Wiesz, jak to zrobić?",
+        "english": "Do you know how to do it?"
+      },
+      {
+        "id": 32,
+        "polish": "Nie wiem, co robić ani dokąd pójść.",
+        "english": "I don’t know what to do or where to go."
+      },
+      {
+        "id": 33,
+        "polish": "Nie mam pojęcia, co powiedzieć.",
+        "english": "I have no idea what to say."
+      },
+      {
+        "id": 34,
+        "polish": "Co mogę zrobić, żeby ci pomóc?",
+        "english": "What can I do to help you?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch33_conjunctions",
+    "bookNumber": 1,
+    "chapterNumber": 33,
+    "level": "A1",
+    "titlePl": "Spójniki",
+    "titleEn": "Conjunctions",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Czy mogę prosić rybę z frytkami (dosł. rybę i frytki)?",
+        "english": "Can I have fish and chips?"
+      },
+      {
+        "id": 2,
+        "polish": "On jest wysoki i przystojny.",
+        "english": "He’s tall and handsome."
+      },
+      {
+        "id": 3,
+        "polish": "Wolisz jeździć samochodem czy autobusem?",
+        "english": "Do you prefer to go by car or by bus?"
+      },
+      {
+        "id": 4,
+        "polish": "A ty?",
+        "english": "And you?"
+      },
+      {
+        "id": 5,
+        "polish": "Boli mnie głowa i chcę zostać w domu.",
+        "english": "I have a headache, and I want to stay at home."
+      },
+      {
+        "id": 6,
+        "polish": "Moja rodzina ma się dobrze. A twoja?",
+        "english": "My family is fine. And yours?"
+      },
+      {
+        "id": 7,
+        "polish": "– Czy to jest szare, czy niebieskie? – Trudno powiedzieć.",
+        "english": "– Is it grey or blue? – It’s hard to say."
+      },
+      {
+        "id": 8,
+        "polish": "Robię zakupy w supermarkecie za rogiem albo na rynku.",
+        "english": "I do the shopping in the supermarket round the corner or in the marketplace."
+      },
+      {
+        "id": 9,
+        "polish": "Mieszkasz tutaj czy jesteś tu na wakacjach?",
+        "english": "Do you live here, or are you here on holiday?"
+      },
+      {
+        "id": 10,
+        "polish": "Nie ma w pobliżu apteki, ale możemy pojechać do centrum.",
+        "english": "There isn’t any chemist’s near here, but we can go tothe centre."
+      },
+      {
+        "id": 11,
+        "polish": "On nie chce tutaj pracować, ale musi.",
+        "english": "He doesn’t want to work here, but he has to."
+      },
+      {
+        "id": 12,
+        "polish": "Możesz tutaj zostać, ale niczego nie dotykaj.",
+        "english": "You can stay here, but don’t touch anything."
+      },
+      {
+        "id": 13,
+        "polish": "Chcę ci pomóc, ale nie mogę.",
+        "english": "I want to help you, but I can’t."
+      },
+      {
+        "id": 14,
+        "polish": "Chcemy kupić mieszkanie, ale nie możemy zdecydować które.",
+        "english": "We want to buy a flat, but we can’t decide which one."
+      },
+      {
+        "id": 15,
+        "polish": "Nie idę dzisiaj do pracy, bo jestem chory.",
+        "english": "I’m not going to work today because I’m ill."
+      },
+      {
+        "id": 16,
+        "polish": "Jestem zmartwiony, bo mój syn ma złe oceny.",
+        "english": "I’m worried because my son has bad marks."
+      },
+      {
+        "id": 17,
+        "polish": "Idę do łóżka, bo jestem zmęczony.",
+        "english": "I’m going to bed because I’m tired."
+      },
+      {
+        "id": 18,
+        "polish": "Nie mogę z tobą iść, bo jestem zajęty.",
+        "english": "I can’t go with you because I’m busy."
+      },
+      {
+        "id": 19,
+        "polish": "Jednak John może z tobą pójść.",
+        "english": "However, John can go with you."
+      },
+      {
+        "id": 20,
+        "polish": "Zwrócę/Oddam tę sukienkę, bo mi się nie podoba.",
+        "english": "I’m going to return this dress because I don’t like it."
+      },
+      {
+        "id": 21,
+        "polish": "Chociaż / Mimo że to nie jest drogie, nie kupię tego.",
+        "english": "Although it isn’t expensive, I’m not going to buy it."
+      },
+      {
+        "id": 22,
+        "polish": "Chociaż / Mimo że pogoda jest ładna, nie mamy ochoty wychodzić.",
+        "english": "Although the weather is good, we don’t feel like goingout."
+      },
+      {
+        "id": 23,
+        "polish": "Ten komputer jest nowy, więc nie mam pojęcia, dlaczegonie działa.",
+        "english": "This computer is new, so I have no idea why it’s not working."
+      },
+      {
+        "id": 24,
+        "polish": "Co więcej, drukarka jest zepsuta.",
+        "english": "What’s more, the printer is broken."
+      },
+      {
+        "id": 25,
+        "polish": "Jestem teraz na spotkaniu. Dlatego nie mogę rozmawiać.",
+        "english": "I’m in a meeting now. That’s why I can’t talk."
+      },
+      {
+        "id": 26,
+        "polish": "Co więcej, muszę wyjść za 20 minut.",
+        "english": "What’s more, I have to leave in 20 minutes."
+      },
+      {
+        "id": 27,
+        "polish": "A więc, tutaj pracujesz.",
+        "english": "So, you work here."
+      },
+      {
+        "id": 28,
+        "polish": "Jestem bardzo zmęczony, więc idę do łóżka.",
+        "english": "I’m very tired, so I’m going to bed."
+      },
+      {
+        "id": 29,
+        "polish": "Co więcej, jest bardzo późno.",
+        "english": "What’s more, it’s very late."
+      },
+      {
+        "id": 30,
+        "polish": "Chociaż jest późno, chcę obejrzeć film.",
+        "english": "Although it’s late, I want to watch a movie."
+      },
+      {
+        "id": 31,
+        "polish": "Jest duży ruch (uliczny). Dlatego jeszcze ich nie ma.",
+        "english": "There is a lot of traffic. That’s why, they are not here yet."
+      },
+      {
+        "id": 32,
+        "polish": "Nie ma ich, więc nie możemy zaczynać.",
+        "english": "They are not here, so we can’t start."
+      },
+      {
+        "id": 33,
+        "polish": "Tego lata odwiedzę / mam zamiar odwiedzić moich dziadków, a potem mojego przyjaciela.",
+        "english": "This summer, I’m going to visit my grandparents and then my friend."
+      },
+      {
+        "id": 34,
+        "polish": "Możemy zrobić kolację, a potem obejrzeć film. Co ty nato? / Co myślisz?",
+        "english": "We can make dinner and then watch a film. What do youthink?"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch34_prepositions_part_1",
+    "bookNumber": 1,
+    "chapterNumber": 34,
+    "level": "A1",
+    "titlePl": "Przyimki, część 1",
+    "titleEn": "Prepositions, part 1",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Ta lekcja będzie o przyimkach.",
+        "english": "This lesson is going to be about prepositions."
+      },
+      {
+        "id": 2,
+        "polish": "Po zajęciach zawsze ze sobą rozmawiamy.",
+        "english": "After the class, we always talk to each other."
+      },
+      {
+        "id": 3,
+        "polish": "Wyślij mi swój adres e-mail przed naszymi następnymi zajęciami.",
+        "english": "Send me your e-mail address before our next class."
+      },
+      {
+        "id": 4,
+        "polish": "Ten raport jest o strategiach marketingowych.",
+        "english": "This report is about marketing strategies."
+      },
+      {
+        "id": 5,
+        "polish": "Nie rozmawiaj z nim o tym.",
+        "english": "Don’t talk to him about this."
+      },
+      {
+        "id": 6,
+        "polish": "Ta książka jest o zwierzętach.",
+        "english": "This book is about animals."
+      },
+      {
+        "id": 7,
+        "polish": "Rozmawiamy o sprzedaży mieszkania.",
+        "english": "We’re talking about selling our flat."
+      },
+      {
+        "id": 8,
+        "polish": "Dziś jemy kolację z Marią i Markiem.",
+        "english": "Today, we’re having dinner with Maria and Mark."
+      },
+      {
+        "id": 9,
+        "polish": "Jestem w pracy, ale idę wkrótce do domu.",
+        "english": "I’m at work, but I’m going home soon."
+      },
+      {
+        "id": 10,
+        "polish": "Czy twoja żona jest w domu?",
+        "english": "Is your wife at home?"
+      },
+      {
+        "id": 11,
+        "polish": "Oni przyjeżdżają w poniedziałek.",
+        "english": "They’re coming on Monday."
+      },
+      {
+        "id": 12,
+        "polish": "(My) jedziemy do Londynu we wtorek.",
+        "english": "We’re going to London on Tuesday."
+      },
+      {
+        "id": 13,
+        "polish": "Pogoda w maju jest ładna.",
+        "english": "The weather is good in May."
+      },
+      {
+        "id": 14,
+        "polish": "Jak często jeździsz do Francji?",
+        "english": "How often do you go to France?"
+      },
+      {
+        "id": 15,
+        "polish": "Sklepy są zamknięte w niedzielę.",
+        "english": "Shops are closed on Sunday."
+      },
+      {
+        "id": 16,
+        "polish": "Ten prezent jest dla nas.",
+        "english": "This present/gift is for us."
+      },
+      {
+        "id": 17,
+        "polish": "Martwię się o niego.",
+        "english": "I’m worried about him."
+      },
+      {
+        "id": 18,
+        "polish": "Czy zawsze czytasz kontrakt przed podpisaniem go?",
+        "english": "Do you always read the contract before signing it?"
+      },
+      {
+        "id": 19,
+        "polish": "Po spotkaniu idziemy na kawę.",
+        "english": "After the meeting, we’re going for a coffee."
+      },
+      {
+        "id": 20,
+        "polish": "Przed naszym domem są jacyś ludzie.",
+        "english": "There are some people in front of our house."
+      },
+      {
+        "id": 21,
+        "polish": "Jego restauracja jest obok banku.",
+        "english": "His restaurant is next to the bank."
+      },
+      {
+        "id": 22,
+        "polish": "Poszukaj tego pod łóżkiem.",
+        "english": "Look for it under the bed."
+      },
+      {
+        "id": 23,
+        "polish": "Nad rzeką jest most.",
+        "english": "There’s a bridge over the river."
+      },
+      {
+        "id": 24,
+        "polish": "Pouczę się francuskiego przed wyjazdem do Francji.",
+        "english": "I’m going to study French before going to France."
+      },
+      {
+        "id": 25,
+        "polish": "Przed pójściem spać zwykle biorę prysznic.",
+        "english": "Before going to bed, I usually have a shower."
+      },
+      {
+        "id": 26,
+        "polish": "Co jest na tym obrazku?",
+        "english": "What’s in this picture?"
+      },
+      {
+        "id": 27,
+        "polish": "Jego biuro jest naprzeciwko centrum handlowego.",
+        "english": "His office is opposite the shopping centre."
+      },
+      {
+        "id": 28,
+        "polish": "Za jego domem jest ogród.",
+        "english": "There’s a garden behind his house."
+      },
+      {
+        "id": 29,
+        "polish": "Wychodzę po kolacji.",
+        "english": "I’m going out after dinner."
+      },
+      {
+        "id": 30,
+        "polish": "Porozmawiam z nim o (tym) wypadku.",
+        "english": "I’m going to talk to him about the accident."
+      },
+      {
+        "id": 31,
+        "polish": "Mam problem ze zmianą planu dnia.",
+        "english": "I have a problem with changing the schedule."
+      },
+      {
+        "id": 32,
+        "polish": "Nie mówmy o smutnych rzeczach.",
+        "english": "Let’s not talk about sad things."
+      },
+      {
+        "id": 33,
+        "polish": "Nie martw się o mnie. Mam się dobrze.",
+        "english": "Don’t worry about me. I’m fine."
+      },
+      {
+        "id": 34,
+        "polish": "Możemy schować prezent w szufladzie, pod poduszką albona półce.",
+        "english": "We can hide the gift in the drawer, under the pillow, or on the shelf."
+      }
+    ]
+  },
+  {
+    "id": "g1_ch35_expressions_part_1",
+    "bookNumber": 1,
+    "chapterNumber": 35,
+    "level": "A1",
+    "titlePl": "Wyrażenia, część 1",
+    "titleEn": "Expressions, part 1",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Dziękuję za pomoc. / Dzięki za pomoc.",
+        "english": "Thank you for your help. / Thanks for your help."
+      },
+      {
+        "id": 2,
+        "polish": "Nie ma za co.",
+        "english": "You’re welcome."
+      },
+      {
+        "id": 3,
+        "polish": "Usiądź, proszę.",
+        "english": "Sit down, please."
+      },
+      {
+        "id": 4,
+        "polish": "– Jak się masz? – Dobrze. A ty?",
+        "english": "– How are you? / How are you doing? – I’m fine. And you?"
+      },
+      {
+        "id": 5,
+        "polish": "Jesteś pewien?",
+        "english": "Are you sure?"
+      },
+      {
+        "id": 6,
+        "polish": "Oczywiście. Oczywiście, że nie.",
+        "english": "Of course. Of course not."
+      },
+      {
+        "id": 7,
+        "polish": "Zgadzasz się?",
+        "english": "Do you agree?"
+      },
+      {
+        "id": 8,
+        "polish": "Pewnie.",
+        "english": "Absolutely. / Sure."
+      },
+      {
+        "id": 9,
+        "polish": "Zgadza się!",
+        "english": "That’s right!"
+      },
+      {
+        "id": 10,
+        "polish": "Zamknij się!",
+        "english": "Shut up!"
+      },
+      {
+        "id": 11,
+        "polish": "Dobra robota. / Brawo.",
+        "english": "Well done."
+      },
+      {
+        "id": 12,
+        "polish": "Gratulacje!",
+        "english": "Congratulations!"
+      },
+      {
+        "id": 13,
+        "polish": "Do zobaczenia jutro.",
+        "english": "See you tomorrow."
+      },
+      {
+        "id": 14,
+        "polish": "Powodzenia!",
+        "english": "Good luck!"
+      },
+      {
+        "id": 15,
+        "polish": "Miłego weekendu.",
+        "english": "Have a nice weekend."
+      },
+      {
+        "id": 16,
+        "polish": "Wzajemnie. / Tobie również.",
+        "english": "(The) same to you. / You too."
+      },
+      {
+        "id": 17,
+        "polish": "Na zdrowie!",
+        "english": "Bless you! Cheers!"
+      },
+      {
+        "id": 18,
+        "polish": "Jak to się mówi po angielsku?",
+        "english": "How do you say that in English?"
+      },
+      {
+        "id": 19,
+        "polish": "Śpieszę się.",
+        "english": "I am in a hurry."
+      },
+      {
+        "id": 20,
+        "polish": "Ja też.",
+        "english": "Me too."
+      },
+      {
+        "id": 21,
+        "polish": "Nie jestem głodny.",
+        "english": "I’m not hungry."
+      },
+      {
+        "id": 22,
+        "polish": "Ja też nie.",
+        "english": "Me neither."
+      },
+      {
+        "id": 23,
+        "polish": "Co masz na myśli?",
+        "english": "What do you mean?"
+      },
+      {
+        "id": 24,
+        "polish": "Czy może pan (to) powtórzyć, proszę?",
+        "english": "Can you say that again, please? / Can you repeat that, please?"
+      },
+      {
+        "id": 25,
+        "polish": "Witamy w Warszawie!",
+        "english": "Welcome to Warsaw!"
+      },
+      {
+        "id": 26,
+        "polish": "Pośpiesz się!",
+        "english": "Hurry up!"
+      },
+      {
+        "id": 27,
+        "polish": "Chodźmy!",
+        "english": "Let’s go!"
+      },
+      {
+        "id": 28,
+        "polish": "Mam taką nadzieję.",
+        "english": "I hope so."
+      },
+      {
+        "id": 29,
+        "polish": "Nie wydaje mi się. / Nie sądzę.",
+        "english": "I don’t think so."
+      },
+      {
+        "id": 30,
+        "polish": "Co się dzieje?",
+        "english": "What’s going on?"
+      },
+      {
+        "id": 31,
+        "polish": "Przekaż moje pozdrowienia dla Carol.",
+        "english": "Send my best regards to Carol."
+      },
+      {
+        "id": 32,
+        "polish": "Z przyjemnością.",
+        "english": "With pleasure."
+      },
+      {
+        "id": 33,
+        "polish": "Teraz twoja kolej.",
+        "english": "Now it’s your turn."
+      },
+      {
+        "id": 34,
+        "polish": "Smacznego!",
+        "english": "Enjoy your meal!"
+      }
+    ]
+  },
+  {
+    "id": "g1_ch36_review_test_yourself_powt_rzenie",
+    "bookNumber": 1,
+    "chapterNumber": 36,
+    "level": "A1",
+    "titlePl": "sprawdź się!",
+    "titleEn": "Review — test yourself! — Powtórzenie",
+    "sentences": [
+      {
+        "id": 1,
+        "polish": "Zamierzam to dzisiaj skończyć.",
+        "english": "I’m going to finish it today."
+      },
+      {
+        "id": 2,
+        "polish": "Dlaczego nie jesteś gotowy?",
+        "english": "Why aren’t you ready?"
+      },
+      {
+        "id": 3,
+        "polish": "Ilu uczniów jest w tej grupie?",
+        "english": "How many students are there in this group?"
+      },
+      {
+        "id": 4,
+        "polish": "Nie martw się o to.",
+        "english": "Don’t worry about it."
+      },
+      {
+        "id": 5,
+        "polish": "Przygotowuję się do egzaminu.",
+        "english": "I’m preparing for an exam."
+      },
+      {
+        "id": 6,
+        "polish": "Powodzenia!",
+        "english": "Good luck!"
+      },
+      {
+        "id": 7,
+        "polish": "Ta szkoła jest lepsza od tamtej.",
+        "english": "This school is better than that one."
+      },
+      {
+        "id": 8,
+        "polish": "Ta gra jest ciekawsza.",
+        "english": "This game is more interesting."
+      },
+      {
+        "id": 9,
+        "polish": "Oni muszą tutaj przyjść.",
+        "english": "They have to come here."
+      },
+      {
+        "id": 10,
+        "polish": "Nie umiem pływać.",
+        "english": "I can’t swim."
+      },
+      {
+        "id": 11,
+        "polish": "Nie wolno ci tu parkować.",
+        "english": "You mustn’t park here."
+      },
+      {
+        "id": 12,
+        "polish": "Nie mogę go zrozumieć.",
+        "english": "I can’t understand him."
+      },
+      {
+        "id": 13,
+        "polish": "Musisz się po prostu tego nauczyć.",
+        "english": "You just have to learn it."
+      },
+      {
+        "id": 14,
+        "polish": "Czy możesz mi przynieść tamte dokumenty?",
+        "english": "Can you bring me those documents?"
+      },
+      {
+        "id": 15,
+        "polish": "Co miesiąc piszemy dwa testy.",
+        "english": "Every month, we write two tests."
+      },
+      {
+        "id": 16,
+        "polish": "Nie wysyłamy wielu listów, ale wysyłamy dużo e-maili.",
+        "english": "We don’t send many letters, but we send a lot of e-mails."
+      },
+      {
+        "id": 17,
+        "polish": "Nie ma chętnych.",
+        "english": "There aren’t any volunteers. / There are no volunteers."
+      },
+      {
+        "id": 18,
+        "polish": "Używasz teraz komputera?",
+        "english": "Are you using the computer now?"
+      },
+      {
+        "id": 19,
+        "polish": "Wczorajsza gazeta jest na stole.",
+        "english": "Yesterday’s newspaper is on the table."
+      },
+      {
+        "id": 20,
+        "polish": "Jak często zmieniasz telefon?",
+        "english": "How often do you change your phone?"
+      },
+      {
+        "id": 21,
+        "polish": "Oni dzwonią do siebie codziennie.",
+        "english": "They call each other every day."
+      },
+      {
+        "id": 22,
+        "polish": "Ona chce zmienić pracę.",
+        "english": "She wants to change her job."
+      },
+      {
+        "id": 23,
+        "polish": "Oni często chodzą z nami na drinka.",
+        "english": "They often go for a drink with us."
+      },
+      {
+        "id": 24,
+        "polish": "Czy są jakieś pytania?",
+        "english": "Are there any questions?"
+      },
+      {
+        "id": 25,
+        "polish": "Dlaczego zawsze musimy na ciebie czekać?",
+        "english": "Why do we always have to wait for you?"
+      },
+      {
+        "id": 26,
+        "polish": "Nasze następne spotkanie jest dwunastego grudnia o godzinie piętnastej.",
+        "english": "Our next meeting is on the twelfth of December at three p.m."
+      },
+      {
+        "id": 27,
+        "polish": "Ten rower jest mój, nie ich.",
+        "english": "This bicycle is mine, not theirs."
+      },
+      {
+        "id": 28,
+        "polish": "Te zdjęcia są czarno-białe.",
+        "english": "These photos are black and white."
+      },
+      {
+        "id": 29,
+        "polish": "Tamta marynarka jest fajniejsza od tej.",
+        "english": "That jacket is nicer than this one."
+      },
+      {
+        "id": 30,
+        "polish": "Ona nie jest zadowolona z wyniku.",
+        "english": "She’s not happy with the result."
+      },
+      {
+        "id": 31,
+        "polish": "Nie mam pojęcia, gdzie iść.",
+        "english": "I have no idea where to go."
+      },
+      {
+        "id": 32,
+        "polish": "Ta sofa jest nowa. Jest bardzo wygodna.",
+        "english": "This sofa is new. It’s very comfortable."
+      },
+      {
+        "id": 33,
+        "polish": "Czy twoi znajomi będą oglądać z nami mecz?",
+        "english": "Are your friends going to watch the match with us?"
+      },
+      {
+        "id": 34,
+        "polish": "Rzadko do niej dzwonię, może dwa razy w miesiącu.",
+        "english": "I rarely call her, maybe twice a month."
+      },
+      {
+        "id": 35,
+        "polish": "Nie jesteśmy tu sami. Czy to nie jest oczywiste?",
+        "english": "We aren’t alone here. Isn’t it obvious?"
+      },
+      {
+        "id": 36,
+        "polish": "Tamte maszyny są szybsze od tych.",
+        "english": "Those machines are faster than these ones."
+      },
+      {
+        "id": 37,
+        "polish": "Co to jest?",
+        "english": "What’s this?"
+      },
+      {
+        "id": 38,
+        "polish": "Czyj to jest samochód?",
+        "english": "Whose car is this/it?"
+      },
+      {
+        "id": 39,
+        "polish": "Zaczynam pracę o ósmej, ale zawsze przyjeżdżam do biura dziesięć po ósmej.",
+        "english": "I start work at eight, but I always get to the officeat ten (minutes) past eight."
+      },
+      {
+        "id": 40,
+        "polish": "Ile czasu spędzasz w pracy?",
+        "english": "How much time do you spend at work?"
+      },
+      {
+        "id": 41,
+        "polish": "Dlaczego do mnie dzwonisz?",
+        "english": "Why are you calling me?"
+      },
+      {
+        "id": 42,
+        "polish": "Gdzie mieszka twój brat?",
+        "english": "Where does your brother live?"
+      },
+      {
+        "id": 43,
+        "polish": "Lubimy oglądać telewizję, szczególnie seriale.",
+        "english": "We like watching TV, especially series."
+      },
+      {
+        "id": 44,
+        "polish": "Gdzie chcesz iść?",
+        "english": "Where do you want to go?"
+      },
+      {
+        "id": 45,
+        "polish": "Zróbmy (dosł. dajmy) mu niespodziankę i zorganizujmy przyjęcie.",
+        "english": "Let’s give him a surprise, and organize a party."
+      },
+      {
+        "id": 46,
+        "polish": "Siostra Marka ma na imię Kate.",
+        "english": "Mark’s sister’s name is Kate."
+      },
+      {
+        "id": 47,
+        "polish": "Nie lubię jeździć samochodem. Ty lubisz?",
+        "english": "I don’t like driving. Do you?"
+      },
+      {
+        "id": 48,
+        "polish": "Czy możesz tutaj przyjść?",
+        "english": "Can you come here?"
+      },
+      {
+        "id": 49,
+        "polish": "Musisz już iść?",
+        "english": "Do you have to go now?"
+      },
+      {
+        "id": 50,
+        "polish": "Dbaj o siebie.",
+        "english": "Take care of yourself."
+      },
+      {
+        "id": 51,
+        "polish": "Co o tym myślisz?",
+        "english": "What do you think about it?"
+      },
+      {
+        "id": 52,
+        "polish": "To jest bardziej interesujące, niż myślisz.",
+        "english": "It’s more interesting than you think."
+      },
+      {
+        "id": 53,
+        "polish": "Naprawdę potrzebuję twojej pomocy.",
+        "english": "I really need your help."
+      },
+      {
+        "id": 54,
+        "polish": "Przetestujmy to sami.",
+        "english": "Let’s test it ourselves."
+      },
+      {
+        "id": 55,
+        "polish": "Ona zamierza przyjechać tutaj na miesiąc.",
+        "english": "She’s going to come here for a month."
+      },
+      {
+        "id": 56,
+        "polish": "Budują nowe centrum handlowe niedaleko naszego domu.",
+        "english": "They are building a new shopping centre near our house."
+      },
+      {
+        "id": 57,
+        "polish": "Nie widzę tego wyraźnie.",
+        "english": "I can’t see it clearly."
+      },
+      {
+        "id": 58,
+        "polish": "Praca Any jest ciężka.",
+        "english": "Ana’s job is hard."
+      },
+      {
+        "id": 59,
+        "polish": "– Czy oni są zadowoleni/szczęśliwi? – Nie sądzę.",
+        "english": "– Are they happy? – I don’t think so."
+      },
+      {
+        "id": 60,
+        "polish": "Za moim domem jest ogród, a przed nim parę/kilka drzew.",
+        "english": "There is a garden behind my house and some trees in front of it."
+      },
+      {
+        "id": 61,
+        "polish": "Musimy to zobaczyć, nie sądzisz?",
+        "english": "We must see it, don’t you think?"
+      },
+      {
+        "id": 62,
+        "polish": "Latem pada częściej niż wiosną. Czy możesz sobie to wyobrazić?",
+        "english": "In summer, it rains more often than in spring. Can youimagine that?"
+      },
+      {
+        "id": 63,
+        "polish": "Czy znów muszę to wyjaśniać? Naprawdę?",
+        "english": "Do I have to explain it again? Really?"
+      },
+      {
+        "id": 64,
+        "polish": "On je teraz obiad, więc nie przeszkadzaj mu.",
+        "english": "He’s having lunch now, so don’t disturb him."
+      },
+      {
+        "id": 65,
+        "polish": "Czy mogą państwo pójść za mną? Państwa stolik jest w rogu.",
+        "english": "Can you follow me, please? Your table is in the corner."
+      },
+      {
+        "id": 66,
+        "polish": "Idziemy jutro do kina. Zamierzamy iść jutro do kina.",
+        "english": "We’re going to the cinema tomorrow. We’re going to goto the cinema tomorrow."
+      },
+      {
+        "id": 67,
+        "polish": "– Czy mogę zabrać ze sobą Marka? – Oczywiście, że tak.",
+        "english": "– Can I take Mark with me? – Of course you can."
+      },
+      {
+        "id": 68,
+        "polish": "To świetnie!",
+        "english": "That’s great!"
+      }
+    ]
+  }
+]

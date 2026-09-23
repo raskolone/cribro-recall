@@ -45,3 +45,7 @@ src-tauri/gen/schemas/
 # CRIBRO_BACKUP_DIR na katalog projektu, to i tak nie wyjdzie na GitHub.
 auth-users-*.json
 scripts/*.json
+
+# Lokalne pliki PDF do jednorazowego parsowania
+scripts/source_pdfs/
+

@@ -1,0 +1,142 @@
+[
+  {
+    "id": 1,
+    "idiom": "a piece of cake",
+    "meaningPl": "bułka z masłem; coś bardzo łatwego",
+    "exampleSentence": "The test was a piece of cake.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 2,
+    "idiom": "break the ice",
+    "meaningPl": "przełamać pierwsze lody",
+    "exampleSentence": "I told a joke to break the ice.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 3,
+    "idiom": "under the weather",
+    "meaningPl": "źle się czuć; być niewyraźnym",
+    "exampleSentence": "I'm feeling a bit under the weather today.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 4,
+    "idiom": "cost an arm and a leg",
+    "meaningPl": "kosztować fortunę",
+    "exampleSentence": "That new phone costs an arm and a leg.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 5,
+    "idiom": "hit the road",
+    "meaningPl": "ruszyć w drogę",
+    "exampleSentence": "We should hit the road before it gets dark.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 6,
+    "idiom": "call it a day",
+    "meaningPl": "zakończyć pracę na dziś",
+    "exampleSentence": "We've done enough. Let's call it a day.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 7,
+    "idiom": "better late than never",
+    "meaningPl": "lepiej późno niż wcale",
+    "exampleSentence": "You finally started exercising—better late than never.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 8,
+    "idiom": "get out of hand",
+    "meaningPl": "wymknąć się spod kontroli",
+    "exampleSentence": "The situation quickly got out of hand.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 9,
+    "idiom": "keep an eye on something",
+    "meaningPl": "mieć coś na oku; pilnować czegoś",
+    "exampleSentence": "Can you keep an eye on my bag?",
+    "level": "A2-B1"
+  },
+  {
+    "id": 10,
+    "idiom": "be in the same boat",
+    "meaningPl": "być w tej samej sytuacji",
+    "exampleSentence": "We're all in the same boat, so let's help each other.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 11,
+    "idiom": "learn the hard way",
+    "meaningPl": "nauczyć się na własnych błędach",
+    "exampleSentence": "I learned the hard way that cheap tools can be unreliable.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 12,
+    "idiom": "once in a blue moon",
+    "meaningPl": "bardzo rzadko",
+    "exampleSentence": "I eat fast food once in a blue moon.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 13,
+    "idiom": "on the same page",
+    "meaningPl": "mieć takie samo zdanie lub rozumienie sytuacji",
+    "exampleSentence": "Let's make sure we're on the same page.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 14,
+    "idiom": "give someone a hand",
+    "meaningPl": "pomóc komuś",
+    "exampleSentence": "Can you give me a hand with this box?",
+    "level": "A2-B1"
+  },
+  {
+    "id": 15,
+    "idiom": "get the hang of something",
+    "meaningPl": "nauczyć się, jak coś robić",
+    "exampleSentence": "I'm starting to get the hang of this app.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 16,
+    "idiom": "miss the boat",
+    "meaningPl": "przegapić okazję",
+    "exampleSentence": "I wanted to buy the tickets, but I missed the boat.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 17,
+    "idiom": "pull someone's leg",
+    "meaningPl": "żartować z kogoś; nabierać kogoś",
+    "exampleSentence": "Don't worry—I'm just pulling your leg.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 18,
+    "idiom": "the last straw",
+    "meaningPl": "kropla, która przepełniła czarę",
+    "exampleSentence": "The third technical problem was the last straw.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 19,
+    "idiom": "back to square one",
+    "meaningPl": "wrócić do punktu wyjścia",
+    "exampleSentence": "The repair didn't work, so we're back to square one.",
+    "level": "A2-B1"
+  },
+  {
+    "id": 20,
+    "idiom": "easier said than done",
+    "meaningPl": "łatwiej powiedzieć niż zrobić",
+    "exampleSentence": "Building a new habit is easier said than done.",
+    "level": "A2-B1"
+  }
+]

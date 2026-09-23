@@ -1,0 +1,1946 @@
+[
+  {
+    "id": "g1_ch01_useful_expressions",
+    "bookNumber": 1,
+    "chapterNumber": 1,
+    "level": "A1",
+    "titlePl": "Przydatne wyrażenia",
+    "titleEn": "Useful expressions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch02_the_verb_to_be",
+    "bookNumber": 1,
+    "chapterNumber": 2,
+    "level": "A1",
+    "titlePl": "Czasownik być",
+    "titleEn": "The verb to be",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch03_this_that",
+    "bookNumber": 1,
+    "chapterNumber": 3,
+    "level": "A1",
+    "titlePl": "To i tamto",
+    "titleEn": "This & that",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch04_numbers_plural_nouns",
+    "bookNumber": 1,
+    "chapterNumber": 4,
+    "level": "A1",
+    "titlePl": "Liczby i rzeczowniki w liczbie mnogiej",
+    "titleEn": "Numbers & plural nouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch05_these_those",
+    "bookNumber": 1,
+    "chapterNumber": 5,
+    "level": "A1",
+    "titlePl": "Ci i tamci / Te i tamte",
+    "titleEn": "These & those",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch06_possessive_adjectives",
+    "bookNumber": 1,
+    "chapterNumber": 6,
+    "level": "A1",
+    "titlePl": "Zaimki dzierżawcze przymiotne",
+    "titleEn": "Possessive adjectives",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch07_days_months_time",
+    "bookNumber": 1,
+    "chapterNumber": 7,
+    "level": "A1",
+    "titlePl": "Dni, miesiące i czas",
+    "titleEn": "Days, months & time",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch08_questions",
+    "bookNumber": 1,
+    "chapterNumber": 8,
+    "level": "A1",
+    "titlePl": "Pytania",
+    "titleEn": "Questions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch09_prepositions_of_place",
+    "bookNumber": 1,
+    "chapterNumber": 9,
+    "level": "A1",
+    "titlePl": "Przyimki miejsca",
+    "titleEn": "Prepositions of place",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch10_present_simple",
+    "bookNumber": 1,
+    "chapterNumber": 10,
+    "level": "A1",
+    "titlePl": "Czas teraźniejszy prosty",
+    "titleEn": "Present Simple",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch11_the_verb_to_have",
+    "bookNumber": 1,
+    "chapterNumber": 11,
+    "level": "A1",
+    "titlePl": "Czasownik mieć",
+    "titleEn": "The verb to have",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch12_the_verbs_to_like_to_want",
+    "bookNumber": 1,
+    "chapterNumber": 12,
+    "level": "A1",
+    "titlePl": "Czasowniki: lubić, chcieć",
+    "titleEn": "The verbs: to like, to want",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch13_object_pronouns",
+    "bookNumber": 1,
+    "chapterNumber": 13,
+    "level": "A1",
+    "titlePl": "Zaimki dopełnieniowe",
+    "titleEn": "Object pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch14_frequency_adverbs",
+    "bookNumber": 1,
+    "chapterNumber": 14,
+    "level": "A1",
+    "titlePl": "Przysłówki wyrażające częstotliwość",
+    "titleEn": "Frequency adverbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch15_there_is_there_are",
+    "bookNumber": 1,
+    "chapterNumber": 15,
+    "level": "A1",
+    "titlePl": "Konstrukcje jest/są",
+    "titleEn": "There is / There are",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch16_imperative",
+    "bookNumber": 1,
+    "chapterNumber": 16,
+    "level": "A1",
+    "titlePl": "Tryb rozkazujący",
+    "titleEn": "Imperative",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch17_present_continuous",
+    "bookNumber": 1,
+    "chapterNumber": 17,
+    "level": "A1",
+    "titlePl": "Czas teraźniejszy ciągły",
+    "titleEn": "Present Continuous",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch18_can",
+    "bookNumber": 1,
+    "chapterNumber": 18,
+    "level": "A1",
+    "titlePl": "Móc/umieć/potrafić",
+    "titleEn": "Can",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch19_saxon_genitive",
+    "bookNumber": 1,
+    "chapterNumber": 19,
+    "level": "A1",
+    "titlePl": "Dopełniacz saksoński",
+    "titleEn": "Saxon genitive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch20_preposition_of",
+    "bookNumber": 1,
+    "chapterNumber": 20,
+    "level": "A1",
+    "titlePl": "Przyimek of",
+    "titleEn": "Preposition of",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch21_countable_uncountable_nouns_much_many_a_lot_of",
+    "bookNumber": 1,
+    "chapterNumber": 21,
+    "level": "A1",
+    "titlePl": "Rzeczowniki policzalne i niepoliczalne; much, many, a lot of",
+    "titleEn": "Countable & uncountable nouns; much, many, a lot of",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch22_some_any_no",
+    "bookNumber": 1,
+    "chapterNumber": 22,
+    "level": "A1",
+    "titlePl": "Jakieś, żadne",
+    "titleEn": "Some, any, no",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch23_must_have_to",
+    "bookNumber": 1,
+    "chapterNumber": 23,
+    "level": "A1",
+    "titlePl": "Musieć",
+    "titleEn": "Must & have to",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch24_possessive_pronouns",
+    "bookNumber": 1,
+    "chapterNumber": 24,
+    "level": "A1",
+    "titlePl": "Zaimki dzierżawcze",
+    "titleEn": "Possessive pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch25_comparative_adjectives",
+    "bookNumber": 1,
+    "chapterNumber": 25,
+    "level": "A1",
+    "titlePl": "Stopień wyższy przymiotnika",
+    "titleEn": "Comparative adjectives",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch26_adverbs",
+    "bookNumber": 1,
+    "chapterNumber": 26,
+    "level": "A1",
+    "titlePl": "Przysłówki",
+    "titleEn": "Adverbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch27_reflexive_pronouns",
+    "bookNumber": 1,
+    "chapterNumber": 27,
+    "level": "A1",
+    "titlePl": "Zaimki zwrotne",
+    "titleEn": "Reflexive pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch28_articles",
+    "bookNumber": 1,
+    "chapterNumber": 28,
+    "level": "A1",
+    "titlePl": "Przedimki",
+    "titleEn": "Articles",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch29_to_be_going_to_do_something_konstrukcja_to_be_going_to_do_sth",
+    "bookNumber": 1,
+    "chapterNumber": 29,
+    "level": "A1",
+    "titlePl": "wyrażanie zamiaru",
+    "titleEn": "To be going to do something — Konstrukcja to be going to do sth",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch30_asking_questions",
+    "bookNumber": 1,
+    "chapterNumber": 30,
+    "level": "A1",
+    "titlePl": "Zadawanie pytań",
+    "titleEn": "Asking questions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch31_negative_questions",
+    "bookNumber": 1,
+    "chapterNumber": 31,
+    "level": "A1",
+    "titlePl": "Pytania przeczące",
+    "titleEn": "Negative questions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch32_gerund_infinitive",
+    "bookNumber": 1,
+    "chapterNumber": 32,
+    "level": "A1",
+    "titlePl": "Czasownik z końcówką -ing oraz bezokolicznik",
+    "titleEn": "Gerund & infinitive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch33_conjunctions",
+    "bookNumber": 1,
+    "chapterNumber": 33,
+    "level": "A1",
+    "titlePl": "Spójniki",
+    "titleEn": "Conjunctions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch34_prepositions_part_1",
+    "bookNumber": 1,
+    "chapterNumber": 34,
+    "level": "A1",
+    "titlePl": "Przyimki, część 1",
+    "titleEn": "Prepositions, part 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch35_expressions_part_1",
+    "bookNumber": 1,
+    "chapterNumber": 35,
+    "level": "A1",
+    "titlePl": "Wyrażenia, część 1",
+    "titleEn": "Expressions, part 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g1_ch36_review_test_yourself_powt_rzenie",
+    "bookNumber": 1,
+    "chapterNumber": 36,
+    "level": "A1",
+    "titlePl": "sprawdź się!",
+    "titleEn": "Review — test yourself! — Powtórzenie",
+    "totalSentences": 68
+  },
+  {
+    "id": "g2_ch01_present_tenses",
+    "bookNumber": 2,
+    "chapterNumber": 1,
+    "level": "A2",
+    "titlePl": "review",
+    "titleEn": "Present tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch02_pronouns_saxon_genitive",
+    "bookNumber": 2,
+    "chapterNumber": 2,
+    "level": "A2",
+    "titlePl": "Pronouns & Saxon genitive",
+    "titleEn": "Pronouns & Saxon genitive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch03_past_simple",
+    "bookNumber": 2,
+    "chapterNumber": 3,
+    "level": "A2",
+    "titlePl": "the verb to be",
+    "titleEn": "Past Simple",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch04_past_simple",
+    "bookNumber": 2,
+    "chapterNumber": 4,
+    "level": "A2",
+    "titlePl": "regular verbs",
+    "titleEn": "Past Simple",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch05_past_simple",
+    "bookNumber": 2,
+    "chapterNumber": 5,
+    "level": "A2",
+    "titlePl": "irregular verbs, part 1",
+    "titleEn": "Past Simple",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch06_past_simple",
+    "bookNumber": 2,
+    "chapterNumber": 6,
+    "level": "A2",
+    "titlePl": "irregular verbs, part 2",
+    "titleEn": "Past Simple",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch07_will",
+    "bookNumber": 2,
+    "chapterNumber": 7,
+    "level": "A2",
+    "titlePl": "Future Simple",
+    "titleEn": "Will",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch08_anything_something_nothing",
+    "bookNumber": 2,
+    "chapterNumber": 8,
+    "level": "A2",
+    "titlePl": "Anything, something, nothing",
+    "titleEn": "Anything, something, nothing",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch09_someone_anyone_no_one",
+    "bookNumber": 2,
+    "chapterNumber": 9,
+    "level": "A2",
+    "titlePl": "Someone, anyone, no one",
+    "titleEn": "Someone, anyone, no one",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch10_would_like",
+    "bookNumber": 2,
+    "chapterNumber": 10,
+    "level": "A2",
+    "titlePl": "Would like",
+    "titleEn": "Would like",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch11_should",
+    "bookNumber": 2,
+    "chapterNumber": 11,
+    "level": "A2",
+    "titlePl": "Should",
+    "titleEn": "Should",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch12_have_to_in_three_tenses",
+    "bookNumber": 2,
+    "chapterNumber": 12,
+    "level": "A2",
+    "titlePl": "Have to in three tenses",
+    "titleEn": "Have to in three tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch13_can_could_to_be_able_to",
+    "bookNumber": 2,
+    "chapterNumber": 13,
+    "level": "A2",
+    "titlePl": "Can, could & to be able to",
+    "titleEn": "Can, could & to be able to",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch14_past_continuous",
+    "bookNumber": 2,
+    "chapterNumber": 14,
+    "level": "A2",
+    "titlePl": "Past Continuous",
+    "titleEn": "Past Continuous",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch15_countable_uncountable_nouns",
+    "bookNumber": 2,
+    "chapterNumber": 15,
+    "level": "A2",
+    "titlePl": "Countable & uncountable nouns",
+    "titleEn": "Countable & uncountable nouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch16_much_many_a_few_a_little",
+    "bookNumber": 2,
+    "chapterNumber": 16,
+    "level": "A2",
+    "titlePl": "Much, many, (a) few, (a) little",
+    "titleEn": "Much, many, (a) few, (a) little",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch17_noun_comparison_more_less_fewer_than",
+    "bookNumber": 2,
+    "chapterNumber": 17,
+    "level": "A2",
+    "titlePl": "Noun comparison (more, less, fewer than)",
+    "titleEn": "Noun comparison (more, less, fewer than)",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch18_comparative_superlative",
+    "bookNumber": 2,
+    "chapterNumber": 18,
+    "level": "A2",
+    "titlePl": "Comparative & superlative",
+    "titleEn": "Comparative & superlative",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch19_the_first_conditional",
+    "bookNumber": 2,
+    "chapterNumber": 19,
+    "level": "A2",
+    "titlePl": "The first conditional",
+    "titleEn": "The first conditional",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch20_too_enough",
+    "bookNumber": 2,
+    "chapterNumber": 20,
+    "level": "A2",
+    "titlePl": "Too & enough",
+    "titleEn": "Too & enough",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch21_it_s_necessary_important_to",
+    "bookNumber": 2,
+    "chapterNumber": 21,
+    "level": "A2",
+    "titlePl": "Itʼs necessary/important to…",
+    "titleEn": "Itʼs necessary/important to…",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch22_there_in_three_tenses",
+    "bookNumber": 2,
+    "chapterNumber": 22,
+    "level": "A2",
+    "titlePl": "There in three tenses",
+    "titleEn": "There in three tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch23_there_it",
+    "bookNumber": 2,
+    "chapterNumber": 23,
+    "level": "A2",
+    "titlePl": "There/it",
+    "titleEn": "There/it",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch24_still_yet_already_not_anymore",
+    "bookNumber": 2,
+    "chapterNumber": 24,
+    "level": "A2",
+    "titlePl": "Still, yet, already, not anymore",
+    "titleEn": "Still, yet, already, not anymore",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch25_adjectives_with_ing_ed_ending",
+    "bookNumber": 2,
+    "chapterNumber": 25,
+    "level": "A2",
+    "titlePl": "Adjectives with -ing & -ed ending",
+    "titleEn": "Adjectives with -ing & -ed ending",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch26_the_verb_to_go",
+    "bookNumber": 2,
+    "chapterNumber": 26,
+    "level": "A2",
+    "titlePl": "The verb to go",
+    "titleEn": "The verb to go",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch27_the_verbs_to_say_to_tell_to_speak_to_talk",
+    "bookNumber": 2,
+    "chapterNumber": 27,
+    "level": "A2",
+    "titlePl": "The verbs: to say, to tell, to speak, to talk",
+    "titleEn": "The verbs: to say, to tell, to speak, to talk",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch28_use_of_every",
+    "bookNumber": 2,
+    "chapterNumber": 28,
+    "level": "A2",
+    "titlePl": "Use of every",
+    "titleEn": "Use of every",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch29_use_of_all",
+    "bookNumber": 2,
+    "chapterNumber": 29,
+    "level": "A2",
+    "titlePl": "Use of all",
+    "titleEn": "Use of all",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch30_relative_pronouns",
+    "bookNumber": 2,
+    "chapterNumber": 30,
+    "level": "A2",
+    "titlePl": "Relative pronouns",
+    "titleEn": "Relative pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch31_will_going_to",
+    "bookNumber": 2,
+    "chapterNumber": 31,
+    "level": "A2",
+    "titlePl": "Will & going to",
+    "titleEn": "Will & going to",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch32_short_answers",
+    "bookNumber": 2,
+    "chapterNumber": 32,
+    "level": "A2",
+    "titlePl": "Short answers",
+    "titleEn": "Short answers",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch33_prepositions_part_2",
+    "bookNumber": 2,
+    "chapterNumber": 33,
+    "level": "A2",
+    "titlePl": "Prepositions, part 2",
+    "titleEn": "Prepositions, part 2",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch34_prepositions_in_questions",
+    "bookNumber": 2,
+    "chapterNumber": 34,
+    "level": "A2",
+    "titlePl": "Prepositions in questions",
+    "titleEn": "Prepositions in questions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch35_expressions_part_2",
+    "bookNumber": 2,
+    "chapterNumber": 35,
+    "level": "A2",
+    "titlePl": "Expressions, part 2",
+    "titleEn": "Expressions, part 2",
+    "totalSentences": 34
+  },
+  {
+    "id": "g2_ch36_review",
+    "bookNumber": 2,
+    "chapterNumber": 36,
+    "level": "A2",
+    "titlePl": "test yourself!",
+    "titleEn": "Review",
+    "totalSentences": 68
+  },
+  {
+    "id": "g3_ch01_tenses_review",
+    "bookNumber": 3,
+    "chapterNumber": 1,
+    "level": "B1",
+    "titlePl": "Tenses review",
+    "titleEn": "Tenses review",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch02_past_simple_vs_past_continuous",
+    "bookNumber": 3,
+    "chapterNumber": 2,
+    "level": "B1",
+    "titlePl": "Past Simple vs. Past Continuous",
+    "titleEn": "Past Simple vs. Past Continuous",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch03_comparison",
+    "bookNumber": 3,
+    "chapterNumber": 3,
+    "level": "B1",
+    "titlePl": "Comparison",
+    "titleEn": "Comparison",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch04_present_perfect",
+    "bookNumber": 3,
+    "chapterNumber": 4,
+    "level": "B1",
+    "titlePl": "Present Perfect",
+    "titleEn": "Present Perfect",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch05_present_perfect",
+    "bookNumber": 3,
+    "chapterNumber": 5,
+    "level": "B1",
+    "titlePl": "Present Perfect",
+    "titleEn": "Present Perfect",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch06_present_perfect",
+    "bookNumber": 3,
+    "chapterNumber": 6,
+    "level": "B1",
+    "titlePl": "Present Perfect",
+    "titleEn": "Present Perfect",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch07_present_perfect",
+    "bookNumber": 3,
+    "chapterNumber": 7,
+    "level": "B1",
+    "titlePl": "Present Perfect",
+    "titleEn": "Present Perfect",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch08_present_perfect_continuous",
+    "bookNumber": 3,
+    "chapterNumber": 8,
+    "level": "B1",
+    "titlePl": "Present Perfect Continuous",
+    "titleEn": "Present Perfect Continuous",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch09_present_perfect_simple_vs_continuous",
+    "bookNumber": 3,
+    "chapterNumber": 9,
+    "level": "B1",
+    "titlePl": "Present Perfect Simple vs. Continuous",
+    "titleEn": "Present Perfect Simple vs. Continuous",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch10_irregular_verbs",
+    "bookNumber": 3,
+    "chapterNumber": 10,
+    "level": "B1",
+    "titlePl": "Irregular verbs",
+    "titleEn": "Irregular verbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch11_indirect_questions_part_1",
+    "bookNumber": 3,
+    "chapterNumber": 11,
+    "level": "B1",
+    "titlePl": "Indirect questions, part 1",
+    "titleEn": "Indirect questions, part 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch12_modal_verbs",
+    "bookNumber": 3,
+    "chapterNumber": 12,
+    "level": "B1",
+    "titlePl": "Modal verbs",
+    "titleEn": "Modal verbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch13_some_any_no",
+    "bookNumber": 3,
+    "chapterNumber": 13,
+    "level": "B1",
+    "titlePl": "Some, any, no",
+    "titleEn": "Some, any, no",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch14_it_takes_part_1",
+    "bookNumber": 3,
+    "chapterNumber": 14,
+    "level": "B1",
+    "titlePl": "It takes…, part 1",
+    "titleEn": "It takes…, part 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch15_used_to",
+    "bookNumber": 3,
+    "chapterNumber": 15,
+    "level": "B1",
+    "titlePl": "Used to",
+    "titleEn": "Used to",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch16_want_somebody_to_do_something",
+    "bookNumber": 3,
+    "chapterNumber": 16,
+    "level": "B1",
+    "titlePl": "Want somebody to do something",
+    "titleEn": "Want somebody to do something",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch17_indirect_imperatives",
+    "bookNumber": 3,
+    "chapterNumber": 17,
+    "level": "B1",
+    "titlePl": "Indirect imperatives",
+    "titleEn": "Indirect imperatives",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch18_make_do_part_1",
+    "bookNumber": 3,
+    "chapterNumber": 18,
+    "level": "B1",
+    "titlePl": "Make & do, part 1",
+    "titleEn": "Make & do, part 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch19_first_conditional_time_clauses",
+    "bookNumber": 3,
+    "chapterNumber": 19,
+    "level": "B1",
+    "titlePl": "First conditional & time clauses",
+    "titleEn": "First conditional & time clauses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch20_second_conditional",
+    "bookNumber": 3,
+    "chapterNumber": 20,
+    "level": "B1",
+    "titlePl": "Second conditional",
+    "titleEn": "Second conditional",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch21_get",
+    "bookNumber": 3,
+    "chapterNumber": 21,
+    "level": "B1",
+    "titlePl": "Get",
+    "titleEn": "Get",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch22_all_none_both_neither_either_most",
+    "bookNumber": 3,
+    "chapterNumber": 22,
+    "level": "B1",
+    "titlePl": "All, none, both, neither, either, most",
+    "titleEn": "All, none, both, neither, either, most",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch23_make_somebody_do_something",
+    "bookNumber": 3,
+    "chapterNumber": 23,
+    "level": "B1",
+    "titlePl": "Make somebody do something",
+    "titleEn": "Make somebody do something",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch24_the_use_of_one_ones",
+    "bookNumber": 3,
+    "chapterNumber": 24,
+    "level": "B1",
+    "titlePl": "The use of one/ones",
+    "titleEn": "The use of one/ones",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch25_passive_voice_part_1",
+    "bookNumber": 3,
+    "chapterNumber": 25,
+    "level": "B1",
+    "titlePl": "Passive voice, part 1",
+    "titleEn": "Passive voice, part 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch26_countable_uncountable_nouns",
+    "bookNumber": 3,
+    "chapterNumber": 26,
+    "level": "B1",
+    "titlePl": "Countable & uncountable nouns",
+    "titleEn": "Countable & uncountable nouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch27_use_of_present_tenses",
+    "bookNumber": 3,
+    "chapterNumber": 27,
+    "level": "B1",
+    "titlePl": "Use of present tenses",
+    "titleEn": "Use of present tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch28_question_tags",
+    "bookNumber": 3,
+    "chapterNumber": 28,
+    "level": "B1",
+    "titlePl": "Question tags",
+    "titleEn": "Question tags",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch29_adjectives_adverbs",
+    "bookNumber": 3,
+    "chapterNumber": 29,
+    "level": "B1",
+    "titlePl": "Adjectives & adverbs",
+    "titleEn": "Adjectives & adverbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch30_articles",
+    "bookNumber": 3,
+    "chapterNumber": 30,
+    "level": "B1",
+    "titlePl": "Articles",
+    "titleEn": "Articles",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch31_future_simple_future_continuous",
+    "bookNumber": 3,
+    "chapterNumber": 31,
+    "level": "B1",
+    "titlePl": "Future Simple & Future Continuous",
+    "titleEn": "Future Simple & Future Continuous",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch32_subject_object_questions",
+    "bookNumber": 3,
+    "chapterNumber": 32,
+    "level": "B1",
+    "titlePl": "Subject & object questions",
+    "titleEn": "Subject & object questions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch33_prepositions_of_time_place",
+    "bookNumber": 3,
+    "chapterNumber": 33,
+    "level": "B1",
+    "titlePl": "Prepositions of time & place",
+    "titleEn": "Prepositions of time & place",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch34_prepositions_part_3",
+    "bookNumber": 3,
+    "chapterNumber": 34,
+    "level": "B1",
+    "titlePl": "Prepositions, part 3",
+    "titleEn": "Prepositions, part 3",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch35_expressions_part_3",
+    "bookNumber": 3,
+    "chapterNumber": 35,
+    "level": "B1",
+    "titlePl": "Expressions, part 3",
+    "titleEn": "Expressions, part 3",
+    "totalSentences": 34
+  },
+  {
+    "id": "g3_ch36_review",
+    "bookNumber": 3,
+    "chapterNumber": 36,
+    "level": "B1",
+    "titlePl": "Review",
+    "titleEn": "Review",
+    "totalSentences": 68
+  },
+  {
+    "id": "g4_ch01_review_of_tenses",
+    "bookNumber": 4,
+    "chapterNumber": 1,
+    "level": "B2",
+    "titlePl": "Review of tenses",
+    "titleEn": "Review of tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch02_present_perfect_vs_past_simple",
+    "bookNumber": 4,
+    "chapterNumber": 2,
+    "level": "B2",
+    "titlePl": "Present Perfect vs. Past Simple",
+    "titleEn": "Present Perfect vs. Past Simple",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch03_irregular_verbs",
+    "bookNumber": 4,
+    "chapterNumber": 3,
+    "level": "B2",
+    "titlePl": "Irregular verbs",
+    "titleEn": "Irregular verbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch04_gerund_infinitive",
+    "bookNumber": 4,
+    "chapterNumber": 4,
+    "level": "B2",
+    "titlePl": "Gerund & infinitive",
+    "titleEn": "Gerund & infinitive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch05_bare_infinitive",
+    "bookNumber": 4,
+    "chapterNumber": 5,
+    "level": "B2",
+    "titlePl": "Bare infinitive",
+    "titleEn": "Bare infinitive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch06_past_perfect",
+    "bookNumber": 4,
+    "chapterNumber": 6,
+    "level": "B2",
+    "titlePl": "Past Perfect",
+    "titleEn": "Past Perfect",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch07_past_perfect_continuous_comparison_of_perfect_tenses",
+    "bookNumber": 4,
+    "chapterNumber": 7,
+    "level": "B2",
+    "titlePl": "Past Perfect Continuous. Comparison of perfect tenses",
+    "titleEn": "Past Perfect Continuous. Comparison of perfect tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch08_reported_speech",
+    "bookNumber": 4,
+    "chapterNumber": 8,
+    "level": "B2",
+    "titlePl": "Reported speech",
+    "titleEn": "Reported speech",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch09_questions_in_reported_speech",
+    "bookNumber": 4,
+    "chapterNumber": 9,
+    "level": "B2",
+    "titlePl": "Questions in reported speech",
+    "titleEn": "Questions in reported speech",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch10_indirect_imperatives_requests_verb_sb_to_do_sth",
+    "bookNumber": 4,
+    "chapterNumber": 10,
+    "level": "B2",
+    "titlePl": "Indirect imperatives & requests, verb + sb + to do sth",
+    "titleEn": "Indirect imperatives & requests, verb + sb + to do sth",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch11_third_conditional",
+    "bookNumber": 4,
+    "chapterNumber": 11,
+    "level": "B2",
+    "titlePl": "Third conditional",
+    "titleEn": "Third conditional",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch12_wish",
+    "bookNumber": 4,
+    "chapterNumber": 12,
+    "level": "B2",
+    "titlePl": "Wish",
+    "titleEn": "Wish",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch13_modal_verbs",
+    "bookNumber": 4,
+    "chapterNumber": 13,
+    "level": "B2",
+    "titlePl": "possibility/probability",
+    "titleEn": "Modal verbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch14_modal_verbs_in_the_past",
+    "bookNumber": 4,
+    "chapterNumber": 14,
+    "level": "B2",
+    "titlePl": "Modal verbs in the past",
+    "titleEn": "Modal verbs in the past",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch15_passive_voice",
+    "bookNumber": 4,
+    "chapterNumber": 15,
+    "level": "B2",
+    "titlePl": "Passive voice",
+    "titleEn": "Passive voice",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch16_questions_in_passive_voice",
+    "bookNumber": 4,
+    "chapterNumber": 16,
+    "level": "B2",
+    "titlePl": "Questions in passive voice",
+    "titleEn": "Questions in passive voice",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch17_purpose_clauses",
+    "bookNumber": 4,
+    "chapterNumber": 17,
+    "level": "B2",
+    "titlePl": "Purpose clauses",
+    "titleEn": "Purpose clauses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch18_linking_words_contrast_concession",
+    "bookNumber": 4,
+    "chapterNumber": 18,
+    "level": "B2",
+    "titlePl": "Linking words (contrast, concession)",
+    "titleEn": "Linking words (contrast, concession)",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch19_adding_information_giving_reason",
+    "bookNumber": 4,
+    "chapterNumber": 19,
+    "level": "B2",
+    "titlePl": "Adding information, giving reason",
+    "titleEn": "Adding information, giving reason",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch20_so_such_so_many_so_much",
+    "bookNumber": 4,
+    "chapterNumber": 20,
+    "level": "B2",
+    "titlePl": "So/such, so many, so much",
+    "titleEn": "So/such, so many, so much",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch21_relative_pronouns",
+    "bookNumber": 4,
+    "chapterNumber": 21,
+    "level": "B2",
+    "titlePl": "Relative pronouns",
+    "titleEn": "Relative pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch22_relative_clauses_prepositions",
+    "bookNumber": 4,
+    "chapterNumber": 22,
+    "level": "B2",
+    "titlePl": "Relative clauses & prepositions",
+    "titleEn": "Relative clauses & prepositions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch23_other_another_others",
+    "bookNumber": 4,
+    "chapterNumber": 23,
+    "level": "B2",
+    "titlePl": "Other, another, others",
+    "titleEn": "Other, another, others",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch24_make_do",
+    "bookNumber": 4,
+    "chapterNumber": 24,
+    "level": "B2",
+    "titlePl": "Make & do",
+    "titleEn": "Make & do",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch25_say_tell",
+    "bookNumber": 4,
+    "chapterNumber": 25,
+    "level": "B2",
+    "titlePl": "Say & tell",
+    "titleEn": "Say & tell",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch26_there_in_different_tenses",
+    "bookNumber": 4,
+    "chapterNumber": 26,
+    "level": "B2",
+    "titlePl": "There in different tenses",
+    "titleEn": "There in different tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch27_wonder",
+    "bookNumber": 4,
+    "chapterNumber": 27,
+    "level": "B2",
+    "titlePl": "Wonder",
+    "titleEn": "Wonder",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch28_exclamatory_sentences",
+    "bookNumber": 4,
+    "chapterNumber": 28,
+    "level": "B2",
+    "titlePl": "Exclamatory sentences",
+    "titleEn": "Exclamatory sentences",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch29_echo_tags",
+    "bookNumber": 4,
+    "chapterNumber": 29,
+    "level": "B2",
+    "titlePl": "Echo tags",
+    "titleEn": "Echo tags",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch30_articles_and_geographical_names",
+    "bookNumber": 4,
+    "chapterNumber": 30,
+    "level": "B2",
+    "titlePl": "Articles and geographical names",
+    "titleEn": "Articles and geographical names",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch31_countries_and_nationalities",
+    "bookNumber": 4,
+    "chapterNumber": 31,
+    "level": "B2",
+    "titlePl": "Countries and nationalities",
+    "titleEn": "Countries and nationalities",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch32_numbers",
+    "bookNumber": 4,
+    "chapterNumber": 32,
+    "level": "B2",
+    "titlePl": "Numbers",
+    "titleEn": "Numbers",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch33_prepositions",
+    "bookNumber": 4,
+    "chapterNumber": 33,
+    "level": "B2",
+    "titlePl": "Prepositions",
+    "titleEn": "Prepositions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch34_common_mistakes",
+    "bookNumber": 4,
+    "chapterNumber": 34,
+    "level": "B2",
+    "titlePl": "Common mistakes",
+    "titleEn": "Common mistakes",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch35_expressions",
+    "bookNumber": 4,
+    "chapterNumber": 35,
+    "level": "B2",
+    "titlePl": "Expressions",
+    "titleEn": "Expressions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g4_ch36_review",
+    "bookNumber": 4,
+    "chapterNumber": 36,
+    "level": "B2",
+    "titlePl": "test yourself",
+    "titleEn": "Review",
+    "totalSentences": 68
+  },
+  {
+    "id": "g5_ch01_review_of_tenses",
+    "bookNumber": 5,
+    "chapterNumber": 1,
+    "level": "C1",
+    "titlePl": "Powtórka czasów",
+    "titleEn": "Review of tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch02_indirect_questions_review_pytania_zale_ne",
+    "bookNumber": 5,
+    "chapterNumber": 2,
+    "level": "C1",
+    "titlePl": "powtórka",
+    "titleEn": "Indirect questions — review — Pytania zależne",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch03_it_takes_review_to_zajmuje_to_potrwa",
+    "bookNumber": 5,
+    "chapterNumber": 3,
+    "level": "C1",
+    "titlePl": "powtórka",
+    "titleEn": "It takes… — review — To zajmuje… / To potrwa…",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch04_find_it",
+    "bookNumber": 5,
+    "chapterNumber": 4,
+    "level": "C1",
+    "titlePl": "Wyrażanie opinii za pomocą czasownika to find",
+    "titleEn": "Find it",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch05_gerund_infinitive",
+    "bookNumber": 5,
+    "chapterNumber": 5,
+    "level": "C1",
+    "titlePl": "Czasownik z końcówką -ing i bezokolicznik",
+    "titleEn": "Gerund & infinitive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch06_gerund_infinitive_in_other_expressions",
+    "bookNumber": 5,
+    "chapterNumber": 6,
+    "level": "C1",
+    "titlePl": "Gerund & infinitive w innych wyrażeniach",
+    "titleEn": "Gerund & infinitive in other expressions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch07_bare_infinitive_and_other_forms",
+    "bookNumber": 5,
+    "chapterNumber": 7,
+    "level": "C1",
+    "titlePl": "Nagi bezokolicznik i inne formy",
+    "titleEn": "Bare infinitive and other forms",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch08_modal_verbs_review_czasowniki_modalne",
+    "bookNumber": 5,
+    "chapterNumber": 8,
+    "level": "C1",
+    "titlePl": "powtórka",
+    "titleEn": "Modal verbs — review — Czasowniki modalne",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch09_so_do_i_neither_do_i",
+    "bookNumber": 5,
+    "chapterNumber": 9,
+    "level": "C1",
+    "titlePl": "Ja też / Ja też nie",
+    "titleEn": "So do I / Neither do I",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch10_conditionals_review_tryby_warunkowe",
+    "bookNumber": 5,
+    "chapterNumber": 10,
+    "level": "C1",
+    "titlePl": "powtórka",
+    "titleEn": "Conditionals — review — Tryby warunkowe",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch11_wish_if_only",
+    "bookNumber": 5,
+    "chapterNumber": 11,
+    "level": "C1",
+    "titlePl": "Żałuję… / Szkoda że… Gdybym tylko…",
+    "titleEn": "Wish. If only",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch12_as_if_though_it_s_time_would_rather",
+    "bookNumber": 5,
+    "chapterNumber": 12,
+    "level": "C1",
+    "titlePl": "Tak jakby… Już czas… Wolałbym…",
+    "titleEn": "As if/though… Itʼs time… Would rather…",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch13_result_condition_clauses",
+    "bookNumber": 5,
+    "chapterNumber": 13,
+    "level": "C1",
+    "titlePl": "Wyrażanie rezultatu i warunku",
+    "titleEn": "Result & condition clauses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch14_linking_words_despite_due_to_etc_sp_jniki",
+    "bookNumber": 5,
+    "chapterNumber": 14,
+    "level": "C1",
+    "titlePl": "pomimo, z powodu itd.",
+    "titleEn": "Linking words: despite, due to etc. — Spójniki",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch15_passive_voice",
+    "bookNumber": 5,
+    "chapterNumber": 15,
+    "level": "C1",
+    "titlePl": "Strona bierna",
+    "titleEn": "Passive voice",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch16_passive_voice_personal_pronouns",
+    "bookNumber": 5,
+    "chapterNumber": 16,
+    "level": "C1",
+    "titlePl": "Strona bierna z zaimkami osobowymi",
+    "titleEn": "Passive voice + personal pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch17_have_something_done",
+    "bookNumber": 5,
+    "chapterNumber": 17,
+    "level": "C1",
+    "titlePl": "Użycie konstrukcji have something done",
+    "titleEn": "Have something done",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch18_reported_speech_relating_verbs_mowa_zale_na",
+    "bookNumber": 5,
+    "chapterNumber": 18,
+    "level": "C1",
+    "titlePl": "czasowniki relacjonujące",
+    "titleEn": "Reported speech — relating verbs — Mowa zależna",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch19_like_as",
+    "bookNumber": 5,
+    "chapterNumber": 19,
+    "level": "C1",
+    "titlePl": "Użycie like & as",
+    "titleEn": "Like & as",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch20_question_tags",
+    "bookNumber": 5,
+    "chapterNumber": 20,
+    "level": "C1",
+    "titlePl": "Pytania rozłączne",
+    "titleEn": "Question tags",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch21_adjectives_adverbs",
+    "bookNumber": 5,
+    "chapterNumber": 21,
+    "level": "C1",
+    "titlePl": "Przymiotniki i przysłówki",
+    "titleEn": "Adjectives & adverbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch22_to_be_supposed_to_do_sth",
+    "bookNumber": 5,
+    "chapterNumber": 22,
+    "level": "C1",
+    "titlePl": "Mieć coś zrobić",
+    "titleEn": "To be supposed to do sth",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch23_used_to_be_used_to_get_used_to_would_will",
+    "bookNumber": 5,
+    "chapterNumber": 23,
+    "level": "C1",
+    "titlePl": "Użycie used to / be used to / get used to, would i will",
+    "titleEn": "Used to / be used to / get used to, would & will",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch24_emphasis_do_does_did_adverbs",
+    "bookNumber": 5,
+    "chapterNumber": 24,
+    "level": "C1",
+    "titlePl": "Wzmocnienie za pomocą do/does/did i przysłówków",
+    "titleEn": "Emphasis: do, does, did; adverbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch25_whatever_whichever_wherever_etc",
+    "bookNumber": 5,
+    "chapterNumber": 25,
+    "level": "C1",
+    "titlePl": "Cokolwiek, którykolwiek, gdziekolwiek itd.",
+    "titleEn": "Whatever, whichever, wherever, etc.",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch26_cleft_sentences_it_was_me_who",
+    "bookNumber": 5,
+    "chapterNumber": 26,
+    "level": "C1",
+    "titlePl": "Zdania typu to byłem ja…",
+    "titleEn": "Cleft sentences, it was me who…",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch27_the_more_the_more",
+    "bookNumber": 5,
+    "chapterNumber": 27,
+    "level": "C1",
+    "titlePl": "Im…, tym…",
+    "titleEn": "The more…, the more",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch28_no_matter_what_who_when",
+    "bookNumber": 5,
+    "chapterNumber": 28,
+    "level": "C1",
+    "titlePl": "Nieważne, kto/co/kiedy…",
+    "titleEn": "No matter what/who/when…",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch29_all_whole_each_every_some_any",
+    "bookNumber": 5,
+    "chapterNumber": 29,
+    "level": "C1",
+    "titlePl": "Użycie all, whole; each, every; any, some",
+    "titleEn": "All, whole; each, every; some, any",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch30_indefinite_and_relative_pronouns",
+    "bookNumber": 5,
+    "chapterNumber": 30,
+    "level": "C1",
+    "titlePl": "Zaimki nieokreślone i względne",
+    "titleEn": "Indefinite and relative pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch31_there",
+    "bookNumber": 5,
+    "chapterNumber": 31,
+    "level": "C1",
+    "titlePl": "Użycie there",
+    "titleEn": "There",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch32_using_omitting_articles",
+    "bookNumber": 5,
+    "chapterNumber": 32,
+    "level": "C1",
+    "titlePl": "Używanie i pomijanie przedimków",
+    "titleEn": "Using & omitting articles",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch33_prepositions",
+    "bookNumber": 5,
+    "chapterNumber": 33,
+    "level": "C1",
+    "titlePl": "Przyimki",
+    "titleEn": "Prepositions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch34_expressions",
+    "bookNumber": 5,
+    "chapterNumber": 34,
+    "level": "C1",
+    "titlePl": "Wyrażenia",
+    "titleEn": "Expressions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch35_common_mistakes",
+    "bookNumber": 5,
+    "chapterNumber": 35,
+    "level": "C1",
+    "titlePl": "Często popełniane błędy",
+    "titleEn": "Common mistakes",
+    "totalSentences": 34
+  },
+  {
+    "id": "g5_ch36_review",
+    "bookNumber": 5,
+    "chapterNumber": 36,
+    "level": "C1",
+    "titlePl": "Powtórzenie",
+    "titleEn": "Review",
+    "totalSentences": 68
+  },
+  {
+    "id": "g6_ch01_review_of_tenses",
+    "bookNumber": 6,
+    "chapterNumber": 1,
+    "level": "C2",
+    "titlePl": "Powtórka czasów",
+    "titleEn": "Review of tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch02_articles_review_przedimki",
+    "bookNumber": 6,
+    "chapterNumber": 2,
+    "level": "C2",
+    "titlePl": "powtórka",
+    "titleEn": "Articles — review — Przedimki",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch03_countable_uncountable_plural_nouns_review",
+    "bookNumber": 6,
+    "chapterNumber": 3,
+    "level": "C2",
+    "titlePl": "Rzeczowniki policzalne, niepoliczalne i w liczbie mnogiej",
+    "titleEn": "Countable, uncountable & plural nouns — review",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch04_verbs_followed_by_gerund_or_infinitive",
+    "bookNumber": 6,
+    "chapterNumber": 4,
+    "level": "C2",
+    "titlePl": "Czasowniki używane z formą gerund & infinitive",
+    "titleEn": "Verbs followed by gerund or infinitive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch05_to_gerund",
+    "bookNumber": 6,
+    "chapterNumber": 5,
+    "level": "C2",
+    "titlePl": "To + czasownik z końcówką -ing",
+    "titleEn": "To + gerund",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch06_comparison_as_as",
+    "bookNumber": 6,
+    "chapterNumber": 6,
+    "level": "C2",
+    "titlePl": "Porównywanie, konstrukcje as… as",
+    "titleEn": "Comparison, as… as",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch07_reported_speech_review_mowa_zale_na",
+    "bookNumber": 6,
+    "chapterNumber": 7,
+    "level": "C2",
+    "titlePl": "powtórka",
+    "titleEn": "Reported speech — review — Mowa zależna",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch08_passive_voice",
+    "bookNumber": 6,
+    "chapterNumber": 8,
+    "level": "C2",
+    "titlePl": "Strona bierna",
+    "titleEn": "Passive voice",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch09_unreal_time_review_u_ycie_czas_w_z_it_s_high_time_wish_i_d_rather",
+    "bookNumber": 6,
+    "chapterNumber": 9,
+    "level": "C2",
+    "titlePl": "powtórka",
+    "titleEn": "Unreal time — review — Użycie czasów z itʼs high time, wish, Iʼd rather",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch10_future_perfect_tenses",
+    "bookNumber": 6,
+    "chapterNumber": 10,
+    "level": "C2",
+    "titlePl": "Czasy przyszłe dokonane",
+    "titleEn": "Future Perfect tenses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch11_participle_clauses",
+    "bookNumber": 6,
+    "chapterNumber": 11,
+    "level": "C2",
+    "titlePl": "Konstrukcje imiesłowowe",
+    "titleEn": "Participle clauses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch12_perfect_infinitive_gerund",
+    "bookNumber": 6,
+    "chapterNumber": 12,
+    "level": "C2",
+    "titlePl": "Użycie przeszłej formy bezokolicznika i formy gerund",
+    "titleEn": "Perfect infinitive & gerund",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch13_linking_words",
+    "bookNumber": 6,
+    "chapterNumber": 13,
+    "level": "C2",
+    "titlePl": "Spójniki",
+    "titleEn": "Linking words",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch14_indefinite_pronouns_review_zaimki_nieokre_lone",
+    "bookNumber": 6,
+    "chapterNumber": 14,
+    "level": "C2",
+    "titlePl": "powtórka",
+    "titleEn": "Indefinite pronouns — review — Zaimki nieokreślone",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch15_so_such_too_enough_word_order_u_ycie_so_such_too_enough",
+    "bookNumber": 6,
+    "chapterNumber": 15,
+    "level": "C2",
+    "titlePl": "szyk zdania",
+    "titleEn": "So, such, too, enough — word order — Użycie so, such, too, enough",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch16_happen_to_make_it",
+    "bookNumber": 6,
+    "chapterNumber": 16,
+    "level": "C2",
+    "titlePl": "Użycie konstrukcji happen to & make it",
+    "titleEn": "Happen to & make it",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch17_irregular_verbs",
+    "bookNumber": 6,
+    "chapterNumber": 17,
+    "level": "C2",
+    "titlePl": "Czasowniki nieregularne",
+    "titleEn": "Irregular verbs",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch18_mixed_conditionals",
+    "bookNumber": 6,
+    "chapterNumber": 18,
+    "level": "C2",
+    "titlePl": "Mieszane tryby warunkowe",
+    "titleEn": "Mixed Conditionals",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch19_the_subjunctive",
+    "bookNumber": 6,
+    "chapterNumber": 19,
+    "level": "C2",
+    "titlePl": "Tryb łączący",
+    "titleEn": "The subjunctive",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch20_inversion_1",
+    "bookNumber": 6,
+    "chapterNumber": 20,
+    "level": "C2",
+    "titlePl": "Inwersja 1",
+    "titleEn": "Inversion 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch21_inversion_2",
+    "bookNumber": 6,
+    "chapterNumber": 21,
+    "level": "C2",
+    "titlePl": "Inwersja 2",
+    "titleEn": "Inversion 2",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch22_using_tenses_in_conditionals_time_clauses",
+    "bookNumber": 6,
+    "chapterNumber": 22,
+    "level": "C2",
+    "titlePl": "Czasy w trybach warunkowych i zdaniach czasowych",
+    "titleEn": "Using tenses in conditionals & time clauses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch23_other_time_clauses",
+    "bookNumber": 6,
+    "chapterNumber": 23,
+    "level": "C2",
+    "titlePl": "Pozostałe zdania czasowe",
+    "titleEn": "Other time clauses",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch24_fronting",
+    "bookNumber": 6,
+    "chapterNumber": 24,
+    "level": "C2",
+    "titlePl": "Przedni szyk wyrazowy",
+    "titleEn": "Fronting",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch25_omitting_verbs_the_nominative_absolute",
+    "bookNumber": 6,
+    "chapterNumber": 25,
+    "level": "C2",
+    "titlePl": "Pomijanie czasowników i użycie nominative absolute",
+    "titleEn": "Omitting verbs & the nominative absolute",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch26_relative_pronouns",
+    "bookNumber": 6,
+    "chapterNumber": 26,
+    "level": "C2",
+    "titlePl": "Zaimki względne",
+    "titleEn": "Relative pronouns",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch27_use_of_singular_plural_verb_forms",
+    "bookNumber": 6,
+    "chapterNumber": 27,
+    "level": "C2",
+    "titlePl": "Użycie pojedynczej i mnogiej formy czasownika",
+    "titleEn": "Use of singular & plural verb forms",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch28_reading_numbers",
+    "bookNumber": 6,
+    "chapterNumber": 28,
+    "level": "C2",
+    "titlePl": "Czytanie liczb",
+    "titleEn": "Reading numbers",
+    "totalSentences": 32
+  },
+  {
+    "id": "g6_ch29_other_grammar_expressions_1",
+    "bookNumber": 6,
+    "chapterNumber": 29,
+    "level": "C2",
+    "titlePl": "Inne wyrażenia gramatyczne 1",
+    "titleEn": "Other grammar expressions 1",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch30_other_grammar_expressions_2",
+    "bookNumber": 6,
+    "chapterNumber": 30,
+    "level": "C2",
+    "titlePl": "Inne wyrażenia gramatyczne 2",
+    "titleEn": "Other grammar expressions 2",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch31_phrases_with_and_without_prepositions",
+    "bookNumber": 6,
+    "chapterNumber": 31,
+    "level": "C2",
+    "titlePl": "Zwroty z przyimkami i bez przyimków",
+    "titleEn": "Phrases with and without prepositions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch32_prepositions",
+    "bookNumber": 6,
+    "chapterNumber": 32,
+    "level": "C2",
+    "titlePl": "Przyimki",
+    "titleEn": "Prepositions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch33_expressions",
+    "bookNumber": 6,
+    "chapterNumber": 33,
+    "level": "C2",
+    "titlePl": "Wyrażenia",
+    "titleEn": "Expressions",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch34_sayings",
+    "bookNumber": 6,
+    "chapterNumber": 34,
+    "level": "C2",
+    "titlePl": "Powiedzenia",
+    "titleEn": "Sayings",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch35_slang_informal_english",
+    "bookNumber": 6,
+    "chapterNumber": 35,
+    "level": "C2",
+    "titlePl": "Angielski slang i język potoczny",
+    "titleEn": "Slang & informal English",
+    "totalSentences": 34
+  },
+  {
+    "id": "g6_ch36_review",
+    "bookNumber": 6,
+    "chapterNumber": 36,
+    "level": "C2",
+    "titlePl": "Powtórka",
+    "titleEn": "Review",
+    "totalSentences": 68
+  }
+]
