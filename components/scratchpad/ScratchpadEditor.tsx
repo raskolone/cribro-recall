@@ -72,6 +72,7 @@ import {
   ZoomIn,
   Maximize2,
   Crosshair,
+  Wrench,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate, ScratchpadBlock, LessonAttachment, LessonRecord } from '../../types';
 import { isSharedNotebookV2Enabled } from '../../config/featureFlags';
@@ -111,6 +112,8 @@ import TeacherDock from './TeacherDock';
 import ExerciseStudioModal from '../exercise/ExerciseStudioModal';
 import TeacherFormattingToolbar from './TeacherFormattingToolbar';
 import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
+import { FloatingToolPalette } from './FloatingToolPalette';
+import { FloatingToolsLauncher } from './FloatingToolsLauncher';
 import { ExerciseDefinition, RandomWheelPayload } from '../../types/exerciseStudio';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
 import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
@@ -365,6 +368,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isTeacherDockOpen, setIsTeacherDockOpen] = useState(false);
   const [isExerciseStudioOpen, setIsExerciseStudioOpen] = useState(false);
   const [isFocusZoomActive, setIsFocusZoomActive] = useState(false);
+  const [isFloatingToolsOpen, setIsFloatingToolsOpen] = useState(false);
+  const [activeDrawTool, setActiveDrawTool] = useState<'pen' | 'marker' | 'eraser' | 'line' | 'arrow' | 'rect' | 'circle' | null>(null);
+  const [drawColor, setDrawColor] = useState<string>('#10b981');
+  const [drawStrokeWidth, setDrawStrokeWidth] = useState<number>(4);
+  const [drawOpacity, setDrawOpacity] = useState<number>(1);
 
   // Globalny skrót F dla lektora do włączania Focus Zoom (gdy nie pisze w tekście)
   useEffect(() => {
@@ -2900,8 +2908,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         </div>
       )}
 
-      {/* 2. PASEK FORMATOWANIA */}
-      <div className="px-3 py-1.5 pad-bar border-b border-line-strong flex items-center gap-1 overflow-x-auto no-scrollbar select-none sticky top-0 z-30 flex-nowrap sm:flex-wrap">
+      {/* 2. MINIMALNY GÓRNY PASEK (Minimal Top Bar) */}
+      <div className="px-3 py-1.5 pad-bar border-b border-line-strong flex items-center justify-between gap-2 overflow-x-auto no-scrollbar select-none sticky top-0 z-30 flex-nowrap sm:flex-wrap">
         {/* Ukryty input dla plików graficznych */}
         <input
           ref={imageFileInputRef}
@@ -2911,8 +2919,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           onChange={handleImageFileSelected}
         />
 
-        {/* Historia / Drukuj */}
-        <div className="flex items-center gap-0.5 shrink-0" data-coach="pad-history">
+        {/* Lewa strona: Historia (Undo / Redo), Drukuj, Przycisk Tools, Nowa lekcja, Prezentuj */}
+        <div className="flex items-center gap-1 shrink-0" data-coach="pad-history">
           {!isReadOnly && (
             <>
               <FormatButton
@@ -2932,504 +2940,61 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             title="Drukuj stronę (Ctrl+P)"
             onClick={() => window.print()}
           />
+
+          <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
+
+          {/* PRZYCISK TOOLS — GŁÓWNY PUNKT WEJŚCIA DO PALETY NARZĘDZI */}
+          {isTeacher && !isReadOnly && (
+            <button
+              type="button"
+              onClick={() => setIsFloatingToolsOpen((v) => !v)}
+              className={`h-7 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                isFloatingToolsOpen
+                  ? 'bg-emerald-500 text-slate-950 shadow-md shadow-emerald-500/20 ring-2 ring-emerald-400/40'
+                  : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/25'
+              }`}
+              title="Otwórz paletę narzędzi Canvas (Tools)"
+            >
+              <Wrench size={13} />
+              <span>Narzędzia (Tools)</span>
+            </button>
+          )}
+
+          {/* PRZYCISK NOWA LEKCJA */}
+          {isTeacher && (
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={openInsertLessonGate}
+              disabled={isInsertingLesson}
+              title="Dodaj nową lekcję: nowa strona A4, kolejny numer i sekcje szablonu"
+              className="h-7 px-2.5 rounded-lg text-[11px] font-bold bg-primary/12 text-primary border border-primary/30 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
+            >
+              <Calendar size={13} />
+              <span className="whitespace-nowrap">+ Nowa lekcja</span>
+            </button>
+          )}
+
+          {/* PRZYCISK SZYBKIEJ PREZENTACJI */}
+          {isTeacher && (
+            <button
+              type="button"
+              onClick={() => setIsLivePresentationModalOpen(true)}
+              title="Uruchom tryb prezentacji dla kursanta"
+              className="h-7 px-2 rounded-lg text-[11px] font-semibold text-slate-300 hover:text-white hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0 flex items-center gap-1"
+            >
+              <Airplay size={13} className="text-emerald-400" />
+              <span className="hidden sm:inline">Prezentuj</span>
+            </button>
+          )}
         </div>
-
-        {!isReadOnly && (
-          <>
-            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
-
-            {/* Styl tekstu */}
-            <MenuDropdown
-              open={isStyleMenuOpen}
-              onOpenChange={setIsStyleMenuOpen}
-              preserveSelection
-              width={268}
-              align="start"
-              aria-label="Styl tekstu"
-              coachId="pad-style"
-              triggerTitle="Nagłówki i style tekstu"
-              triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
-                isStyleMenuOpen
-                  ? 'bg-white/[0.08] border-line-strong text-content'
-                  : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
-              }`}
-              trigger={
-                <>
-                  <Type size={14} />
-                  <span>Styl</span>
-                  <MenuChevron open={isStyleMenuOpen} />
-                </>
-              }
-              sections={[
-                {
-                  id: 'standard-blocks',
-                  label: 'Podstawowe style tekstu',
-                  items: [
-                    {
-                      id: 'p',
-                      label: 'Zwykły akapit',
-                      icon: <Pilcrow size={14} />,
-                      onSelect: () => handleFormatBlock('p'),
-                    },
-                    {
-                      id: 'h1',
-                      label: 'Nagłówek 1 (Lekcja)',
-                      description: 'Główny nagłówek nadrzędny w spisie',
-                      icon: <Heading1 size={14} />,
-                      onSelect: () => handleFormatBlock('h1'),
-                    },
-                    {
-                      id: 'h2',
-                      label: 'Nagłówek 2 (Rozdział)',
-                      description: 'Rozdział widoczny pod lekcją w spisie',
-                      icon: <Heading2 size={14} />,
-                      onSelect: () => handleFormatBlock('h2'),
-                    },
-                    {
-                      id: 'h3',
-                      label: 'Nagłówek 3 (Sekcja wewnątrz)',
-                      description: 'Nagłówek sekcji — nie trafia do spisu',
-                      icon: <Heading3 size={14} />,
-                      onSelect: () => handleFormatBlock('h3'),
-                    },
-                  ],
-                },
-                {
-                  id: 'toggle-headings',
-                  label: 'Nagłówki zwijane (Opcjonalne)',
-                  items: [
-                    {
-                      id: 'toggle-h1',
-                      label: 'Zwijany Nagłówek 1',
-                      description: 'Nagłówek nadrzędny ze strzałką do zwijania',
-                      icon: <ChevronRight size={14} />,
-                      onSelect: () => handleToggleHeading('h1'),
-                    },
-                    {
-                      id: 'toggle-h2',
-                      label: 'Zwijany Nagłówek 2',
-                      description: 'Rozdział ze strzałką do zwijania treści',
-                      icon: <ChevronRight size={14} />,
-                      onSelect: () => handleToggleHeading('h2'),
-                    },
-                  ],
-                },
-                {
-                  id: 'inline',
-                  label: 'Styl znaku',
-                  items: [
-                    {
-                      id: 'underline',
-                      label: 'Podkreślenie',
-                      shortcut: 'Ctrl+U',
-                      icon: <Underline size={14} />,
-                      onSelect: () => execCmd('underline'),
-                    },
-                    {
-                      id: 'strike',
-                      label: 'Przekreślenie',
-                      icon: <Strikethrough size={14} />,
-                      onSelect: () => execCmd('strikeThrough'),
-                    },
-                  ],
-                },
-              ]}
-            />
-
-            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
-
-            {/* Pogrubienie, Kursywa */}
-            <div className="flex items-center gap-0.5 shrink-0">
-              <FormatButton
-                icon={<Bold size={14} />}
-                title="Pogrubienie (Ctrl+B)"
-                onClick={() => execCmd('bold')}
-              />
-              <FormatButton
-                icon={<Italic size={14} />}
-                title="Kursywa (Ctrl+I)"
-                onClick={() => execCmd('italic')}
-              />
-              <FormatButton
-                icon={<Underline size={14} />}
-                title="Podkreślenie (Ctrl+U)"
-                onClick={() => execCmd('underline')}
-              />
-              <FormatButton
-                icon={<Strikethrough size={14} />}
-                title="Przekreślenie"
-                onClick={() => execCmd('strikeThrough')}
-              />
-            </div>
-
-            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
-
-            {/* Wyrównanie tekstu */}
-            <div className="flex items-center gap-0.5 shrink-0">
-              <FormatButton
-                icon={<AlignLeft size={14} />}
-                title="Wyrównaj do lewej"
-                onClick={() => execCmd('justifyLeft')}
-              />
-              <FormatButton
-                icon={<AlignCenter size={14} />}
-                title="Wyśrodkuj"
-                onClick={() => execCmd('justifyCenter')}
-              />
-              <FormatButton
-                icon={<AlignRight size={14} />}
-                title="Wyrównaj do prawej"
-                onClick={() => execCmd('justifyRight')}
-              />
-            </div>
-
-            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
-
-            {/* Kolor tekstu */}
-            <div className="flex items-center gap-1 shrink-0" data-coach="pad-color" title="Kolor tekstu">
-              <Palette size={13} className="text-text-2 mx-0.5" />
-              {[{ name: 'Domyślny', value: 'inherit' }, ...NOTEBOOK_SWATCHES].map(swatch => (
-                <button
-                  key={swatch.value}
-                  type="button"
-                  onMouseDown={event => event.preventDefault()}
-                  onClick={() =>
-                    execCmd(
-                      'foreColor',
-                      swatch.value === 'inherit'
-                        ? NOTEBOOK_INK[paperTheme === 'dark' ? 'dark' : 'light']
-                        : swatch.value
-                    )
-                  }
-                  title={swatch.name}
-                  aria-label={`Kolor tekstu: ${swatch.name}`}
-                  className="h-4.5 w-4.5 rounded-full border border-line-strong cursor-pointer transition-transform hover:scale-110 shrink-0"
-                  style={{ backgroundColor: swatch.value === 'inherit' ? 'transparent' : swatch.value }}
-                />
-              ))}
-              <button
-                ref={extendedPaletteBtnRef}
-                type="button"
-                onMouseDown={event => event.preventDefault()}
-                onClick={() => setIsExtendedPaletteOpen(open => !open)}
-                title="Więcej kolorów"
-                aria-label="Więcej kolorów"
-                aria-expanded={isExtendedPaletteOpen}
-                className="h-4.5 w-4 flex items-center justify-center text-text-2 hover:text-content cursor-pointer shrink-0"
-              >
-                <ChevronDown size={12} className={`transition-transform duration-150 ${isExtendedPaletteOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {typeof window !== 'undefined' &&
-                isExtendedPaletteOpen &&
-                createPortal(
-                  <div
-                    id="pad-extended-palette-panel"
-                    className="fixed z-[500] p-2 rounded-xl bg-ink-2/98 border border-line-strong shadow-ambient-lg backdrop-blur-xl grid grid-cols-3 gap-1.5"
-                    style={{ top: extendedPalettePos.top, left: extendedPalettePos.left, width: 176 }}
-                  >
-                    {NOTEBOOK_SWATCHES_EXTENDED.map(swatch => (
-                      <button
-                        key={swatch.value}
-                        type="button"
-                        onMouseDown={event => event.preventDefault()}
-                        onClick={() => {
-                          execCmd('foreColor', swatch.value);
-                          setIsExtendedPaletteOpen(false);
-                        }}
-                        title={swatch.name}
-                        aria-label={`Kolor tekstu: ${swatch.name}`}
-                        className="h-6 w-6 rounded-full border border-line-strong cursor-pointer transition-transform hover:scale-110 mx-auto"
-                        style={{ backgroundColor: swatch.value }}
-                      />
-                    ))}
-                  </div>,
-                  document.body
-                )}
-            </div>
-
-            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
-
-            {/* Zakreślacze lektorskie */}
-            <div className="flex items-center gap-1 shrink-0" data-coach="pad-highlighters">
-              <button
-                type="button"
-                onMouseDown={event => event.preventDefault()}
-                onClick={() => handleHighlight('#fee2e2', '#b91c1c')}
-                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-danger/15 text-danger border border-danger/30 hover:bg-danger/25 transition-colors cursor-pointer shrink-0"
-                title="Zaznacz fragment jako błąd kursanta"
-              >
-                ❌ Błąd
-              </button>
-              <button
-                type="button"
-                onMouseDown={event => event.preventDefault()}
-                onClick={() => handleHighlight('#dcfce7', '#15803d')}
-                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-accent/12 text-accent border border-accent/30 hover:bg-accent/20 transition-colors cursor-pointer shrink-0"
-                title="Zaznacz fragment jako poprawną formę"
-              >
-                ✅ Poprawnie
-              </button>
-              <button
-                type="button"
-                onMouseDown={event => event.preventDefault()}
-                onClick={() => handleHighlight('#fef3c7', '#92400e')}
-                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-warn/15 text-warn border border-warn/30 hover:bg-warn/25 transition-colors cursor-pointer shrink-0"
-                title="Wyróżnij nowe słówko"
-              >
-                💡 Słówko
-              </button>
-              <button
-                type="button"
-                onMouseDown={event => event.preventDefault()}
-                onClick={handleStrikeCorrect}
-                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-white/[0.04] text-text-2 border border-line-strong hover:bg-white/[0.08] hover:text-content transition-colors cursor-pointer shrink-0"
-                title="Korekta w locie — przekreśl błąd i wpisz poprawną formę obok"
-              >
-                ⇄ Korekta
-              </button>
-              <button
-                type="button"
-                onMouseDown={event => event.preventDefault()}
-                onClick={handleClearHighlight}
-                className="h-7 px-2 rounded-lg text-[11px] font-bold bg-white/[0.04] text-text-2 border border-line-strong hover:bg-white/[0.08] hover:text-content transition-colors cursor-pointer shrink-0"
-                title="Wyczyść formatowanie zaznaczenia"
-              >
-                🧹 Wyczyść zaznaczenie
-              </button>
-            </div>
-
-            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
-
-            {/* Listy */}
-            <div className="flex items-center gap-0.5 shrink-0">
-              <FormatButton
-                icon={<List size={14} />}
-                title="Lista wypunktowana"
-                onClick={() => execCmd('insertUnorderedList')}
-              />
-              <FormatButton
-                icon={<ListOrdered size={14} />}
-                title="Lista numerowana"
-                onClick={() => execCmd('insertOrderedList')}
-              />
-            </div>
-
-            <div className="w-px h-5 bg-line-strong mx-1 shrink-0" aria-hidden />
-
-            {/* Menu Wstaw */}
-            <MenuDropdown
-              open={isInsertMenuOpen}
-              onOpenChange={setIsInsertMenuOpen}
-              preserveSelection
-              width={264}
-              align="start"
-              aria-label="Wstaw element"
-              coachId="pad-insert"
-              triggerTitle="Data lekcji, szablon sekcji, listy i linia"
-              triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
-                isInsertMenuOpen
-                  ? 'bg-white/[0.08] border-line-strong text-content'
-                  : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
-              }`}
-              trigger={
-                <>
-                  <Plus size={14} />
-                  <span>Wstaw</span>
-                  <MenuChevron open={isInsertMenuOpen} />
-                </>
-              }
-              sections={[
-                ...(isTeacher
-                  ? [
-                      {
-                        id: 'lesson',
-                        label: 'Elementy lekcji',
-                        items: [
-                          {
-                            id: 'lesson',
-                            label: 'Nowa lekcja',
-                            description: 'Numer, data i sekcje — na końcu dokumentu',
-                            icon: <Calendar size={14} />,
-                            onSelect: openInsertLessonGate,
-                          },
-                          {
-                            id: 'upload-image',
-                            label: 'Wstaw zdjęcie z dysku',
-                            description: 'PNG, JPG lub WebP (możesz też wklejać Ctrl+V)',
-                            icon: <ImageIcon size={14} />,
-                            onSelect: () => imageFileInputRef.current?.click(),
-                          },
-                        ],
-                      },
-                    ]
-                  : []),
-                ...(isTeacher
-                  ? [
-                      {
-                        id: 'templates',
-                        label: 'Szablony',
-                        items:
-                          templates.length > 0
-                            ? templates.map(tpl => ({
-                                id: `tpl-${tpl.id}`,
-                                label: tpl.title,
-                                description: 'Wstaw szablon',
-                                icon: <Sparkles size={14} />,
-                                onSelect: () => handleInsertTemplate(tpl.contentHtml),
-                              }))
-                            : [
-                                {
-                                  id: 'tpl-empty',
-                                  label: 'Brak zapisanych szablonów',
-                                  icon: <Sparkles size={14} />,
-                                  disabled: true,
-                                  onSelect: () => {},
-                                },
-                              ],
-                      },
-                      {
-                        id: 'templates-manage',
-                        items: [
-                          {
-                            id: 'manage-templates',
-                            label: 'Zarządzaj szablonami…',
-                            icon: <Settings2 size={14} />,
-                            onSelect: () => setIsTemplateManagerOpen(true),
-                          },
-                        ],
-                      },
-                    ]
-                  : []),
-                {
-                  id: 'structure',
-                  label: 'Struktura dokumentu',
-                  items: [
-                    {
-                      id: 'page-break',
-                      label: 'Podział strony A4',
-                      description: 'Rozpocznij nową czystą stronę A4',
-                      icon: <FilePlus size={14} />,
-                      onSelect: handleInsertPageBreak,
-                    },
-                    {
-                      id: 'checklist',
-                      label: 'Lista zadań',
-                      description: 'Klikalny checkbox',
-                      icon: <CheckSquare size={14} />,
-                      onSelect: handleInsertChecklist,
-                    },
-                    {
-                      id: 'columns-2',
-                      label: 'Układ 2 kolumn',
-                      description: 'Dwie edytowalne kolumny obok siebie',
-                      icon: <Columns size={14} />,
-                      onSelect: handleInsertColumns,
-                    },
-                    {
-                      id: 'table-2x2',
-                      label: 'Tabela 2×2',
-                      description: 'Prosta tabela, 2 wiersze',
-                      icon: <Grid2x2 size={14} />,
-                      onSelect: () => handleInsertTable(2),
-                    },
-                    {
-                      id: 'table-3x2',
-                      label: 'Tabela 3×2',
-                      description: 'Prosta tabela, 3 wiersze',
-                      icon: <Grid2x2 size={14} />,
-                      onSelect: () => handleInsertTable(3),
-                    },
-                    {
-                      id: 'link',
-                      label: 'Link',
-                      icon: <Link2 size={14} />,
-                      onSelect: handleInsertLink,
-                    },
-                    {
-                      id: 'hr',
-                      label: 'Linia pozioma',
-                      icon: <Minus size={14} />,
-                      onSelect: () => execCmd('insertHorizontalRule'),
-                    },
-                  ],
-                },
-              ]}
-            />
-
-            {/* Szybki podział strony A4 */}
-            <FormatButton
-              icon={<FilePlus size={14} />}
-              title="Wstaw podział strony A4 (Nowa czysta strona)"
-              onClick={handleInsertPageBreak}
-            />
-
-            {/* Szybki szablon dla lektora */}
-            {isTeacher && templates.length > 0 && (
-              templates.length === 1 ? (
-                <FormatButton
-                  icon={<LayoutTemplate size={14} />}
-                  title={`Wstaw szablon: ${templates[0].title}`}
-                  onClick={() => handleInsertTemplate(templates[0].contentHtml)}
-                />
-              ) : (
-                <MenuDropdown
-                  open={isTemplateMenuOpen}
-                  onOpenChange={setIsTemplateMenuOpen}
-                  preserveSelection
-                  width={260}
-                  align="start"
-                  aria-label="Wstaw szablon"
-                  triggerTitle="Wstaw gotowy szablon lekcji"
-                  triggerClassName={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer shrink-0 ${
-                    isTemplateMenuOpen
-                      ? 'bg-white/[0.08] border-line-strong text-content'
-                      : 'bg-white/[0.04] border-line-strong text-text-2 hover:text-content hover:bg-white/[0.08]'
-                  }`}
-                  trigger={
-                    <>
-                      <LayoutTemplate size={14} />
-                      <span>Szablon</span>
-                      <MenuChevron open={isTemplateMenuOpen} />
-                    </>
-                  }
-                  sections={[
-                    {
-                      id: 'templates-quick',
-                      label: 'Wstaw szablon',
-                      items: templates.map(tpl => ({
-                        id: `quick-${tpl.id}`,
-                        label: tpl.title,
-                        icon: <LayoutTemplate size={14} />,
-                        onSelect: () => handleInsertTemplate(tpl.contentHtml),
-                      })),
-                    },
-                  ]}
-                />
-              )
-            )}
-
-            {isTeacher && (
-              <button
-                type="button"
-                onMouseDown={event => event.preventDefault()}
-                onClick={openInsertLessonGate}
-                disabled={isInsertingLesson}
-                title="Dodaj nową lekcję: nowa strona A4, kolejny numer i 5 sekcji szablonu"
-                className="h-7 px-2.5 rounded-lg text-[11px] font-bold bg-primary/12 text-primary border border-primary/30 hover:bg-primary/20 transition-colors cursor-pointer shrink-0 flex items-center gap-1.5 disabled:opacity-50"
-              >
-                <Calendar size={13} />
-                <span className="whitespace-nowrap">+ Nowa lekcja</span>
-              </button>
-            )}
-          </>
-        )}
 
         {/* Prawa strona paska narzędzi: Czat AI (tylko dla lektora), Spis treści i zwijanie */}
         <div className="ml-auto flex items-center gap-1 shrink-0">
           {isTeacher && (
             <button
               type="button"
-              onClick={() => setIsAiChatOpen(v => !v)}
+              onClick={() => setIsAiChatOpen((v) => !v)}
               title={isAiChatOpen ? 'Zamknij Czat AI dokumentu' : 'Otwórz Czat AI dokumentu (Gemini 2.5 Flash)'}
               className={`h-7 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
                 isAiChatOpen
@@ -3443,7 +3008,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           )}
           <button
             type="button"
-            onClick={() => setIsTocOpen(v => !v)}
+            onClick={() => setIsTocOpen((v) => !v)}
             title={isTocOpen ? 'Ukryj spis treści (Konspekt)' : 'Pokaż spis treści (Konspekt)'}
             className={`h-7 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
               isTocOpen
@@ -4254,6 +3819,83 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           onLaunchWheelOfFortune={handleLaunchWheelOfFortune}
           onTriggerAiSummary={handleTriggerAiFromNotes}
           onInsertPhrase={handleInsertPhraseToDoc}
+        />
+      )}
+
+      {/* Pływający launcher narzędzi (Tools) poza arkuszem A4 — widoczny tylko dla lektora */}
+      {isTeacher && !isReadOnly && !docData.presentationState?.active && (
+        <FloatingToolsLauncher
+          isOpen={isFloatingToolsOpen}
+          onToggle={() => setIsFloatingToolsOpen((v) => !v)}
+          isTeacher={isTeacher}
+        />
+      )}
+
+      {/* Pływająca paleta narzędzi (FloatingToolPalette) z zakładkami CONTENT, TEACH, CANVAS, DRAW */}
+      {isTeacher && !isReadOnly && !docData.presentationState?.active && (
+        <FloatingToolPalette
+          isOpen={isFloatingToolsOpen}
+          onClose={() => setIsFloatingToolsOpen(false)}
+          isTeacher={isTeacher}
+          editorRef={editorRef}
+          onInsertText={(tag) => handleFormatBlock(tag)}
+          onInsertImage={() => imageFileInputRef.current?.click()}
+          onInsertAttachment={() => imageFileInputRef.current?.click()}
+          onOpenExerciseStudio={() => {
+            setIsFloatingToolsOpen(false);
+            setIsExerciseStudioOpen(true);
+          }}
+          onInsertLink={handleInsertLink}
+          onInsertTable={(rows) => handleInsertTable((rows === 3 ? 3 : 2) as 2 | 3)}
+          onDuplicateSelection={() => {
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+              const range = sel.getRangeAt(0);
+              const clone = range.cloneContents();
+              range.collapse(false);
+              range.insertNode(clone);
+              handleInput();
+            }
+          }}
+          onDeleteSelection={() => {
+            execCmd('delete');
+            handleInput();
+          }}
+          onApplyMark={(type) => {
+            if (type === 'error') handleHighlight('#fee2e2', '#b91c1c');
+            else if (type === 'correct') handleHighlight('#dcfce7', '#15803d');
+            else if (type === 'vocab') handleHighlight('#fef3c7', '#92400e');
+            else if (type === 'correction') handleStrikeCorrect();
+            else if (type === 'highlight') handleHighlight('#fef08a', '#854d0e');
+            else if (type === 'underline') execCmd('underline');
+            else if (type === 'strike') execCmd('strikeThrough');
+            else if (type === 'note') {
+              const noteHtml = `<div class="pad-teacher-note" style="background: rgba(139, 92, 246, 0.08); border-left: 3px solid #8b5cf6; padding: 8px 12px; margin: 8px 0; border-radius: 4px; font-size: 14px; color: #18212a;"><strong>📝 Notatka lektora:</strong> Wpisz treść...</div>`;
+              handleInsertTemplate(noteHtml);
+            }
+          }}
+          onClearFormatting={handleClearHighlight}
+          onStartFocusZoom={(mode) => {
+            setIsFloatingToolsOpen(false);
+            setIsFocusZoomActive(true);
+          }}
+          onResetCanvasView={() => {
+            if (editorRef.current) {
+              editorRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          }}
+          onOpenPresentation={() => {
+            setIsFloatingToolsOpen(false);
+            setIsLivePresentationModalOpen(true);
+          }}
+          activeDrawTool={activeDrawTool}
+          onSelectDrawTool={setActiveDrawTool}
+          drawColor={drawColor}
+          onChangeDrawColor={setDrawColor}
+          drawStrokeWidth={drawStrokeWidth}
+          onChangeDrawStrokeWidth={setDrawStrokeWidth}
+          drawOpacity={drawOpacity}
+          onChangeDrawOpacity={setDrawOpacity}
         />
       )}
 

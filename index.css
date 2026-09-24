@@ -962,25 +962,46 @@ tr.liquid-glass-hover:hover {
    W dark mode workspace pozostaje ciemny, a kartka pozostaje jasna i papierowa.
    ═══════════════════════════════════════════════════════════════════════ */
 
+:root {
+  --paper-base: #f8f5ed;
+  --paper-surface: #fffdf8;
+  --paper-ink: #18212a;
+  --paper-muted: #667085;
+  --paper-border: rgba(83, 72, 54, 0.16);
+  --paper-shadow: rgba(15, 23, 42, 0.18);
+}
+
 .pad-paper {
-  background-color: #fcfbf7;
-  background-image: radial-gradient(rgba(44, 40, 34, 0.035) 0.75px, transparent 0.75px);
-  background-size: 16px 16px;
-  color: #1e293b;
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 255, 255, 0.72) 0,
+      transparent 32%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(84, 70, 43, 0.018) 0,
+      rgba(84, 70, 43, 0.018) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    var(--paper-surface, #fffdf8);
+  color: var(--paper-ink, #18212a);
   font-size: 15.5px;
   line-height: 1.75;
   letter-spacing: 0.005em;
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--paper-border, rgba(83, 72, 54, 0.16));
+  border-radius: 4px;
   box-shadow:
-    0 1px 3px rgba(0, 0, 0, 0.06),
-    0 10px 30px -5px rgba(0, 0, 0, 0.12),
-    0 24px 60px -15px rgba(0, 0, 0, 0.18);
-  border-radius: 2px;
-  --pad-bg:     #fcfbf7;
-  --pad-fg:     #1e293b;
+    0 1px 1px rgba(255, 255, 255, 0.9) inset,
+    0 2px 6px -1px rgba(15, 23, 42, 0.08),
+    0 12px 32px -4px rgba(15, 23, 42, 0.14),
+    0 24px 64px -12px rgba(15, 23, 42, 0.18);
+  --pad-bg:     #fffdf8;
+  --pad-fg:     #18212a;
   --pad-h:      #0f172a;
-  --pad-muted:  #475569;
-  --pad-line:   rgba(30, 41, 59, 0.14);
+  --pad-muted:  #667085;
+  --pad-line:   rgba(83, 72, 54, 0.16);
   --pad-link:   #0d8a5f;
   --pad-mark:   rgba(13, 138, 95, 0.08);
   --pad-page:   rgba(30, 41, 59, 0.20);
@@ -988,24 +1009,53 @@ tr.liquid-glass-hover:hover {
 
 .pad-paper[data-pad-theme="light"],
 .pad-paper[data-pad-theme="dark"] {
-  background-color: #fcfbf7;
-  color: #1e293b;
-  --pad-bg:     #fcfbf7;
-  --pad-fg:     #1e293b;
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 255, 255, 0.72) 0,
+      transparent 32%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(84, 70, 43, 0.018) 0,
+      rgba(84, 70, 43, 0.018) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    var(--paper-surface, #fffdf8);
+  color: var(--paper-ink, #18212a);
+  --pad-bg:     #fffdf8;
+  --pad-fg:     #18212a;
   --pad-h:      #0f172a;
-  --pad-muted:  #475569;
-  --pad-line:   rgba(30, 41, 59, 0.14);
+  --pad-muted:  #667085;
+  --pad-line:   rgba(83, 72, 54, 0.16);
   --pad-link:   #0d8a5f;
 }
 
-/* W ciemnym motywie workspace: kartka nadal jasna, z wyrazistym cieniem na ciemnym biurku */
+/* W ciemnym motywie workspace: kartka pozostaje jasna z wyrazistym cieniem i podświetleniem górnej krawędzi */
 [data-theme="dark"] .pad-paper,
 :root:not([data-theme="light"]) .pad-paper {
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      rgba(255, 255, 255, 0.72) 0,
+      transparent 32%
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(84, 70, 43, 0.018) 0,
+      rgba(84, 70, 43, 0.018) 1px,
+      transparent 1px,
+      transparent 4px
+    ),
+    var(--paper-surface, #fffdf8);
+  color: #18212a;
+  border: 1px solid rgba(255, 255, 255, 0.18);
   box-shadow:
-    0 4px 20px rgba(0, 0, 0, 0.6),
-    0 24px 60px -10px rgba(0, 0, 0, 0.8),
-    0 0 0 1px rgba(255, 255, 255, 0.1);
+    0 1px 1px rgba(255, 255, 255, 0.7) inset,
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    0 20px 50px -10px rgba(0, 0, 0, 0.75),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 @media print {
@@ -1014,85 +1064,33 @@ tr.liquid-glass-hover:hover {
     background-image: none !important;
     box-shadow: none !important;
     border: none !important;
+    color: #000000 !important;
   }
 }
 
-/* ── Harmonizacja barw nagłówków i wyróżnień (Nocturne Dark Glow) ──
-   Szablon i edytor wpisują kolory w HTML jako inline style="color: ...".
-   W ciemnej kartce nadajemy im świetlistość z palety Nocturne Green,
-   zamiast zgaszonych, mdłych kolorów — dotyczy to zarówno istniejących
-   jak i nowo dodawanych notatek. */
-.pad-paper[data-pad-theme="dark"] [style*="#17917a"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(23, 145, 122)"],
-.pad-paper[data-pad-theme="dark"] [style*="#72f0b4"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(114, 240, 180)"] {
-  color: #72f0b4 !important;
-  text-shadow: 0 0 16px rgba(114, 240, 180, 0.28);
-}
-
-.pad-paper[data-pad-theme="dark"] [style*="#4c7fe0"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(76, 127, 224)"],
-.pad-paper[data-pad-theme="dark"] [style*="#67b5fa"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(103, 181, 250)"] {
-  color: #67b5fa !important;
-  text-shadow: 0 0 14px rgba(103, 181, 250, 0.22);
-}
-
-.pad-paper[data-pad-theme="dark"] [style*="#c06a26"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(192, 106, 38)"],
-.pad-paper[data-pad-theme="dark"] [style*="#fbbf24"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(251, 191, 36)"] {
-  color: #fbbf24 !important;
-  text-shadow: 0 0 14px rgba(251, 191, 36, 0.22);
-}
-
-.pad-paper[data-pad-theme="dark"] [style*="#d4577f"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(212, 87, 127)"],
-.pad-paper[data-pad-theme="dark"] [style*="#fb7185"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(251, 113, 133)"] {
-  color: #fb7185 !important;
-  text-shadow: 0 0 14px rgba(251, 113, 133, 0.22);
-}
-
-.pad-paper[data-pad-theme="dark"] [style*="#8f6fe0"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(143, 111, 224)"],
-.pad-paper[data-pad-theme="dark"] [style*="#a78bfa"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(167, 139, 250)"] {
-  color: #a78bfa !important;
-  text-shadow: 0 0 14px rgba(167, 139, 250, 0.22);
-}
-
-.pad-paper[data-pad-theme="dark"] [style*="#d1544c"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(209, 84, 76)"],
-.pad-paper[data-pad-theme="dark"] [style*="#f87171"],
-.pad-paper[data-pad-theme="dark"] [style*="rgb(248, 113, 113)"] {
-  color: #f87171 !important;
-  text-shadow: 0 0 14px rgba(248, 113, 113, 0.22);
-}
-
-/* ── Harmonizacja w jasnym notatniku (gwarancja kontrastu AAA) ── */
-.pad-paper[data-pad-theme="light"] [style*="#72f0b4"],
-.pad-paper[data-pad-theme="light"] [style*="rgb(114, 240, 180)"] {
+/* ── Harmonizacja barw nagłówków i wyróżnień na jasnym papierze (gwarancja kontrastu AAA) ── */
+.pad-paper [style*="#72f0b4"],
+.pad-paper [style*="rgb(114, 240, 180)"] {
   color: #0d8a5f !important;
 }
-.pad-paper[data-pad-theme="light"] [style*="#67b5fa"],
-.pad-paper[data-pad-theme="light"] [style*="rgb(103, 181, 250)"] {
+.pad-paper [style*="#67b5fa"],
+.pad-paper [style*="rgb(103, 181, 250)"] {
   color: #1d4ed8 !important;
 }
-.pad-paper[data-pad-theme="light"] [style*="#fbbf24"],
-.pad-paper[data-pad-theme="light"] [style*="rgb(251, 191, 36)"] {
+.pad-paper [style*="#fbbf24"],
+.pad-paper [style*="rgb(251, 191, 36)"] {
   color: #b45309 !important;
 }
-.pad-paper[data-pad-theme="light"] [style*="#fb7185"],
-.pad-paper[data-pad-theme="light"] [style*="rgb(251, 113, 133)"] {
+.pad-paper [style*="#fb7185"],
+.pad-paper [style*="rgb(251, 113, 133)"] {
   color: #be185d !important;
 }
-.pad-paper[data-pad-theme="light"] [style*="#a78bfa"],
-.pad-paper[data-pad-theme="light"] [style*="rgb(167, 139, 250)"] {
+.pad-paper [style*="#a78bfa"],
+.pad-paper [style*="rgb(167, 139, 250)"] {
   color: #6d28d9 !important;
 }
-.pad-paper[data-pad-theme="light"] [style*="#f87171"],
-.pad-paper[data-pad-theme="light"] [style*="rgb(248, 113, 113)"] {
+.pad-paper [style*="#f87171"],
+.pad-paper [style*="rgb(248, 113, 113)"] {
   color: #b91c1c !important;
 }
 
