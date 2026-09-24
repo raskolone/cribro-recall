@@ -50,6 +50,17 @@
   --line-strong:     rgba(255, 255, 255, 0.12);
   --line-soft:       rgba(255, 255, 255, 0.04);
 
+  /* ---- Exercise Studio & Interactive Widgets (Dark) ---- */
+  --exercise-surface:          #0f172a;
+  --exercise-surface-elevated: #1e293b;
+  --exercise-text:             #f8fafc;
+  --exercise-text-muted:       #94a3b8;
+  --exercise-border:           rgba(255, 255, 255, 0.12);
+  --exercise-accent:           #10b981;
+  --exercise-success:          #059669;
+  --exercise-warning:          #d97706;
+  --exercise-focus-ring:       rgba(16, 185, 129, 0.4);
+
   /* ── Tło konstelacji (components/ui/ConstellationBackground.tsx) ──
      Kanwa czytała kolor wpisany na sztywno w komponencie, więc w trybie
      jasnym rysowała jasną zieleń na jasnym tle i była praktycznie
@@ -257,6 +268,17 @@ a:hover { color: var(--accent-soft); }
   --line:            rgba(15, 23, 42, 0.22);
   --line-strong:     rgba(15, 23, 42, 0.35);
   --line-soft:       rgba(15, 23, 42, 0.12);
+
+  /* ---- Exercise Studio & Interactive Widgets (Light) ---- */
+  --exercise-surface:          #ffffff;
+  --exercise-surface-elevated: #f8fafc;
+  --exercise-text:             #0f172a;
+  --exercise-text-muted:       #475569;
+  --exercise-border:           #cbd5e1;
+  --exercise-accent:           #059669;
+  --exercise-success:          #16a34a;
+  --exercise-warning:          #d97706;
+  --exercise-focus-ring:       rgba(5, 150, 105, 0.35);
 
   /* Cienie ledwie obecne. Karta odkleja się od tła różnicą jasności
      (#ffffff na #f2f4f7) i obrysem; cień tylko potwierdza kierunek światła.

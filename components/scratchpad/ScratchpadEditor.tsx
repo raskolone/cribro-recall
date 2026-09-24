@@ -71,6 +71,7 @@ import {
   Grid2x2,
   ZoomIn,
   Maximize2,
+  Crosshair,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate, ScratchpadBlock, LessonAttachment, LessonRecord } from '../../types';
 import { isSharedNotebookV2Enabled } from '../../config/featureFlags';
@@ -106,6 +107,11 @@ import InsertLessonModal from './InsertLessonModal';
 import { ScratchpadPresentationOverlay, PresentationState } from './ScratchpadPresentationOverlay';
 import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationModal';
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
+import TeacherDock from './TeacherDock';
+import ExerciseStudioModal from '../exercise/ExerciseStudioModal';
+import TeacherFormattingToolbar from './TeacherFormattingToolbar';
+import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
+import { ExerciseDefinition, RandomWheelPayload } from '../../types/exerciseStudio';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
 import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
 import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, NOTEBOOK_SWATCHES_EXTENDED, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
@@ -356,6 +362,29 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     content: Partial<StructuredLessonContent>;
   }>({ isOpen: false, content: {} });
   const [isInsertLessonModalOpen, setIsInsertLessonModalOpen] = useState(false);
+  const [isTeacherDockOpen, setIsTeacherDockOpen] = useState(false);
+  const [isExerciseStudioOpen, setIsExerciseStudioOpen] = useState(false);
+  const [isFocusZoomActive, setIsFocusZoomActive] = useState(false);
+
+  // Globalny skrót F dla lektora do włączania Focus Zoom (gdy nie pisze w tekście)
+  useEffect(() => {
+    if (!isTeacher) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      const isInput =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable;
+      if (isInput) return;
+
+      if (e.key.toLowerCase() === 'f' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setIsFocusZoomActive((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isTeacher]);
 
   // Pobieranie historii lekcji przypisanego kursanta i profilu poziomu
   useEffect(() => {
@@ -1429,7 +1458,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   };
 
   /** Wstawia deterministyczny szablon lekcji do dokumentu, ew. z gotową sekcją Quick Recall. */
-  const insertLessonTemplateIntoDocument = (revisionHtml?: string, topic?: string) => {
+  const insertLessonTemplateIntoDocument = (revisionHtml?: string, topic?: string, cleanEmpty?: boolean) => {
     if (!editorRef.current) return;
     const previousHtml = editorRef.current.innerHTML;
     const nextNum = Math.max(realStudentLessons.length + 1, highestLessonNumber(previousHtml) + 1);
@@ -1439,6 +1468,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       topic,
       revisionHtml,
       paperTheme,
+      cleanEmpty,
     });
 
     editorRef.current.insertAdjacentHTML('beforeend', html);
@@ -1466,7 +1496,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const handleInsertCleanLesson = (topic?: string) => {
     setIsInsertingLesson(true);
     try {
-      insertLessonTemplateIntoDocument(undefined, topic);
+      insertLessonTemplateIntoDocument(undefined, topic, true);
     } finally {
       setIsInsertingLesson(false);
     }
@@ -2364,6 +2394,35 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     }
   };
 
+  const handleLaunchStudioExercise = async (exercise: ExerciseDefinition) => {
+    if (!docData.id) return;
+    try {
+      if (exercise.type === 'random_wheel') {
+        const payload = exercise.payload as RandomWheelPayload;
+        await updateScratchpadPresentation(docData.id, {
+          active: true,
+          title: exercise.title || 'Koło Fortuny',
+          type: 'wheel_of_fortune',
+          question: exercise.instructions || 'Zakręć kołem i wylosuj zadanie.',
+          prompt: exercise.instructions || '',
+          customItems: payload?.items,
+          removeOnHit: payload?.removeOnHit,
+          exerciseId: exercise.id,
+        });
+      } else {
+        await updateScratchpadPresentation(docData.id, {
+          active: true,
+          title: exercise.title,
+          type: 'interactive_quiz',
+          question: exercise.instructions || exercise.title,
+          exerciseId: exercise.id,
+        });
+      }
+    } catch (err) {
+      console.error('Błąd uruchamiania ćwiczenia ze Studio:', err);
+    }
+  };
+
   const handleTriggerAiFromNotes = (promptText: string) => {
     if (!isTeacher) return;
     setIsAiChatOpen(true);
@@ -2411,8 +2470,10 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               )}
             </div>
             <div className="flex items-center gap-2 text-[11px] text-text-faint mt-0.5">
-              <span className="truncate">
-                {docData.studentName ? `Kursant: ${docData.studentName}` : 'Wspólny notatnik'}
+              <span className={`truncate ${!docData.studentId ? 'text-amber-400 font-semibold' : ''}`}>
+                {docData.studentId && docData.studentName
+                  ? `Kursant: ${docData.studentName}`
+                  : 'Brak przypisanego kursanta'}
               </span>
               <span aria-hidden>•</span>
               {saveStatus === 'saving' ? (
@@ -2460,6 +2521,44 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             </button>
           )}
 
+          {/* Teacher Dock / Ćwiczenia dla lektora */}
+          {isTeacher && (
+            <button
+              type="button"
+              data-testid="teacher-dock-button"
+              onClick={() => setIsTeacherDockOpen(!isTeacherDockOpen)}
+              title="Panel ćwiczeń i widgetów lektora (Teacher Dock)"
+              className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm ${
+                isTeacherDockOpen
+                  ? 'border-emerald-500 bg-emerald-500/20 text-emerald-300'
+                  : 'border-emerald-500/40 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300'
+              }`}
+            >
+              <Layers size={14} />
+              <span className="hidden sm:inline">Ćwiczenia</span>
+            </button>
+          )}
+
+          {/* Focus Zoom dla lektora */}
+          {isTeacher && (
+            <button
+              type="button"
+              data-testid="focus-zoom-button"
+              onClick={() => setIsFocusZoomActive(!isFocusZoomActive)}
+              title="Focus Zoom — zaznacz kadr (pytanie, obraz, tabelę), aby powiększyć go kursantowi (Skrót: F)"
+              aria-label="Focus Zoom — powiększ kadr dla kursanta"
+              className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-bold transition-all cursor-pointer shadow-sm ${
+                isFocusZoomActive
+                  ? 'border-emerald-500 bg-emerald-500 text-slate-950 shadow-emerald-500/20'
+                  : 'border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/15 text-emerald-300'
+              }`}
+            >
+              <Crosshair size={14} />
+              <span className="hidden sm:inline">Focus Zoom</span>
+              <kbd className="hidden lg:inline px-1 py-0.2 text-[9px] bg-slate-950/20 rounded font-mono font-normal">F</kbd>
+            </button>
+          )}
+
           {/* Tryb Prezentacji (Live Slides) dla lektora */}
           {isTeacher && (
             <button
@@ -2471,19 +2570,6 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             >
               <Airplay size={14} />
               <span className="hidden md:inline">Prezentacja</span>
-            </button>
-          )}
-
-          {/* Szybki start: Koło Fortuny dla lektora */}
-          {isTeacher && (
-            <button
-              type="button"
-              onClick={handleLaunchWheelOfFortune}
-              title="Uruchom Koło Fortuny na żywo (losowanie pytań rozgrzewkowych)"
-              className="h-8 px-2.5 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 flex items-center gap-1.5 text-xs font-medium transition-all cursor-pointer shadow-sm"
-            >
-              <span>🎡</span>
-              <span className="hidden lg:inline">Koło Fortuny</span>
             </button>
           )}
 
@@ -3549,6 +3635,36 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 if (spellcheck.popover) spellcheck.closePopover();
               }}
             >
+              <TeacherFormattingToolbar
+                editorRef={editorRef}
+                isReadOnly={isReadOnly}
+                isStudent={!isTeacher}
+                onContentChange={handleInput}
+              />
+
+              {/* Warstwa interaktywnego zaznaczania Focus Zoom */}
+              {isTeacher && isFocusZoomActive && (
+                <FocusZoomSelectionLayer
+                  isActive={isFocusZoomActive}
+                  onClose={() => setIsFocusZoomActive(false)}
+                  paperRef={editorRef}
+                  isTeacher={isTeacher}
+                  onPresentFocus={async (box) => {
+                    setIsFocusZoomActive(false);
+                    if (!docData.id) return;
+                    await updateScratchpadPresentation(docData.id, {
+                      active: true,
+                      title: `Kadr lekcji (${box.label || 'Focus Zoom'})`,
+                      type: 'focus_zoom',
+                      focusZoom: {
+                        rect: box,
+                        htmlSnippet: editorRef.current?.innerHTML || docData.contentHtml,
+                        label: box.label || 'Kadr lekcji',
+                      },
+                    });
+                  }}
+                />
+              )}
               <div
                 ref={editorRef}
                 data-coach="pad-editor"
@@ -4140,6 +4256,37 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           onInsertPhrase={handleInsertPhraseToDoc}
         />
       )}
+
+      {/* Teacher Dock: Boczny panel widgetów i ćwiczeń dla lektora */}
+      {isTeacher && (
+        <TeacherDock
+          isOpen={isTeacherDockOpen}
+          onClose={() => setIsTeacherDockOpen(false)}
+          isTeacher={isTeacher}
+          studentName={docData.studentName}
+          lessonRecords={studentLessons}
+          docData={docData}
+          onLaunchExercise={handleLaunchStudioExercise}
+          onOpenStudio={() => {
+            setIsTeacherDockOpen(false);
+            setIsExerciseStudioOpen(true);
+          }}
+          onLaunchQuickRecallWheel={handleLaunchWheelOfFortune}
+          onInsertExerciseNote={(text) => handleInsertTemplate(text)}
+          onStartFocusZoom={() => setIsFocusZoomActive(true)}
+        />
+      )}
+
+      {/* Exercise Studio Modal */}
+      <ExerciseStudioModal
+        isOpen={isExerciseStudioOpen}
+        onClose={() => setIsExerciseStudioOpen(false)}
+        onLaunchExercise={handleLaunchStudioExercise}
+        onInsertToLesson={(ex) => {
+          const text = `<p><strong>🎯 Ćwiczenie (${ex.title}):</strong> ${ex.instructions || ''}</p>`;
+          handleInsertTemplate(text);
+        }}
+      />
 
       {/* Nakładka prezentacji live (widoczna u lektora i kursanta, gdy jest aktywna) */}
       {docData.presentationState?.active && (

@@ -43,15 +43,12 @@ describe('utils/lessonTemplate', () => {
     assert.equal(highestLessonNumber(html), 0);
   });
 
-  it('szablon niesie dokładnie cztery sekcje w nowej kolejności', () => {
-    const html = buildLessonTemplate({});
+  it('szablon niesie dokładnie cztery sekcje w nowej kolejności i bez fake tekstów', () => {
+    const html = buildLessonTemplate({ cleanEmpty: true });
     ['QUICK RECALL', 'TODAY’S LESSON', 'LANGUAGE NOTES', 'AFTER THE LESSON'].forEach(
       title => assert.ok(html.includes(title), title)
     );
-    assert.ok(html.includes('Choose a previous lesson to generate a short recall activity.'));
-    assert.ok(html.includes('Add the lesson topic, source material and main task here.'));
-    assert.ok(html.includes('- useful language:'));
-    assert.ok(html.includes('Lesson transcript → Meeting Summary'));
+    assert.ok(!html.includes('Marek'));
   });
 
   it('revisionHtml wygrywa z recallItems w sekcji Quick Recall', () => {

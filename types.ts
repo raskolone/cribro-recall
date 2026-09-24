@@ -1,6 +1,8 @@
 
 export * from './types/group';
 export * from './types/lessonStudio';
+export * from './types/exerciseStudio';
+import type { WheelItem } from './types/exerciseStudio';
 
 export type Language = 'English' | 'Spanish' | 'French' | 'Dutch';
 export type Difficulty = 'A1-A2' | 'B1-B2' | 'C1-C2';
@@ -1234,7 +1236,7 @@ export interface ScratchpadDocument {
   presentationState?: {
     active: boolean;
     title: string;
-    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune' | 'listening' | 'flip_cards' | 'process_tabs';
+    type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune' | 'listening' | 'flip_cards' | 'process_tabs' | 'focus_zoom';
     imageUrl?: string;
     audioUrl?: string;
     audioName?: string;
@@ -1251,12 +1253,20 @@ export interface ScratchpadDocument {
     wheelRotation?: number;
     drawnQuestionId?: string;
     questionSource?: 'scenario' | 'past_lessons';
+    customItems?: WheelItem[];
+    removeOnHit?: boolean;
+    exerciseId?: string;
+    focusZoom?: {
+      rect: { left: number; top: number; width: number; height: number; scale?: number };
+      htmlSnippet?: string;
+      label?: string;
+    };
     cards?: Array<{ term: string; definition: string; example?: string; hint?: string }>;
     steps?: Array<{ title: string; subtitle?: string; content: string; keyPoints?: string[] }>;
     slides?: Array<{
       id?: string;
       title: string;
-      type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune' | 'listening' | 'flip_cards' | 'process_tabs';
+      type: 'image_prompt' | 'slide' | 'scenario_item' | 'interactive_quiz' | 'sentence_scramble' | 'error_hunt' | 'wheel_of_fortune' | 'listening' | 'flip_cards' | 'process_tabs' | 'focus_zoom';
       question?: string;
       prompt?: string;
       imageUrl?: string;

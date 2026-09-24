@@ -11,12 +11,36 @@ export const TEMPLATE_TONE = {
 } as const;
 
 /** Inline `style` dla nagłówka H2 tytułu lekcji ("Lesson N — data"). */
-export const lessonTitleStyle = (paperTheme: 'light' | 'dark'): string =>
-  `font-size:20px;font-weight:700;color:${NOTEBOOK_INK[paperTheme]};border-bottom:1px solid ${TEMPLATE_TONE[paperTheme].border};padding-bottom:4px;margin-bottom:16px;`;
+export const lessonTitleStyle = (paperTheme: 'light' | 'dark' = 'light'): string =>
+  `font-size:22px;font-weight:750;color:#0f172a;border-bottom:2px solid rgba(13, 138, 95, 0.4);padding-bottom:6px;margin-top:8px;margin-bottom:18px;letter-spacing:-0.01em;`;
 
-/** Inline `style` dla nagłówka H3 sekcji lekcji (Warm-up & Review itd.). */
-export const sectionHeadingStyle = (paperTheme: 'light' | 'dark'): string =>
-  `font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:${TEMPLATE_TONE[paperTheme].sectionText};margin-top:20px;margin-bottom:8px;`;
+/**
+ * Inline `style` dla nagłówka H3 sekcji lekcji (QUICK RECALL, TODAY'S LESSON itd.).
+ * Używa semantycznych barw o wysokim kontraście na jasnym papierze:
+ * - Quick Recall: morski akcent (#0f766e)
+ * - Today's Lesson: główny szmaragd (#0d8a5f)
+ * - Language Notes: dyskretny indygo lektora (#4338ca)
+ * - After the Lesson: ciepły bursztyn (#b45309)
+ */
+export const sectionHeadingStyle = (titleOrTheme?: string, fallbackTheme?: 'light' | 'dark'): string => {
+  const isTheme = titleOrTheme === 'light' || titleOrTheme === 'dark';
+  const theme = isTheme ? titleOrTheme : fallbackTheme || 'light';
+  const title = !isTheme ? (titleOrTheme || '') : '';
+  const titleUpper = title.toUpperCase();
+
+  let color = theme === 'dark' ? '#72f0b4' : '#0d8a5f';
+  if (titleUpper.includes('QUICK RECALL') || titleUpper.includes('WARM')) {
+    color = '#0f766e';
+  } else if (titleUpper.includes('LANGUAGE') || titleUpper.includes('NOTES') || titleUpper.includes('GRAMMAR')) {
+    color = '#4338ca';
+  } else if (titleUpper.includes('AFTER') || titleUpper.includes('HOMEWORK')) {
+    color = '#b45309';
+  } else if (titleUpper.includes('TODAY')) {
+    color = '#0d8a5f';
+  }
+
+  return `font-size:15px;font-weight:750;text-transform:uppercase;letter-spacing:0.06em;color:${color};margin-top:22px;margin-bottom:10px;`;
+};
 
 /**
  * Szablon wpisu lekcyjnego w notatniku.
@@ -96,24 +120,24 @@ export const templateDate = (date: Date = new Date()): string =>
   date.toLocaleDateString('pl-PL', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 /**
- * Domyślne sekcje wpisu lekcyjnego zgodne z nowym standardem.
+ * Domyślne sekcje wpisu lekcyjnego zgodne ze standardem CRIBRO.
  */
 export const LESSON_SECTIONS: { title: string; defaultContent: string }[] = [
   {
     title: 'QUICK RECALL',
-    defaultContent: '<p>Choose a previous lesson to generate a short recall activity.</p>',
+    defaultContent: '<p><br></p>',
   },
   {
     title: 'TODAY’S LESSON',
-    defaultContent: '<p>Add the lesson topic, source material and main task here.</p>',
+    defaultContent: '<p><br></p>',
   },
   {
     title: 'LANGUAGE NOTES',
-    defaultContent: '<p>- useful language:</p><p>- corrections to revisit:</p><p>- pronunciation:</p>',
+    defaultContent: '<p><br></p>',
   },
   {
     title: 'AFTER THE LESSON',
-    defaultContent: '<p>Lesson transcript → Meeting Summary → history, key language, corrections and next lesson.</p>',
+    defaultContent: '<p><br></p>',
   },
 ];
 
@@ -131,12 +155,12 @@ export const buildLessonTemplate = (options?: {
     corrections?: string[];
     vocabulary?: string[];
   };
-  /**
-   * Wygenerowany fragment HTML dla sekcji Quick Recall.
-   */
+  /** Wygenerowany fragment HTML dla sekcji Quick Recall. */
   revisionHtml?: string;
   /** Motyw papieru kursanta w chwili wstawienia. */
   paperTheme?: 'light' | 'dark';
+  /** Czy wstawić czysty, pusty szablon bez domyślnych tekstów pomocniczych */
+  cleanEmpty?: boolean;
 }): string => {
   const previous = options?.previousHtml || '';
   const number =
@@ -157,7 +181,7 @@ export const buildLessonTemplate = (options?: {
     if (section.title === 'QUICK RECALL') {
       if (options?.revisionHtml && options.revisionHtml.trim().length > 0) {
         innerBody = options.revisionHtml;
-      } else if (options?.recallItems) {
+      } else if (options?.recallItems && !options?.cleanEmpty) {
         const { corrections, vocabulary } = options.recallItems;
         const hasCorrections = corrections && corrections.length > 0;
         const hasVocab = vocabulary && vocabulary.length > 0;
@@ -183,7 +207,7 @@ export const buildLessonTemplate = (options?: {
       }
     }
 
-    return `<h3 contenteditable="false" class="pad-locked-heading" style="${sectionHeadingStyle(paperTheme)}">${section.title}</h3>${innerBody}`;
+    return `<h3 contenteditable="false" class="pad-locked-heading" style="${sectionHeadingStyle(section.title, paperTheme)}">${section.title}</h3>${innerBody}`;
   }).join('');
 
   const hasPreviousContent = previous.trim().length > 0 && previous.replace(/<[^>]+>/g, '').trim().length > 0;

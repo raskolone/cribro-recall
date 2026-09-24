@@ -21,7 +21,11 @@ import {
   Layers,
   ArrowLeft,
   ArrowRight,
+  RotateCcw,
+  ZoomIn,
 } from 'lucide-react';
+import gsap from 'gsap';
+import { prefersReducedMotion } from '../../services/gsapAnimations';
 import Button from '../ui/Button';
 import { ScratchpadDocument, LessonRecord } from '../../types';
 import { WheelOfFortune } from '../presentation/WheelOfFortune';
@@ -73,6 +77,139 @@ const OPTION_THEMES = [
     ringColor: 'ring-emerald-400',
   },
 ];
+
+const FocusZoomPresentationView: React.FC<{
+  presentation: PresentationState;
+  onClose: () => void;
+  isTeacher: boolean;
+}> = ({ presentation, onClose }) => {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [zoomLevel, setZoomLevel] = useState<number>(1);
+  const [isReset, setIsReset] = useState<boolean>(false);
+
+  const rect = presentation.focusZoom?.rect;
+  const html = presentation.focusZoom?.htmlSnippet || presentation.question || '';
+
+  useEffect(() => {
+    if (!contentRef.current || !rect) return;
+
+    const reducedMotion = prefersReducedMotion();
+    const containerW = containerRef.current?.clientWidth || window.innerWidth;
+    const containerH = containerRef.current?.clientHeight || window.innerHeight;
+
+    if (isReset || rect.width <= 0 || rect.height <= 0) {
+      if (reducedMotion) {
+        gsap.set(contentRef.current, { scale: 1, x: 0, y: 0 });
+      } else {
+        gsap.to(contentRef.current, { scale: 1, x: 0, y: 0, duration: 0.4, ease: 'power2.inOut' });
+      }
+      setZoomLevel(1);
+      return;
+    }
+
+    // Oblicz kadr i skalę (z marginesem 10%, max 3x)
+    const targetScale = Math.max(
+      1.0,
+      Math.min(
+        3.0,
+        Math.min((containerW * 0.88) / rect.width, (containerH * 0.85) / rect.height)
+      )
+    );
+
+    const boxCenterX = rect.left + rect.width / 2;
+    const boxCenterY = rect.top + rect.height / 2;
+    const paperW = 816;
+    const paperCenterX = paperW / 2;
+
+    const deltaX = (paperCenterX - boxCenterX) * targetScale;
+    const deltaY = -((boxCenterY - 220) * (targetScale - 1));
+
+    setZoomLevel(Number(targetScale.toFixed(1)));
+
+    if (reducedMotion) {
+      gsap.set(contentRef.current, {
+        scale: targetScale,
+        x: deltaX,
+        y: deltaY,
+        transformOrigin: `${boxCenterX}px ${boxCenterY}px`,
+      });
+    } else {
+      gsap.fromTo(
+        contentRef.current,
+        { scale: 1, x: 0, y: 0 },
+        {
+          scale: targetScale,
+          x: deltaX,
+          y: deltaY,
+          transformOrigin: `${boxCenterX}px ${boxCenterY}px`,
+          duration: 0.45,
+          ease: 'power2.inOut',
+        }
+      );
+    }
+  }, [rect, isReset]);
+
+  return (
+    <div
+      ref={containerRef}
+      data-testid="focus-zoom-presentation-view"
+      className="flex-1 w-full h-full flex flex-col items-center justify-start overflow-hidden relative select-none"
+    >
+      {/* Pasek kontrolny Focus Zoom */}
+      <div className="z-30 sticky top-2 flex items-center justify-between gap-3 px-4 py-2 rounded-2xl bg-slate-900/90 border border-white/15 shadow-2xl backdrop-blur-xl mb-3 text-white">
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={onClose}
+            className="text-white hover:bg-white/15 font-bold flex items-center gap-1.5"
+            title="Wróć do całej strony (Esc)"
+          >
+            <ArrowLeft size={14} />
+            <span>Wróć do strony</span>
+            <kbd className="hidden sm:inline px-1 py-0.2 text-[9px] bg-white/20 rounded font-mono">Esc</kbd>
+          </Button>
+
+          <span className="w-px h-5 bg-white/20" />
+
+          <span className="text-xs font-mono font-bold text-emerald-400 flex items-center gap-1">
+            <ZoomIn size={13} />
+            <span>{zoomLevel}x</span>
+          </span>
+        </div>
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setIsReset(!isReset)}
+            className="p-1.5 rounded-xl text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            title={isReset ? 'Przywróć kadr Focus Zoom' : 'Pokaż pełną stronę (1x)'}
+            aria-label="Resetuj zoom"
+          >
+            <RotateCcw size={14} />
+          </button>
+        </div>
+      </div>
+
+      {/* Wykadrowana jasna kartka A4 w trybie prezentacji */}
+      <div className="flex-1 w-full h-full flex items-center justify-center overflow-hidden p-4">
+        <div
+          ref={contentRef}
+          className="pad-paper pad-sheet relative shadow-2xl rounded-sm transition-transform"
+          style={{
+            width: '816px',
+            minHeight: '1154px',
+            padding: '48px',
+            backgroundColor: '#fcfbf7',
+            color: '#1e293b',
+          }}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+    </div>
+  );
+};
 
 export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverlayProps> = ({
   presentation,
@@ -222,6 +359,8 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
               <span className="text-[11px] font-mono uppercase bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30 px-2.5 py-0.5 rounded-full font-extrabold">
                 {hasSlides
                   ? `Slajd ${slideIndex + 1} z ${slides.length}`
+                  : currentType === 'focus_zoom'
+                  ? '🔍 Focus Zoom • Kadr Lekcji'
                   : currentType === 'wheel_of_fortune'
                   ? '🎡 Koło Fortuny Live'
                   : currentType === 'listening'
@@ -343,9 +482,20 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
       )}
 
       {/* ── MAIN PRESENTATION CONTAINER ── */}
-      {currentType === 'wheel_of_fortune' ? (
+      {currentType === 'focus_zoom' ? (
+        <FocusZoomPresentationView
+          presentation={presentation}
+          onClose={onClose}
+          isTeacher={isTeacher}
+        />
+      ) : currentType === 'wheel_of_fortune' ? (
         <div className="flex-1 flex flex-col items-center justify-center max-w-5xl mx-auto w-full my-4 sm:my-6 animate-in fade-in zoom-in-95 duration-200">
           <WheelOfFortune
+            items={presentation.customItems}
+            removeOnHit={presentation.removeOnHit}
+            exerciseTitle={currentTitle}
+            mode="presentation"
+            onExitPresentation={onClose}
             slide={{
               id: 'scratchpad-live-wheel',
               type: 'wheel_of_fortune',
@@ -354,7 +504,7 @@ export const ScratchpadPresentationOverlay: React.FC<ScratchpadPresentationOverl
             }}
             lessonRecords={lessonRecords}
             studentName={studentName}
-            isFullscreen={false}
+            isFullscreen={true}
             isStudent={!isTeacher}
             interaction={{
               ...EMPTY_SLIDE_INTERACTION,

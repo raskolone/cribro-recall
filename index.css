@@ -954,53 +954,67 @@ tr.liquid-glass-hover:hover {
    dając w zamian.
    ═══════════════════════════════════════════════════════════════════════ */
 
+/* ═══════════════════════════════════════════════════════════════════════
+   ARKUSZ KARTKI A4 — PAPER-LIKE PRESENTATION SURFACE (9A)
+   Strona A4 ma ZAWSZE wyglądać jak jasny, fizyczny papier do prowadzenia
+   lekcji (ciepła biel / ivory #fcfbf7), o wysokim kontraście tekstu (#1e293b),
+   z delikatną fakturą mikroszumu CSS, realistycznym cieniem i dyskretną krawędzią.
+   W dark mode workspace pozostaje ciemny, a kartka pozostaje jasna i papierowa.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 .pad-paper {
-  background: var(--pad-bg);
-  color: var(--pad-fg);
-  /* Miara wiersza jak w dokumencie, nie jak w panelu aplikacji. */
+  background-color: #fcfbf7;
+  background-image: radial-gradient(rgba(44, 40, 34, 0.035) 0.75px, transparent 0.75px);
+  background-size: 16px 16px;
+  color: #1e293b;
   font-size: 15.5px;
   line-height: 1.75;
   letter-spacing: 0.005em;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.06),
+    0 10px 30px -5px rgba(0, 0, 0, 0.12),
+    0 24px 60px -15px rgba(0, 0, 0, 0.18);
+  border-radius: 2px;
+  --pad-bg:     #fcfbf7;
+  --pad-fg:     #1e293b;
+  --pad-h:      #0f172a;
+  --pad-muted:  #475569;
+  --pad-line:   rgba(30, 41, 59, 0.14);
+  --pad-link:   #0d8a5f;
+  --pad-mark:   rgba(13, 138, 95, 0.08);
+  --pad-page:   rgba(30, 41, 59, 0.20);
 }
 
-.pad-paper[data-pad-theme="light"] {
-  /* Papier czytnika, nie kartka z drukarki.
-     Czysta biel świeci: przy godzinie pisania na ciemnym tle okna biały
-     prostokąt na środku ekranu jest najjaśniejszym punktem w pomieszczeniu.
-     Ten odcień (#f6f1e6, ciepła kość) odbija tyle, co papier w e-czytniku,
-     a przy tekście #2c2822 trzyma kontrast 12,3:1 — czyli WYŻEJ niż próg
-     AAA (7:1), mimo że tło nie jest białe. Ciepły tekst zamiast grafitu,
-     bo chłodna czerń na ciepłym papierze wygląda jak wydruk na złym
-     papierze; ta sama temperatura tła i liter czyta się jak druk. */
-  --pad-bg:     #f6f1e6;
-  --pad-fg:     #2c2822;
-  --pad-h:      #1a1611;
-  --pad-muted:  #6b6355;
-  --pad-line:   rgba(44, 40, 34, 0.16);
-  --pad-link:   #0a6154;
-  --pad-mark:   rgba(44, 40, 34, 0.06);
-  --pad-page:   rgba(44, 40, 34, 0.20);
-  --pad-shadow: 0 1px 3px rgba(30, 24, 14, 0.14), 0 8px 24px rgba(30, 24, 14, 0.12);
-}
-
+.pad-paper[data-pad-theme="light"],
 .pad-paper[data-pad-theme="dark"] {
-  /* ══ CIEMNA KARTKA — NOCTURNE GREEN SYSTEM ══
-     Głęboki granat z rodziny Nocturne (#0c1322), aksamitny gradient,
-     ciepły kremowy druk (#eae8e3) wolny od olśnienia oraz akcent marki
-     (#72f0b4) w roli świetlistego przewodnika. */
-  --pad-bg:     #0c1322;
-  --pad-fg:     #eae8e3;
-  --pad-h:      #ffffff;
-  --pad-muted:  #8ea1ba;
-  --pad-line:   rgba(255, 255, 255, 0.08);
-  --pad-link:   #72f0b4;
-  --pad-mark:   rgba(114, 240, 180, 0.12);
-  --pad-page:   rgba(255, 255, 255, 0.15);
-  --pad-shadow:
-    0 4px 20px -2px rgba(0, 0, 0, 0.55),
-    0 24px 60px -12px rgba(0, 0, 0, 0.75),
-    0 0 0 1px rgba(114, 240, 180, 0.14),
-    0 0 45px -10px rgba(114, 240, 180, 0.08);
+  background-color: #fcfbf7;
+  color: #1e293b;
+  --pad-bg:     #fcfbf7;
+  --pad-fg:     #1e293b;
+  --pad-h:      #0f172a;
+  --pad-muted:  #475569;
+  --pad-line:   rgba(30, 41, 59, 0.14);
+  --pad-link:   #0d8a5f;
+}
+
+/* W ciemnym motywie workspace: kartka nadal jasna, z wyrazistym cieniem na ciemnym biurku */
+[data-theme="dark"] .pad-paper,
+:root:not([data-theme="light"]) .pad-paper {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 4px 20px rgba(0, 0, 0, 0.6),
+    0 24px 60px -10px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+@media print {
+  .pad-paper {
+    background: #ffffff !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
 }
 
 /* ── Harmonizacja barw nagłówków i wyróżnień (Nocturne Dark Glow) ──
@@ -2036,6 +2050,73 @@ tr.liquid-glass-hover:hover {
   background-color: #f0fdf4 !important;
   border-color: rgba(52, 211, 153, 0.85) !important;
   box-shadow: 0 0 18px -2px rgba(52, 211, 153, 0.3), inset 0 1px 0 rgba(52, 211, 153, 0.5) !important;
+}
+
+/* ── Teacher Notebook Formatting Marks ── */
+.pad-mark-error {
+  color: #f87171;
+  background-color: rgba(239, 68, 68, 0.16);
+  border-bottom: 2px wavy #ef4444;
+  border-radius: 4px;
+  padding: 0 4px;
+}
+:root.light .pad-mark-error,
+:root[data-theme="light"] .pad-mark-error {
+  color: #b91c1c;
+  background-color: rgba(239, 68, 68, 0.12);
+  border-bottom: 2px wavy #dc2626;
+}
+
+.pad-mark-correct {
+  color: #4ade80;
+  background-color: rgba(34, 197, 94, 0.16);
+  border-bottom: 2px solid #22c55e;
+  border-radius: 4px;
+  padding: 0 4px;
+  font-weight: 600;
+}
+:root.light .pad-mark-correct,
+:root[data-theme="light"] .pad-mark-correct {
+  color: #15803d;
+  background-color: rgba(34, 197, 94, 0.12);
+  border-bottom: 2px solid #16a34a;
+}
+
+.pad-mark-vocab {
+  color: #67e8f9;
+  background-color: rgba(6, 182, 212, 0.16);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-weight: 600;
+}
+:root.light .pad-mark-vocab,
+:root[data-theme="light"] .pad-mark-vocab {
+  color: #0e7490;
+  background-color: rgba(6, 182, 212, 0.12);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.pad-mark-correction {
+  color: #fcd34d;
+  background-color: rgba(245, 158, 11, 0.18);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-style: italic;
+}
+:root.light .pad-mark-correction,
+:root[data-theme="light"] .pad-mark-correction {
+  color: #b45309;
+  background-color: rgba(245, 158, 11, 0.14);
+}
+
+.pad-mark-accent {
+  color: #72f0b4;
+  font-weight: 600;
+}
+:root.light .pad-mark-accent,
+:root[data-theme="light"] .pad-mark-accent {
+  color: #0d8a5f;
 }
 
 

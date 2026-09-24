@@ -154,10 +154,10 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
         id: `sp_teacher_${user?.id || 'temp'}`,
         pin: '',
         studentId: student.id || undefined,
-        studentName: student.name || 'Kursant',
+        studentName: student.name || '',
         teacherUid,
         teacherName,
-        title: `Notatnik — ${student.name || 'Lekcja'}`,
+        title: student.name ? `Notatnik — ${student.name}` : 'Notatnik roboczy',
         contentHtml: '',
         contentText: '',
         allowStudentEdit: true,
@@ -199,7 +199,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
         if (!doc && (documentId ? student.id : true)) {
           doc = await withTimeout(
             getOrCreateStudentScratchpad(
-              { id: student.id || null, name: student.name || 'Kursant' },
+              { id: student.id || null, name: student.name || '' },
               { uid: teacherUid, name: teacherName }
             ),
             6000
