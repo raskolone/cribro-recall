@@ -4222,16 +4222,21 @@ function createApp() {
         const effective = fromApp || fromEnv;
         keys[provider] = effective ? { configured: true, maskedKey: maskKey(effective), source: fromApp ? "app" : "env" } : { configured: false };
       }
-      return res.json({ models: settings?.models || {}, council: settings?.council || null, keys });
+      return res.json({
+        models: settings?.models || {},
+        council: settings?.council || null,
+        chatConfig: settings?.chatConfig || null,
+        keys
+      });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
   app2.post("/api/ai/config", requireFirebaseAdmin, async (req, res) => {
     try {
-      const { models, council } = req.body || {};
-      if ((!models || typeof models !== "object") && !council) {
-        return res.status(400).json({ error: "Brak wyboru modeli do zapisania." });
+      const { models, council, chatConfig } = req.body || {};
+      if ((!models || typeof models !== "object") && !council && !chatConfig) {
+        return res.status(400).json({ error: "Brak konfiguracji AI do zapisania." });
       }
       const allowedTasks = ["exercises", "grading", "chat", "summaries"];
       const allowedModels = [
@@ -4267,6 +4272,13 @@ function createApp() {
           }))
         };
       }
+      let cleanChatConfig = void 0;
+      if (chatConfig && typeof chatConfig === "object") {
+        cleanChatConfig = {
+          customSystemPrompt: typeof chatConfig.customSystemPrompt === "string" ? chatConfig.customSystemPrompt.slice(0, 1e4) : "",
+          customSkills: Array.isArray(chatConfig.customSkills) ? chatConfig.customSkills.slice(0, 50) : []
+        };
+      }
       try {
         let currentData = {};
         if (fs.existsSync(AI_SETTINGS_FILE)) {
@@ -4276,6 +4288,7 @@ function createApp() {
           ...currentData,
           ...models ? { models: clean } : {},
           ...cleanCouncil ? { council: cleanCouncil } : {},
+          ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
           updatedAt: (/* @__PURE__ */ new Date()).toISOString()
         };
         fs.writeFileSync(AI_SETTINGS_FILE, JSON.stringify(updated, null, 2), "utf8");
@@ -4289,6 +4302,7 @@ function createApp() {
             {
               ...models ? { models: clean } : {},
               ...cleanCouncil ? { council: cleanCouncil } : {},
+              ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
               updatedAt: (/* @__PURE__ */ new Date()).toISOString()
             },
             { merge: true }
@@ -4297,7 +4311,7 @@ function createApp() {
           console.warn("[AI] Nie uda\u0142o si\u0119 zapisa\u0107 konfiguracji do Firestore (brak po\u015Bwiadcze\u0144 Admin):", dbErr);
         }
       }
-      return res.json({ ok: true, models: clean, council: cleanCouncil });
+      return res.json({ ok: true, models: clean, council: cleanCouncil, chatConfig: cleanChatConfig });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }

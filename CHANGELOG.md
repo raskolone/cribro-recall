@@ -200,6 +200,31 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Poprawki UX w Notatniku Lekcyjnym A4: Izolacja stylów tekstu po Enterze, likwidacja hover-zoom grafik, Lupa +50% i Fullscreen Lightbox (2026-09-24, runda 56)
+
+1. **Izolacja formatowania tekstu i likwidacja krwawienia stylów (Mark Bleed)**:
+   - W zdarzeniu klawisza `Enter` (`handleEnterKey` w `ScratchpadEditor.tsx`) wdrożono czysty podział bloku tekstu: nowo tworzony akapit (`<p><br></p>`) nie dziedziczy stylów, kolorów, tła ani znaczników `<span>`/`<font>` poprzedniego bloku.
+   - Wymuszono resetowanie aktywnych stanów formatowania (`removeFormat`) przy przejściu do nowej linii, eliminując niechciane dziedziczenie kolorów przy dalszym pisaniu.
+   - W funkcji nakładania zakreśleń (`wrapSelectedTextInline` & `handleHighlight`) kursor po oznaczeniu tekstu jest natychmiast pozycjonowany zaraz za utworzonym znacznikiem `<span>`, co zapobiega krwawieniu formatowania na tej samej linii.
+2. **Refaktoryzacja grafik i wyłączenie agresywnego hover-zoom**:
+   - Usunięto regułę automatycznego powiększania na najechanie myszką (`transform: scale(1.5)`) oraz `cursor: zoom-in` z `index.css` dla `.pad-paper img` i `.pad-img`. Kursor myszy nad grafiką nie powoduje już nagłego rozciągnięcia elementu.
+3. **Pasek akcji grafiki i Lupa +50% (Inline Zoom Toggle)**:
+   - Każda grafika jest opakowana w kontener `pad-img-wrapper group relative inline-block`.
+   - W prawym górnym rogu obrazka dodano dyskretny pasek akcji widoczny wyłącznie po najechaniu myszką (`opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 backdrop-blur-md rounded-lg p-1`):
+     * **Przycisk 1 (Lupa +50%)**: przełącza powiększenie wewnątrz arkusza o 50% (`inline zoom toggle`) z możliwością ponownego kliknięcia i powrotu do standardu.
+     * **Przycisk 2 (Tryb Prezentacji / Pełny Ekran)**: otwiera grafikę w pełnoekranowym modalu Lightbox.
+   - Zdarzenia toolbara mają `e.stopPropagation()` i `e.preventDefault()`, chroniąc kursor i fokus w edytorze.
+4. **Tryb Prezentacji (Fullscreen Lightbox)**:
+   - Ciemne tło modalu (`bg-black/85 backdrop-blur-sm fixed inset-0 z-50`).
+   - Obraz wycentrowany, 100% ostrości i proporcji pliku (`max-w-[95vw] max-h-[95vh] object-contain`).
+   - Obsługa zamykania: klawisz Escape, kliknięcie w tło lub przycisk X w rogu.
+5. **Weryfikacja techniczna**:
+   - `npx tsc --noEmit` — 0 błędów typowania.
+   - `npm test` — 513/513 testów jednostkowych zaliczonych.
+   - `npm run build` — produkcyjny build zakończony sukcesem w 6.4s.
+
+---
+
 ### 🚀 Pakiet usprawnień UX/UI: Konfiguracja i System Prompt Czatu AI, Follow-upy, Enlarge w Notatniku A4 i Weryfikacja Google Auth (2026-09-24, runda 55)
 
 1. **Konfiguracja Czatu AI i Custom System Prompt (`AiChatSettings.tsx` & `SettingsScreen.tsx`)**:

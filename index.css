@@ -1592,17 +1592,19 @@ tr.liquid-glass-hover:hover {
   margin: 0.8em 0;
   border-radius: 8px;
   border: 1px solid var(--pad-line);
-  cursor: zoom-in;
   position: relative;
-  transition: transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out;
+  transition: width 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
   transform-origin: center center;
 }
 
-.pad-paper img:hover,
-.pad-img:hover {
-  transform: scale(1.5);
-  z-index: 50;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+.pad-img-wrapper {
+  max-width: 100%;
+  margin: 0.8em 0;
+}
+
+.pad-img-wrapper img,
+.pad-img-wrapper .pad-img {
+  margin: 0 !important;
 }
 
 /* Zaznaczony obraz — obrys akcentu, żeby było widać, którego dotyczy pasek

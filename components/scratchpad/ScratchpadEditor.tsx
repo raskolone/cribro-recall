@@ -69,6 +69,8 @@ import {
   SpellCheck2,
   Columns,
   Grid2x2,
+  ZoomIn,
+  Maximize2,
 } from 'lucide-react';
 import { ScratchpadDocument, ScratchpadTemplate, ScratchpadBlock, LessonAttachment, LessonRecord } from '../../types';
 import { isSharedNotebookV2Enabled } from '../../config/featureFlags';
@@ -256,10 +258,24 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   /** Obraz zaznaczony kliknięciem — do zmiany rozmiaru lub przesuwania. */
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
+  /** Podgląd grafiki w trybie pełnoekranowym (Lightbox) */
+  const [lightboxImageSrc, setLightboxImageSrc] = useState<string | null>(null);
   /** Komunikat o wklejonym obrazie (za duży, nie wszedł). */
   const [imageNotice, setImageNotice] = useState<string | null>(null);
   /** Ile zajmuje dokument — licznik w stopce, ostrzeżenie przed limitem. */
   const [contentBytes, setContentBytes] = useState(0);
+
+  // Zamykanie podglądu pełnoekranowego klawiszem Escape
+  useEffect(() => {
+    if (!lightboxImageSrc) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxImageSrc(null);
+      }
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [lightboxImageSrc]);
 
   /**
    * Model blokowy (Iteracja 1, za flagą `SHARED_NOTEBOOK_V2`).
@@ -546,9 +562,146 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     []
   );
 
-  /** Kliknięcie w kartkę — zaznaczanie obrazu i strzałki zwijania */
+  /** Izolacja formatowania tekstu: likwidacja krwawienia stylów po Enterze */
+  const handleEnterKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isReadOnly || !editorRef.current) return;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    const range = selection.getRangeAt(0);
+
+    if (!editorRef.current.contains(range.commonAncestorContainer)) return;
+
+    if (!range.collapsed) {
+      range.deleteContents();
+    }
+
+    let startNode: Node | null = range.startContainer;
+    if (startNode.nodeType === Node.TEXT_NODE) {
+      startNode = startNode.parentElement;
+    }
+    if (!startNode) return;
+
+    const currentBlock = (startNode as HTMLElement).closest('p, h1, h2, h3, li, div, blockquote, td, th');
+
+    if (!currentBlock || currentBlock === editorRef.current) {
+      e.preventDefault();
+      const p = window.document.createElement('p');
+      p.innerHTML = '<br>';
+      range.insertNode(p);
+      const newRange = window.document.createRange();
+      newRange.setStart(p, 0);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      handleInput();
+      return;
+    }
+
+    if (currentBlock.tagName.toLowerCase() === 'li') {
+      if (!currentBlock.textContent?.trim()) {
+        e.preventDefault();
+        const parentList = currentBlock.closest('ul, ol');
+        const p = window.document.createElement('p');
+        p.innerHTML = '<br>';
+        if (parentList && parentList.parentNode) {
+          currentBlock.remove();
+          parentList.parentNode.insertBefore(p, parentList.nextSibling);
+          if (!parentList.hasChildNodes()) parentList.remove();
+        } else {
+          currentBlock.replaceWith(p);
+        }
+        const newRange = window.document.createRange();
+        newRange.setStart(p, 0);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+        handleInput();
+      }
+      return;
+    }
+
+    if (['td', 'th'].includes(currentBlock.tagName.toLowerCase())) {
+      return;
+    }
+
+    // Podział akapitu lub nagłówka — nowa linia zawsze jako czysty <p><br></p> bez odziedziczonych stylów
+    e.preventDefault();
+
+    const newP = window.document.createElement('p');
+
+    const endRange = window.document.createRange();
+    endRange.setStart(range.startContainer, range.startOffset);
+    endRange.setEndAfter(currentBlock.lastChild || currentBlock);
+
+    const extractedFragment = endRange.extractContents();
+    const fragmentText = extractedFragment.textContent || '';
+
+    if (!fragmentText.trim()) {
+      newP.innerHTML = '<br>';
+    } else {
+      newP.appendChild(extractedFragment);
+      const emptySpans = newP.querySelectorAll('span, font');
+      emptySpans.forEach(s => {
+        if (!s.textContent || !s.textContent.trim()) s.remove();
+      });
+      if (!newP.hasChildNodes() || !newP.textContent) {
+        newP.innerHTML = '<br>';
+      }
+    }
+
+    const trailingSpans = currentBlock.querySelectorAll('span, font');
+    trailingSpans.forEach(s => {
+      if (!s.textContent || !s.textContent.trim()) s.remove();
+    });
+    if (!currentBlock.hasChildNodes() || !currentBlock.innerHTML.trim()) {
+      currentBlock.innerHTML = '<br>';
+    }
+
+    currentBlock.parentNode?.insertBefore(newP, currentBlock.nextSibling);
+
+    const newRange = window.document.createRange();
+    if (newP.firstChild && newP.firstChild.nodeType === Node.TEXT_NODE) {
+      newRange.setStart(newP.firstChild, 0);
+    } else {
+      newRange.setStart(newP, 0);
+    }
+    newRange.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(newRange);
+
+    try {
+      window.document.execCommand('removeFormat', false, undefined);
+    } catch {}
+
+    handleInput();
+    measurePages();
+  };
+
+  /** Kliknięcie w kartkę — obsługa paska akcji grafiki, zaznaczanie obrazu i strzałki zwijania */
   const handlePaperClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
+
+    // Przycisk Lupa +50% na obrazku
+    const zoomBtn = target.closest('.pad-img-btn-zoom') as HTMLElement | null;
+    if (zoomBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const wrapper = zoomBtn.closest('.pad-img-wrapper') || zoomBtn.parentElement?.parentElement;
+      const img = wrapper?.querySelector('img') as HTMLImageElement | null;
+      if (img) toggleImageZoom(img);
+      return;
+    }
+
+    // Przycisk Tryb Prezentacji / Pełny Ekran na obrazku
+    const fullscreenBtn = target.closest('.pad-img-btn-fullscreen') as HTMLElement | null;
+    if (fullscreenBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      const wrapper = fullscreenBtn.closest('.pad-img-wrapper') || fullscreenBtn.parentElement?.parentElement;
+      const img = wrapper?.querySelector('img') as HTMLImageElement | null;
+      if (img && img.src) setLightboxImageSrc(img.src);
+      return;
+    }
 
     if (target.tagName === 'IMG' && !isReadOnly) {
       editorRef.current
@@ -666,6 +819,77 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     setActiveHeadingId(id);
   };
 
+  /* ═══════════════════════════════════════════════════════════════════
+     OBRAZY, WSKAŹNIK LASEROWY I ORIENTACJA STRONY
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /** Generuje czysty kod HTML opakowania grafiki z paskiem akcji */
+  const buildWrappedImageHtml = (prepared: { dataUrl: string; width: number }) => {
+    return (
+      `<div class="pad-img-wrapper group relative inline-block my-2" contenteditable="false">` +
+        `<img class="pad-img" draggable="true" src="${prepared.dataUrl}" style="width:${prepared.width}px; max-width:100%; height:auto;" alt="" />` +
+        `<div class="pad-img-toolbar absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 backdrop-blur-md rounded-lg p-1 shadow-lg z-10 border border-white/10" contenteditable="false">` +
+          `<button type="button" class="pad-img-btn-zoom p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Lupa +50% / Powrót" aria-label="Powiększ o 50%">` +
+            `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>` +
+          `</button>` +
+          `<button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Tryb Prezentacji / Pełny Ekran" aria-label="Pełny ekran">` +
+            `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>` +
+          `</button>` +
+        `</div>` +
+      `</div><p><br></p>`
+    );
+  };
+
+  /** Automatyczne owinięcie grafik w kontener z paskiem akcji */
+  const wrapUnwrappedImages = useCallback((root: HTMLElement) => {
+    const images = Array.from(root.querySelectorAll<HTMLImageElement>('img')) as HTMLImageElement[];
+    images.forEach(img => {
+      if (img.closest('.pad-img-wrapper')) return;
+      img.classList.add('pad-img');
+      const wrapper = window.document.createElement('div');
+      wrapper.className = 'pad-img-wrapper group relative inline-block my-2';
+      wrapper.setAttribute('contenteditable', 'false');
+
+      const toolbar = window.document.createElement('div');
+      toolbar.className = 'pad-img-toolbar absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 backdrop-blur-md rounded-lg p-1 shadow-lg z-10 border border-white/10';
+      toolbar.setAttribute('contenteditable', 'false');
+      toolbar.innerHTML = `
+        <button type="button" class="pad-img-btn-zoom p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Lupa +50% / Powrót" aria-label="Powiększ o 50%">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+        </button>
+        <button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Tryb Prezentacji / Pełny Ekran" aria-label="Pełny ekran">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+        </button>
+      `;
+
+      img.parentNode?.insertBefore(wrapper, img);
+      wrapper.appendChild(img);
+      wrapper.appendChild(toolbar);
+    });
+  }, []);
+
+  /** Przełączanie powiększenia obrazu o 50% (inline zoom) */
+  const toggleImageZoom = (img: HTMLImageElement) => {
+    const isZoomed = img.getAttribute('data-zoomed') === '1';
+    if (isZoomed) {
+      const baseWidth = img.getAttribute('data-base-width');
+      if (baseWidth) {
+        img.style.width = `${baseWidth}px`;
+      } else {
+        img.style.width = '';
+      }
+      img.removeAttribute('data-zoomed');
+    } else {
+      const currentWidth = img.clientWidth || parseInt(img.style.width, 10) || 300;
+      img.setAttribute('data-base-width', String(currentWidth));
+      const zoomedWidth = Math.round(currentWidth * 1.5);
+      img.style.width = `${zoomedWidth}px`;
+      img.setAttribute('data-zoomed', '1');
+    }
+    handleInput();
+    measurePages();
+  };
+
   useEffect(() => {
     try {
       window.localStorage.setItem('scratchpad_paper_theme', paperTheme);
@@ -682,6 +906,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         // Podnosi kontrast starych, zamrożonych nagłówków sekcji na jasnym
         // papierze — nie zapisuje nic do bazy, tylko to, co trafia do DOM-u.
         editorRef.current.innerHTML = sanitizeFrozenHeadingContrast(docData.contentHtml || '', paperTheme);
+        wrapUnwrappedImages(editorRef.current);
         const txt = extractText(docData.contentHtml || '');
         setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
         setContentBytes(scratchpadContentBytes(docData.contentHtml || ''));
@@ -690,7 +915,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         measurePages();
       }
     }
-  }, [docData.contentHtml, docData.version, paperTheme, rebuildToc, measurePages]);
+  }, [docData.contentHtml, docData.version, paperTheme, rebuildToc, measurePages, wrapUnwrappedImages]);
 
   // Synchronizacja stanu blokowego z dokumentem — patrz komentarz przy
   // `blocksState` powyżej. Nie wpięte jeszcze w renderowanie ani w zapis
@@ -699,10 +924,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     if (!isSharedNotebookV2Enabled()) return;
     setBlocksState(getScratchpadBlocksOrFallback(docData));
   }, [docData.blocks, docData.contentHtml, docData.version]);
-
-  /* ═══════════════════════════════════════════════════════════════════
-     OBRAZY, WSKAŹNIK LASEROWY I ORIENTACJA STRONY
-     ═══════════════════════════════════════════════════════════════════ */
 
   /** Wklejenie obrazu ze schowka */
   const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
@@ -731,7 +952,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       window.document.execCommand(
         'insertHTML',
         false,
-        `<img class="pad-img" draggable="true" src="${prepared.dataUrl}" style="width:${prepared.width}px" alt="" />`
+        buildWrappedImageHtml(prepared)
       );
       setImageNotice(null);
       handleInput();
@@ -762,7 +983,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       window.document.execCommand(
         'insertHTML',
         false,
-        `<img class="pad-img" draggable="true" src="${prepared.dataUrl}" style="width:${prepared.width}px" alt="" />`
+        buildWrappedImageHtml(prepared)
       );
       setImageNotice(null);
       handleInput();
@@ -779,16 +1000,15 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     const paperWidth = Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2);
     selectedImage.style.width = `${Math.round(paperWidth * fraction)}px`;
     selectedImage.style.height = 'auto';
+    selectedImage.removeAttribute('data-zoomed');
+    selectedImage.removeAttribute('data-base-width');
     handleInput();
   };
 
   /** Przesuwanie obrazu wyżej w strukturze sekcji */
   const moveSelectedImageUp = () => {
     if (!selectedImage || !editorRef.current) return;
-    let target: HTMLElement = selectedImage;
-    if (selectedImage.parentElement && selectedImage.parentElement !== editorRef.current) {
-      target = selectedImage.parentElement;
-    }
+    const target: HTMLElement = selectedImage.closest('.pad-img-wrapper') || selectedImage;
     const prev = target.previousElementSibling;
     if (prev && editorRef.current) {
       editorRef.current.insertBefore(target, prev);
@@ -800,10 +1020,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   /** Przesuwanie obrazu niżej w strukturze sekcji */
   const moveSelectedImageDown = () => {
     if (!selectedImage || !editorRef.current) return;
-    let target: HTMLElement = selectedImage;
-    if (selectedImage.parentElement && selectedImage.parentElement !== editorRef.current) {
-      target = selectedImage.parentElement;
-    }
+    const target: HTMLElement = selectedImage.closest('.pad-img-wrapper') || selectedImage;
     const next = target.nextElementSibling;
     if (next && editorRef.current) {
       editorRef.current.insertBefore(target, next.nextElementSibling);
@@ -814,7 +1031,12 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   const removeSelectedImage = () => {
     if (!selectedImage) return;
-    selectedImage.remove();
+    const wrapper = selectedImage.closest('.pad-img-wrapper');
+    if (wrapper) {
+      wrapper.remove();
+    } else {
+      selectedImage.remove();
+    }
     setSelectedImage(null);
     handleInput();
   };
@@ -1584,10 +1806,10 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
    * węzły i owijając TYLKO fragmenty tekstowe (z podziałem węzła na granicach
    * zaznaczenia), struktura akapitów nigdy się nie rusza.
    */
-  const wrapSelectedTextInline = (range: Range, styleFn: (span: HTMLSpanElement) => void) => {
+  const wrapSelectedTextInline = (range: Range, styleFn: (span: HTMLSpanElement) => void): HTMLSpanElement[] => {
     let root: Node = range.commonAncestorContainer;
     if (root.nodeType === Node.TEXT_NODE) root = root.parentNode as Node;
-    if (!root) return;
+    if (!root) return [];
 
     const walker = window.document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
       acceptNode: node => (range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
@@ -1597,6 +1819,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     let node: Node | null;
     while ((node = walker.nextNode())) textNodes.push(node as Text);
 
+    const createdSpans: HTMLSpanElement[] = [];
     textNodes.forEach(textNode => {
       const isStart = textNode === range.startContainer;
       const isEnd = textNode === range.endContainer;
@@ -1613,7 +1836,9 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
       styleFn(span);
       target.parentNode?.insertBefore(span, target);
       span.appendChild(target);
+      createdSpans.push(span);
     });
+    return createdSpans;
   };
 
   // Zakreślacze lektorskie — czysty element liniowy (inline mark / <span>) bez rozbijania akapitu
@@ -1624,7 +1849,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
 
     const range = selection.getRangeAt(0);
     try {
-      wrapSelectedTextInline(range, span => {
+      const createdSpans = wrapSelectedTextInline(range, span => {
         span.style.backgroundColor = bgColor;
         span.style.color = textColor;
         span.style.fontWeight = 'bold';
@@ -1632,7 +1857,16 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         span.style.borderRadius = '4px';
         span.style.display = 'inline';
       });
-      selection.removeAllRanges();
+      if (createdSpans.length > 0) {
+        const lastSpan = createdSpans[createdSpans.length - 1];
+        const newRange = window.document.createRange();
+        newRange.setStartAfter(lastSpan);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      } else {
+        selection.removeAllRanges();
+      }
       handleInput();
     } catch (e) {
       execCmd('hiliteColor', bgColor);
@@ -3077,6 +3311,12 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                   if (e.altKey && e.code === 'KeyH') {
                     e.preventDefault();
                     handleHighlight('#fef3c7', '#92400e');
+                    return;
+                  }
+
+                  // Izolacja formatowania tekstu: likwidacja krwawienia stylów po Enterze
+                  if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
+                    handleEnterKey(e);
                   }
                 }}
                 suppressContentEditableWarning
@@ -3691,6 +3931,33 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         onInsertClean={handleInsertCleanLesson}
         onInsertWithRevision={handleInsertLessonWithRevision}
       />
+
+      {/* Tryb Prezentacji / Pełny Ekran (Fullscreen Lightbox) dla grafik */}
+      {lightboxImageSrc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+          onClick={() => setLightboxImageSrc(null)}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxImageSrc(null);
+            }}
+            className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer z-50"
+            title="Zamknij (Esc)"
+            aria-label="Zamknij podgląd"
+          >
+            <X size={24} />
+          </button>
+          <img
+            src={lightboxImageSrc}
+            alt="Podgląd pełnoekranowy"
+            className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl select-none"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 };

@@ -90,6 +90,71 @@ export interface AssistantMessage {
   isCouncil?: boolean;
 }
 
+/**
+ * Sanityzacja odpowiedzi modelu — usuwa wycieki techniczne (followups_json, tagi <followup>, itp.)
+ * i ekstrahuje listę sugerowanych pytań.
+ */
+export const extractFollowUpsAndCleanText = (rawContent: string): { cleanedText: string; followUps: string[] } => {
+  let cleanText = rawContent || '';
+  let extractedFollowUps: string[] = [];
+
+  // 1. Dopasowanie followups_json [...] (z lub bez backticków)
+  const jsonBlockMatch = cleanText.match(/```followups_json\s*([\s\S]*?)\s*```/i);
+  if (jsonBlockMatch && jsonBlockMatch[1]) {
+    try {
+      const parsed = JSON.parse(jsonBlockMatch[1]);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        extractedFollowUps = parsed.map((s) => String(s).trim()).filter(Boolean);
+      }
+    } catch (e) {
+      console.warn('Nie udało się sparsować bloku followups_json:', e);
+    }
+  }
+
+  const jsonRawMatch = cleanText.match(/followups_json\s*(\[[^\]]*\])/i);
+  if (jsonRawMatch && jsonRawMatch[1] && extractedFollowUps.length === 0) {
+    try {
+      const parsed = JSON.parse(jsonRawMatch[1]);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        extractedFollowUps = parsed.map((s) => String(s).trim()).filter(Boolean);
+      }
+    } catch (e) {
+      console.warn('Nie udało się sparsować followups_json:', e);
+    }
+  }
+
+  // Wyczyść wszystkie warianty followups_json z tekstu
+  cleanText = cleanText.replace(/```followups_json[\s\S]*?```/gi, '');
+  cleanText = cleanText.replace(/followups_json\s*\[[^\]]*\]/gi, '');
+  cleanText = cleanText.replace(/followups_json/gi, '');
+
+  // 2. Dopasowanie znaczników <followup>...</followup>
+  const tagMatches = [...cleanText.matchAll(/<followup>(.*?)<\/followup>/gi)];
+  if (tagMatches.length > 0) {
+    const tags = tagMatches.map((m) => m[1].trim()).filter(Boolean);
+    if (tags.length > 0) {
+      extractedFollowUps = [...extractedFollowUps, ...tags];
+    }
+    cleanText = cleanText.replace(/<followup>.*?<\/followup>/gi, '');
+  }
+
+  // 3. Dopasowanie listy pytań na końcu odpowiedzi jeśli brak powyższych
+  if (extractedFollowUps.length === 0) {
+    const followUpSectionMatch = cleanText.match(/(?:Sugerowane akcje|Pytania follow-up|Propozycje kolejnych kroków|Follow-up):\s*\n((?:[-*•\d\.]+\s*.+\n?)+)$/i);
+    if (followUpSectionMatch) {
+      const lines = followUpSectionMatch[1].split('\n').map((l) => l.replace(/^[-*•\d\.]+\s*/, '').trim()).filter((l) => l.length > 3);
+      if (lines.length > 0) {
+        extractedFollowUps = lines.slice(0, 3);
+      }
+    }
+  }
+
+  return {
+    cleanedText: cleanText.trim(),
+    followUps: Array.from(new Set(extractedFollowUps)).filter(Boolean),
+  };
+};
+
 export interface ChatSession {
   id: string;
   title: string;
@@ -1019,29 +1084,10 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     cleanText = cleanText.replace(/```students_import_json[\s\S]*?```/g, '').trim();
   }
 
-  // Rozpoznaj blok followups_json
-  let followUpSuggestions: string[] | undefined;
-  const followupsMatch = rawResponseText.match(/```followups_json\s*([\s\S]*?)\s*```/i);
-  if (followupsMatch) {
-    try {
-      const parsed = JSON.parse(followupsMatch[1]);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        followUpSuggestions = parsed.map(s => String(s).trim()).filter(Boolean);
-      }
-    } catch (e) {
-      console.warn('Could not parse followups_json from assistant:', e);
-    }
-    cleanText = cleanText.replace(/```followups_json[\s\S]*?```/gi, '').trim();
-  } else {
-    // Sprawdź czy na końcu odpowiedzi nie ma sekcji Pytań/Akcji sugerowanych
-    const followUpSectionMatch = cleanText.match(/(?:Sugerowane akcje|Pytania follow-up|Propozycje kolejnych kroków|Follow-up):\s*\n((?:[-*•\d\.]+\s*.+\n?)+)$/i);
-    if (followUpSectionMatch) {
-      const lines = followUpSectionMatch[1].split('\n').map(l => l.replace(/^[-*•\d\.]+\s*/, '').trim()).filter(l => l.length > 3);
-      if (lines.length > 0) {
-        followUpSuggestions = lines.slice(0, 3);
-      }
-    }
-  }
+  // Sanityzacja i ekstrakcja pytań follow-up
+  const { cleanedText: sanitizedText, followUps: extractedFollowups } = extractFollowUpsAndCleanText(cleanText);
+  cleanText = sanitizedText;
+  let followUpSuggestions: string[] | undefined = extractedFollowups.length > 0 ? extractedFollowups : undefined;
 
   // Rozpoznaj blok html_report
   const htmlReportMatch = rawResponseText.match(/```html_report\s*([\s\S]*?)\s*```/);
