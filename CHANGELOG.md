@@ -200,6 +200,32 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Pakiet usprawnień UX/UI: Konfiguracja i System Prompt Czatu AI, Follow-upy, Enlarge w Notatniku A4 i Weryfikacja Google Auth (2026-09-24, runda 55)
+
+1. **Konfiguracja Czatu AI i Custom System Prompt (`AiChatSettings.tsx` & `SettingsScreen.tsx`)**:
+   - Dodano dedykowaną sekcję **„Konfiguracja Czatu AI”** w panelu Ustawień Administratora/Lektora.
+   - Umożliwiono edycję własnego system promptu (*Custom System Prompt*) oraz definiowanie niestandardowych umiejętności (*Skills*) asystenta lektora.
+   - Wprowadzono model danych `AiChatConfig` / `AiChatSkill` oraz metody `saveAiChatConfig` i `peekChatConfig` w `services/aiConfigService.ts`, z pełną synchronizacją przez endpointy `/api/ai/config` w `server.ts`.
+2. **Twardy System Prompt i Zwięzłość Odpowiedzi (`services/teacherAssistant.ts`)**:
+   - Wstrzyknięto rygorystyczną instrukcję na poziomie kodu: zakaz tworzenia ścian tekstu, wymóg maksymalnej zwięzłości, podsumowań i punktorów, a także generowania rozbudowanych analiz wyłącznie na wyraźne żądanie.
+   - Wymóg dołączania na końcu każdej odpowiedzi 2–3 pytań/akcji follow-up w maszynowym bloku ````followups_json [ ... ]````.
+   - Zintegrowano dynamiczne wstrzykiwanie reguł i aktywnych skilli lektora z ustawień (`effectiveSystemInstruction`) we wszystkich trybach (Flash, Thinking Council, Multimodal).
+3. **UX Czatu AI — Sugestie Follow-up & Kolorystyka Jasnego Motywu (`TeacherAssistant.tsx`)**:
+   - Nad polem wpisywania wiadomości (input/textarea) dodano kontener na kafelki **Follow-up suggestions** o wyraźnym, kontrastowym akcencie (`bg-primary/15 hover:bg-primary/25 text-primary border border-primary/50`).
+   - Kliknięcie kafelka natychmiast uzupełnia pole tekstowe i wysyła zapytanie do asystenta.
+   - Zapewniono pełną czytelność w trybie jasnym (Day Mode) — jasne tło czatu z tokenów powierzchni oraz mocno kontrastowe pigułki statusów.
+4. **Notatnik A4 — Efekt Enlarge na obrazkach (`index.css`)**:
+   - Dla elementów graficznych w notatniku (`.pad-paper img`, `.pad-img`) wdrożono płynne powiększenie podczas najechania myszką (`transition: transform 0.3s ease-in-out, box-shadow 0.3s; transform: scale(1.5); z-index: 50; cursor: zoom-in; position: relative`).
+   - Zweryfikowano brak przycinania powiększonego obrazu przez kontenery nadrzędne.
+5. **Weryfikacja Google Auth (`AuthContext.tsx`)**:
+   - Zweryfikowano logikę logowania przez Google pod kątem łączenia z istniejącymi profilami kursantów w `users/{id}` bez tworzenia osieroconych dokumentów.
+   - Dodano logowanie diagnostyczne `[Auth] Pomyślnie zlinkowano tożsamość Google z profilem kursanta: {uid}`.
+6. **Weryfikacja techniczna**:
+   - `npx tsc --noEmit` — 0 błędów typowania.
+   - `npm test` — 513/513 testów jednostkowych zakończonych sukcesem.
+
+---
+
 ### 🚀 Skonsolidowany sprint: Baza wzorców w pracach domowych, Day/Dark mode w kafelkach oraz likwidacja Notion (2026-09-23, runda 54)
 
 1. **Baza wzorców w kreatorze prac domowych (`AssignHomeworkModal.tsx`)**:

@@ -9,6 +9,7 @@ import { extractLessonBlocks } from '../utils/lessonBlocks';
 import { generateTextWithUnifiedFallback, getAI } from './geminiService';
 import { runCouncil, DEFAULT_COUNCIL } from './aiCouncil';
 import { parseScenarioStages } from './scenarioService';
+import { getAiConfig, peekChatConfig } from './aiConfigService';
 
 export interface LessonDraftProposal {
   topic: string;
@@ -83,6 +84,7 @@ export interface AssistantMessage {
   studentsImport?: StudentsImportProposal;
   htmlReport?: HtmlReportProposal;
   webSources?: WebGroundingSource[];
+  followUpSuggestions?: string[];
   timestamp?: number;
   modelUsed?: string;
   isCouncil?: boolean;
@@ -113,11 +115,13 @@ export interface AssistantSkill {
   command: string;
   name: string;
   description: string;
-  icon: string;
-  category: 'Planowanie' | 'Analiza' | 'Ćwiczenia' | 'Komunikacja';
+  icon?: string;
+  category: 'Planowanie' | 'Analiza' | 'Ćwiczenia' | 'Komunikacja' | string;
   template: string;
   badge?: string;
   adminOnly?: boolean;
+  enabled?: boolean;
+  instructions?: string;
 }
 
 export const ASSISTANT_SKILLS: AssistantSkill[] = [
@@ -404,6 +408,8 @@ Twoje możliwości:
 8. Obsługa szybkich komend lektora (np. /konspekt, /import, /research, /raport, /plan, /podsumowanie, /zadanie, /fiszki, /slajdy, /bledy, /kolo, /email, /analiza).
 
 ZASADY ODPOWIADANIA I FORMATOWANIA (BARDZO WAŻNE):
+- Jesteś asystentem lektora. MASZ ZAKAZ tworzenia ścian tekstu. Odpowiadaj maksymalnie zwięźle, używaj krótkich podsumowań i punktorów. Rozbudowane odpowiedzi generuj TYLKO na wyraźne polecenie użytkownika.
+- Na końcu swojej odpowiedzi ZAWSZE zaproponuj 2-3 krótkie pytania/akcje typu follow-up dla lektora. Dołącz je na samym końcu w dedykowanym bloku maszynowym \`\`\`followups_json ["Pytanie 1", "Pytanie 2", "Pytanie 3"] \`\`\` (lub jako zwięzłą listę na końcu).
 - Odpowiadasz PO POLSKU, nowocześnie, przejrzyście, z zachowaniem nienagannej estetyki wizualnej.
 - BEZWZGLĘDNA ZASADA ADRESOWANIA I IMION: Nigdy nie adresuj lektora ani kursanta z nazwiskiem — samo imię w zupełności wystarczy! ZAWSZE odmieniaj polskie imiona przez przypadki (wołacz przy powitaniu: np. „Macieju”, „Anno”, „Piotrze”, „Kasiu”, „Michale”, „Janie”, „Dariuszu”, nigdy mianownik ani imię z nazwiskiem; narzędnik przy zwrotach typu „z Mileną”, „z Maciejem”, „z Anną”, „z Piotrem”).
 - Terminy angielskie, zwroty i przykłady zostawiasz po angielsku z polskim tłumaczeniem lub naturalnym kontekstem.
@@ -593,6 +599,7 @@ export const askTeacherAssistant = async (
   studentsImport?: StudentsImportProposal;
   htmlReport?: HtmlReportProposal;
   webSources?: WebGroundingSource[];
+  followUpSuggestions?: string[];
   modelUsed?: string;
   isCouncil?: boolean;
 }> => {
@@ -747,6 +754,30 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     cleanQ.includes('wyszukaj w internecie') ||
     cleanQ.includes('wyszukaj w google');
 
+  // Pobierz konfigurację Czatu AI (custom system prompt + skills)
+  let customChatInstruction = '';
+  try {
+    const aiCfg = peekChatConfig() || (await getAiConfig()).chatConfig;
+    if (aiCfg) {
+      if (aiCfg.customSystemPrompt && aiCfg.customSystemPrompt.trim()) {
+        customChatInstruction += `\n\n=== DODATKOWE WYTYCZNE LEKTORA / SYSTEM PROMPT ===\n${aiCfg.customSystemPrompt.trim()}\n`;
+      }
+      if (aiCfg.customSkills && aiCfg.customSkills.length > 0) {
+        const activeSkills = aiCfg.customSkills.filter(s => s.enabled !== false);
+        if (activeSkills.length > 0) {
+          customChatInstruction += `\n\n=== AKTYWNE UMIEJĘTNOŚCI (SKILLS) ASYSTENTA ===\n` +
+            activeSkills.map(s => `* [${s.name} (${s.command})]: ${s.description}${s.instructions ? ` -> Wytyczne: ${s.instructions}` : ''}`).join('\n');
+        }
+      }
+    }
+  } catch (cfgErr) {
+    console.warn('[TeacherAssistant] Error loading AI chat config:', cfgErr);
+  }
+
+  const effectiveSystemInstruction = customChatInstruction
+    ? `${SYSTEM_INSTRUCTION}\n${customChatInstruction}`
+    : SYSTEM_INSTRUCTION;
+
   if (mediaAttachments.length > 0) {
     try {
       const geminiParts: any[] = [{ text: prompt }];
@@ -764,7 +795,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
         model: 'gemini-2.5-flash',
         contents: geminiParts,
         config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
+          systemInstruction: effectiveSystemInstruction,
         },
       });
 
@@ -774,7 +805,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       console.warn('[TeacherAssistant] Multimodal generation fallback to text:', multimodalErr);
       const fallbackRes = await generateTextWithUnifiedFallback(
         prompt,
-        SYSTEM_INSTRUCTION,
+        effectiveSystemInstruction,
         undefined,
         undefined,
         undefined,
@@ -788,7 +819,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     try {
       const councilRes = await runCouncil<string>({
         config: DEFAULT_COUNCIL,
-        systemInstruction: SYSTEM_INSTRUCTION,
+        systemInstruction: effectiveSystemInstruction,
         prompt,
         reviewerSystemInstruction: TEACHER_ASSISTANT_REVIEW_SYSTEM,
         expectJson: false,
@@ -801,7 +832,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       console.warn('[TeacherAssistant] Rada modeli fallback do unified cascade:', councilErr);
       const { text, modelUsed: singleModel } = await generateTextWithUnifiedFallback(
         prompt,
-        SYSTEM_INSTRUCTION,
+        effectiveSystemInstruction,
         undefined,
         undefined,
         undefined,
@@ -811,16 +842,14 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       modelUsed = singleModel || 'Gemini 2.5 Flash';
     }
   } else {
-    // ⚡ TRYB FLASH: Błyskawiczna, bezpośrednia generacja — bezpośrednie wywołanie
-    // Gemini (nie `generateTextWithUnifiedFallback`, bo ta kaskada nie przenosi
-    // `tools`/function-calling), żeby tool `generate_lesson_scenario` zadziałał.
+    // ⚡ TRYB FLASH: Błyskawiczna, bezpośrednia generacja
     try {
       const contents: any[] = [{ role: 'user', parts: [{ text: prompt }] }];
       let res = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents,
         config: {
-          systemInstruction: SYSTEM_INSTRUCTION,
+          systemInstruction: effectiveSystemInstruction,
           tools: [{ functionDeclarations: [GENERATE_SCENARIO_TOOL_DECLARATION] }],
         },
       });
@@ -849,7 +878,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
         res = await getAI().models.generateContent({
           model: 'gemini-2.5-flash',
           contents,
-          config: { systemInstruction: SYSTEM_INSTRUCTION },
+          config: { systemInstruction: effectiveSystemInstruction },
         });
       }
 
@@ -860,7 +889,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       console.warn('[TeacherAssistant] Flash mode direct error:', flashErr);
       const { text, modelUsed: singleModel } = await generateTextWithUnifiedFallback(
         prompt,
-        SYSTEM_INSTRUCTION,
+        effectiveSystemInstruction,
         undefined,
         undefined,
         undefined,
@@ -988,6 +1017,30 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
       console.warn('Could not parse students_import_json from assistant:', e);
     }
     cleanText = cleanText.replace(/```students_import_json[\s\S]*?```/g, '').trim();
+  }
+
+  // Rozpoznaj blok followups_json
+  let followUpSuggestions: string[] | undefined;
+  const followupsMatch = rawResponseText.match(/```followups_json\s*([\s\S]*?)\s*```/i);
+  if (followupsMatch) {
+    try {
+      const parsed = JSON.parse(followupsMatch[1]);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        followUpSuggestions = parsed.map(s => String(s).trim()).filter(Boolean);
+      }
+    } catch (e) {
+      console.warn('Could not parse followups_json from assistant:', e);
+    }
+    cleanText = cleanText.replace(/```followups_json[\s\S]*?```/gi, '').trim();
+  } else {
+    // Sprawdź czy na końcu odpowiedzi nie ma sekcji Pytań/Akcji sugerowanych
+    const followUpSectionMatch = cleanText.match(/(?:Sugerowane akcje|Pytania follow-up|Propozycje kolejnych kroków|Follow-up):\s*\n((?:[-*•\d\.]+\s*.+\n?)+)$/i);
+    if (followUpSectionMatch) {
+      const lines = followUpSectionMatch[1].split('\n').map(l => l.replace(/^[-*•\d\.]+\s*/, '').trim()).filter(l => l.length > 3);
+      if (lines.length > 0) {
+        followUpSuggestions = lines.slice(0, 3);
+      }
+    }
   }
 
   // Rozpoznaj blok html_report
@@ -1186,6 +1239,7 @@ Jestem Twoim asystentem AI zintegrowanym z bazą CRM kursantów, historią lekcj
     studentsImport,
     htmlReport,
     webSources: detectedWebSources.length > 0 ? detectedWebSources : undefined,
+    followUpSuggestions,
     modelUsed,
     isCouncil,
   };

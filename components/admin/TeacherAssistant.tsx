@@ -835,6 +835,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
         lessonDraft: resp.lessonDraft,
         lessonScenario: resp.lessonScenario,
         scenarioToolResult: resp.scenarioToolResult,
+        followUpSuggestions: resp.followUpSuggestions,
         timestamp: Date.now(),
         modelUsed: resp.modelUsed,
         isCouncil: resp.isCouncil,
@@ -1520,23 +1521,32 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
               </div>
             )}
 
-            {/* Szybkie follow-up chips w trakcie rozmowy */}
+            {/* Szybkie follow-up chips wewnątrz okna czatu */}
             {viewMode === 'chat' && messages.length > 0 && (
-              <div className="px-4 py-2 border-t border-line bg-base-200/40 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                <span className="text-[10px] uppercase font-bold text-text-mute shrink-0 flex items-center gap-1 font-mono">
-                  <Sparkles size={10} className="text-primary" /> Zapytaj:
+              <div className="px-4 py-2.5 border-t border-line bg-base-200/50 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                <span className="text-[10px] uppercase font-bold text-primary shrink-0 flex items-center gap-1 font-mono">
+                  <Sparkles size={11} className="text-primary" /> Sugestie:
                 </span>
-                {QUICK_FOLLOWUPS.map((followup, fIdx) => (
-                  <button
-                    key={fIdx}
-                    type="button"
-                    onClick={() => ask(followup)}
-                    disabled={isThinking}
-                    className="shrink-0 px-2.5 py-1 rounded-full border border-line bg-base-100/60 hover:bg-base-100 hover:border-primary/40 text-[11px] text-text-2 hover:text-text-hi transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {followup}
-                  </button>
-                ))}
+                {(() => {
+                  const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+                  const currentSuggestions = (lastAssistantMsg?.followUpSuggestions && lastAssistantMsg.followUpSuggestions.length > 0)
+                    ? lastAssistantMsg.followUpSuggestions
+                    : QUICK_FOLLOWUPS;
+                  return currentSuggestions.map((followup, fIdx) => (
+                    <button
+                      key={fIdx}
+                      type="button"
+                      onClick={() => {
+                        setDraft(followup);
+                        ask(followup);
+                      }}
+                      disabled={isThinking}
+                      className="shrink-0 px-3 py-1 rounded-full border border-primary/50 bg-primary/20 hover:bg-primary/30 text-primary dark:text-primary light:text-emerald-800 text-[11px] font-medium transition-all hover:scale-105 cursor-pointer disabled:opacity-50 shadow-sm"
+                    >
+                      {followup}
+                    </button>
+                  ));
+                })()}
               </div>
             )}
           </div>
@@ -1544,7 +1554,38 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
         {/* ─── 3. GŁÓWNE POLE CZATU (INPUT CONTAINER) ─── */}
         {viewMode === 'chat' && (
-          <div className="relative w-full max-w-3xl mx-auto">
+          <div className="relative w-full max-w-3xl mx-auto space-y-2">
+            {/* Follow-up suggestions box directly above the input container if there are suggestions */}
+            {(() => {
+              const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant');
+              const activeFollowups = lastAssistantMsg?.followUpSuggestions && lastAssistantMsg.followUpSuggestions.length > 0
+                ? lastAssistantMsg.followUpSuggestions
+                : (messages.length === 0 ? QUICK_FOLLOWUPS.slice(0, 3) : []);
+              if (!activeFollowups || activeFollowups.length === 0) return null;
+              return (
+                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1 px-1">
+                  <span className="text-[11px] font-bold text-text-mute shrink-0 flex items-center gap-1 font-mono">
+                    <Sparkles size={12} className="text-primary" /> Follow-up:
+                  </span>
+                  {activeFollowups.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        setDraft(item);
+                        ask(item);
+                      }}
+                      disabled={isThinking}
+                      className="shrink-0 px-3 py-1.5 rounded-xl border border-primary/50 bg-primary/15 hover:bg-primary/25 text-primary text-xs font-semibold shadow-sm transition-all hover:scale-[1.03] cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                    >
+                      <span>{item}</span>
+                      <ArrowUp size={11} className="rotate-45 opacity-70" />
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+
             {/* Ambient Subtle Mint Glow */}
             <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 blur-xl opacity-60 pointer-events-none" />
 

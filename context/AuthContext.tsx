@@ -188,6 +188,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           updates.tempPassword = deleteField();
         }
         await updateDoc(userRef, updates);
+        console.log('[Auth] Pomyślnie zlinkowano tożsamość Google z profilem kursanta:', result.user.uid, result.user.email);
       } catch (err) {
         console.warn('Could not update user Google profile status:', err);
       }

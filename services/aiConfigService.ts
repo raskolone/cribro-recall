@@ -29,10 +29,31 @@ export interface AiKeyStatus {
   source?: 'env' | 'app';
 }
 
+export interface AiChatSkill {
+  id: string;
+  command: string;
+  name: string;
+  description: string;
+  category: string;
+  template: string;
+  badge?: string;
+  adminOnly?: boolean;
+  enabled?: boolean;
+  instructions?: string;
+}
+
+export interface AiChatConfig {
+  customSystemPrompt?: string;
+  customSkills?: AiChatSkill[];
+}
+
+export const DEFAULT_CHAT_SYSTEM_PROMPT = '';
+
 export interface AiConfig {
   models: AiTaskOverrides;
   /** Skład narady modeli dla Planera lekcji — patrz `services/aiCouncil.ts`. */
   council: CouncilConfig;
+  chatConfig?: AiChatConfig;
   keys?: {
     openai?: AiKeyStatus;
     gemini?: AiKeyStatus;
@@ -63,6 +84,7 @@ export const getAiConfig = async (): Promise<AiConfig> => {
       cached = {
         models: data.models || {},
         council: normalizeCouncil(data.council),
+        chatConfig: data.chatConfig,
         keys: data.keys,
       };
       return cached;
@@ -81,6 +103,8 @@ export const getAiConfig = async (): Promise<AiConfig> => {
 /** Ostatnio pobrana konfiguracja BEZ czekania — do wyboru modelu w locie. */
 export const peekAiOverrides = (): AiTaskOverrides => cached?.models || {};
 
+export const peekChatConfig = (): AiChatConfig | undefined => cached?.chatConfig;
+
 /** Wymusza ponowny odczyt (po zapisie w ustawieniach). */
 export const invalidateAiConfig = (): void => {
   cached = null;
@@ -94,6 +118,17 @@ export const saveAiModels = async (models: AiTaskOverrides): Promise<void> => {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data?.error || 'Nie udało się zapisać wyboru modeli.');
+  invalidateAiConfig();
+};
+
+export const saveAiChatConfig = async (chatConfig: AiChatConfig): Promise<void> => {
+  const res = await fetch('/api/ai/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(await authHeader()) },
+    body: JSON.stringify({ chatConfig }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || 'Nie udało się zapisać konfiguracji czatu AI.');
   invalidateAiConfig();
 };
 

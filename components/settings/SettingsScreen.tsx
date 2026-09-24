@@ -13,6 +13,7 @@ import { FREQUENCIES } from '../../constants';
 import { RevisionFrequency, TTSAccent, VoiceGender, VoiceSpeed, SoundEngine, canUserViewAiMonitor } from '../../types';
 import AiModelsSettings from './AiModelsSettings';
 import AiCouncilSettings from './AiCouncilSettings';
+import AiChatSettings from './AiChatSettings';
 import { LogOut, Volume2, Play, CheckCircle2, VolumeX, Sparkles, Sliders, Check, Flame, Mail, Key, Eye, EyeOff, AlertTriangle, Unlink, ClipboardPaste, X } from 'lucide-react';
 import { playSpeech } from '../../services/ttsService';
 import i18n from "i18next";
@@ -758,6 +759,7 @@ const SettingsScreen: React.FC = () => {
                     potrzebuje. */}
                 {isTeacherOrAdmin && (
                     <div className="md:col-span-2 space-y-6">
+                        <AiChatSettings />
                         <AiModelsSettings />
                         {/* Narada modeli stoi OSOBNO, a nie w sekcji modeli AI:
                             tamta odpowiada na pytanie „czym liczyć", ta na

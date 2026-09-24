@@ -2039,7 +2039,12 @@ export function createApp() {
           : { configured: false };
       }
 
-      return res.json({ models: settings?.models || {}, council: settings?.council || null, keys });
+      return res.json({
+        models: settings?.models || {},
+        council: settings?.council || null,
+        chatConfig: settings?.chatConfig || null,
+        keys,
+      });
     } catch (err: any) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
@@ -2047,9 +2052,9 @@ export function createApp() {
 
   app.post('/api/ai/config', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { models, council } = req.body || {};
-      if ((!models || typeof models !== 'object') && !council) {
-        return res.status(400).json({ error: 'Brak wyboru modeli do zapisania.' });
+      const { models, council, chatConfig } = req.body || {};
+      if ((!models || typeof models !== 'object') && !council && !chatConfig) {
+        return res.status(400).json({ error: 'Brak konfiguracji AI do zapisania.' });
       }
 
       // Przyjmujemy WYŁĄCZNIE znane zadania i znane modele. Bez tego dowolny
@@ -2077,19 +2082,6 @@ export function createApp() {
         clean[task] = model;
       }
 
-      /*
-       * ══ SKŁAD NARADY ══
-       *
-       * Cztery miejsca, każde z modelem i rolą. Walidacja jest tu z tego
-       * samego powodu, co przy `models`: nazwa modelu z tego zapisu trafia
-       * potem wprost do wywołania API, więc dowolny ciąg z przeglądarki
-       * byłby wywołaniem dowolnego adresu. Przycinamy do czterech miejsc,
-       * bo więcej głosów to wyłącznie więcej kosztu i czasu — narada
-       * przestaje wtedy dokładać cokolwiek do jakości.
-       *
-       * Pierwsze miejsce jest autorem bez względu na to, co przyszło:
-       * bez autora nie ma czego recenzować.
-       */
       let cleanCouncil: any = undefined;
       if (council && typeof council === 'object') {
         const seatsIn = Array.isArray(council.seats) ? council.seats.slice(0, 4) : [];
@@ -2104,6 +2096,14 @@ export function createApp() {
         };
       }
 
+      let cleanChatConfig: any = undefined;
+      if (chatConfig && typeof chatConfig === 'object') {
+        cleanChatConfig = {
+          customSystemPrompt: typeof chatConfig.customSystemPrompt === 'string' ? chatConfig.customSystemPrompt.slice(0, 10000) : '',
+          customSkills: Array.isArray(chatConfig.customSkills) ? chatConfig.customSkills.slice(0, 50) : [],
+        };
+      }
+
       // Zapis do pliku lokalnego .ai-settings.json (gwarancja natychmiastowej trwałości w dev)
       try {
         let currentData: any = {};
@@ -2114,6 +2114,7 @@ export function createApp() {
           ...currentData,
           ...(models ? { models: clean } : {}),
           ...(cleanCouncil ? { council: cleanCouncil } : {}),
+          ...(cleanChatConfig !== undefined ? { chatConfig: cleanChatConfig } : {}),
           updatedAt: new Date().toISOString(),
         };
         fs.writeFileSync(AI_SETTINGS_FILE, JSON.stringify(updated, null, 2), 'utf8');
@@ -2128,6 +2129,7 @@ export function createApp() {
             {
               ...(models ? { models: clean } : {}),
               ...(cleanCouncil ? { council: cleanCouncil } : {}),
+              ...(cleanChatConfig !== undefined ? { chatConfig: cleanChatConfig } : {}),
               updatedAt: new Date().toISOString(),
             },
             { merge: true }
@@ -2137,7 +2139,7 @@ export function createApp() {
         }
       }
 
-      return res.json({ ok: true, models: clean, council: cleanCouncil });
+      return res.json({ ok: true, models: clean, council: cleanCouncil, chatConfig: cleanChatConfig });
     } catch (err: any) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
