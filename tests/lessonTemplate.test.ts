@@ -33,19 +33,33 @@ describe('utils/lessonTemplate', () => {
     assert.ok(buildLessonTemplate({ previousHtml: html, lessonNumber: 99 }).includes('Lesson 99 —'));
   });
 
-  it('szablon niesie wszystkie pięć sekcji', () => {
-    const html = buildLessonTemplate({});
-    ['Warm-up', 'Main Focus &amp; Practice', 'Lesson Summary', 'Corrections', 'Homework'].forEach(
-      title => assert.ok(html.includes(title), title)
-    );
+  it('dodanie tematu tworzy tytuł z tematem', () => {
+    const html = buildLessonTemplate({ topic: 'Business Negotiations' });
+    assert.ok(html.includes('Lesson 1 — Business Negotiations'));
   });
 
-  it('revisionHtml wygrywa z recallItems w sekcji Revision', () => {
+  it('nagłówki szablonów nie są wliczane do numeracji', () => {
+    const html = '<h2>Lesson 5 — Szablon Lekcji</h2><p>x</p><h2>Draft Template #12</h2>';
+    assert.equal(highestLessonNumber(html), 0);
+  });
+
+  it('szablon niesie dokładnie cztery sekcje w nowej kolejności', () => {
+    const html = buildLessonTemplate({});
+    ['QUICK RECALL', 'TODAY’S LESSON', 'LANGUAGE NOTES', 'AFTER THE LESSON'].forEach(
+      title => assert.ok(html.includes(title), title)
+    );
+    assert.ok(html.includes('Choose a previous lesson to generate a short recall activity.'));
+    assert.ok(html.includes('Add the lesson topic, source material and main task here.'));
+    assert.ok(html.includes('- useful language:'));
+    assert.ok(html.includes('Lesson transcript → Meeting Summary'));
+  });
+
+  it('revisionHtml wygrywa z recallItems w sekcji Quick Recall', () => {
     const html = buildLessonTemplate({
-      revisionHtml: '<p>WYGENEROWANA POWTÓRKA</p>',
+      revisionHtml: '<p>WYGENEROWANY QUICK RECALL</p>',
       recallItems: { corrections: ['zły błąd'], vocabulary: ['słowo'] },
     });
-    assert.ok(html.includes('WYGENEROWANA POWTÓRKA'));
+    assert.ok(html.includes('WYGENEROWANY QUICK RECALL'));
     assert.ok(!html.includes('zły błąd'));
   });
 

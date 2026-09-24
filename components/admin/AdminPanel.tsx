@@ -1043,6 +1043,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             lesson: {
               lessonRecordId: primaryLessonRecordId,
               date: lessonFormDate,
+              topic: lessonFormTopic,
               summary: lessonFormSummary,
               vocabulary: lessonFormWords,
               corrections: lessonFormThingsToImprove,
@@ -1644,7 +1645,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   /** Lekcja świeżo zapisana dla jednego kursanta — pyta, czy wysłać podsumowanie mailem. */
   const [pendingLessonSummaryEmail, setPendingLessonSummaryEmail] = useState<{
     student: { id?: string; firstName?: string; lastName?: string; username?: string; email?: string };
-    lesson: { lessonRecordId?: string; date?: string; summary?: string; vocabulary?: string; corrections?: string };
+    lesson: { lessonRecordId?: string; date?: string; topic?: string; summary?: string; vocabulary?: string; corrections?: string };
   } | null>(null);
   const [targetTabAfterSelect, setTargetTabAfterSelect] = useState<string | null>(null);
 

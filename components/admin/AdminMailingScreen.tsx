@@ -43,7 +43,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import { formatTaskDateTime } from '../dashboard/HomeworkScreen';
 import { formatPolishGreeting, inflectPolishVerb } from '../../utils/polishVocative';
-import { buildWelcomeEmail, INSTRUCTOR_CARD_HTML } from '../../services/homeworkEmail';
+import { buildWelcomeEmail, buildLessonSummaryEmail, INSTRUCTOR_CARD_HTML } from '../../services/homeworkEmail';
 import { confirmAsync } from '../../utils/appAlert';
 
 interface AdminMailingScreenProps {
@@ -349,68 +349,44 @@ const TEMPLATES: Array<{
   },
   {
     id: 'lesson_summary_vocab',
-    name: 'Podsumowanie lekcji z Notion i słownictwo',
+    name: 'Krótkie podsumowanie lekcji (Recap)',
     category: 'lesson',
-    subject: 'Notatki i nowe słówka z ostatniej lekcji',
-    description: 'Powiadomienie generowane po zsynchronizowaniu lekcji z bazy Notion.',
-    status: 'draft',
-    variables: ['studentName', 'lessonTopic', 'wordCount', 'unsubscribeUrl'],
+    subject: 'Podsumowanie lekcji: Job Interview & Soft Skills',
+    description: 'Krótki, przyjazny mail po zapisaniu lekcji (max 3 elementy do utrwalenia + CTA do Cribro Recall).',
+    status: 'active',
+    variables: ['studentName', 'lessonTopic', 'summary', 'vocabulary', 'corrections', 'appUrl', 'unsubscribeUrl'],
     sampleData: {
       studentName: 'Krzysztof',
-      lessonTopic: 'Lekcja 14: Job Interview & Soft Skills',
-      wordCount: 12,
+      lessonTopic: 'Job Interview & Soft Skills',
+      summary: 'Dzięki za dzisiejszą lekcję. Rozmawialiśmy o rozmowach rekrutacyjnych i ćwiczyliśmy odpowiadanie na pytania behawioralne.',
+      vocabulary: 'be worth it — być wartym wysiłku lub ceny\navoid a problem — uniknąć problemu',
+      corrections: '❌ I have listened to that advice earlier.\n✅ If I had listened to that advice earlier, I would have missed fewer problems.',
+      appUrl: 'https://app.maciej.pro',
       unsubscribeUrl: 'https://app.maciej.pro/unsubscribe?uid=demo&token=sample',
     },
     renderHtml: (data) => {
-      const greeting = formatPolishGreeting(data.studentName);
-      return `<!doctype html>
-<html lang="pl">
-  <body style="margin:0;padding:24px;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;margin:0 auto;background:#1e293b;border-radius:16px;border:1px solid #334155;overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.4);">
-      <tr>
-        <td style="background:linear-gradient(90deg, #6366f1, #8b5cf6);height:6px;font-size:0;line-height:0;">&nbsp;</td>
-      </tr>
-      <tr>
-        <td style="padding:32px 32px 28px;">
-          <div style="margin-bottom:20px;">
-            <p style="margin:0;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:#818cf8;">CRIBRO ENGLISH</p>
-            <span style="display:inline-block;margin-top:8px;font-size:11px;font-weight:600;background:rgba(99,102,241,0.15);color:#a5b4fc;border:1px solid rgba(99,102,241,0.3);padding:3px 10px;border-radius:999px;">📚 NOWE MATERIAŁY</span>
-          </div>
-
-          <h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;color:#f1f5f9;font-weight:800;">
-            ${greeting}
-          </h1>
-
-          <p style="margin:0;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            Nasze ostatnie spotkanie jest już podsumowane w aplikacji:
-            <strong style="color:#f1f5f9;display:block;margin-top:6px;font-size:17px;font-weight:700;">${data.lessonTopic}</strong>
-          </p>
-
-          <p style="margin:12px 0 0;color:#94a3b8;font-size:14px;line-height:1.6;">
-            Dodałem notatki oraz <strong>${data.wordCount} nowych słówek i zwrotów</strong> do Twojego systemu powtórek fiszek. W wolnej chwili zerknij i przerób krótką powtórkę — regularność robi największą różnicę!
-          </p>
-
-          <div style="margin:26px 0 0;text-align:center;">
-            <a href="https://app.maciej.pro" style="display:inline-block;background:#6366f1;background:linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:12px;font-size:15px;font-weight:700;box-shadow:0 4px 14px rgba(99, 102, 241, 0.4);">
-              Przejdź do powtórek →
-            </a>
-          </div>
-
-          ${INSTRUCTOR_CARD_HTML}
-
-          <p style="margin:20px 0 0;color:#64748b;font-size:11px;line-height:1.5;text-align:center;">
-            Nie chcesz otrzymywać powiadomień?
-            <a href="${data.unsubscribeUrl}" style="color:#94a3b8;text-decoration:underline;">Wypisz się z powiadomień</a>
-          </p>
-        </td>
-      </tr>
-    </table>
-  </body>
-</html>`;
+      const email = buildLessonSummaryEmail({
+        studentName: data.studentName,
+        topic: data.lessonTopic,
+        summary: data.summary,
+        vocabulary: data.vocabulary,
+        corrections: data.corrections,
+        appUrl: data.appUrl,
+        unsubscribeUrl: data.unsubscribeUrl,
+      });
+      return email.html;
     },
     renderText: (data) => {
-      const greeting = formatPolishGreeting(data.studentName);
-      return `${greeting}\n\nNasze ostatnie spotkanie „${data.lessonTopic}" jest już podsumowane w aplikacji!\nDodałem ${data.wordCount} nowych słówek do powtórki.\n\nOtwórz aplikację: https://app.maciej.pro\n\nWypisz się z powiadomień: ${data.unsubscribeUrl}\n\n—\nMaciej Wyrozumski\nCRIBRO ENGLISH`;
+      const email = buildLessonSummaryEmail({
+        studentName: data.studentName,
+        topic: data.lessonTopic,
+        summary: data.summary,
+        vocabulary: data.vocabulary,
+        corrections: data.corrections,
+        appUrl: data.appUrl,
+        unsubscribeUrl: data.unsubscribeUrl,
+      });
+      return email.text;
     },
   },
 ];

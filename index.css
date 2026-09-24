@@ -1593,13 +1593,15 @@ tr.liquid-glass-hover:hover {
   border-radius: 8px;
   border: 1px solid var(--pad-line);
   position: relative;
-  transition: width 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  transition: width 0.15s ease-out, box-shadow 0.2s ease-in-out;
   transform-origin: center center;
 }
 
 .pad-img-wrapper {
   max-width: 100%;
   margin: 0.8em 0;
+  position: relative;
+  display: inline-block;
 }
 
 .pad-img-wrapper img,
@@ -1607,13 +1609,48 @@ tr.liquid-glass-hover:hover {
   margin: 0 !important;
 }
 
-/* Zaznaczony obraz — obrys akcentu, żeby było widać, którego dotyczy pasek
-   rozmiaru. `outline`, nie `border`: border zmieniłby szerokość obrazu, czyli
-   dokładnie tę wartość, którą pasek edytuje. */
+/* Zaznaczony obraz — obrys akcentu */
 .pad-paper img:focus,
 .pad-paper img.is-selected {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* Uchwyty narożne zmiany rozmiaru (Corner Resize Handles) */
+.pad-img-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background-color: var(--accent, #3b82f6);
+  border: 2px solid #ffffff;
+  border-radius: 3px;
+  z-index: 30;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  touch-action: none;
+}
+.pad-img-handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.pad-img-handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.pad-img-handle-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.pad-img-handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+
+/* Karta załącznika grafiki (Display as attachment) */
+.pad-img-attachment {
+  user-select: none;
+}
+.pad-img-attachment:hover {
+  border-color: rgba(var(--primary-rgb, 99, 102, 241), 0.5);
+}
+
+@media print {
+  .pad-img-toolbar,
+  .pad-img-handle {
+    display: none !important;
+  }
+  .pad-paper img,
+  .pad-img {
+    max-width: 100% !important;
+    page-break-inside: avoid;
+  }
 }
 
 /* ── Wskaźnik laserowy ──

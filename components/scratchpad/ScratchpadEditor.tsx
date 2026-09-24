@@ -111,7 +111,13 @@ import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonTitleS
 import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, NOTEBOOK_SWATCHES_EXTENDED, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
-import { generateLessonRevision } from '../../services/scratchpadAiService';
+import {
+  generateQuickRecallActivity,
+  generateLessonRevision,
+  RecallType,
+  RECALL_TYPE_LABELS,
+} from '../../services/scratchpadAiService';
+import { getLearningProfile } from '../../services/learningProfile';
 import { useNotebookSpellcheck } from './useNotebookSpellcheck';
 import { SpellcheckPopover } from './SpellcheckPopover';
 import Toast, { useToast } from '../ui/Toast';
@@ -258,24 +264,45 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   /** Obraz zaznaczony kliknięciem — do zmiany rozmiaru lub przesuwania. */
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
-  /** Podgląd grafiki w trybie pełnoekranowym (Lightbox) */
-  const [lightboxImageSrc, setLightboxImageSrc] = useState<string | null>(null);
+  /** Podgląd grafiki w powiększeniu (Zoom 50% / Lupa) */
+  const [zoomModalImageSrc, setZoomModalImageSrc] = useState<string | null>(null);
+  /** Podgląd grafiki w trybie prezentacyjnym / pełnoekranowym (Present) */
+  const [presentModalImageSrc, setPresentModalImageSrc] = useState<string | null>(null);
+  /** Błąd ładowania obrazu w modalu podglądu */
+  const [imageModalError, setImageModalError] = useState(false);
+  /** Custom context menu dla grafik */
+  const [imageContextMenu, setImageContextMenu] = useState<{
+    x: number;
+    y: number;
+    targetWrapper: HTMLElement;
+    targetImg: HTMLImageElement | null;
+    isAttachment: boolean;
+  } | null>(null);
+  /** Poziom kursanta (A1-C2) */
+  const [studentLevel, setStudentLevel] = useState<string | undefined>(undefined);
+  /** Ref do podmiany pliku graficznego */
+  const replaceImageFileInputRef = useRef<HTMLInputElement>(null);
+  /** Ref do przeciąganego kontenera obrazu */
+  const draggedImageElementRef = useRef<HTMLElement | null>(null);
   /** Komunikat o wklejonym obrazie (za duży, nie wszedł). */
   const [imageNotice, setImageNotice] = useState<string | null>(null);
   /** Ile zajmuje dokument — licznik w stopce, ostrzeżenie przed limitem. */
   const [contentBytes, setContentBytes] = useState(0);
 
-  // Zamykanie podglądu pełnoekranowego klawiszem Escape
+  // Zamykanie modali podglądu i menu kontekstowego klawiszem Escape
   useEffect(() => {
-    if (!lightboxImageSrc) return;
+    if (!zoomModalImageSrc && !presentModalImageSrc && !imageContextMenu) return;
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setLightboxImageSrc(null);
+        setZoomModalImageSrc(null);
+        setPresentModalImageSrc(null);
+        setImageContextMenu(null);
+        setImageModalError(false);
       }
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [lightboxImageSrc]);
+  }, [zoomModalImageSrc, presentModalImageSrc, imageContextMenu]);
 
   /**
    * Model blokowy (Iteracja 1, za flagą `SHARED_NOTEBOOK_V2`).
@@ -330,7 +357,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   }>({ isOpen: false, content: {} });
   const [isInsertLessonModalOpen, setIsInsertLessonModalOpen] = useState(false);
 
-  // Pobieranie historii lekcji przypisanego kursanta pod kątem koła fortuny i asystenta
+  // Pobieranie historii lekcji przypisanego kursanta i profilu poziomu
   useEffect(() => {
     const studentId = docData.studentId || (document as any)?.studentId || ((docData as any)?.studentIds && (docData as any)?.studentIds[0]);
     if (!studentId) return;
@@ -342,6 +369,15 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         }
       })
       .catch((err) => console.warn('[ScratchpadEditor] Błąd pobierania lekcji kursanta:', err));
+
+    getLearningProfile(studentId)
+      .then((profile) => {
+        if (active && profile) {
+          setStudentLevel(profile.currentLevel || profile.baseLevel);
+        }
+      })
+      .catch(() => {});
+
     return () => {
       active = false;
     };
@@ -677,32 +713,53 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     measurePages();
   };
 
-  /** Kliknięcie w kartkę — obsługa paska akcji grafiki, zaznaczanie obrazu i strzałki zwijania */
+  /** Kliknięcie w kartkę — obsługa kontrolek grafiki, zaznaczanie obrazu i strzałki zwijania */
   const handlePaperClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
 
-    // Przycisk Lupa +50% na obrazku
+    // Przycisk Zoom 50% / Lupa na obrazku lub załączniku
     const zoomBtn = target.closest('.pad-img-btn-zoom') as HTMLElement | null;
     if (zoomBtn) {
       event.preventDefault();
       event.stopPropagation();
       const wrapper = zoomBtn.closest('.pad-img-wrapper') || zoomBtn.parentElement?.parentElement;
       const img = wrapper?.querySelector('img') as HTMLImageElement | null;
-      if (img) toggleImageZoom(img);
+      if (img && img.src) {
+        setImageModalError(false);
+        setZoomModalImageSrc(img.src);
+      }
       return;
     }
 
-    // Przycisk Tryb Prezentacji / Pełny Ekran na obrazku
+    // Przycisk Tryb Prezentacji / Pełny Ekran na obrazku lub załączniku
     const fullscreenBtn = target.closest('.pad-img-btn-fullscreen') as HTMLElement | null;
     if (fullscreenBtn) {
       event.preventDefault();
       event.stopPropagation();
       const wrapper = fullscreenBtn.closest('.pad-img-wrapper') || fullscreenBtn.parentElement?.parentElement;
       const img = wrapper?.querySelector('img') as HTMLImageElement | null;
-      if (img && img.src) setLightboxImageSrc(img.src);
+      if (img && img.src) {
+        setImageModalError(false);
+        setPresentModalImageSrc(img.src);
+      }
       return;
     }
 
+    // Kliknięcie w kartę załącznika (Display as attachment) -> otwiera Zoom modal
+    const attCard = target.closest('.pad-img-attachment') as HTMLElement | null;
+    if (attCard && !target.closest('button')) {
+      event.preventDefault();
+      event.stopPropagation();
+      const wrapper = attCard.closest('.pad-img-wrapper');
+      const img = wrapper?.querySelector('img') as HTMLImageElement | null;
+      if (img && img.src) {
+        setImageModalError(false);
+        setZoomModalImageSrc(img.src);
+      }
+      return;
+    }
+
+    // Zaznaczanie obrazu do resize / manipulacji
     if (target.tagName === 'IMG' && !isReadOnly) {
       editorRef.current
         ?.querySelectorAll('img.is-selected')
@@ -711,7 +768,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       setSelectedImage(target as HTMLImageElement);
       return;
     }
-    if (selectedImage) {
+    if (selectedImage && !target.closest('.pad-img-handle')) {
       selectedImage.classList.remove('is-selected');
       setSelectedImage(null);
     }
@@ -725,6 +782,139 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     rebuildToc();
     measurePages();
     if (editorRef.current) triggerDebouncedSave(editorRef.current.innerHTML);
+  };
+
+  /** Custom context menu dla grafik na prawy przycisk myszy */
+  const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    const wrapper = target.closest('.pad-img-wrapper') as HTMLElement | null;
+    if (wrapper) {
+      e.preventDefault();
+      e.stopPropagation();
+      const img = wrapper.querySelector('img') as HTMLImageElement | null;
+      const isAtt = wrapper.getAttribute('data-display-mode') === 'attachment';
+      if (img) setSelectedImage(img);
+      setImageContextMenu({
+        x: Math.min(e.clientX, window.innerWidth - 240),
+        y: Math.min(e.clientY, window.innerHeight - 340),
+        targetWrapper: wrapper,
+        targetImg: img,
+        isAttachment: isAtt,
+      });
+    }
+  };
+
+  /** Zmiana trybu wyświetlania grafiki: pełny obraz vs kompaktowy załącznik */
+  const setImageDisplayMode = (wrapper: HTMLElement, mode: 'image' | 'attachment') => {
+    wrapper.setAttribute('data-display-mode', mode);
+    const img = wrapper.querySelector('img') as HTMLImageElement | null;
+    const toolbar = wrapper.querySelector('.pad-img-toolbar') as HTMLElement | null;
+    const att = wrapper.querySelector('.pad-img-attachment') as HTMLElement | null;
+
+    if (mode === 'attachment') {
+      if (img) img.style.display = 'none';
+      if (toolbar) toolbar.classList.add('hidden');
+      if (att) {
+        att.classList.remove('hidden');
+        att.classList.add('flex');
+      }
+    } else {
+      if (img) img.style.display = '';
+      if (toolbar) toolbar.classList.remove('hidden');
+      if (att) {
+        att.classList.add('hidden');
+        att.classList.remove('flex');
+      }
+    }
+    handleInput();
+    measurePages();
+    setImageContextMenu(null);
+  };
+
+  /** Podmiana grafiki z pliku */
+  const handleReplaceImageFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !imageContextMenu?.targetImg) return;
+    try {
+      const paperWidth = editorRef.current
+        ? Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2)
+        : activePageWidth - PAGE_MARGIN_PX * 2;
+      const prepared = await prepareImageForScratchpad(file, paperWidth);
+      imageContextMenu.targetImg.src = prepared.dataUrl;
+      imageContextMenu.targetImg.alt = file.name;
+      const titleEl = imageContextMenu.targetWrapper?.querySelector('.pad-img-attachment .text-xs') as HTMLElement | null;
+      if (titleEl) titleEl.textContent = file.name;
+      handleInput();
+      measurePages();
+    } catch (err: any) {
+      console.error('Error replacing image:', err);
+    } finally {
+      if (replaceImageFileInputRef.current) replaceImageFileInputRef.current.value = '';
+      setImageContextMenu(null);
+    }
+  };
+
+  /** Obsługa przeciągania narożników (Corner Resize Handles) z zachowaniem proporcji */
+  const handleResizeStart = (e: React.PointerEvent, corner: 'nw' | 'ne' | 'sw' | 'se', img: HTMLImageElement) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const startX = e.clientX;
+    const startWidth = img.clientWidth || parseInt(img.style.width, 10) || 300;
+    const paperWidth = editorRef.current ? Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2) : 700;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      let newWidth = startWidth;
+
+      if (corner === 'se' || corner === 'ne') {
+        newWidth = startWidth + deltaX;
+      } else {
+        newWidth = startWidth - deltaX;
+      }
+
+      newWidth = Math.max(80, Math.min(paperWidth, Math.round(newWidth)));
+      img.style.width = `${newWidth}px`;
+      img.style.height = 'auto';
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      handleInput();
+      measurePages();
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+  };
+
+  /** Rozpoczęcie przeciągania grafiki po dokumencie */
+  const handleImageDragStart = (e: React.DragEvent<HTMLElement>, wrapper: HTMLElement) => {
+    draggedImageElementRef.current = wrapper;
+    e.dataTransfer.setData('text/plain', 'pad-img-drag');
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  /** Upuszczenie przeciąganej grafiki w nowym miejscu */
+  const handleEditorDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    if (draggedImageElementRef.current && editorRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      const targetElement = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest('p, h1, h2, h3, div.pad-img-wrapper, .pad-page-break');
+      if (targetElement && targetElement !== draggedImageElementRef.current && editorRef.current.contains(targetElement)) {
+        const rect = targetElement.getBoundingClientRect();
+        const isAfter = (e.clientY - rect.top) > (rect.height / 2);
+        if (isAfter) {
+          targetElement.after(draggedImageElementRef.current);
+        } else {
+          targetElement.before(draggedImageElementRef.current);
+        }
+        handleInput();
+        setTimeout(() => measurePages(), 60);
+      }
+      draggedImageElementRef.current = null;
+    }
   };
 
   /**
@@ -823,18 +1013,40 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
      OBRAZY, WSKAŹNIK LASEROWY I ORIENTACJA STRONY
      ═══════════════════════════════════════════════════════════════════ */
 
-  /** Generuje czysty kod HTML opakowania grafiki z paskiem akcji */
-  const buildWrappedImageHtml = (prepared: { dataUrl: string; width: number }) => {
+  /** Generuje czysty kod HTML opakowania grafiki z paskiem akcji i trybem załącznika */
+  const buildWrappedImageHtml = (
+    prepared: { dataUrl: string; width: number; filename?: string },
+    displayMode: 'image' | 'attachment' = 'image'
+  ) => {
+    const isAtt = displayMode === 'attachment';
+    const filename = prepared.filename || 'Załącznik graficzny';
     return (
-      `<div class="pad-img-wrapper group relative inline-block my-2" contenteditable="false">` +
-        `<img class="pad-img" draggable="true" src="${prepared.dataUrl}" style="width:${prepared.width}px; max-width:100%; height:auto;" alt="" />` +
-        `<div class="pad-img-toolbar absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 backdrop-blur-md rounded-lg p-1 shadow-lg z-10 border border-white/10" contenteditable="false">` +
-          `<button type="button" class="pad-img-btn-zoom p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Lupa +50% / Powrót" aria-label="Powiększ o 50%">` +
+      `<div class="pad-img-wrapper group relative inline-block my-2" data-display-mode="${displayMode}" contenteditable="false">` +
+        `<img class="pad-img" draggable="true" src="${prepared.dataUrl}" style="width:${prepared.width}px; max-width:100%; height:auto; ${isAtt ? 'display:none;' : ''}" alt="${filename}" />` +
+        `<div class="pad-img-toolbar absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 backdrop-blur-md rounded-lg p-1 shadow-lg z-20 border border-white/10 ${isAtt ? 'hidden' : ''}" contenteditable="false">` +
+          `<button type="button" class="pad-img-btn-zoom p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Zoom 50%" aria-label="Powiększ obraz o 50%">` +
             `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>` +
           `</button>` +
-          `<button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Tryb Prezentacji / Pełny Ekran" aria-label="Pełny ekran">` +
+          `<button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">` +
             `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>` +
           `</button>` +
+        `</div>` +
+        `<div class="pad-img-attachment ${isAtt ? 'flex' : 'hidden'} items-center gap-3 p-3 px-4 my-1 rounded-2xl bg-base-200/90 hover:bg-base-300/90 border border-white/15 cursor-pointer select-none max-w-md transition-all shadow-sm group/att" contenteditable="false">` +
+          `<div class="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">` +
+            `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>` +
+          `</div>` +
+          `<div class="flex-1 min-w-0">` +
+            `<div class="text-xs font-semibold text-text-hi truncate">${filename}</div>` +
+            `<div class="text-[11px] text-content-muted">Załącznik graficzny • Kliknij, aby otworzyć</div>` +
+          `</div>` +
+          `<div class="flex items-center gap-1">` +
+            `<button type="button" class="pad-img-btn-zoom p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer" title="Zoom 50%" aria-label="Powiększ obraz">` +
+              `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>` +
+            `</button>` +
+            `<button type="button" class="pad-img-btn-fullscreen p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">` +
+              `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>` +
+            `</button>` +
+          `</div>` +
         `</div>` +
       `</div><p><br></p>`
     );
@@ -844,51 +1056,76 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const wrapUnwrappedImages = useCallback((root: HTMLElement) => {
     const images = Array.from(root.querySelectorAll<HTMLImageElement>('img')) as HTMLImageElement[];
     images.forEach(img => {
-      if (img.closest('.pad-img-wrapper')) return;
-      img.classList.add('pad-img');
-      const wrapper = window.document.createElement('div');
-      wrapper.className = 'pad-img-wrapper group relative inline-block my-2';
-      wrapper.setAttribute('contenteditable', 'false');
+      let wrapper = img.closest('.pad-img-wrapper') as HTMLElement | null;
+      if (!wrapper) {
+        img.classList.add('pad-img');
+        img.setAttribute('draggable', 'true');
+        wrapper = window.document.createElement('div');
+        wrapper.className = 'pad-img-wrapper group relative inline-block my-2';
+        wrapper.setAttribute('data-display-mode', 'image');
+        wrapper.setAttribute('contenteditable', 'false');
 
-      const toolbar = window.document.createElement('div');
-      toolbar.className = 'pad-img-toolbar absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/75 backdrop-blur-md rounded-lg p-1 shadow-lg z-10 border border-white/10';
-      toolbar.setAttribute('contenteditable', 'false');
-      toolbar.innerHTML = `
-        <button type="button" class="pad-img-btn-zoom p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Lupa +50% / Powrót" aria-label="Powiększ o 50%">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-        </button>
-        <button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Tryb Prezentacji / Pełny Ekran" aria-label="Pełny ekran">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-        </button>
-      `;
+        const toolbar = window.document.createElement('div');
+        toolbar.className = 'pad-img-toolbar absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 backdrop-blur-md rounded-lg p-1 shadow-lg z-20 border border-white/10';
+        toolbar.setAttribute('contenteditable', 'false');
+        toolbar.innerHTML = `
+          <button type="button" class="pad-img-btn-zoom p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Zoom 50%" aria-label="Powiększ o 50%">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+          </button>
+          <button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+          </button>
+        `;
 
-      img.parentNode?.insertBefore(wrapper, img);
-      wrapper.appendChild(img);
-      wrapper.appendChild(toolbar);
+        const attachmentEl = window.document.createElement('div');
+        attachmentEl.className = 'pad-img-attachment hidden items-center gap-3 p-3 px-4 my-1 rounded-2xl bg-base-200/90 hover:bg-base-300/90 border border-white/15 cursor-pointer select-none max-w-md transition-all shadow-sm group/att';
+        attachmentEl.setAttribute('contenteditable', 'false');
+        const filename = img.alt || 'Załącznik graficzny';
+        attachmentEl.innerHTML = `
+          <div class="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-xs font-semibold text-text-hi truncate">${filename}</div>
+            <div class="text-[11px] text-content-muted">Załącznik graficzny • Kliknij, aby otworzyć</div>
+          </div>
+          <div class="flex items-center gap-1">
+            <button type="button" class="pad-img-btn-zoom p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer" title="Zoom 50%" aria-label="Powiększ obraz">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+            </button>
+            <button type="button" class="pad-img-btn-fullscreen p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+            </button>
+          </div>
+        `;
+
+        img.parentNode?.insertBefore(wrapper, img);
+        wrapper.appendChild(img);
+        wrapper.appendChild(toolbar);
+        wrapper.appendChild(attachmentEl);
+      }
+
+      // Check if wrapper has attachment mode
+      const isAtt = wrapper.getAttribute('data-display-mode') === 'attachment';
+      const attEl = wrapper.querySelector('.pad-img-attachment') as HTMLElement | null;
+      const toolbarEl = wrapper.querySelector('.pad-img-toolbar') as HTMLElement | null;
+      if (isAtt) {
+        img.style.display = 'none';
+        if (attEl) {
+          attEl.classList.remove('hidden');
+          attEl.classList.add('flex');
+        }
+        if (toolbarEl) toolbarEl.classList.add('hidden');
+      } else {
+        img.style.display = '';
+        if (attEl) {
+          attEl.classList.add('hidden');
+          attEl.classList.remove('flex');
+        }
+        if (toolbarEl) toolbarEl.classList.remove('hidden');
+      }
     });
   }, []);
-
-  /** Przełączanie powiększenia obrazu o 50% (inline zoom) */
-  const toggleImageZoom = (img: HTMLImageElement) => {
-    const isZoomed = img.getAttribute('data-zoomed') === '1';
-    if (isZoomed) {
-      const baseWidth = img.getAttribute('data-base-width');
-      if (baseWidth) {
-        img.style.width = `${baseWidth}px`;
-      } else {
-        img.style.width = '';
-      }
-      img.removeAttribute('data-zoomed');
-    } else {
-      const currentWidth = img.clientWidth || parseInt(img.style.width, 10) || 300;
-      img.setAttribute('data-base-width', String(currentWidth));
-      const zoomedWidth = Math.round(currentWidth * 1.5);
-      img.style.width = `${zoomedWidth}px`;
-      img.setAttribute('data-zoomed', '1');
-    }
-    handleInput();
-    measurePages();
-  };
 
   useEffect(() => {
     try {
@@ -917,9 +1154,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   }, [docData.contentHtml, docData.version, paperTheme, rebuildToc, measurePages, wrapUnwrappedImages]);
 
-  // Synchronizacja stanu blokowego z dokumentem — patrz komentarz przy
-  // `blocksState` powyżej. Nie wpięte jeszcze w renderowanie ani w zapis
-  // (Iteracja 1 to fundament: adapter + inicjalizacja stanu).
+  // Synchronizacja stanu blokowego z dokumentem
   useEffect(() => {
     if (!isSharedNotebookV2Enabled()) return;
     setBlocksState(getScratchpadBlocksOrFallback(docData));
@@ -952,7 +1187,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       window.document.execCommand(
         'insertHTML',
         false,
-        buildWrappedImageHtml(prepared)
+        buildWrappedImageHtml({ ...prepared, filename: file.name || 'Wklejony obraz' })
       );
       setImageNotice(null);
       handleInput();
@@ -983,7 +1218,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       window.document.execCommand(
         'insertHTML',
         false,
-        buildWrappedImageHtml(prepared)
+        buildWrappedImageHtml({ ...prepared, filename: file.name || 'Plik graficzny' })
       );
       setImageNotice(null);
       handleInput();
@@ -1000,9 +1235,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     const paperWidth = Math.max(280, editorRef.current.clientWidth - PAGE_MARGIN_PX * 2);
     selectedImage.style.width = `${Math.round(paperWidth * fraction)}px`;
     selectedImage.style.height = 'auto';
-    selectedImage.removeAttribute('data-zoomed');
-    selectedImage.removeAttribute('data-base-width');
     handleInput();
+    measurePages();
   };
 
   /** Przesuwanie obrazu wyżej w strukturze sekcji */
@@ -1014,6 +1248,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       editorRef.current.insertBefore(target, prev);
       target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       handleInput();
+      measurePages();
     }
   };
 
@@ -1026,6 +1261,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       editorRef.current.insertBefore(target, next.nextElementSibling);
       target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       handleInput();
+      measurePages();
     }
   };
 
@@ -1039,6 +1275,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
     setSelectedImage(null);
     handleInput();
+    measurePages();
   };
 
   /** Synchronizowany wskaźnik laserowy na żywo */
@@ -1174,16 +1411,35 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
    * w ogóle chce powtórkę, i z KTÓREJ zatwierdzonej lekcji (`lessonRecords`,
    * już wczytane do `studentLessons`) ma powstać.
    */
+  /** Poprzednie rzeczywiste lekcje kursanta (bez szablonów/draftów) */
+  const realStudentLessons = useMemo(
+    () => studentLessons.filter((l) => l.status !== 'rejected' && !/szablon|template|draft/i.test(l.topic || '')),
+    [studentLessons]
+  );
+
+  /** Wyliczony kolejny numer lekcji */
+  const calculatedNextLessonNumber = useMemo(
+    () => Math.max(realStudentLessons.length + 1, highestLessonNumber(editorRef.current?.innerHTML || '') + 1),
+    [realStudentLessons, docData.contentHtml]
+  );
+
   const openInsertLessonGate = () => {
     if (isReadOnly || !editorRef.current || isInsertingLesson) return;
     setIsInsertLessonModalOpen(true);
   };
 
-  /** Wstawia deterministyczny szablon lekcji do dokumentu, ew. z gotową sekcją Revision. */
-  const insertLessonTemplateIntoDocument = (revisionHtml?: string) => {
+  /** Wstawia deterministyczny szablon lekcji do dokumentu, ew. z gotową sekcją Quick Recall. */
+  const insertLessonTemplateIntoDocument = (revisionHtml?: string, topic?: string) => {
     if (!editorRef.current) return;
     const previousHtml = editorRef.current.innerHTML;
-    const html = buildLessonTemplate({ previousHtml, revisionHtml, paperTheme });
+    const nextNum = Math.max(realStudentLessons.length + 1, highestLessonNumber(previousHtml) + 1);
+    const html = buildLessonTemplate({
+      previousHtml,
+      lessonNumber: nextNum,
+      topic,
+      revisionHtml,
+      paperTheme,
+    });
 
     editorRef.current.insertAdjacentHTML('beforeend', html);
 
@@ -1206,47 +1462,43 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }, 60);
   };
 
-  /** Krok 1 „Czysta lekcja" — bez sieci, bez opóźnienia. */
-  const handleInsertCleanLesson = () => {
+  /** Wstawienie czystej lekcji (opcjonalnie z tematem) */
+  const handleInsertCleanLesson = (topic?: string) => {
     setIsInsertingLesson(true);
     try {
-      insertLessonTemplateIntoDocument();
+      insertLessonTemplateIntoDocument(undefined, topic);
     } finally {
       setIsInsertingLesson(false);
     }
   };
 
-  /** Krok 2 „Generuj powtórkę z tej lekcji" — jedyne miejsce, które woła AI. */
-  const handleInsertLessonWithRevision = async (lesson: LessonRecord) => {
+  /** Wstawienie lekcji z wygenerowanym Quick Recall na podstawie wybranej lekcji źródłowej */
+  const handleInsertLessonWithQuickRecall = async (
+    lesson: LessonRecord,
+    recallType: RecallType,
+    topic?: string
+  ) => {
     if (!editorRef.current) return;
     setIsInsertingLesson(true);
     try {
-      const structuredText = [
-        lesson.topic && `Main Focus & Practice:\n${lesson.topic}`,
-        lesson.vocabularyText && `Vocabulary:\n${lesson.vocabularyText}`,
-        lesson.corrections && `Key Language & Corrections:\n${lesson.corrections}`,
-      ]
-        .filter(Boolean)
-        .join('\n\n');
-      const previousLessonText =
-        structuredText.trim().length > 0
-          ? structuredText
-          : lesson.lessonSummary || lesson.topic || '';
-
-      if (!previousLessonText.trim()) {
-        insertLessonTemplateIntoDocument();
-        return;
-      }
-
-      const pendingToken = `revision-pending-${Date.now()}`;
+      const pendingToken = `recall-pending-${Date.now()}`;
       insertLessonTemplateIntoDocument(
-        `<p data-revision-pending="${pendingToken}">⏳ Generuję powtórkę na podstawie poprzedniej lekcji...</p>`
+        `<p data-recall-pending="${pendingToken}">⏳ Generuję Quick Recall na podstawie lekcji z ${lesson.date}...</p>`,
+        topic
       );
 
       try {
-        const generatedHtml = await generateLessonRevision(previousLessonText);
+        const sourceLabel = lesson.topic
+          ? `${lesson.date} — ${lesson.topic}`
+          : lesson.date;
+        const generatedHtml = await generateQuickRecallActivity({
+          sourceLesson: lesson,
+          recallType,
+          studentLevel,
+          sourceLabel,
+        });
         const placeholder = editorRef.current?.querySelector(
-          `[data-revision-pending="${pendingToken}"]`
+          `[data-recall-pending="${pendingToken}"]`
         );
         if (placeholder) {
           placeholder.outerHTML = generatedHtml;
@@ -1254,12 +1506,12 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           setTimeout(() => measurePages(), 60);
         }
       } catch (err) {
-        console.error('[REVISION_API_ERROR]', err);
+        console.error('[QUICK_RECALL_API_ERROR]', err);
         const placeholder = editorRef.current?.querySelector(
-          `[data-revision-pending="${pendingToken}"]`
+          `[data-recall-pending="${pendingToken}"]`
         );
         if (placeholder) {
-          placeholder.outerHTML = '<p>• Przejrzyj korekty i słownictwo z poprzednich zajęć.</p>';
+          placeholder.outerHTML = '<p>Choose a previous lesson to generate a short recall activity.</p>';
           handleInput();
         }
       }
@@ -3639,43 +3891,42 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                           </button>
                         </div>
 
-                        {/* Wstawienie POD wybraną sekcję bieżącej (ostatniej) lekcji —
-                            w odróżnieniu od „Wstaw wg szablonu”, które zakłada NOWĄ lekcję. */}
+                        {/* Wstawienie POD wybraną sekcję bieżącej lekcji */}
                         <div className="text-[10px] font-bold text-content-muted uppercase tracking-wider pt-1">
                           Wstaw do sekcji bieżącej lekcji:
                         </div>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
                           <button
                             type="button"
-                            onClick={() => handleInsertIntoSection('Warm-up', msg.text)}
-                            title="Wstaw pod sekcję Warm-up & Review bieżącej lekcji"
+                            onClick={() => handleInsertIntoSection('QUICK RECALL', msg.text)}
+                            title="Wstaw pod sekcję QUICK RECALL bieżącej lekcji"
                             className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
                           >
-                            Warm-up
+                            Quick Recall
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleInsertIntoSection('Key Language', msg.text)}
-                            title="Wstaw pod sekcję Key Language & Corrections bieżącej lekcji"
+                            onClick={() => handleInsertIntoSection('TODAY’S LESSON', msg.text)}
+                            title="Wstaw pod sekcję TODAY’S LESSON bieżącej lekcji"
                             className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
                           >
-                            Key Language
+                            Today's Lesson
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleInsertIntoSection('Lesson Summary', msg.text)}
-                            title="Wstaw pod sekcję Lesson Summary bieżącej lekcji"
+                            onClick={() => handleInsertIntoSection('LANGUAGE NOTES', msg.text)}
+                            title="Wstaw pod sekcję LANGUAGE NOTES bieżącej lekcji"
                             className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
                           >
-                            Summary
+                            Language Notes
                           </button>
                           <button
                             type="button"
-                            onClick={() => handleInsertIntoSection('Homework', msg.text)}
-                            title="Wstaw pod sekcję Homework bieżącej lekcji"
+                            onClick={() => handleInsertIntoSection('AFTER THE LESSON', msg.text)}
+                            title="Wstaw pod sekcję AFTER THE LESSON bieżącej lekcji"
                             className="px-2 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-hi hover:text-primary border border-line text-[10.5px] font-semibold transition-all cursor-pointer truncate"
                           >
-                            Homework
+                            After Lesson
                           </button>
                         </div>
                         <div className="flex items-center justify-between pt-1 border-t border-line-soft/60 text-[10px] text-content-muted">
@@ -3923,41 +4174,331 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         onConfirmInsert={handleConfirmInsertFromModal}
       />
 
-      {/* Bramka potwierdzenia przed wstawieniem nowej lekcji — patrz komentarz przy `openInsertLessonGate`. */}
+      {/* Bramka potwierdzenia przed wstawieniem nowej lekcji */}
       <InsertLessonModal
         isOpen={isInsertLessonModalOpen}
         onClose={() => setIsInsertLessonModalOpen(false)}
-        recentLessons={studentLessons.filter((l) => l.status === 'confirmed').slice(0, 3)}
+        recentLessons={realStudentLessons.slice(0, 10)}
+        studentLevel={studentLevel}
+        nextLessonNumber={calculatedNextLessonNumber}
         onInsertClean={handleInsertCleanLesson}
-        onInsertWithRevision={handleInsertLessonWithRevision}
+        onInsertWithQuickRecall={handleInsertLessonWithQuickRecall}
       />
 
-      {/* Tryb Prezentacji / Pełny Ekran (Fullscreen Lightbox) dla grafik */}
-      {lightboxImageSrc && (
+      {/* Modal powiększenia grafiki (Zoom 50% / 150% rozmiaru) */}
+      {zoomModalImageSrc && (
         <div
-          className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
-          onClick={() => setLightboxImageSrc(null)}
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+          onClick={() => {
+            setZoomModalImageSrc(null);
+            setImageModalError(false);
+          }}
+        >
+          <div
+            className="relative max-w-[90vw] max-h-[90vh] bg-base-100 rounded-2xl border border-line-strong shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-4 py-2.5 bg-base-200/80 border-b border-line-strong text-xs font-semibold text-text-hi">
+              <div className="flex items-center gap-2">
+                <ZoomIn size={14} className="text-primary" />
+                <span>Podgląd powiększony (+50%)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {zoomModalImageSrc.startsWith('http') && (
+                  <button
+                    type="button"
+                    onClick={() => window.open(zoomModalImageSrc, '_blank')}
+                    className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-text-hi transition-colors cursor-pointer"
+                    title="Otwórz w nowej karcie"
+                    aria-label="Otwórz w nowej karcie"
+                  >
+                    <ExternalLink size={14} />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setZoomModalImageSrc(null);
+                    setImageModalError(false);
+                  }}
+                  className="p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-danger transition-colors cursor-pointer"
+                  title="Zamknij (Esc)"
+                  aria-label="Zamknij"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-4 overflow-auto flex items-center justify-center min-w-[300px] min-h-[200px] bg-black/40">
+              {imageModalError ? (
+                <div className="flex flex-col items-center gap-3 p-6 text-center">
+                  <AlertTriangle size={32} className="text-warn" />
+                  <p className="text-xs text-text-hi font-medium">
+                    Nie udało się załadować grafiki w powiększeniu.
+                  </p>
+                  {zoomModalImageSrc.startsWith('http') && (
+                    <a
+                      href={zoomModalImageSrc}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary hover:underline flex items-center gap-1"
+                    >
+                      <span>Otwórz bezpośredni plik</span>
+                      <ExternalLink size={12} />
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <img
+                  src={zoomModalImageSrc}
+                  alt="Powiększona grafika"
+                  onError={() => setImageModalError(true)}
+                  className="max-w-none w-[150%] max-h-[85vh] object-contain select-none rounded shadow"
+                  style={{ maxWidth: '150%' }}
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tryb Prezentacji grafiki na pełnym ekranie (Present mode) */}
+      {presentModalImageSrc && (
+        <div
+          className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
+          onClick={() => {
+            setPresentModalImageSrc(null);
+            setImageModalError(false);
+          }}
         >
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              setLightboxImageSrc(null);
+              setPresentModalImageSrc(null);
+              setImageModalError(false);
             }}
             className="absolute top-4 right-4 p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors cursor-pointer z-50"
-            title="Zamknij (Esc)"
-            aria-label="Zamknij podgląd"
+            title="Zamknij prezentację (Esc)"
+            aria-label="Zamknij prezentację"
           >
             <X size={24} />
           </button>
-          <img
-            src={lightboxImageSrc}
-            alt="Podgląd pełnoekranowy"
-            className="max-w-[95vw] max-h-[95vh] object-contain rounded-lg shadow-2xl select-none"
-            onClick={(e) => e.stopPropagation()}
-          />
+
+          {imageModalError ? (
+            <div
+              className="flex flex-col items-center gap-3 p-6 text-center text-white"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <AlertTriangle size={36} className="text-warn" />
+              <p className="text-sm font-medium">Nie udało się wyświetlić grafiki w trybie prezentacji.</p>
+              {presentModalImageSrc.startsWith('http') && (
+                <a
+                  href={presentModalImageSrc}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  <span>Otwórz bezpośredni plik</span>
+                  <ExternalLink size={12} />
+                </a>
+              )}
+            </div>
+          ) : (
+            <img
+              src={presentModalImageSrc}
+              alt="Prezentacja grafiki"
+              onError={() => setImageModalError(true)}
+              className="max-w-[95vw] max-h-[95vh] object-contain rounded shadow-2xl select-none"
+              onClick={(e) => e.stopPropagation()}
+            />
+          )}
         </div>
       )}
+
+      {/* Custom Context Menu dla grafik w notatniku */}
+      {imageContextMenu && (
+        <>
+          <div
+            className="fixed inset-0 z-50 cursor-default"
+            onClick={() => setImageContextMenu(null)}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setImageContextMenu(null);
+            }}
+          />
+          <div
+            className="fixed z-50 w-56 rounded-xl bg-base-100 border border-line-strong shadow-2xl py-1.5 text-xs text-text-hi animate-in fade-in zoom-in-95 duration-150"
+            style={{
+              top: Math.min(imageContextMenu.y, window.innerHeight - 320),
+              left: Math.min(imageContextMenu.x, window.innerWidth - 240),
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setImageDisplayMode(imageContextMenu.targetWrapper, 'image')}
+              className={`w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-white/10 transition-colors cursor-pointer ${
+                !imageContextMenu.isAttachment ? 'text-primary font-semibold' : 'text-text-hi'
+              }`}
+            >
+              <ImageIcon size={14} className="shrink-0" />
+              <span>1. Display as image</span>
+              {!imageContextMenu.isAttachment && <Check size={13} className="ml-auto text-primary" />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setImageDisplayMode(imageContextMenu.targetWrapper, 'attachment')}
+              className={`w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-white/10 transition-colors cursor-pointer ${
+                imageContextMenu.isAttachment ? 'text-primary font-semibold' : 'text-text-hi'
+              }`}
+            >
+              <Paperclip size={14} className="shrink-0" />
+              <span>2. Display as attachment</span>
+              {imageContextMenu.isAttachment && <Check size={13} className="ml-auto text-primary" />}
+            </button>
+
+            <div className="my-1 border-t border-line" />
+
+            <button
+              type="button"
+              onClick={() => {
+                if (imageContextMenu.targetImg?.src) {
+                  setImageModalError(false);
+                  setZoomModalImageSrc(imageContextMenu.targetImg.src);
+                }
+                setImageContextMenu(null);
+              }}
+              className="w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-white/10 text-text-hi transition-colors cursor-pointer"
+            >
+              <ZoomIn size={14} className="shrink-0 text-primary" />
+              <span>3. Zoom 50%</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                if (imageContextMenu.targetImg?.src) {
+                  setImageModalError(false);
+                  setPresentModalImageSrc(imageContextMenu.targetImg.src);
+                }
+                setImageContextMenu(null);
+              }}
+              className="w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-white/10 text-text-hi transition-colors cursor-pointer"
+            >
+              <Maximize2 size={14} className="shrink-0 text-primary" />
+              <span>4. Present full screen</span>
+            </button>
+
+            <div className="my-1 border-t border-line" />
+
+            {/* Resize options */}
+            <div className="px-3 py-1.5 text-[10px] font-bold text-content-muted uppercase tracking-wider">
+              5. Resize
+            </div>
+            <div className="grid grid-cols-4 gap-1 px-2.5 pb-1">
+              {[
+                { label: '25%', w: 160 },
+                { label: '50%', w: 320 },
+                { label: '75%', w: 480 },
+                { label: '100%', w: 680 },
+              ].map((sz) => (
+                <button
+                  key={sz.label}
+                  type="button"
+                  onClick={() => {
+                    if (imageContextMenu.targetImg) {
+                      imageContextMenu.targetImg.style.width = `${sz.w}px`;
+                      imageContextMenu.targetImg.style.height = 'auto';
+                      handleInput();
+                      measurePages();
+                    }
+                    setImageContextMenu(null);
+                  }}
+                  className="px-1.5 py-1 text-center rounded bg-white/5 hover:bg-white/15 text-[11px] font-medium text-text-hi transition-colors cursor-pointer"
+                >
+                  {sz.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Move options */}
+            <div className="px-3 py-1.5 text-[10px] font-bold text-content-muted uppercase tracking-wider">
+              6. Move
+            </div>
+            <div className="flex gap-1 px-2.5 pb-1">
+              <button
+                type="button"
+                onClick={() => {
+                  const prev = imageContextMenu.targetWrapper.previousElementSibling;
+                  if (prev) {
+                    prev.before(imageContextMenu.targetWrapper);
+                    handleInput();
+                    measurePages();
+                  }
+                  setImageContextMenu(null);
+                }}
+                className="flex-1 px-2 py-1 flex items-center justify-center gap-1 rounded bg-white/5 hover:bg-white/15 text-[11px] font-medium text-text-hi transition-colors cursor-pointer"
+              >
+                <MoveUp size={12} />
+                <span>Wyżej</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const next = imageContextMenu.targetWrapper.nextElementSibling;
+                  if (next) {
+                    next.after(imageContextMenu.targetWrapper);
+                    handleInput();
+                    measurePages();
+                  }
+                  setImageContextMenu(null);
+                }}
+                className="flex-1 px-2 py-1 flex items-center justify-center gap-1 rounded bg-white/5 hover:bg-white/15 text-[11px] font-medium text-text-hi transition-colors cursor-pointer"
+              >
+                <MoveDown size={12} />
+                <span>Niżej</span>
+              </button>
+            </div>
+
+            <div className="my-1 border-t border-line" />
+
+            <button
+              type="button"
+              onClick={() => replaceImageFileInputRef.current?.click()}
+              className="w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-white/10 text-text-hi transition-colors cursor-pointer"
+            >
+              <FilePlus size={14} className="shrink-0" />
+              <span>7. Replace image</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                imageContextMenu.targetWrapper.remove();
+                handleInput();
+                measurePages();
+                setImageContextMenu(null);
+              }}
+              className="w-full px-3 py-2 flex items-center gap-2.5 text-left hover:bg-danger/20 text-danger transition-colors cursor-pointer"
+            >
+              <Trash2 size={14} className="shrink-0" />
+              <span>8. Remove image</span>
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Ukryty input do podmiany pliku graficznego z context menu */}
+      <input
+        ref={replaceImageFileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleReplaceImageFileSelected}
+      />
     </div>
   );
 };
