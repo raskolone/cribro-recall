@@ -9,20 +9,23 @@ import {
   Sparkles,
   Eye,
   Check,
-  ZoomIn
+  ZoomIn,
+  AlertCircle,
 } from 'lucide-react';
 import { prefersReducedMotion } from '../../services/gsapAnimations';
+import {
+  DocumentRect,
+  Point,
+  viewportPointToDocumentPoint,
+  viewportRectToDocumentRect,
+  computeLassoBoundingBox,
+  computeObjectBoundingBox,
+  calculateFocusTransform,
+} from '../../utils/focusZoomGeometry';
 
 export type FocusZoomMode = 'rectangle' | 'lasso' | 'object';
 
-export interface FocusBoundingBox {
-  left: number; // px relative to paper
-  top: number;
-  width: number;
-  height: number;
-  label?: string;
-  sourceType?: 'rectangle' | 'lasso' | 'object';
-}
+export type FocusBoundingBox = DocumentRect;
 
 interface FocusZoomSelectionLayerProps {
   isActive: boolean;
@@ -41,20 +44,24 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
 }) => {
   const [mode, setMode] = useState<FocusZoomMode>('rectangle');
   const [isDrawing, setIsDrawing] = useState(false);
-  const [startPoint, setStartPoint] = useState<{ x: number; y: number } | null>(null);
+  const [startPoint, setStartPoint] = useState<Point | null>(null);
   const [currentBox, setCurrentBox] = useState<FocusBoundingBox | null>(null);
-  const [lassoPoints, setLassoPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [lassoPoints, setLassoPoints] = useState<Point[]>([]);
   const [hoveredObjectBox, setHoveredObjectBox] = useState<FocusBoundingBox | null>(null);
+  const [feedbackNotice, setFeedbackNotice] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Pobiera współrzędne relatywne do papieru A4
-  const getPaperRelativeCoords = useCallback((e: React.MouseEvent | MouseEvent) => {
+  // Pobiera współrzędne w układzie dokumentu A4 (Document coordinates)
+  const getDocumentCoords = useCallback((e: React.MouseEvent | MouseEvent): Point => {
     if (!paperRef.current) return { x: 0, y: 0 };
     const rect = paperRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left + paperRef.current.scrollLeft));
-    const y = Math.max(0, Math.min(rect.height, e.clientY - rect.top + paperRef.current.scrollTop));
-    return { x, y };
+    return viewportPointToDocumentPoint({ x: e.clientX, y: e.clientY }, {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    });
   }, [paperRef]);
 
   // Obsługa skrótów klawiaturowych (F, R, L, Esc, 0, Enter)
@@ -62,7 +69,6 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
     if (!isTeacher) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ignoruj, gdy użytkownik pisze w polach formularza lub edytorze
       const target = e.target as HTMLElement;
       const isInput =
         target.tagName === 'INPUT' ||
@@ -91,13 +97,16 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
       } else if (isActive && e.key.toLowerCase() === 'r') {
         e.preventDefault();
         setMode('rectangle');
+        setFeedbackNotice(null);
       } else if (isActive && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         setMode('lasso');
+        setFeedbackNotice(null);
       } else if (isActive && e.key === '0') {
         e.preventDefault();
         setCurrentBox(null);
         setLassoPoints([]);
+        setFeedbackNotice(null);
       } else if (isActive && e.key === 'Enter' && currentBox) {
         e.preventDefault();
         onPresentFocus(currentBox);
@@ -111,7 +120,8 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
   // Rozpoczęcie zaznaczania myszą
   const handleMouseDown = (e: React.MouseEvent) => {
     if (!isActive || e.button !== 0) return;
-    const coords = getPaperRelativeCoords(e);
+    const coords = getDocumentCoords(e);
+    setFeedbackNotice(null);
 
     if (mode === 'object') {
       if (hoveredObjectBox) {
@@ -122,6 +132,9 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
 
     setIsDrawing(true);
     setStartPoint(coords);
+    if (!paperRef.current) return;
+    const paperRect = paperRef.current.getBoundingClientRect();
+
     if (mode === 'rectangle') {
       setCurrentBox({
         left: coords.x,
@@ -129,6 +142,8 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
         width: 0,
         height: 0,
         sourceType: 'rectangle',
+        paperWidth: paperRect.width,
+        paperHeight: paperRect.height,
       });
     } else if (mode === 'lasso') {
       setLassoPoints([coords]);
@@ -136,28 +151,18 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
     }
   };
 
-  // Rysowanie / przeciąganie zaznaczenia
+  // Rysowanie / przeciąganie zaznaczenia (obsługuje dowolny kierunek i Document coordinates)
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!isActive) return;
-    const coords = getPaperRelativeCoords(e);
+    const coords = getDocumentCoords(e);
 
     if (mode === 'object' && !isDrawing) {
-      // Wykryj element pod kursorem wewnątrz papieru
       const elem = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
       if (elem && paperRef.current && paperRef.current.contains(elem) && elem !== paperRef.current) {
-        // Znajdź najbliższy blokowy element / kartę / obraz
         const targetObj = elem.closest('img, table, [data-exercise-widget], .pad-locked-heading, p, blockquote, div') as HTMLElement | null;
         if (targetObj && paperRef.current) {
-          const paperRect = paperRef.current.getBoundingClientRect();
-          const objRect = targetObj.getBoundingClientRect();
-          setHoveredObjectBox({
-            left: objRect.left - paperRect.left + paperRef.current.scrollLeft,
-            top: objRect.top - paperRect.top + paperRef.current.scrollTop,
-            width: objRect.width,
-            height: objRect.height,
-            label: targetObj.tagName.toLowerCase() === 'img' ? 'Obraz' : 'Element lekcji',
-            sourceType: 'object',
-          });
+          const objBox = computeObjectBoundingBox(targetObj, paperRef.current);
+          setHoveredObjectBox(objBox);
           return;
         }
       }
@@ -165,14 +170,23 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
       return;
     }
 
-    if (!isDrawing || !startPoint) return;
+    if (!isDrawing || !startPoint || !paperRef.current) return;
+    const paperRect = paperRef.current.getBoundingClientRect();
 
     if (mode === 'rectangle') {
       const left = Math.min(startPoint.x, coords.x);
       const top = Math.min(startPoint.y, coords.y);
       const width = Math.abs(coords.x - startPoint.x);
       const height = Math.abs(coords.y - startPoint.y);
-      setCurrentBox({ left, top, width, height, sourceType: 'rectangle' });
+      setCurrentBox({
+        left,
+        top,
+        width,
+        height,
+        sourceType: 'rectangle',
+        paperWidth: paperRect.width,
+        paperHeight: paperRect.height,
+      });
     } else if (mode === 'lasso') {
       setLassoPoints((prev) => [...prev, coords]);
     }
@@ -180,35 +194,28 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
 
   // Zakończenie zaznaczania myszą
   const handleMouseUp = () => {
-    if (!isDrawing) return;
+    if (!isDrawing || !paperRef.current) return;
     setIsDrawing(false);
+    const paperRect = paperRef.current.getBoundingClientRect();
 
     if (mode === 'lasso' && lassoPoints.length > 2) {
-      let minX = Infinity;
-      let minY = Infinity;
-      let maxX = -Infinity;
-      let maxY = -Infinity;
-
-      lassoPoints.forEach((pt) => {
-        if (pt.x < minX) minX = pt.x;
-        if (pt.y < minY) minY = pt.y;
-        if (pt.x > maxX) maxX = pt.x;
-        if (pt.y > maxY) maxY = pt.y;
+      const box = computeLassoBoundingBox(lassoPoints, {
+        width: paperRect.width,
+        height: paperRect.height,
       });
 
-      const width = Math.max(20, maxX - minX);
-      const height = Math.max(20, maxY - minY);
-      setCurrentBox({
-        left: minX,
-        top: minY,
-        width,
-        height,
-        label: 'Zaznaczenie odręczne (Lasso)',
-        sourceType: 'lasso',
-      });
+      if (box && (box.width < 12 || box.height < 12)) {
+        setFeedbackNotice('Zaznaczony obszar jest zbyt mały (min. 12×12 px)');
+        setCurrentBox(null);
+        setLassoPoints([]);
+      } else if (box) {
+        setCurrentBox(box);
+        setLassoPoints([]); // zamyka i czyści overlay lasso
+      }
     } else if (mode === 'rectangle' && currentBox) {
-      // Ignoruj przypadkowe mikrokliknięcia (< 15px)
-      if (currentBox.width < 15 || currentBox.height < 15) {
+      // Minimalny próg 12×12 px
+      if (currentBox.width < 12 || currentBox.height < 12) {
+        setFeedbackNotice('Zaznaczony obszar jest zbyt mały (min. 12×12 px)');
         setCurrentBox(null);
       }
     }
@@ -222,15 +229,19 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
       ? `M ${lassoPoints.map((p) => `${p.x} ${p.y}`).join(' L ')}`
       : '';
 
-  // Obliczenie skali powiększenia (1x - 3x)
+  // Szacowany wskaźnik zoomu
   const calculateEstimatedZoom = (box: FocusBoundingBox): number => {
     if (!paperRef.current || box.width <= 0 || box.height <= 0) return 1.5;
-    const paperW = paperRef.current.clientWidth || 800;
-    const paperH = paperRef.current.clientHeight || 1100;
-    const scaleX = paperW / (box.width * 1.15);
-    const scaleY = paperH / (box.height * 1.15);
-    const scale = Math.min(scaleX, scaleY);
-    return Math.max(1.0, Math.min(3.0, Number(scale.toFixed(1))));
+    const paperW = paperRef.current.clientWidth || 794;
+    const paperH = paperRef.current.clientHeight || 1123;
+    const transform = calculateFocusTransform({
+      focusRect: box,
+      paperWidth: paperW,
+      paperHeight: paperH,
+      viewportWidth: window.innerWidth,
+      viewportHeight: window.innerHeight,
+    });
+    return transform.scale;
   };
 
   return (
@@ -353,6 +364,14 @@ export const FocusZoomSelectionLayer: React.FC<FocusZoomSelectionLayerProps> = (
           >
             <X size={14} />
           </button>
+        </div>
+      )}
+
+      {/* KOMUNIKAT BŁĘDU / ZBYT MAŁEGO ZAZNACZENIA */}
+      {feedbackNotice && (
+        <div className="fixed top-36 left-1/2 -translate-x-1/2 z-50 px-3.5 py-2 rounded-xl bg-amber-500/95 text-slate-950 font-bold text-xs flex items-center gap-2 shadow-2xl backdrop-blur-md animate-in fade-in duration-200">
+          <AlertCircle size={15} />
+          <span>{feedbackNotice}</span>
         </div>
       )}
 

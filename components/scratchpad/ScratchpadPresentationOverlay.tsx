@@ -78,11 +78,17 @@ const OPTION_THEMES = [
   },
 ];
 
+import {
+  calculateFocusTransform,
+  DocumentRect,
+  FocusTransformResult,
+} from '../../utils/focusZoomGeometry';
+
 const FocusZoomPresentationView: React.FC<{
   presentation: PresentationState;
   onClose: () => void;
   isTeacher: boolean;
-}> = ({ presentation, onClose }) => {
+}> = ({ presentation, onClose, isTeacher }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
@@ -91,73 +97,99 @@ const FocusZoomPresentationView: React.FC<{
   const rect = presentation.focusZoom?.rect;
   const html = presentation.focusZoom?.htmlSnippet || presentation.question || '';
 
+  const paperW = rect?.paperWidth || 794;
+  const paperH = rect?.paperHeight || 1123;
+
   useEffect(() => {
-    if (!contentRef.current || !rect) return;
+    if (!contentRef.current || !rect || !containerRef.current) return;
 
     const reducedMotion = prefersReducedMotion();
-    const containerW = containerRef.current?.clientWidth || window.innerWidth;
-    const containerH = containerRef.current?.clientHeight || window.innerHeight;
+    const containerW = containerRef.current.clientWidth || window.innerWidth;
+    const containerH = containerRef.current.clientHeight || window.innerHeight;
 
     if (isReset || rect.width <= 0 || rect.height <= 0) {
+      // Widok pełnej strony (dopasowanie do okna)
+      const fitScale = Math.min(
+        (containerW - 48) / paperW,
+        (containerH - 90) / paperH,
+        1.0
+      );
+      const fitX = Math.max(0, (containerW - paperW * fitScale) / 2);
+      const fitY = Math.max(0, (containerH - paperH * fitScale) / 2 + 20);
+
+      setZoomLevel(Number(fitScale.toFixed(2)));
+
       if (reducedMotion) {
-        gsap.set(contentRef.current, { scale: 1, x: 0, y: 0 });
+        gsap.set(contentRef.current, {
+          scale: fitScale,
+          x: fitX,
+          y: fitY,
+          transformOrigin: '0 0',
+        });
       } else {
-        gsap.to(contentRef.current, { scale: 1, x: 0, y: 0, duration: 0.4, ease: 'power2.inOut' });
+        gsap.to(contentRef.current, {
+          scale: fitScale,
+          x: fitX,
+          y: fitY,
+          transformOrigin: '0 0',
+          duration: 0.45,
+          ease: 'power2.inOut',
+        });
       }
-      setZoomLevel(1);
       return;
     }
 
-    // Oblicz kadr i skalę (z marginesem 10%, max 3x)
-    const targetScale = Math.max(
-      1.0,
-      Math.min(
-        3.0,
-        Math.min((containerW * 0.88) / rect.width, (containerH * 0.85) / rect.height)
-      )
-    );
+    // Oblicz geometryczną transformację Focus Zoom
+    const transform = calculateFocusTransform({
+      focusRect: rect,
+      paperWidth: paperW,
+      paperHeight: paperH,
+      viewportWidth: containerW,
+      viewportHeight: containerH,
+      padding: { top: 60, right: 30, bottom: 30, left: 30 },
+      maxScale: rect.sourceType === 'object' ? 3.5 : 3.0,
+      minScale: 1.0,
+      marginRatio: 0.10,
+    });
 
-    const boxCenterX = rect.left + rect.width / 2;
-    const boxCenterY = rect.top + rect.height / 2;
-    const paperW = 816;
-    const paperCenterX = paperW / 2;
-
-    const deltaX = (paperCenterX - boxCenterX) * targetScale;
-    const deltaY = -((boxCenterY - 220) * (targetScale - 1));
-
-    setZoomLevel(Number(targetScale.toFixed(1)));
+    setZoomLevel(transform.scale);
 
     if (reducedMotion) {
       gsap.set(contentRef.current, {
-        scale: targetScale,
-        x: deltaX,
-        y: deltaY,
-        transformOrigin: `${boxCenterX}px ${boxCenterY}px`,
+        scale: transform.scale,
+        x: transform.targetX,
+        y: transform.targetY,
+        transformOrigin: '0 0',
       });
     } else {
       gsap.fromTo(
         contentRef.current,
-        { scale: 1, x: 0, y: 0 },
         {
-          scale: targetScale,
-          x: deltaX,
-          y: deltaY,
-          transformOrigin: `${boxCenterX}px ${boxCenterY}px`,
+          scale: 1,
+          x: (containerW - paperW) / 2,
+          y: 60,
+          transformOrigin: '0 0',
+        },
+        {
+          scale: transform.scale,
+          x: transform.targetX,
+          y: transform.targetY,
+          transformOrigin: '0 0',
           duration: 0.45,
           ease: 'power2.inOut',
         }
       );
     }
-  }, [rect, isReset]);
+  }, [rect, isReset, paperW, paperH]);
 
   return (
     <div
       ref={containerRef}
       data-testid="focus-zoom-presentation-view"
-      className="flex-1 w-full h-full flex flex-col items-center justify-start overflow-hidden relative select-none"
+      className="flex-1 w-full h-full relative overflow-hidden select-none"
     >
       {/* Pasek kontrolny Focus Zoom */}
-      <div className="z-30 sticky top-2 flex items-center justify-between gap-3 px-4 py-2 rounded-2xl bg-slate-900/90 border border-white/15 shadow-2xl backdrop-blur-xl mb-3 text-white">
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center justify-between gap-3 px-4 py-2 rounded-2xl bg-slate-900/90 border border-white/15 shadow-2xl backdrop-blur-xl text-white">
         <div className="flex items-center gap-2">
           <Button
             size="sm"
@@ -192,17 +224,21 @@ const FocusZoomPresentationView: React.FC<{
         </div>
       </div>
 
-      {/* Wykadrowana jasna kartka A4 w trybie prezentacji */}
-      <div className="flex-1 w-full h-full flex items-center justify-center overflow-hidden p-4">
+      {/* Pojedynczy, stabilny wrapper prezentacyjny */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div
           ref={contentRef}
-          className="pad-paper pad-sheet relative shadow-2xl rounded-sm transition-transform"
+          className="pad-paper pad-sheet relative shadow-2xl rounded-sm pointer-events-auto"
           style={{
-            width: '816px',
-            minHeight: '1154px',
-            padding: '48px',
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            width: `${paperW}px`,
+            minHeight: `${paperH}px`,
+            padding: '76px',
             backgroundColor: '#fcfbf7',
             color: '#1e293b',
+            transformOrigin: '0 0',
           }}
           dangerouslySetInnerHTML={{ __html: html }}
         />

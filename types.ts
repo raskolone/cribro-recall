@@ -1257,7 +1257,17 @@ export interface ScratchpadDocument {
     removeOnHit?: boolean;
     exerciseId?: string;
     focusZoom?: {
-      rect: { left: number; top: number; width: number; height: number; scale?: number };
+      rect: {
+        left: number;
+        top: number;
+        width: number;
+        height: number;
+        scale?: number;
+        paperWidth?: number;
+        paperHeight?: number;
+        sourceType?: 'rectangle' | 'lasso' | 'object';
+        label?: string;
+      };
       htmlSnippet?: string;
       label?: string;
     };

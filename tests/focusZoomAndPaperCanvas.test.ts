@@ -6,8 +6,15 @@ import {
   buildLessonTemplate,
   LESSON_SECTIONS,
 } from '../utils/lessonTemplate';
-import { FocusBoundingBox } from '../components/scratchpad/FocusZoomSelectionLayer';
 import { prefersReducedMotion } from '../services/gsapAnimations';
+import {
+  viewportPointToDocumentPoint,
+  viewportRectToDocumentRect,
+  documentRectToViewportRect,
+  clampFocusRect,
+  computeLassoBoundingBox,
+  calculateFocusTransform,
+} from '../utils/focusZoomGeometry';
 
 describe('9A. Lesson Canvas — Paper-Like Surface & Semantic Headings', () => {
   it('Nagłówki sekcji mają semantyczne kolory o wysokim kontraście na papierze', () => {
@@ -50,26 +57,46 @@ describe('9A. Lesson Canvas — Paper-Like Surface & Semantic Headings', () => {
   });
 });
 
-describe('9B. Focus Zoom — Bounding Box & Scale Calculations', () => {
-  it('Obliczenie bounding box dla zaznaczenia prostokątnego', () => {
-    const start = { x: 100, y: 150 };
-    const current = { x: 400, y: 350 };
+describe('9B. Focus Zoom — Geometry & Coordinate Systems', () => {
+  it('viewportPointToDocumentPoint przelicza punkt ekranu na współrzędne dokumentu A4', () => {
+    const paperRect = { left: 200, top: 100, width: 800, height: 1100 };
+    const pt = viewportPointToDocumentPoint({ x: 350, y: 400 }, paperRect);
 
-    const left = Math.min(start.x, current.x);
-    const top = Math.min(start.y, current.y);
-    const width = Math.abs(current.x - start.x);
-    const height = Math.abs(current.y - start.y);
-
-    const box: FocusBoundingBox = { left, top, width, height, sourceType: 'rectangle' };
-
-    assert.equal(box.left, 100);
-    assert.equal(box.top, 150);
-    assert.equal(box.width, 300);
-    assert.equal(box.height, 200);
+    assert.equal(pt.x, 150);
+    assert.equal(pt.y, 300);
   });
 
-  it('Obliczenie bounding box dla zaznaczenia lasso (punkty odręczne)', () => {
-    const lassoPoints = [
+  it('viewportRectToDocumentRect oraz documentRectToViewportRect są wzajemnie odwracalne', () => {
+    const paperRect = { left: 150, top: 80, width: 794, height: 1123 };
+    const viewRect = { left: 300, top: 250, width: 300, height: 200 };
+
+    const docRect = viewportRectToDocumentRect(viewRect, paperRect);
+    assert.equal(docRect.left, 150);
+    assert.equal(docRect.top, 170);
+    assert.equal(docRect.width, 300);
+    assert.equal(docRect.height, 200);
+
+    const backToView = documentRectToViewportRect(docRect, paperRect);
+    assert.equal(backToView.left, viewRect.left);
+    assert.equal(backToView.top, viewRect.top);
+    assert.equal(backToView.width, viewRect.width);
+    assert.equal(backToView.height, viewRect.height);
+  });
+
+  it('clampFocusRect przycina prostokąt do granic strony A4', () => {
+    const clamped = clampFocusRect(
+      { left: -20, top: 1100, width: 400, height: 200 },
+      { width: 794, height: 1123 }
+    );
+
+    assert.equal(clamped.left, 0);
+    assert.equal(clamped.top, 1100);
+    assert.equal(clamped.width, 400);
+    assert.equal(clamped.height, 23); // 1123 - 1100
+  });
+
+  it('computeLassoBoundingBox wyznacza bounding box ze wszystkich punktów lasso', () => {
+    const points = [
       { x: 120, y: 200 },
       { x: 180, y: 180 },
       { x: 260, y: 220 },
@@ -78,59 +105,71 @@ describe('9B. Focus Zoom — Bounding Box & Scale Calculations', () => {
       { x: 140, y: 290 },
     ];
 
-    let minX = Infinity;
-    let minY = Infinity;
-    let maxX = -Infinity;
-    let maxY = -Infinity;
-
-    lassoPoints.forEach((pt) => {
-      if (pt.x < minX) minX = pt.x;
-      if (pt.y < minY) minY = pt.y;
-      if (pt.x > maxX) maxX = pt.x;
-      if (pt.y > maxY) maxY = pt.y;
-    });
-
-    const box: FocusBoundingBox = {
-      left: minX,
-      top: minY,
-      width: maxX - minX,
-      height: maxY - minY,
-      sourceType: 'lasso',
-    };
-
+    const box = computeLassoBoundingBox(points, { width: 800, height: 1100 });
+    assert.ok(box);
     assert.equal(box.left, 120);
     assert.equal(box.top, 180);
     assert.equal(box.width, 180);
     assert.equal(box.height, 170);
+    assert.equal(box.sourceType, 'lasso');
   });
 
-  it('Kalkulacja optymalnej skali powiększenia Focus Zoom mieści się w zakresie [1.0x, 3.0x]', () => {
-    const containerW = 1200;
-    const containerH = 800;
+  it('calculateFocusTransform precyzyjnie centruje środek zaznaczenia w viewport', () => {
+    const result = calculateFocusTransform({
+      focusRect: { left: 200, top: 300, width: 300, height: 200 },
+      paperWidth: 794,
+      paperHeight: 1123,
+      viewportWidth: 1200,
+      viewportHeight: 800,
+      padding: { top: 60, right: 30, bottom: 30, left: 30 },
+      maxScale: 3.0,
+      minScale: 1.0,
+      marginRatio: 0.10,
+    });
 
-    // 1. Mały fragment (np. jedno słówko 80x40) -> powinien zostać ograniczony do max 3.0x, aby uniknąć pikselizacji
-    const smallBox = { width: 80, height: 40 };
-    const scaleSmall = Math.max(
-      1.0,
-      Math.min(3.0, Math.min((containerW * 0.88) / smallBox.width, (containerH * 0.85) / smallBox.height))
-    );
-    assert.equal(scaleSmall, 3.0, 'Maksymalny zoom nie przekracza 3.0x');
+    assert.ok(result.scale >= 1.0 && result.scale <= 3.0);
+    assert.ok(typeof result.targetX === 'number');
+    assert.ok(typeof result.targetY === 'number');
 
-    // 2. Średni fragment (tabela / pytanie 400x250)
-    const mediumBox = { width: 400, height: 250 };
-    const scaleMedium = Math.max(
-      1.0,
-      Math.min(3.0, Math.min((containerW * 0.88) / mediumBox.width, (containerH * 0.85) / mediumBox.height))
-    );
-    assert.ok(scaleMedium >= 2.0 && scaleMedium <= 3.0, 'Średni fragment otrzymuje naturalne powiększenie ~2.6x');
+    // Środek focusRectWithMargin trafia w docelowy viewport center
+    const focusCenterX = result.focusCenter.x;
+    const focusCenterY = result.focusCenter.y;
+    const computedScreenCenterX = result.targetX + focusCenterX * result.scale;
+    const computedScreenCenterY = result.targetY + focusCenterY * result.scale;
 
-    // 3. Duży fragment (prawie cała strona 750x900)
-    const largeBox = { width: 750, height: 900 };
-    const scaleLarge = Math.max(
-      1.0,
-      Math.min(3.0, Math.min((containerW * 0.88) / largeBox.width, (containerH * 0.85) / largeBox.height))
-    );
-    assert.ok(scaleLarge <= 1.5, 'Duży obszar nie jest nadmiernie przeskalowany');
+    // Viewport center
+    const expectedViewportCenterX = 30 + (1200 - 30 - 30) / 2; // 600
+    const expectedViewportCenterY = 60 + (800 - 60 - 30) / 2; // 415
+
+    assert.ok(Math.abs(computedScreenCenterX - expectedViewportCenterX) < 50);
+    assert.ok(Math.abs(computedScreenCenterY - expectedViewportCenterY) < 50);
+  });
+
+  it('calculateFocusTransform radzi sobie ze skrajnymi rogami bez pustego tła poza stroną', () => {
+    // Róg lewy górny (0,0)
+    const topLeft = calculateFocusTransform({
+      focusRect: { left: 0, top: 0, width: 150, height: 100 },
+      paperWidth: 794,
+      paperHeight: 1123,
+      viewportWidth: 1200,
+      viewportHeight: 800,
+      padding: { top: 60, right: 30, bottom: 30, left: 30 },
+    });
+    // Lewa krawędź papieru nie powinna przesunąć się w prawo za lewy padding
+    assert.ok(topLeft.targetX <= 30);
+    assert.ok(topLeft.targetY <= 60);
+
+    // Róg prawy dolny
+    const bottomRight = calculateFocusTransform({
+      focusRect: { left: 650, top: 1000, width: 140, height: 120 },
+      paperWidth: 794,
+      paperHeight: 1123,
+      viewportWidth: 1200,
+      viewportHeight: 800,
+      padding: { top: 60, right: 30, bottom: 30, left: 30 },
+    });
+    assert.ok(bottomRight.targetX + 794 * bottomRight.scale >= 1200 - 30);
+    assert.ok(bottomRight.targetY + 1123 * bottomRight.scale >= 800 - 30);
   });
 
   it('prefersReducedMotion działa bezpiecznie w środowisku bez DOM i w przeglądarce', () => {
