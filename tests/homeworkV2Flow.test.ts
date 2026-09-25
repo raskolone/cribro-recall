@@ -111,6 +111,8 @@ const draft = (type: ExerciseTypeV2): DraftExercise => ({
   hintSmall: `mała dla ${type}`,
   hintLarge: `większa dla ${type}`,
   sourceLessonIndex: 1,
+  // fix_sentence bez typu błędu nie przechodzi deterministycznej kontroli walidatora.
+  ...(type === 'fix_sentence' ? { errorType: 'verb_tense' } : {}),
 });
 
 // ———————————————— Drabinka podpowiedzi dla każdego z 3 typów ————————————————

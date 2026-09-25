@@ -16,7 +16,14 @@ import {
 import { getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
 import { HOMEWORK_GENERATION_MODELS, PRIMARY_MODEL, assertHomeworkModelAllowed } from './aiModels';
 import { getStudentAiContext } from './learningProfile';
-import { buildUsedSentencesBlock, filterRepeatedSentences } from '../utils/exerciseSentenceChecks';
+import { Type } from '@google/genai';
+import {
+  FIX_SENTENCE_ERROR_TYPES,
+  buildUsedSentencesBlock,
+  collectValidFixSentences,
+  filterRepeatedSentences,
+} from '../utils/exerciseSentenceChecks';
+import { FIX_SENTENCE_RULES, buildFixSentenceRetryNote } from './cribroSentenceRules';
 
 /**
  * Układanie pracy domowej z materiału lektora.
@@ -313,7 +320,11 @@ export function buildStaticHomeworkNote(params: BuildStaticHomeworkNoteParams): 
  * z oryginalnym komunikatem od Google — żadnego maskowania przejściem na
  * inny model, żeby lektor widział prawdziwą przyczynę awarii.
  */
-const askForJson = async (prompt: string): Promise<{ parsed: any; modelUsed: string }> => {
+const askForJson = async (
+  prompt: string,
+  /** Schemat Gemini (`responseSchema`) — wymusza kształt odpowiedzi. */
+  responseSchema?: object
+): Promise<{ parsed: any; modelUsed: string }> => {
   console.log('[homeworkGenerator] Payload wysyłany do Gemini 2.5 Flash:', {
     systemInstruction: SYSTEM_INSTRUCTION,
     prompt,
@@ -323,7 +334,11 @@ const askForJson = async (prompt: string): Promise<{ parsed: any; modelUsed: str
     prompt,
     SYSTEM_INSTRUCTION,
     MODELS_FOR_HOMEWORK,
-    { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
+    {
+      responseMimeType: 'application/json',
+      ...(responseSchema ? { responseSchema } : {}),
+      thinkingConfig: { thinkingBudget: 0 },
+    },
     undefined,
     // Maksymalnie 1 ponowienie przy błędzie sieciowym (maxRetries: 2 = próba + 1 retry).
     { taskName: 'Układanie pracy domowej (Gemini 2.5 Flash)', category: 'homework', timeoutMs: 15000, maxRetries: 2 }
@@ -510,50 +525,90 @@ Zwróć JSON:
   return { items, modelUsed };
 };
 
-/** Znajdź błąd w zdaniu: generujemy zdania z jednym konkretnym, wiarygodnym błędem do poprawy. */
+/**
+ * Schemat odpowiedzi dla „Popraw zdanie".
+ *
+ * `propertyOrdering` jest częścią kontraktu, nie kosmetyką: model generuje
+ * pola po kolei, więc najpierw pisze naturalne zdanie poprawne, potem
+ * wybiera typ błędu, a dopiero na końcu psuje zdanie. Kolejność odwrotna
+ * (błąd → zdanie) produkuje zdania budowane pod błąd.
+ */
+const FIX_SENTENCE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    items: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          correct_sentence: { type: Type.STRING, description: 'Naturalne, w pełni poprawne zdanie po angielsku — układane NAJPIERW.' },
+          error_type: { type: Type.STRING, enum: [...FIX_SENTENCE_ERROR_TYPES], description: 'Jeden typ błędu pasujący do tego zdania.' },
+          error_sentence: { type: Type.STRING, description: 'correct_sentence z DOKŁADNIE jednym błędem typu error_type. Musi różnić się od correct_sentence.' },
+          explanation: { type: Type.STRING, description: 'Zwięzłe wyjaśnienie reguły po polsku.' },
+          hint: { type: Type.STRING, description: 'Wskazówka po polsku kierująca uwagę na obszar błędu, bez podawania poprawki.' },
+          polish_hint: { type: Type.STRING, description: 'Naturalne polskie znaczenie zdania.' },
+        },
+        required: ['correct_sentence', 'error_type', 'error_sentence', 'explanation', 'hint', 'polish_hint'],
+        propertyOrdering: ['correct_sentence', 'error_type', 'error_sentence', 'explanation', 'hint', 'polish_hint'],
+      },
+    },
+  },
+  required: ['items'],
+};
+
+/**
+ * „Popraw zdanie": zdania z jednym prawdziwym błędem do poprawy.
+ *
+ * Każde zadanie przechodzi `checkFixSentenceItem`. Zadanie bez błędu (zdanie
+ * „z błędem" identyczne z poprawnym) dostaje jedną powtórkę z mocniejszą
+ * instrukcją; jeśli nadal jest wadliwe — kursant go nie zobaczy.
+ */
 export const generateFindErrors = async (
   req: HomeworkGenerationRequest,
   sourceText: string,
   briefing?: string
 ): Promise<{ items: ErrorCorrectionExercise[]; modelUsed: string }> => {
-  const prompt = `${baseContext(req, sourceText, briefing)}
+  const buildPrompt = (count: number, retryNote: string) => `${baseContext(req, sourceText, briefing)}
 
 ZADANIE:
-Ułóż ${req.perType} zdań w języku angielskim zawierających DOKŁADNIE JEDEN, jednoznaczny błąd gramatyczny,
-leksykalny, przyimkowy, szyku wyrazów lub formy czasownika (ang. Spot the mistake / Find the error).
-Zadaniem kursanta jest zidentyfikowanie tego błędu i podanie w pełni poprawionego zdania.
-Materiały oprzyj na powyższym materiale z lekcji (wykorzystaj słownictwo, tematy oraz sekcje "Do poprawy u kursanta", jeśli są obecne).
+Ułóż ${count} ${count === 1 ? 'zadanie' : 'zadań'} „Popraw zdanie" dla kursanta na poziomie ${req.level || 'B1'}.
+Kursant dostaje zdanie z jednym błędem i przepisuje je poprawnie.
+Oprzyj je na powyższym materiale z lekcji (słownictwo, temat oraz „Do poprawy u kursanta", jeśli są).
 
-WYMAGANIA SZCZEGÓŁOWE DLA ZADAŃ TYPU ZNAJDŹ BŁĄD (find_errors):
-- Zdanie musi zawierać DOKŁADNIE JEDEN błąd, typowy dla polskiego ucznia na poziomie ${req.level || 'B1'}
-  (np. zły przyimek np. "interested for" zamiast "in", zły czasownik posiłkowy np. "She don't" zamiast "doesn't",
-  brak końcówki -s w 3. os., kalka z polskiego, pomylony czas gramatyczny, fałszywy przyjaciel, zły szyk).
-- Zdanie musi brzmieć naturalnie w kontekście i mieć sens — nie twórz zdań absurdalnych.
-- Do każdego zadania dołącz:
-  1. incorrectSentence: zdanie po angielsku zawierające ten jeden błąd.
-  2. correctSentence: w pełni poprawne zdanie po angielsku (bez błędu).
-  3. explanation: jasne, zwięzłe wyjaśnienie reguły po polsku (dlaczego forma była błędna i jak brzmi zasada).
-  4. hint: subtelna wskazówka po polsku kierująca uwagę na obszar błędu (np. "Zwróć uwagę na czasownik posiłkowy w przeczeniu.").
-  5. polishHint: naturalne polskie znaczenie zdania (żeby uczeń znał intencję wypowiedzi).
+${FIX_SENTENCE_RULES}
 
+POZOSTAŁE POLA:
+- explanation: zwięzłe wyjaśnienie reguły po polsku (dlaczego forma jest błędna i jak brzmi zasada).
+- hint: subtelna wskazówka po polsku, gdzie szukać błędu — bez podawania poprawki.
+- polish_hint: naturalne polskie znaczenie zdania, żeby kursant znał intencję wypowiedzi.
 ${buildUsedSentencesBlock(req.excludeSentences)}
-
+${retryNote}
 Zwróć JSON:
-{"items":[{"incorrectSentence":"She don't like working overtime on Fridays.","correctSentence":"She doesn't like working overtime on Fridays.","explanation":"W 3. osobie liczby pojedynczej czasu Present Simple przeczenie tworzymy za pomocą 'doesn't', a nie 'don't'.","hint":"Zwróć uwagę na czasownik posiłkowy w przeczeniu.","polishHint":"Ona nie lubi pracować po godzinach w piątki."}]}`;
+{"items":[{"correct_sentence":"She doesn't eat meat, so let's book the Italian place.","error_type":"auxiliary_verb","error_sentence":"She don't eat meat, so let's book the Italian place.","explanation":"W 3. osobie liczby pojedynczej przeczenie w Present Simple tworzymy z 'doesn't', nie 'don't'.","hint":"Zwróć uwagę na czasownik posiłkowy w przeczeniu.","polish_hint":"Ona nie je mięsa, więc zarezerwujmy tę włoską knajpkę."}]}`;
 
-  const { parsed, modelUsed } = await askForJson(prompt);
-  const raw = Array.isArray(parsed?.items) ? parsed.items : [];
+  let modelUsed = HOMEWORK_MODEL;
+  const batch = await collectValidFixSentences(async (retry) => {
+    const prompt = retry
+      ? buildPrompt(retry.missing, buildFixSentenceRetryNote(retry.missing, retry.rejectedErrorSentences))
+      : buildPrompt(req.perType, '');
+    const response = await askForJson(prompt, FIX_SENTENCE_SCHEMA);
+    modelUsed = response.modelUsed;
+    return Array.isArray(response.parsed?.items) ? response.parsed.items : [];
+  });
 
-  const items: ErrorCorrectionExercise[] = raw
-    .filter((item: any) => item?.incorrectSentence && item?.correctSentence)
-    .map((item: any) => ({
-      type: 'find_errors',
-      incorrectSentence: String(item.incorrectSentence).trim(),
-      correctSentence: String(item.correctSentence).trim(),
-      explanation: item.explanation ? String(item.explanation).trim() : undefined,
-      hint: item.hint ? String(item.hint).trim() : undefined,
-      polishHint: item.polishHint ? String(item.polishHint).trim() : undefined,
-    }));
+  if (batch.dropped > 0) {
+    console.warn(`[generateFindErrors] Odrzucono ${batch.dropped} zadań bez prawdziwego błędu (po powtórce).`);
+  }
+
+  const items: ErrorCorrectionExercise[] = batch.items.map((item) => ({
+    type: 'find_errors',
+    incorrectSentence: item.errorSentence,
+    correctSentence: item.correctSentence,
+    errorType: item.errorType,
+    explanation: item.explanation,
+    hint: item.hint,
+    polishHint: item.polishHint,
+  }));
 
   const freshItems = filterRepeatedSentences(items, req.excludeSentences || [], (item) => [
     item.correctSentence,

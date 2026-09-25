@@ -746,6 +746,8 @@ export interface ErrorCorrectionExercise {
   type?: HomeworkType;
   incorrectSentence: string;
   correctSentence: string;
+  /** Typ wprowadzonego błędu — patrz `FIX_SENTENCE_ERROR_TYPES` w `utils/exerciseSentenceChecks.ts`. */
+  errorType?: string;
   explanation?: string;
   hint?: string;
   polishHint?: string;

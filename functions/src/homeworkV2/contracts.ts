@@ -42,7 +42,7 @@ export const SCHEMA_VERSION = '2.0.0';
  * i sam w sobie nie unieważnia zapisanych odpowiedzi — pozwala jednak
  * odpowiedzieć na pytanie „czy te słabe zadania wyszły ze starego promptu".
  */
-export const PROMPT_VERSION = 'hw-v2-2026-09-12';
+export const PROMPT_VERSION = 'hw-v2-2026-09-25';
 
 // ---------------------------------------------------------------------------
 // Typy zadań

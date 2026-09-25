@@ -12,7 +12,7 @@
 
 import { AssembledContext, renderContextForPrompt } from './contextAssembler';
 import { MAX_REGENERATIONS, ValidationResultV2 } from './contracts';
-import { VALIDATOR_CHECKS, buildCoreSystemPrompt } from './coreKnowledge';
+import { FIX_SENTENCE_ERROR_TYPES, VALIDATOR_CHECKS, buildCoreSystemPrompt } from './coreKnowledge';
 import { DraftExercise } from './exerciseGenerator';
 import { ModelCall } from './openai';
 
@@ -106,6 +106,53 @@ const shapeVerdict = (
   };
 };
 
+/**
+ * Postać zdania do porównań — lustrzana kopia `normalizeSentence`
+ * z `utils/exerciseSentenceChecks.ts` (zgodność: `tests/cribroSentenceRules.test.ts`).
+ */
+export const normalizeSentence = (value: unknown): string =>
+  String(value ?? '')
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\u2018\u2019\u02BC`\u00B4]/g, "'")
+    .replace(/[^\p{L}\p{N}'\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+/**
+ * Zarzuty, których nie trzeba pytać model — wynikają z samych danych.
+ *
+ * `fix_sentence`, w którym zdanie „z błędem" jest po normalizacji takie samo
+ * jak odpowiedź wzorcowa (albo jeden z wariantów), jest nierozwiązywalne:
+ * kursant przepisze je bez zmian i dostanie ocenę za nic. Model-kontroler
+ * potrafi takie zadanie przepuścić, więc ten zarzut ma pierwszeństwo przed
+ * jego werdyktem i kieruje zadanie do zwykłej regeneracji.
+ */
+export const deterministicFailedChecks = (draft: DraftExercise): string[] => {
+  if (draft.exerciseType !== 'fix_sentence') return [];
+
+  const failed: string[] = [];
+  const errorSentence = normalizeSentence(draft.content);
+  const correctForms = [draft.modelAnswer, ...draft.acceptedVariants].map(normalizeSentence);
+  if (correctForms.includes(errorSentence)) failed.push('fix_sentence_has_no_error');
+
+  if (!draft.errorType || !(FIX_SENTENCE_ERROR_TYPES as readonly string[]).includes(draft.errorType)) {
+    failed.push('fix_sentence_missing_error_type');
+  }
+  return failed;
+};
+
+/** Dokłada zarzuty deterministyczne do werdyktu modelu — one zawsze przesądzają o porażce. */
+const withDeterministicChecks = (draft: DraftExercise, verdict: ValidationResultV2): ValidationResultV2 => {
+  const failed = deterministicFailedChecks(draft);
+  if (failed.length === 0) return verdict;
+  return {
+    ...verdict,
+    passed: false,
+    failedChecks: [...failed, ...verdict.failedChecks.filter((c) => !failed.includes(c))],
+  };
+};
+
 /** Jedno sprawdzenie jednego zadania — jedno wywołanie modelu. */
 export const validateDraft = async (
   context: AssembledContext,
@@ -124,7 +171,10 @@ Nie układasz zadań. Oceniasz cudze. Jesteś surowy i konkretny.`,
     temperature: 0,
   });
 
-  return shapeVerdict((response.data || {}) as RawVerdict, regenerationCount, response.modelUsed);
+  return withDeterministicChecks(
+    draft,
+    shapeVerdict((response.data || {}) as RawVerdict, regenerationCount, response.modelUsed)
+  );
 };
 
 // ---------------------------------------------------------------------------
@@ -213,7 +263,7 @@ Nie układasz zadań. Oceniasz cudze. Jesteś surowy i konkretny.`,
     // prompt o nie prosi.
     const byIndex = rawList.find((r) => Number(r?.index) === i + 1);
     const raw = byIndex ?? rawList[i] ?? {};
-    return shapeVerdict(raw, regenerationCounts[i] ?? 0, response.modelUsed);
+    return withDeterministicChecks(drafts[i], shapeVerdict(raw, regenerationCounts[i] ?? 0, response.modelUsed));
   });
 };
 

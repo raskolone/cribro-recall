@@ -37,6 +37,11 @@ export interface DraftExercise {
   hintLarge: string;
   /** Indeks lekcji (1-based), z której wzięty jest materiał. */
   sourceLessonIndex: number;
+  /**
+   * Tylko `fix_sentence`: typ wprowadzonego błędu. Nie trafia do kontraktu
+   * (schemat v2 jest zamrożony) — służy walidacji i regeneracji.
+   */
+  errorType?: string;
 }
 
 const isNonEmptyString = (value: unknown): value is string =>
@@ -75,6 +80,7 @@ export const parseDraft = (raw: unknown, fallbackType: ExerciseTypeV2): DraftExe
     hintSmall: isNonEmptyString(d.hintSmall) ? String(d.hintSmall).trim() : '',
     hintLarge: isNonEmptyString(d.hintLarge) ? String(d.hintLarge).trim() : '',
     sourceLessonIndex: typeof d.sourceLessonIndex === 'number' ? d.sourceLessonIndex : 1,
+    ...(isNonEmptyString(d.errorType) ? { errorType: String(d.errorType).trim() } : {}),
   };
 };
 
@@ -123,7 +129,8 @@ FORMAT ODPOWIEDZI — obiekt JSON z jednym kluczem \`exercises\`, tablicą ${slo
       "commonMistakes": ["typowy błąd przy tym zadaniu"],
       "hintSmall": "podpowiedź do próby 2",
       "hintLarge": "podpowiedź do próby 3",
-      "sourceLessonIndex": 1
+      "sourceLessonIndex": 1,
+      "errorType": "TYLKO dla fix_sentence — typ błędu z listy; w innych typach pomiń"
     }
   ]
 }`;
@@ -319,6 +326,7 @@ ${JSON.stringify(
     requiredMaterial: item.draft.requiredMaterial,
     hintSmall: item.draft.hintSmall,
     hintLarge: item.draft.hintLarge,
+    ...(item.draft.errorType ? { errorType: item.draft.errorType } : {}),
   },
   null,
   2
@@ -351,7 +359,7 @@ obowiązywać. Zachowaj \`exerciseType\` i \`learningObjective\` każdego zadani
 
 FORMAT ODPOWIEDZI — obiekt JSON z kluczem \`results\`, dokładnie ${input.items.length} obiektów,
 \`index\` odpowiada numerowi zadania powyżej (1-based), reszta pól jak w oryginalnym zadaniu
-(uzupełnione o \`commonMistakes\` i \`sourceLessonIndex\`):
+(uzupełnione o \`commonMistakes\` i \`sourceLessonIndex\`; w \`fix_sentence\` także \`errorType\`):
 { "results": [ { "index": 1, "exerciseType": "...", "learningObjective": "...", "content": "...", "instruction": "...", "modelAnswer": "...", "acceptedVariants": [], "requiredMaterial": [], "commonMistakes": [], "hintSmall": "...", "hintLarge": "...", "sourceLessonIndex": 1 } ] }`,
     taskName: 'hw-v2/regenerate-batch',
     temperature: 0.6,
