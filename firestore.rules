@@ -742,6 +742,24 @@ service cloud.firestore {
       }
     }
 
+    // Wersje robocze (szkice) notatnika lektora
+    match /drafts/{draftId} {
+      allow get, list: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.teacherId == request.auth.uid
+      );
+
+      allow create: if isAuthenticated() && (
+        isAdmin() ||
+        request.resource.data.teacherId == request.auth.uid
+      );
+
+      allow update, delete: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.teacherId == request.auth.uid
+      );
+    }
+
     // Indeks tokenów bezpośrednich (P1 Fan-Out) — wyłącznie dostęp przez Admin SDK
     match /directHomeworkTokens/{tokenHash} {
       allow read, write: if false;

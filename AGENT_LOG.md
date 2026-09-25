@@ -6080,3 +6080,72 @@ Zrobione:
 Weryfikacja: npx tsc --noEmit (0 błędów), npm run build (przechodzi, w tym server.cjs i api/index.js).
 
 
+
+
+---
+
+2026-09-25 — Claude Code / Sonnet 5
+
+Zadanie: Wdrożenie modułu wersji roboczych (szkiców) w notatniku lektora wg
+`prompt_obs_uga_wersji_roboczych_w_notatniku.md` — zakładka obok listy
+kursantów do tworzenia/przełączania niezależnych notatników bez
+przypisania do kursanta.
+
+Zrobione:
+- Zastałem uncommitowaną, częściową pracę poprzedniej sesji: `types.ts`
+  (interfejs `NoteDraft`), `firestore.rules` (kolekcja `drafts/{draftId}`)
+  i nowy `services/draftsService.ts`. Zgodnie z CLAUDE.md sekcja 3
+  (firestore.rules = obszar wysokiego ryzyka) zatrzymałem się i opisałem
+  Maciejowi kształt reguły przed kontynuacją — potwierdził kontynuację
+  z regułą jak jest.
+- Przeprojektowałem `NoteDraft`: zamiast dublować treść notatki w
+  kolekcji `drafts` (pole `content` z poprzedniej wersji), rekord jest
+  teraz TYLKO nazwanym wpisem indeksu (`scratchpadId` wskazuje na
+  faktyczny dokument w kolekcji `scratchpads` — ten sam mechanizm co
+  notatnik kursanta). Dzięki temu `ScratchpadEditor.tsx` (4300 linii)
+  nie wymagał ŻADNYCH zmian — cały ciężki, przetestowany kod edytora,
+  autosave'u i współdzielenia jest reużyty.
+- `services/draftsService.ts` — przepisany pod powyższy model:
+  `getDrafts`/`subscribeDrafts` (indeks po `teacherId`), `createDraft`
+  (zakłada notatnik przez istniejące `getOrCreateStudentScratchpad`),
+  `renameDraft`, `deleteDraft` (usuwa TYLKO wpis z listy, nie dokument
+  `scratchpads` — celowo, żeby nie kasować treści notatnika bez
+  jawnej, osobnej akcji).
+- `components/scratchpad/ScratchpadStudentPicker.tsx` — nowe opcjonalne
+  propsy `drafts`/`onPickDraft`/`onCreateDraft`/`onRenameDraft`/
+  `onDeleteDraft`. Przełącznik zakładek „Kursanci” / „Wersje robocze”
+  (tokeny motywu, nie surowe klasy `slate-*`/`white` z treści
+  zlecenia — CLAUDE.md sekcja 4 zabrania hardkodowanych kolorów).
+  Zakładka szkiców: „+ Nowy szkic”, kafelki z tytułem (dwuklik =
+  zmiana nazwy inline), datą ostatniej edycji, koszem na hover.
+- `components/admin/AdminPanel.tsx` — `notebookDrafts` state zasilany
+  `subscribeDrafts`, wpięty w istniejący modal `ScratchpadStudentPicker`
+  (ten sam, którym lektor już wybiera notatnik kursanta). Wybór/nowy
+  szkic otwiera notatnik w nowej karcie przez istniejący
+  `openScratchpadTab` — identycznie jak przy notatniku kursanta.
+
+Nie dokończone / do sprawdzenia: Zero weryfikacji wzrokowej w
+przeglądarce (brak dostępu w tej sesji) — w szczególności wygląd nowej
+zakładki w pickerze na obu motywach.
+
+Decyzje architektoniczne:
+- „Przypisz szkic do kursanta" ze zlecenia NIE dostał osobnego
+  przycisku w pickerze — funkcjonalność analogiczna już istnieje
+  (`adoptScratchpadForStudent`/`wouldAppendToExistingNotes` w
+  `scratchpadService.ts`, human-in-the-loop w `TeacherScratchpadScreen`)
+  i uruchamia się z poziomu samego notatnika, tak jak dotychczasowy
+  jednorazowy „notatnik roboczy bez kursanta". Duplikowanie tej ścieżki
+  w pickerze byłoby drugim wejściem do tego samego mechanizmu.
+- Pole `content` z pierwotnego `NoteDraft` (draft poprzedniej sesji)
+  usunięte na rzecz `scratchpadId` — patrz „Zrobione" wyżej.
+
+Ryzyka: `firestore.rules` DOTKNIĘTY — nowa kolekcja `drafts/{draftId}`,
+reguła: `get/list/create/update/delete` dla `isAdmin()` lub
+`teacherId == request.auth.uid`. Zmiana skonsultowana z Maciejem przed
+kontynuacją (wymóg CLAUDE.md sekcja 3). Reguły NIE wdrożone na
+produkcję w tej sesji — `npm run deploy:rules` wymaga osobnej, jawnej
+zgody. Middleware autoryzacji i ścieżki tokenowe bez logowania
+niedotknięte.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (547/547 zielone),
+npm run build (przechodzi, w tym server.cjs i api/index.js).

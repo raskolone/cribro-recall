@@ -1188,6 +1188,24 @@ export interface ScratchpadBlock {
   updatedAt: number;
 }
 
+/**
+ * Wersja robocza (szkic) w notatniku lektora — niezależna od profilu kursanta.
+ *
+ * Nie przechowuje treści notatki wprost: `scratchpadId` wskazuje na dokument
+ * w kolekcji `scratchpads` (ten sam mechanizm co notatnik kursanta), a ten
+ * rekord jest tylko nazwanym wpisem na liście, żeby dało się do szkicu
+ * wrócić — bez tego każdy „notatnik roboczy" był jednorazowy i ginął po
+ * zamknięciu karty.
+ */
+export interface NoteDraft {
+  id: string;
+  teacherId: string;              // UID zalogowanego lektora
+  title: string;                  // np. "Roboczy 1", "Roboczy 2" lub własny tytuł
+  scratchpadId: string;           // dokument w kolekcji `scratchpads` z faktyczną treścią
+  createdAt: any;                 // serverTimestamp() / string
+  updatedAt: any;                 // serverTimestamp() / string
+}
+
 export interface ScratchpadDocument {
   id: string;
   pin: string;

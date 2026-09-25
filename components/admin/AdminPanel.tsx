@@ -24,7 +24,7 @@ import gsap from 'gsap';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, getDoc, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where, onSnapshot } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
-import { User, PracticeLog, FlashcardSet, LessonRecord, GeneratedLessonScenario, RejectedNotionItem, StudentGroup } from '../../types';
+import { User, PracticeLog, FlashcardSet, LessonRecord, GeneratedLessonScenario, RejectedNotionItem, StudentGroup, NoteDraft } from '../../types';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { generateLessonSummary, generateBulkLessonSummary } from '../../services/geminiService';
@@ -64,6 +64,7 @@ import GroupManagementModal from './GroupManagementModal';
 import { getGroups, ensureGroupScratchpad } from '../../services/groupService';
 import LessonSummaryEmailModal from './LessonSummaryEmailModal';
 import { openScratchpadTab } from '../../services/scratchpadService';
+import { subscribeDrafts, createDraft, renameDraft, deleteDraft } from '../../services/draftsService';
 import TeacherAttentionBanner from './TeacherAttentionBanner';
 import TeacherLessonHistoryView from './TeacherLessonHistoryView';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
@@ -151,6 +152,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   useEffect(() => {
     getGroups().then(setTeacherGroups).catch(() => {});
   }, []);
+  const [notebookDrafts, setNotebookDrafts] = useState<NoteDraft[]>([]);
+
+  useEffect(() => {
+    if (!currentUser?.id) return;
+    const unsubscribe = subscribeDrafts(currentUser.id, setNotebookDrafts);
+    return unsubscribe;
+  }, [currentUser?.id]);
   const [profileSaveModal, setProfileSaveModal] = useState<{ isOpen: boolean; success: boolean; title: string; message: string } | null>(null);
   /**
    * Która sekcja profilu jest widoczna.
@@ -6130,6 +6138,37 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             openScratchpadTab();
             setIsNotebookPickerOpen(false);
           },
+        }}
+        drafts={notebookDrafts}
+        onPickDraft={(draft) => {
+          openScratchpadTab(draft.scratchpadId, draft.title);
+          setIsNotebookPickerOpen(false);
+        }}
+        onCreateDraft={async () => {
+          if (!currentUser?.id) return;
+          try {
+            const teacherName = currentUser.name || currentUser.displayName || 'Lektor';
+            const draft = await createDraft(
+              currentUser.id,
+              teacherName,
+              `Roboczy ${notebookDrafts.length + 1}`
+            );
+            openScratchpadTab(draft.scratchpadId, draft.title);
+            setIsNotebookPickerOpen(false);
+          } catch (err) {
+            console.error('[AdminPanel] Błąd tworzenia szkicu:', err);
+          }
+        }}
+        onRenameDraft={(draft, title) => {
+          renameDraft(draft.id, title).catch(err =>
+            console.error('[AdminPanel] Błąd zmiany nazwy szkicu:', err)
+          );
+        }}
+        onDeleteDraft={(draft) => {
+          if (!window.confirm(`Usunąć szkic „${draft.title}" z listy?`)) return;
+          deleteDraft(draft.id).catch(err =>
+            console.error('[AdminPanel] Błąd usuwania szkicu:', err)
+          );
         }}
       />
 

@@ -200,6 +200,18 @@ we dwoje na żywo.
 
 ---
 
+### 🚀 Wersje robocze (szkice) notatnika lektora — zakładka obok listy kursantów (2026-09-25, runda 57)
+
+1. **Model danych (`types.ts`, `firestore.rules`)**: nowa kolekcja top-level `drafts/{draftId}` — `NoteDraft { id, teacherId, title, scratchpadId, createdAt, updatedAt }`. Rekord jest wyłącznie NAZWANYM WPISEM NA LIŚCIE — nie duplikuje treści notatnika. Faktyczna treść żyje w kolekcji `scratchpads` (ten sam mechanizm co notatnik kursanta, `getOrCreateStudentScratchpad`), więc `ScratchpadEditor.tsx` (4300 linii) nie wymagał żadnych zmian. Reguły Firestore: `get/list/create/update/delete` dozwolone dla `isAdmin()` lub gdy `teacherId == request.auth.uid` (tożsame ze wzorcem reszty repo dla dokumentów właściciela).
+2. **`services/draftsService.ts` (przepisany)**: `getDrafts`/`subscribeDrafts` (indeks po `teacherId`, sortowanie `updatedAt` desc po stronie klienta), `createDraft` (zakłada notatnik przez `getOrCreateStudentScratchpad({id: null, ...})` — ten sam kod ścieżki co dotychczasowy jednorazowy „notatnik roboczy bez kursanta” — i dopisuje wpis do `drafts`), `renameDraft`, `deleteDraft` (usuwa TYLKO wpis z listy, nie dotyka dokumentu `scratchpads` — nieodwracalne kasowanie cudzej/własnej treści notatnika zostaje świadomie poza zakresem tej zmiany).
+3. **`components/scratchpad/ScratchpadStudentPicker.tsx`**: nowe opcjonalne propsy `drafts`/`onPickDraft`/`onCreateDraft`/`onRenameDraft`/`onDeleteDraft`. Gdy podane, nad polem wyszukiwania pojawia się przełącznik zakładek „Kursanci” / „Wersje robocze” (tokeny motywu z `utils/themeTokens.ts`, nie surowe klasy `slate-*`/`white`). Zakładka szkiców: przycisk „+ Nowy szkic”, kafelki z tytułem (dwuklik = zmiana nazwy inline), datą ostatniej edycji (`formatDraftDate`) i przyciskiem kosza widocznym na hover.
+4. **`components/admin/AdminPanel.tsx`**: `notebookDrafts` state zasilany `subscribeDrafts(currentUser.id, ...)`, wpięty w istniejący modal `ScratchpadStudentPicker` (ten sam, którym lektor dotychczas wybierał notatnik kursanta przy przycisku „Otwórz notatnik”). Wybór/utworzenie szkicu otwiera notatnik w nowej karcie przez istniejący `openScratchpadTab(scratchpadId, title)` — identycznie jak przy otwieraniu notatnika kursanta.
+5. **Świadomie NIE zaimplementowane wprost ze zlecenia**: „Przypisz szkic do kursanta” — funkcjonalność analogiczna już istnieje (`adoptScratchpadForStudent`/`wouldAppendToExistingNotes` w `services/scratchpadService.ts`, human-in-the-loop w `TeacherScratchpadScreen.tsx`), więc nie duplikowano jej osobnym przyciskiem w pickerze; lektor otwiera szkic i przypisuje go z poziomu samego notatnika, tak jak dotychczasowy „notatnik roboczy”.
+6. **Ryzyko — `firestore.rules` dotknięty**: dodano nową kolekcję `drafts/{draftId}`, reguły opisane w punkcie 1. Zmiana skonsultowana z Maciejem przed wdrożeniem (wymóg `CLAUDE.md` sekcja 3) — zaakceptował istniejący, częściowo już napisany kształt reguły. Middleware autoryzacji i ścieżki tokenowe bez logowania niedotknięte. Reguły NIE zostały wdrożone na produkcję w tej sesji (`npm run deploy:rules` wymaga osobnej, jawnej zgody).
+7. **Weryfikacja techniczna**: `npx tsc --noEmit` — 0 błędów. `npm test` — 547/547 zielone. `npm run build` — przechodzi (Vite + `server.cjs` + `api/index.js`). **Nie zweryfikowano wzrokowo w przeglądarce** — brak dostępu do UI w tej sesji, patrz dług techniczny sekcja 3.
+
+---
+
 ### 🚀 Poprawki UX w Notatniku Lekcyjnym A4: Izolacja stylów tekstu po Enterze, likwidacja hover-zoom grafik, Lupa +50% i Fullscreen Lightbox (2026-09-24, runda 56)
 
 1. **Izolacja formatowania tekstu i likwidacja krwawienia stylów (Mark Bleed)**:

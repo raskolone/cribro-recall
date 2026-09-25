@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { FileEdit, Search, Users, X } from 'lucide-react';
-import { StudentGroup, User } from '../../types';
+import { FileEdit, Plus, Search, Trash2, Users, X } from 'lucide-react';
+import { NoteDraft, StudentGroup, User } from '../../types';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
+import { formatDraftDate } from '../../services/draftsService';
 
 interface ScratchpadStudentPickerProps {
   isOpen: boolean;
@@ -33,6 +34,15 @@ interface ScratchpadStudentPickerProps {
     label: string;
     onClick: () => void;
   };
+  /**
+   * Wersje robocze (szkice) lektora — niezależne od profilu kursanta.
+   * Gdy podane, obok listy kursantów pojawia się osobna zakładka.
+   */
+  drafts?: NoteDraft[];
+  onPickDraft?: (draft: NoteDraft) => void;
+  onCreateDraft?: () => void;
+  onRenameDraft?: (draft: NoteDraft, title: string) => void;
+  onDeleteDraft?: (draft: NoteDraft) => void;
 }
 
 const displayName = (student: User): string => formatStudentDisplayName(student);
@@ -56,8 +66,26 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
   icon,
   headerExtra,
   secondaryAction,
+  drafts,
+  onPickDraft,
+  onCreateDraft,
+  onRenameDraft,
+  onDeleteDraft,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'students' | 'drafts'>('students');
+  const [renamingDraftId, setRenamingDraftId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const hasDraftsTab = Boolean(drafts && onCreateDraft);
+
+  const commitRename = (draft: NoteDraft) => {
+    const trimmed = renameValue.trim();
+    if (trimmed && trimmed !== draft.title) {
+      onRenameDraft?.(draft, trimmed);
+    }
+    setRenamingDraftId(null);
+  };
 
   const matches = useMemo(() => {
     const needle = searchTerm.trim().toLowerCase();
@@ -113,23 +141,132 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
           <div className="px-4 py-3 border-b border-line-soft">{headerExtra}</div>
         )}
 
-        <div className="px-4 py-3 border-b border-line-soft">
-          <div className="relative">
-            <Search
-              size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none"
-            />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={event => setSearchTerm(event.target.value)}
-              placeholder="Szukaj po imieniu, loginie lub adresie e-mail…"
-              autoFocus
-              className="w-full pl-9 pr-3 py-2 rounded-xl bg-ink border border-line-strong text-xs text-content placeholder:text-text-faint focus:outline-none focus:border-accent/55"
-            />
+        {hasDraftsTab && (
+          <div className="px-4 pt-3">
+            <div className="flex p-1 bg-ink rounded-xl border border-line-strong">
+              <button
+                type="button"
+                onClick={() => setActiveTab('students')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'students'
+                    ? 'bg-ink-2 text-text-hi shadow-sm border border-line-strong'
+                    : 'text-text-faint hover:text-text-2'
+                }`}
+              >
+                Kursanci
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('drafts')}
+                className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                  activeTab === 'drafts'
+                    ? 'bg-ink-2 text-accent shadow-sm border border-line-strong'
+                    : 'text-text-faint hover:text-text-2'
+                }`}
+              >
+                Wersje robocze
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
+        {activeTab === 'students' && (
+          <div className="px-4 py-3 border-b border-line-soft">
+            <div className="relative">
+              <Search
+                size={14}
+                className="absolute left-3 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none"
+              />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={event => setSearchTerm(event.target.value)}
+                placeholder="Szukaj po imieniu, loginie lub adresie e-mail…"
+                autoFocus
+                className="w-full pl-9 pr-3 py-2 rounded-xl bg-ink border border-line-strong text-xs text-content placeholder:text-text-faint focus:outline-none focus:border-accent/55"
+              />
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'drafts' && hasDraftsTab && (
+          <div className="flex-1 overflow-y-auto p-2">
+            <button
+              type="button"
+              onClick={onCreateDraft}
+              className="w-full mb-2 px-2.5 py-2 rounded-xl flex items-center justify-center gap-2 border border-dashed border-accent/40 text-accent text-xs font-bold hover:bg-accent/10 transition-colors cursor-pointer"
+            >
+              <Plus size={14} />
+              Nowy szkic
+            </button>
+            {(!drafts || drafts.length === 0) ? (
+              <p className="py-10 text-center text-xs text-text-faint">
+                Brak wersji roboczych — zacznij od nowego szkicu.
+              </p>
+            ) : (
+              drafts.map(draft => (
+                <div
+                  key={draft.id}
+                  className="w-full px-2.5 py-2 rounded-xl flex items-center gap-3 hover:bg-white/[0.07] transition-colors group"
+                >
+                  <button
+                    type="button"
+                    onClick={() => onPickDraft?.(draft)}
+                    className="flex items-center gap-3 flex-1 min-w-0 text-left cursor-pointer"
+                  >
+                    <span className="w-8 h-8 shrink-0 rounded-xl bg-emerald-500/12 border border-emerald-500/30 text-emerald-500 flex items-center justify-center">
+                      <FileEdit size={14} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      {renamingDraftId === draft.id ? (
+                        <input
+                          type="text"
+                          value={renameValue}
+                          autoFocus
+                          onChange={event => setRenameValue(event.target.value)}
+                          onClick={event => event.stopPropagation()}
+                          onBlur={() => commitRename(draft)}
+                          onKeyDown={event => {
+                            if (event.key === 'Enter') commitRename(draft);
+                            if (event.key === 'Escape') setRenamingDraftId(null);
+                          }}
+                          className="w-full px-1.5 py-0.5 rounded-lg bg-ink border border-accent/55 text-xs font-semibold text-content focus:outline-none"
+                        />
+                      ) : (
+                        <span
+                          className="block text-xs font-semibold text-content truncate"
+                          onDoubleClick={event => {
+                            if (!onRenameDraft) return;
+                            event.stopPropagation();
+                            setRenamingDraftId(draft.id);
+                            setRenameValue(draft.title);
+                          }}
+                        >
+                          {draft.title}
+                        </span>
+                      )}
+                      <span className="block text-[11px] text-text-faint truncate">
+                        {formatDraftDate(draft.updatedAt)}
+                      </span>
+                    </span>
+                  </button>
+                  {onDeleteDraft && (
+                    <button
+                      type="button"
+                      aria-label="Usuń szkic"
+                      onClick={() => onDeleteDraft(draft)}
+                      className="shrink-0 h-7 w-7 rounded-lg text-text-faint hover:text-red-400 hover:bg-red-500/10 flex items-center justify-center transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
+        {activeTab === 'students' && (
         <div className="flex-1 overflow-y-auto p-2">
           {matchingGroups.length > 0 && onPickGroup && (
             <div className="mb-2 pb-2 border-b border-line-soft">
@@ -189,6 +326,7 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
             })
           )}
         </div>
+        )}
 
         {secondaryAction && (
           <button
