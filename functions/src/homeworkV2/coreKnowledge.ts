@@ -29,22 +29,32 @@ Nie cukrujesz, ale zawsze zauważasz prawdziwy element postępu.
 Wynik traktujesz jako informację o etapie nauki, nie ocenę człowieka.`;
 
 /**
- * Zasady naturalności.
+ * Zasady naturalności zdań — The Cribro Method.
  *
- * To jest sedno różnicy między „poprawnym językowo" a „takim, jakie ktoś
- * naprawdę by powiedział". Generator bez tych zasad produkuje zdania
- * gramatycznie bez zarzutu i całkowicie martwe.
+ * Lustrzana kopia `CRIBRO_SENTENCE_NATURALNESS` z `services/cribroSentenceRules.ts`
+ * (zgodność: `tests/cribroSentenceRules.test.ts`). To jest sedno różnicy między
+ * „poprawnym językowo" a „takim, jakie ktoś naprawdę by powiedział". Generator
+ * bez tych zasad produkuje zdania gramatycznie bez zarzutu i całkowicie martwe.
  */
-export const NATURALNESS_RULES = `ZASADY NATURALNOŚCI:
-1. Zdanie ma brzmieć jak wypowiedź żywego człowieka w konkretnej sytuacji, nie jak przykład z podręcznika.
-2. Polska wersja musi być naturalną polszczyzną, a nie kalką z angielskiego.
-3. Angielska wersja musi być naturalną angielszczyzną, a nie kalką z polskiego.
-4. Kontekst ma być zwyczajny i ludzki: praca, dom, plany, zmęczenie, jedzenie, dojazdy, znajomi.
-5. Słownictwo wspierające musi być PROSTSZE niż cel ćwiczenia. Zadanie sprawdza jedną rzecz,
-   a nie odporność kursanta na nieznane słowa obok.
-6. Jedno zadanie = jeden główny cel językowy.
-7. Polecenie i klucz muszą być jednoznaczne. Jeśli da się odpowiedzieć poprawnie na dwa sposoby,
-   oba muszą być w wariantach akceptowanych.`;
+export const CRIBRO_SENTENCE_NATURALNESS = `ZASADY NATURALNOŚCI ZDAŃ — THE CRIBRO METHOD
+Obowiązują KAŻDE zdanie ćwiczenia: angielskie i polskie, poprawne i to z błędem.
+1. Test dwóch sekund. Zdanie ma dać się zrozumieć za pierwszym czytaniem, w mniej niż 2 sekundy. Jeśli trzeba je przeczytać dwa razy — skróć je albo uprość.
+2. Jedno zdanie = jedna myśl. Nie sklejaj dwóch informacji przez „and", „but" czy „which". Jedno zadanie sprawdza jeden cel językowy.
+3. Standard języka mówionego. Zdanie brzmi jak coś, co ktoś naprawdę powie na głos — znajomemu, w pracy, w sklepie. Skróty (I'm, don't, we've) są naturalne. Żadnych konstrukcji z wypracowania ani z podręcznika („It is essential to facilitate…").
+4. Konkret, nie abstrakcja. Zwyczajna, ludzka sytuacja: praca, dom, dojazdy, jedzenie, plany, znajomi, zmęczenie.
+5. Kontekst samowystarczalny. Zdanie broni się bez dopowiadania i nie zakłada wiedzy spoza materiału lekcji.
+6. Słownictwo wspierające prostsze niż cel. Wszystko poza ćwiczonym słowem lub konstrukcją ma być łatwiejsze od niego.
+7. Obie strony naturalne. Polska wersja to naturalna polszczyzna, nie kalka z angielskiego; angielska — naturalna angielszczyzna, nie kalka z polskiego.
+Przed zwróceniem każdego zdania zapytaj: „Czy ktoś powiedziałby to na głos w zwykłej rozmowie?". Jeśli nie — przepisz.`;
+
+/**
+ * Zasady naturalności silnika v2 = Cribro Method + jednoznaczność klucza,
+ * której wymaga ocena (warianty akceptowane).
+ */
+export const NATURALNESS_RULES = `${CRIBRO_SENTENCE_NATURALNESS}
+
+JEDNOZNACZNOŚĆ: polecenie i klucz muszą być jednoznaczne. Jeśli da się odpowiedzieć poprawnie na dwa sposoby,
+oba muszą być w wariantach akceptowanych.`;
 
 /**
  * Antywzorce.

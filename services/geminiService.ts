@@ -12,6 +12,7 @@ import { AI_MODEL_CASCADE, cascadeForCategory, HOMEWORK_GENERATION_MODELS, asser
 import { peekAiOverrides } from './aiConfigService';
 import { toPolishVocative, detectPolishGender } from '../utils/polishVocative';
 import { buildUsedSentencesBlock, filterRepeatedSentences } from '../utils/exerciseSentenceChecks';
+import { CRIBRO_SENTENCE_NATURALNESS } from './cribroSentenceRules';
 
 
 export const extractJSON = (text: string): string => {
@@ -1012,9 +1013,11 @@ CRITICAL QUALITY RULES:
 - ZASADA ŻELAZNA - BEZWZGLĘDNA SPÓJNOŚĆ I NATURALNOŚĆ POLSKICH TŁUMACZEŃ (NATURAL POLISH TRANSLATION):
   Tłumaczenie wyjściowe w języku polskim (pole \`polish_translation\`) MUSI mieć pełną spójność logiczną, być gramatycznie bezbłędne i brzmieć dokładnie tak, jak powiedziałby to rodzimy użytkownik języka polskiego (native speaker) w autentycznej rozmowie. Nie stwarzaj dosłownych kalk słowo-w-słowo ani niezgrabnych zwrotów.
 - DOSTOSOWANIE DO POZIOMU KURSANTA: Wygenerowane zdania MUSZĄ być ściśle dopasowane do poziomu kursanta (${isGrammar ? 'dostosuj do bazy gramatycznej' : (level || 'B2')}). Słownictwo, struktury gramatyczne oraz długość zdań muszą bezpośrednio odpowiadać danemu poziomowi (A1: 4-8 słów; A2: 5-9 słów; B1/B2: 8-12 słów; C1/C2: 10-15 słów).
-- CONTEXT & NATURALNESS: Sentences MUST sound like real-world communication. Maximum 1 target word per sentence so it sounds natural. Maximum sentence length: 16 words.
+- CONTEXT & NATURALNESS: Maximum 1 target word per sentence. Maximum sentence length: 16 words. Every sentence MUST pass the Cribro Method naturalness rules below.
 - HINT REQUIREMENT: Pole \`hint\` musi ZAWSZE zawierać kluczowe trudne słowa z danego zdania (angielskie) wraz z tłumaczeniem, plus krótką wskazówkę co do użytej struktury gramatycznej.
-- ANTI-REPETITION: Do NOT generate sentences structurally identical or extremely similar to those in [PAST EXERCISES TO AVOID REPEATS].`;
+- ANTI-REPETITION: Do NOT generate sentences structurally identical or extremely similar to those in [PAST EXERCISES TO AVOID REPEATS].
+
+${CRIBRO_SENTENCE_NATURALNESS}`;
 
   const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}${shortMistakes}${buildUsedSentencesBlock(excludeSentences)}`;
   const customBlock = customPrompt ? `\n\n[ADDITIONAL INSTRUCTIONS / PROMPT OVERRIDE]:\n${customPrompt}` : '';

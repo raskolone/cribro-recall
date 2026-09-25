@@ -23,7 +23,7 @@ import {
   collectValidFixSentences,
   filterRepeatedSentences,
 } from '../utils/exerciseSentenceChecks';
-import { FIX_SENTENCE_RULES, buildFixSentenceRetryNote } from './cribroSentenceRules';
+import { CRIBRO_SENTENCE_NATURALNESS, FIX_SENTENCE_RULES, buildFixSentenceRetryNote } from './cribroSentenceRules';
 
 /**
  * Układanie pracy domowej z materiału lektora.
@@ -200,26 +200,27 @@ const SYSTEM_INSTRUCTION =
  * Kanon jakości dołączany do każdego typu zadania.
  *
  * Model dostaje słownictwo i temat, więc łatwo mu ułożyć zdanie, które zalicza
- * materiał, a nie znaczy nic sensownego. Te zasady są w jednym miejscu, bo
- * inaczej każdy typ zadania obrastałby własną, rozjeżdżającą się wersją.
+ * materiał, a nie znaczy nic sensownego. Zasady naturalności to wspólna
+ * instrukcja Cribro Method (`services/cribroSentenceRules.ts`); poniżej tylko
+ * to, czego ona nie obejmuje — żeby każdy typ zadania nie obrastał własną,
+ * rozjeżdżającą się wersją.
  */
 const QUALITY_RULES = `
+${CRIBRO_SENTENCE_NATURALNESS}
+
 ZASADY JAKOŚCI — OBOWIĄZUJĄ W KAŻDYM ZADANIU:
 1. SENS PRZED SŁOWNICTWEM. Zdanie ma opisywać sytuację, która mogła się wydarzyć.
-   Podmiot musi móc wykonać czynność, dopełnienie musi do niej pasować, a całość
-   ma się bronić bez dopowiadania kontekstu. Jeśli słowa z materiału nie dają się
-   sensownie połączyć w jednym zdaniu — rozdziel je na dwa zdania.
+   Podmiot musi móc wykonać czynność, dopełnienie musi do niej pasować. Jeśli słowa
+   z materiału nie dają się sensownie połączyć w jednym zdaniu — rozdziel je na dwa zdania.
 2. JEDNO SŁOWO DOCELOWE NA ZDANIE. Upychanie kilku nowych słów naraz jest
    najczęstszą przyczyną zdań, które brzmią jak wyliczanka, a nie jak wypowiedź.
 3. SPÓJNOŚĆ WEWNĘTRZNA. Czas gramatyczny, liczba i rodzajniki muszą zgadzać się
    w obrębie zdania, a określenia czasu nie mogą przeczyć użytemu czasowi
    („Yesterday I will call him" jest błędem).
-4. NATURALNA POLSZCZYZNA. Polskie zdania i podpowiedzi mają brzmieć jak zdania
-   Polaka, nie jak tłumaczenie słowo w słowo z angielskiego.
-5. KONTEKST Z LEKCJI. Sytuacje mają nawiązywać do tematu materiału — jeśli
+4. KONTEKST Z LEKCJI. Sytuacje mają nawiązywać do tematu materiału — jeśli
    materiał dotyczy podróży, zdania dzieją się na lotnisku, w hotelu, w rozmowie
    o planach, a nie w przypadkowych, oderwanych scenkach.
-6. BEZ ZDAŃ-WYDMUSZEK. Żadnych „This is a sentence with the word X" ani zdań,
+5. BEZ ZDAŃ-WYDMUSZEK. Żadnych „This is a sentence with the word X" ani zdań,
    których jedyną treścią jest to, że zawierają słowo z listy.`;
 
 import { formatOnlyFirstName, toPolishVocative } from '../utils/polishVocative';

@@ -29,6 +29,14 @@ test('kopie reguł: instrukcja „Popraw zdanie" jest identyczna w aplikacji i w
   assert.ok(v2Knowledge.EXERCISE_TYPE_BRIEFS.fix_sentence.includes(rootRules.FIX_SENTENCE_RULES));
 });
 
+test('kopie reguł: zasady naturalności Cribro Method są identyczne i wchodzą do rdzenia v2', () => {
+  assert.equal(v2Knowledge.CRIBRO_SENTENCE_NATURALNESS, rootRules.CRIBRO_SENTENCE_NATURALNESS);
+  assert.ok(v2Knowledge.buildCoreSystemPrompt().includes(rootRules.CRIBRO_SENTENCE_NATURALNESS));
+  for (const rule of ['Test dwóch sekund', 'Jedno zdanie = jedna myśl', 'Standard języka mówionego']) {
+    assert.ok(rootRules.CRIBRO_SENTENCE_NATURALNESS.includes(rule), rule);
+  }
+});
+
 test('kopie reguł: normalizacja zdań działa tak samo w obu pakietach', () => {
   for (const sample of ["I don’t  know!", 'She DOESN\'T eat meat.', 'Zażółć gęślą jaźń?', '  a, b; c  ']) {
     assert.equal(v2Normalize(sample), rootChecks.normalizeSentence(sample), sample);
