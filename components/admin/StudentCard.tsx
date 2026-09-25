@@ -73,12 +73,14 @@ export const StudentCard: React.FC<StudentCardProps> = ({
   return (
     <div
       onClick={() => onSelect(student.id || student.username || '', 'profile')}
-      className={`specular-student-card group relative px-3 py-2.5 rounded-xl cursor-pointer flex items-center justify-between gap-2.5 select-none min-h-[70px] max-h-[74px] ${
-        isSelected ? 'is-selected' : ''
-      } ${isActive ? 'is-active' : ''}`}
+      className={`group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 cursor-pointer select-none
+        bg-white border-slate-200/90 shadow-sm hover:border-emerald-400 hover:shadow-md
+        dark:bg-slate-900/90 dark:border-slate-800 dark:hover:border-emerald-500/60 dark:hover:bg-slate-850 ${
+        isSelected ? 'ring-2 ring-emerald-500 dark:ring-emerald-400 border-emerald-500 dark:border-emerald-400' : ''
+      } ${isActive ? 'ring-2 ring-emerald-500 dark:ring-emerald-400' : ''}`}
     >
       {/* 1. Mikro-wskaźnik statusu */}
-      <div className="w-1 h-6 bg-slate-300 dark:bg-slate-700 rounded-full specular-accent-bar shrink-0" />
+      <div className="w-1 h-7 bg-slate-300 dark:bg-slate-700 rounded-full group-hover:bg-emerald-500 dark:group-hover:bg-emerald-400 transition-colors shrink-0" />
 
       {/* 2. Checkbox masowego zaznaczania */}
       <input
@@ -93,24 +95,24 @@ export const StudentCard: React.FC<StudentCardProps> = ({
         title={isSelected ? 'Odznacz' : 'Zaznacz'}
       />
 
-      {/* 3. Awatar z inicjałami (Squircle) */}
-      <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-950/80 border border-emerald-200 dark:border-emerald-500/30 text-emerald-700 dark:text-emerald-300 font-bold text-xs flex items-center justify-center shrink-0 tracking-wide font-sans">
+      {/* 3. Awatar z inicjałami */}
+      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 bg-emerald-50 border border-emerald-300 text-emerald-800 dark:bg-emerald-950/80 dark:border-emerald-700/60 dark:text-emerald-300 tracking-wide font-sans shadow-sm">
         {isGrp ? <Users className="w-4 h-4" /> : initials}
       </div>
 
       {/* 4. Blok tekstowy (Imię + Metadane) */}
       <div className="min-w-0 flex-1 flex flex-col justify-center">
-        <h3 className="text-xs font-semibold text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-300 truncate transition-colors">
+        <h4 className="text-sm sm:text-base font-bold tracking-tight text-slate-900 dark:text-white truncate">
           {sName}
-        </h3>
-        <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
+        </h4>
+        <p className="text-xs font-semibold text-slate-600 dark:text-slate-400 mt-0.5 truncate">
           {metaText}
         </p>
       </div>
 
       {/* 5. Zintegrowany dok mikro-akcji */}
       <div
-        className="flex items-center gap-0.5 shrink-0 bg-slate-100 dark:bg-slate-900/70 group-hover:bg-slate-200/80 dark:group-hover:bg-slate-900 border border-slate-200 dark:border-slate-800 group-hover:border-emerald-500/30 rounded-lg p-0.5 transition"
+        className="flex items-center gap-1 shrink-0"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 1. Lekcje / Dziennik */}
@@ -121,7 +123,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             onSelect(student.id || student.username || '', 'history');
           }}
           title="Lekcje / Dziennik"
-          className="p-1 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+          className="p-1.5 sm:p-2 rounded-lg border transition-colors bg-slate-100 border-slate-200 text-slate-700 hover:text-emerald-600 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700/70 dark:text-slate-300 dark:hover:text-emerald-400 dark:hover:bg-slate-700 cursor-pointer"
         >
           <BookOpen className="w-3.5 h-3.5" />
         </button>
@@ -138,7 +140,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             }
           }}
           title="Notatki lekcyjne"
-          className="p-1 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+          className="p-1.5 sm:p-2 rounded-lg border transition-colors bg-slate-100 border-slate-200 text-slate-700 hover:text-emerald-600 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700/70 dark:text-slate-300 dark:hover:text-emerald-400 dark:hover:bg-slate-700 cursor-pointer"
         >
           <FileEdit className="w-3.5 h-3.5" />
         </button>
@@ -151,7 +153,7 @@ export const StudentCard: React.FC<StudentCardProps> = ({
             onSelect(student.id || student.username || '', 'profile');
           }}
           title="Profil kursanta"
-          className="p-1 text-slate-600 dark:text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-300 hover:bg-slate-200 dark:hover:bg-slate-800 rounded transition cursor-pointer"
+          className="p-1.5 sm:p-2 rounded-lg border transition-colors bg-slate-100 border-slate-200 text-slate-700 hover:text-emerald-600 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700/70 dark:text-slate-300 dark:hover:text-emerald-400 dark:hover:bg-slate-700 cursor-pointer"
         >
           <UserIcon className="w-3.5 h-3.5" />
         </button>

@@ -1024,16 +1024,16 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[85%] max-w-xl h-36 bg-gradient-to-b from-primary/10 via-accent/5 to-transparent blur-3xl pointer-events-none -z-10" />
 
             {/* Subtle Badge */}
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/25 text-primary text-[11px] font-mono font-semibold">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-[11px] font-mono font-semibold">
               <Sparkles size={12} />
               <span>Asystent Lektora CRIBRO</span>
             </div>
 
             {/* Subtelny slogan */}
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-text-hi">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-slate-900 dark:text-white">
               W czym mogę dzisiaj pomóc, {teacherFirstName}?
             </h1>
-            <p className="text-xs sm:text-sm text-text-3 max-w-md mx-auto leading-relaxed">
+            <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 max-w-md mx-auto leading-relaxed">
               Konspekty lekcji, zadania domowe, baza kursantów CRM i analiza materiałów.
             </p>
           </div>
@@ -1041,19 +1041,19 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
         {/* ─── 2. JEDNA SPÓJNA KARTA CZATU AI (SINGLE-CARD LAYOUT) ─── */}
         <div
-          className={`w-full max-w-3xl mx-auto rounded-2xl border border-slate-300/80 dark:border-white/10 bg-white/80 dark:bg-base-200/60 backdrop-blur-md shadow-xl flex flex-col overflow-hidden relative transition-all duration-300 ${
+          className={`w-full max-w-3xl mx-auto rounded-3xl border transition-all bg-white border-slate-200 shadow-lg text-slate-900 dark:bg-slate-900/90 dark:border-slate-800 dark:shadow-2xl dark:text-white flex flex-col overflow-hidden relative ${
             messages.length > 0 || viewMode === 'history' ? 'h-[620px] max-h-[70vh]' : 'h-auto'
           }`}
         >
           {/* Pasek górny rozmowy / sesji (gdy są wiadomości lub w widoku historii) */}
           {(messages.length > 0 || viewMode === 'history') && (
-            <header className="px-4 py-2.5 sm:py-3 border-b border-line-strong flex items-center justify-between bg-base-200/60 backdrop-blur-md flex-wrap gap-2 shrink-0">
+            <header className="px-4 py-2.5 sm:py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50/90 dark:bg-slate-950/70 backdrop-blur-md flex-wrap gap-2 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
                 <AIAssistantIcon size="xs" variant="badge" state={isThinking ? 'thinking' : 'online'} glow={true} />
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-text-hi truncate">Asystent Lektora CRIBRO</span>
-                    <span className="text-[9px] font-mono uppercase bg-base-100 text-text-2 border border-line px-2 py-0.5 rounded-full font-bold">
+                    <span className="text-xs font-bold text-slate-900 dark:text-white truncate">Asystent Lektora CRIBRO</span>
+                    <span className="text-[9px] font-mono uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 px-2 py-0.5 rounded-full font-bold">
                       Rada AI & CRM
                     </span>
                   </div>
@@ -1066,8 +1066,8 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                   onClick={() => setViewMode(viewMode === 'chat' ? 'history' : 'chat')}
                   className={`px-2.5 py-1 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                     viewMode === 'history'
-                      ? 'bg-primary/20 text-primary border-primary/40'
-                      : 'border-line-strong bg-base-100/60 text-text-2 hover:text-text-hi hover:bg-base-100'
+                      ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40'
+                      : 'border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
                   title={viewMode === 'history' ? 'Wróć do rozmowy' : 'Historia poprzednich sesji'}
                 >
@@ -1079,7 +1079,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                 <button
                   type="button"
                   onClick={startNewSession}
-                  className="px-3 py-1 rounded-xl bg-primary text-accent-ink hover:bg-primary-hover text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-[0_0_15px_rgba(114,240,180,0.3)] hover:scale-[1.02]"
+                  className="px-3 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-md hover:scale-[1.02]"
                   title="Rozpocznij nowy wątek"
                 >
                   <Plus size={13} className="stroke-[3]" />
@@ -1092,22 +1092,22 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
           {/* Widok: Historia sesji */}
           {viewMode === 'history' ? (
             <div className="p-4 flex-1 overflow-y-auto space-y-2.5">
-              <div className="flex items-center justify-between pb-1.5 border-b border-line">
-                <span className="text-xs font-bold text-text-mute uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                  <History size={13} className="text-primary" /> Zapisane wątki ({sessions.length})
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200 dark:border-slate-800">
+                <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <History size={13} className="text-emerald-600 dark:text-emerald-400" /> Zapisane wątki ({sessions.length})
                 </span>
                 <button
                   onClick={startNewSession}
-                  className="text-xs text-primary hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                  className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Plus size={12} /> Nowa rozmowa
                 </button>
               </div>
 
               {sessions.length === 0 ? (
-                <div className="text-center py-12 text-text-mute">
-                  <History className="w-10 h-10 mx-auto mb-2 opacity-30 text-text-mute" />
-                  <p className="font-semibold text-xs text-text-hi">Brak wcześniejszych rozmów w historii.</p>
+                <div className="text-center py-12 text-slate-500 dark:text-slate-400">
+                  <History className="w-10 h-10 mx-auto mb-2 opacity-30 text-slate-400 dark:text-slate-500" />
+                  <p className="font-semibold text-xs text-slate-900 dark:text-white">Brak wcześniejszych rozmów w historii.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1117,13 +1117,13 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                       onClick={() => loadSession(s)}
                       className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
                         currentSessionId === s.id
-                          ? 'bg-primary/15 border-primary/50 text-text-hi shadow-[0_0_16px_rgba(114,240,180,0.15)]'
-                          : 'bg-base-200/50 border-line text-text-2 hover:bg-base-200 hover:text-text-hi hover:border-line-strong'
+                          ? 'bg-emerald-500/15 border-emerald-500/50 text-slate-900 dark:text-white shadow-sm'
+                          : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-800 dark:bg-slate-800/60 dark:hover:bg-slate-800 dark:border-slate-700 dark:text-slate-200'
                       }`}
                     >
                       <div className="min-w-0 pr-2">
-                        <p className="text-xs font-bold text-text-hi truncate">{s.title}</p>
-                        <p className="text-[10px] text-text-mute mt-0.5 flex items-center gap-1.5 font-mono">
+                        <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{s.title}</p>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5 font-mono">
                           <span>{new Date(s.createdAt).toLocaleDateString('pl-PL')}</span>
                           <span>·</span>
                           <span>{s.messages?.length || 0} wiadomości</span>
@@ -1131,7 +1131,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                       </div>
                       <button
                         onClick={(e) => deleteSession(s.id, e)}
-                        className="p-1.5 text-text-mute hover:text-danger rounded-lg hover:bg-base-100 transition-colors"
+                        className="p-1.5 text-slate-400 hover:text-rose-500 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                         title="Usuń tę rozmowę"
                       >
                         <Trash2 size={13} />
@@ -1145,22 +1145,22 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
             <>
               {/* Stan 1: Brak wiadomości (Kafelki startowe nad polem wpisywania) */}
               {messages.length === 0 && (
-                <div className="p-3.5 sm:p-4 border-b border-slate-200/70 dark:border-white/5 space-y-2.5">
+                <div className="p-5 sm:p-6 space-y-3.5">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-text-mute uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                      <Sparkles size={12} className="text-primary" /> Sugestie na start:
+                    <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                      <Sparkles size={12} className="text-emerald-600 dark:text-emerald-400" /> Sugestie na start:
                     </span>
                     {sessions.length > 0 && (
                       <button
                         type="button"
                         onClick={() => setViewMode('history')}
-                        className="text-[11px] text-text-mute hover:text-text-hi font-semibold flex items-center gap-1 cursor-pointer transition-colors"
+                        className="text-[11px] text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white font-semibold flex items-center gap-1 cursor-pointer transition-colors"
                       >
                         <History size={12} /> Historia ({sessions.length})
                       </button>
                     )}
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                     {[
                       'Co wiesz o kursantach z bazy CRM?',
                       'Przygotuj zestaw 5 zdań do tłumaczenia',
@@ -1175,10 +1175,10 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                           ask(promptText);
                         }}
                         disabled={isThinking}
-                        className="p-2.5 rounded-xl border border-slate-200/80 dark:border-white/10 bg-base-100/60 hover:bg-primary/10 hover:border-primary/40 text-left transition-all hover:scale-[1.01] active:scale-95 flex items-center justify-between gap-2 group cursor-pointer"
+                        className="p-3 sm:p-3.5 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all bg-slate-50 border-slate-200 text-slate-800 hover:bg-slate-100 hover:border-slate-300 dark:bg-slate-800/70 dark:border-slate-700/60 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:border-slate-600 group cursor-pointer text-left"
                       >
-                        <span className="text-xs font-medium text-text-2 group-hover:text-text-hi truncate">{promptText}</span>
-                        <ArrowRight size={13} className="text-primary opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0" />
+                        <span className="truncate">{promptText}</span>
+                        <ArrowRight size={13} className="text-emerald-600 dark:text-emerald-400 opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all shrink-0 ml-2" />
                       </button>
                     ))}
                   </div>
@@ -1589,13 +1589,13 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                   {isThinking && (
                     <div className="flex items-center gap-2.5 animate-fadeIn">
                       <AIAssistantIcon size="xs" variant="avatar" state="thinking" glow={true} />
-                      <div className="rounded-2xl p-2.5 px-3.5 bg-ink-2/95 border border-line-strong text-text-2 flex items-center gap-2.5 shadow-ambient-sm">
+                      <div className="rounded-2xl p-2.5 px-3.5 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 flex items-center gap-2.5 shadow-sm">
                         <div className="flex items-center gap-1">
-                          <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400' : 'bg-primary'} animate-ping`} />
-                          <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400/80' : 'bg-primary/80'} animate-pulse`} />
-                          <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400/60' : 'bg-primary/60'}`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400' : 'bg-emerald-500'} animate-ping`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400/80' : 'bg-emerald-500/80'} animate-pulse`} />
+                          <span className={`w-1.5 h-1.5 rounded-full ${aiMode === 'flash' ? 'bg-amber-400/60' : 'bg-emerald-500/60'}`} />
                         </div>
-                        <span className="text-xs text-text-2 font-medium">
+                        <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">
                           {aiMode === 'flash'
                             ? '⚡ Gemini Flash generuje błyskawiczną odpowiedź…'
                             : '🧠 Rada Modeli AI (Autor + Recenzenci) analizuje CRM i myśli nad odpowiedzią…'}
@@ -1605,7 +1605,7 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                   )}
 
                   {error && (
-                    <p className="text-xs text-danger p-3 rounded-2xl bg-danger/10 border border-danger/30">
+                    <p className="text-xs text-rose-500 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30">
                       {error}
                     </p>
                   )}
@@ -1616,18 +1616,18 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
           {/* ─── 3. PRZYPIĘTE DOLNE POLE CZATU (INPUT CONTAINER W TEJ SAMEJ KARCIE) ─── */}
           {viewMode === 'chat' && (
-            <div className="relative border-t border-slate-200/80 dark:border-white/10 bg-base-100/50 dark:bg-base-200/50 p-3 sm:p-4 flex flex-col shrink-0">
+            <div className="relative border-t border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/50 p-3 sm:p-4 flex flex-col shrink-0">
               {/* Menu Autouzupełniania @ Kursant */}
               {showMentionMenu && (
-                <div className="absolute bottom-full left-2 right-2 mb-2 z-50 bg-ink-2/98 backdrop-blur-2xl border border-line-strong rounded-2xl shadow-ambient-lg p-2 max-h-[260px] overflow-y-auto animate-fadeIn">
-                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-line px-2 text-[10px] font-bold text-text-mute uppercase tracking-wider font-mono">
-                    <span className="flex items-center gap-1 text-primary">
-                      <AtSign size={11} className="text-primary" /> Wskaż kursanta z bazy CRM
+                <div className="absolute bottom-full left-2 right-2 mb-2 z-50 bg-white/98 dark:bg-slate-900/98 backdrop-blur-2xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2 max-h-[260px] overflow-y-auto animate-fadeIn">
+                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200 dark:border-slate-700 px-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <AtSign size={11} className="text-emerald-600 dark:text-emerald-400" /> Wskaż kursanta z bazy CRM
                     </span>
-                    <span className="text-text-mute font-normal">Wybierz [Enter] lub kliknij</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-normal">Wybierz [Enter] lub kliknij</span>
                   </div>
                   {filteredStudents.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-text-mute">
+                    <div className="p-3 text-center text-xs text-slate-500 dark:text-slate-400">
                       Nie znaleziono kursanta pasującego do „{mentionQuery}”
                     </div>
                   ) : (
@@ -1641,24 +1641,24 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                             onMouseEnter={() => setActiveMentionIndex(sIdx)}
                             className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                               isSelected
-                                ? 'bg-primary/15 border-primary/40 text-text-hi shadow-[0_0_12px_rgba(114,240,180,0.15)]'
-                                : 'bg-transparent border-transparent text-text-2 hover:bg-base-100 hover:text-text-hi'
+                                ? 'bg-emerald-500/15 border-emerald-500/40 text-slate-900 dark:text-white shadow-sm'
+                                : 'bg-transparent border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <div className="w-6 h-6 rounded-full bg-base-100 text-primary border border-primary/30 flex items-center justify-center text-[10px] font-bold shrink-0">
+                              <div className="w-6 h-6 rounded-full bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 flex items-center justify-center text-[10px] font-bold shrink-0">
                                 {st.name.charAt(0).toUpperCase()}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold text-text-hi truncate">{st.name}</p>
-                                <p className="text-[10px] text-text-mute truncate">
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{st.name}</p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
                                   {st.company ? `${st.company} · ` : ''}lekcji: {st.lessonCount}
                                   {st.lastLessonDate ? ` (ost. ${st.lastLessonDate})` : ''}
                                 </p>
                               </div>
                             </div>
                             {st.level && (
-                              <span className="text-[9px] px-2 py-0.5 rounded-md bg-base-100 text-primary font-mono font-bold border border-line shrink-0">
+                              <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 font-mono font-bold border border-slate-200 dark:border-slate-700 shrink-0">
                                 {st.level}
                               </span>
                             )}
@@ -1672,15 +1672,15 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
               {/* Menu Autouzupełniania / Skille */}
               {showSlashMenu && (
-                <div className="absolute bottom-full left-2 right-2 mb-2 z-50 bg-ink-2/98 backdrop-blur-2xl border border-line-strong rounded-2xl shadow-ambient-lg p-2 max-h-[290px] overflow-y-auto animate-fadeIn">
-                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-line px-2 text-[10px] font-bold text-text-mute uppercase tracking-wider font-mono">
-                    <span className="flex items-center gap-1 text-primary">
-                      <Command size={11} className="text-primary" /> Wybierz skill / szablon asystenta
+                <div className="absolute bottom-full left-2 right-2 mb-2 z-50 bg-white/98 dark:bg-slate-900/98 backdrop-blur-2xl border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl p-2 max-h-[290px] overflow-y-auto animate-fadeIn">
+                  <div className="flex items-center justify-between pb-1.5 mb-1.5 border-b border-slate-200 dark:border-slate-700 px-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider font-mono">
+                    <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                      <Command size={11} className="text-emerald-600 dark:text-emerald-400" /> Wybierz skill / szablon asystenta
                     </span>
-                    <span className="text-text-mute font-normal">Wybierz [Enter] lub kliknij</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-normal">Wybierz [Enter] lub kliknij</span>
                   </div>
                   {filteredSkills.length === 0 ? (
-                    <div className="p-3 text-center text-xs text-text-mute">
+                    <div className="p-3 text-center text-xs text-slate-500 dark:text-slate-400">
                       Nie znaleziono komendy dla „/{slashQuery}”
                     </div>
                   ) : (
@@ -1694,21 +1694,21 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                             onMouseEnter={() => setActiveSlashIndex(skIdx)}
                             className={`p-2 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
                               isSelected
-                                ? 'bg-primary/15 border-primary/40 text-text-hi shadow-[0_0_12px_rgba(114,240,180,0.15)]'
-                                : 'bg-transparent border-transparent text-text-2 hover:bg-base-100 hover:text-text-hi'
+                                ? 'bg-emerald-500/15 border-emerald-500/40 text-slate-900 dark:text-white shadow-sm'
+                                : 'bg-transparent border-transparent text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-xs font-mono font-bold text-primary shrink-0 bg-base-100 px-1.5 py-0.5 rounded border border-line">
+                              <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 shrink-0 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700">
                                 {sk.command}
                               </span>
                               <div className="min-w-0">
-                                <p className="text-xs font-bold text-text-hi truncate">{sk.name}</p>
-                                <p className="text-[10px] text-text-mute truncate">{sk.description}</p>
+                                <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{sk.name}</p>
+                                <p className="text-[10px] text-slate-500 dark:text-slate-400 truncate">{sk.description}</p>
                               </div>
                             </div>
                             {sk.badge && (
-                              <span className="text-[9px] px-2 py-0.5 rounded-md bg-base-100 text-text-2 font-mono font-bold border border-line shrink-0">
+                              <span className="text-[9px] px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-mono font-bold border border-slate-200 dark:border-slate-700 shrink-0">
                                 {sk.badge}
                               </span>
                             )}
@@ -1722,27 +1722,27 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
 
               {/* Załączniki oczekujące (Chips) */}
               {pendingAttachments.length > 0 && (
-                <div className="pb-2.5 mb-2 border-b border-line flex flex-wrap gap-1.5 items-center">
-                  <span className="text-[10px] font-bold text-text-mute uppercase font-mono mr-1">
+                <div className="pb-2.5 mb-2 border-b border-slate-200 dark:border-slate-800 flex flex-wrap gap-1.5 items-center">
+                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase font-mono mr-1">
                     Załączone pliki ({pendingAttachments.length}):
                   </span>
                   {pendingAttachments.map((att) => (
                     <div
                       key={att.id}
-                      className="flex items-center gap-1.5 py-1 px-2.5 rounded-xl bg-base-100 border border-line-strong text-[11px] text-text-hi shadow-sm"
+                      className="flex items-center gap-1.5 py-1 px-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] text-slate-900 dark:text-white shadow-sm"
                     >
                       {att.type === 'image' && att.dataUrl ? (
                         <img src={att.dataUrl} alt={att.name} className="w-4 h-4 rounded object-cover" />
                       ) : att.type === 'pdf' ? (
-                        <PdfIcon size={13} className="text-danger" />
+                        <PdfIcon size={13} className="text-rose-500" />
                       ) : (
-                        <FileCode size={13} className="text-primary" />
+                        <FileCode size={13} className="text-emerald-600 dark:text-emerald-400" />
                       )}
                       <span className="truncate max-w-[130px] font-medium">{att.name}</span>
                       <button
                         type="button"
                         onClick={() => removePendingAttachment(att.id)}
-                        className="p-0.5 text-text-mute hover:text-danger rounded transition-colors cursor-pointer"
+                        className="p-0.5 text-slate-400 hover:text-rose-500 rounded transition-colors cursor-pointer"
                       >
                         <X size={12} />
                       </button>
@@ -1751,129 +1751,127 @@ export const TeacherAssistant: React.FC<TeacherAssistantProps> = ({
                 </div>
               )}
 
-              {/* Textarea */}
-              <textarea
-                ref={textareaRef}
-                value={draft}
-                rows={2}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  const pos = e.target.selectionStart;
-                  handleDraftChange(val, pos);
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder={
-                  pendingAttachments.length > 0
-                    ? `Wpisz polecenie dla ${pendingAttachments.length} załącznika(ów) (Enter aby wysłać)…`
-                    : index
-                    ? 'Wpisz pytanie lub polecenie (użyj @ kursant, / skille, /help)...'
-                    : 'Ładuję indeks kursantów CRM…'
-                }
-                disabled={isThinking}
-                className="w-full bg-transparent text-sm sm:text-base text-text-hi placeholder:text-text-mute/50 focus:outline-none resize-none min-h-[44px] max-h-[140px] leading-relaxed"
-              />
+              {/* Textarea Input Container */}
+              <div className="w-full rounded-2xl p-3.5 text-sm transition-all border outline-none bg-slate-50 border-slate-200 text-slate-900 placeholder-slate-400 focus-within:bg-white focus-within:border-emerald-500 dark:bg-slate-950/80 dark:border-slate-800 dark:text-white dark:placeholder-slate-500 dark:focus-within:border-emerald-500 flex flex-col gap-2">
+                <textarea
+                  ref={textareaRef}
+                  value={draft}
+                  rows={2}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    const pos = e.target.selectionStart;
+                    handleDraftChange(val, pos);
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    pendingAttachments.length > 0
+                      ? `Wpisz polecenie dla ${pendingAttachments.length} załącznika(ów) (Enter aby wysłać)…`
+                      : index
+                      ? 'Wpisz pytanie lub polecenie (użyj @ kursant, / skille, /help)...'
+                      : 'Ładuję indeks kursantów CRM…'
+                  }
+                  disabled={isThinking}
+                  className="w-full bg-transparent text-sm sm:text-base text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none resize-none min-h-[44px] max-h-[140px] leading-relaxed"
+                />
 
-              {/* Dolny pasek wewnątrz pola tekstowego */}
-              <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-slate-200/60 dark:border-white/5">
-                {/* Lewa strona: Segmented Switcher (Flash vs Thinking) + Przyciski narzędziowe */}
-                <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-                  {/* Przełącznik trybu: ⚡ Flash vs 🧠 Thinking */}
-                  <div className="inline-flex p-0.5 rounded-full bg-base-100 border border-line shadow-inner items-center">
+                {/* Dolny pasek wewnątrz pola tekstowego */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200 dark:border-slate-800/80">
+                  {/* Lewa strona: Segmented Switcher (Flash vs Thinking) + Przyciski narzędziowe */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                    {/* Przełącznik trybu: ⚡ Flash vs 🧠 Thinking */}
+                    <div className="inline-flex p-0.5 rounded-full bg-slate-200/80 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-inner items-center">
+                      <button
+                        type="button"
+                        onClick={() => handleToggleMode('flash')}
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                          aiMode === 'flash'
+                            ? 'bg-amber-400 text-slate-950 font-bold border border-amber-500 shadow-sm scale-[1.02]'
+                            : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                        title="Tryb Flash: Błyskawiczna odpowiedź w ułamku sekundy (Gemini Flash)"
+                      >
+                        <Zap size={11} className={aiMode === 'flash' ? 'text-slate-950 fill-current' : 'text-amber-500 dark:text-amber-400'} />
+                        <span>Flash</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleToggleMode('thinking')}
+                        className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                          aiMode === 'thinking'
+                            ? 'bg-emerald-600 text-white dark:bg-emerald-500 dark:text-slate-950 shadow-sm font-extrabold scale-[1.02]'
+                            : 'text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                        title="Tryb Thinking: Głęboka analiza Rady Modeli AI (Autor + Recenzenci)"
+                      >
+                        <Sparkles size={11} className={aiMode === 'thinking' ? (aiMode === 'thinking' ? 'text-white dark:text-slate-950' : 'text-emerald-600') : 'text-emerald-600 dark:text-emerald-400'} />
+                        <span>Thinking</span>
+                      </button>
+                    </div>
+
+                    {/* Szybki przycisk @ Kursant */}
                     <button
                       type="button"
-                      onClick={() => handleToggleMode('flash')}
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                        aiMode === 'flash'
-                          ? 'bg-gradient-to-r from-amber-400 to-amber-500 text-slate-950 shadow-[0_0_10px_rgba(245,158,11,0.4)] font-extrabold scale-[1.02]'
-                          : 'text-text-mute hover:text-text-2'
-                      }`}
-                      title="Tryb Flash: Błyskawiczna odpowiedź w ułamku sekundy (Gemini Flash)"
+                      onClick={() => {
+                        setShowMentionMenu(true);
+                        setMentionQuery('');
+                        setShowSlashMenu(false);
+                        textareaRef.current?.focus();
+                      }}
+                      className="px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 cursor-pointer"
+                      title="Wskaż kursanta (@)"
                     >
-                      <Zap size={11} className={aiMode === 'flash' ? 'text-slate-950 fill-current' : 'text-amber-400'} />
-                      <span>Flash</span>
+                      <AtSign size={12} className="text-emerald-600 dark:text-emerald-400" />
+                      <span>Kursant</span>
                     </button>
 
+                    {/* Szybki przycisk / Skille */}
                     <button
                       type="button"
-                      onClick={() => handleToggleMode('thinking')}
-                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                        aiMode === 'thinking'
-                          ? 'bg-primary text-accent-ink shadow-[0_0_12px_rgba(114,240,180,0.35)] font-extrabold scale-[1.02]'
-                          : 'text-text-mute hover:text-text-2'
-                      }`}
-                      title="Tryb Thinking: Głęboka analiza Rady Modeli AI (Autor + Recenzenci)"
+                      onClick={() => {
+                        setShowSlashMenu(true);
+                        setSlashQuery('');
+                        setShowMentionMenu(false);
+                        textareaRef.current?.focus();
+                      }}
+                      className="px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 cursor-pointer"
+                      title="Wybierz skill (/)"
                     >
-                      <Sparkles size={11} className={aiMode === 'thinking' ? 'text-accent-ink' : 'text-primary'} />
-                      <span>Thinking</span>
+                      <Command size={12} className="text-emerald-600 dark:text-emerald-400" />
+                      <span>Skille</span>
+                    </button>
+
+                    {/* Załącz plik */}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="px-3 py-1.5 rounded-xl border text-xs font-semibold transition-all bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-700 flex items-center gap-1 cursor-pointer"
+                      title="Załącz plik PDF, screenshot lub notatki"
+                    >
+                      <Paperclip size={12} className="text-emerald-600 dark:text-emerald-400" />
+                      <span className="hidden sm:inline">Załącz</span>
                     </button>
                   </div>
 
-                  {/* Szybki przycisk @ Kursant */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowMentionMenu(true);
-                      setMentionQuery('');
-                      setShowSlashMenu(false);
-                      textareaRef.current?.focus();
-                    }}
-                    className="px-2.5 py-1 rounded-xl bg-base-100/60 hover:bg-base-100 border border-line-strong hover:border-primary/40 text-[11px] font-medium text-text-2 hover:text-text-hi flex items-center gap-1 cursor-pointer transition-all"
-                    title="Wskaż kursanta (@)"
-                  >
-                    <AtSign size={12} className="text-primary" />
-                    <span>Kursant</span>
-                  </button>
-
-                  {/* Szybki przycisk / Skille */}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowSlashMenu(true);
-                      setSlashQuery('');
-                      setShowMentionMenu(false);
-                      textareaRef.current?.focus();
-                    }}
-                    className="px-2.5 py-1 rounded-xl bg-base-100/60 hover:bg-base-100 border border-line-strong hover:border-primary/40 text-[11px] font-medium text-text-2 hover:text-text-hi flex items-center gap-1 cursor-pointer transition-all"
-                    title="Wybierz skill (/)"
-                  >
-                    <Command size={12} className="text-primary" />
-                    <span>Skille</span>
-                  </button>
-
-                  {/* Załącz plik */}
-                  <button
-                    type="button"
-                    onClick={() => fileInputRef.current?.click()}
-                    className="px-2.5 py-1 rounded-xl bg-base-100/60 hover:bg-base-100 border border-line-strong hover:border-primary/40 text-[11px] font-medium text-text-2 hover:text-text-hi flex items-center gap-1 cursor-pointer transition-all"
-                    title="Załącz plik PDF, screenshot lub notatki"
-                  >
-                    <Paperclip size={12} className="text-primary" />
-                    <span className="hidden sm:inline">Załącz</span>
-                  </button>
-                </div>
-
-                {/* Prawa strona: Okrągły przycisk wysyłki ze strzałką w górę */}
-                <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-[10px] text-text-mute hidden md:inline font-mono">
-                    Enter ↵
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => ask(draft)}
-                    disabled={(!draft.trim() && pendingAttachments.length === 0) || isThinking}
-                    className={`h-9 w-9 rounded-2xl flex items-center justify-center transition-all ${
-                      (!draft.trim() && pendingAttachments.length === 0) || isThinking
-                        ? 'bg-base-100/40 text-text-mute/30 cursor-not-allowed border border-line'
-                        : 'bg-primary text-accent-ink hover:bg-primary-hover shadow-[0_0_16px_rgba(114,240,180,0.4)] cursor-pointer hover:scale-105 active:scale-95 border border-primary/40 font-bold'
-                    }`}
-                    title="Wyślij wiadomość"
-                  >
-                    {isThinking ? (
-                      <Loader2 size={16} className="animate-spin text-accent-ink" />
-                    ) : (
-                      <ArrowUp size={16} className="stroke-[2.5]" />
-                    )}
-                  </button>
+                  {/* Prawa strona: Okrągły przycisk wysyłki ze strzałką w górę */}
+                  <div className="flex items-center gap-2 ml-auto">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 hidden md:inline font-mono">
+                      Enter ↵
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => ask(draft)}
+                      disabled={(!draft.trim() && pendingAttachments.length === 0) || isThinking}
+                      className="h-9 w-9 rounded-2xl flex items-center justify-center transition-all bg-emerald-600 hover:bg-emerald-500 text-white font-bold shadow-md hover:scale-105 active:scale-95 disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 dark:disabled:text-slate-600 disabled:cursor-not-allowed"
+                      title="Wyślij wiadomość"
+                    >
+                      {isThinking ? (
+                        <Loader2 size={16} className="animate-spin text-white" />
+                      ) : (
+                        <ArrowUp size={16} className="stroke-[2.5]" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

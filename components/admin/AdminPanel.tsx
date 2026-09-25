@@ -2360,24 +2360,24 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                       )}
                     </span>
                   </div>
-                  <h3 className={`font-extrabold text-base sm:text-lg transition-colors truncate ${
-                    hasNotification ? 'text-amber-200 group-hover:text-amber-100' : isActive ? 'text-primary font-black' : 'text-text-hi group-hover:text-primary'
+                  <h3 className={`text-base sm:text-lg font-bold transition-colors truncate ${
+                    hasNotification ? 'text-amber-300 group-hover:text-amber-200' : isActive ? 'text-emerald-600 dark:text-emerald-400 font-extrabold' : 'text-slate-900 dark:text-white group-hover:text-emerald-600 dark:group-hover:text-emerald-400'
                   }`}>
                     {tile.title}
                   </h3>
-                  <p className="text-xs sm:text-[13px] text-content-muted mt-1 leading-relaxed line-clamp-2 min-h-[2.5rem]">
+                  <p className="text-slate-600 dark:text-slate-300 text-xs sm:text-sm font-normal leading-relaxed mt-1 line-clamp-2 min-h-[2.5rem]">
                     {tile.desc}
                   </p>
                 </div>
 
                 <div className={`mt-4 pt-2.5 border-t flex items-center justify-between text-xs font-semibold transition-colors ${
-                  isActive ? 'border-primary/30' : 'border-line'
+                  isActive ? 'border-emerald-500/30 dark:border-emerald-500/30' : 'border-slate-200 dark:border-slate-800'
                 }`}>
-                  <span className={hasNotification ? 'text-amber-400 font-bold' : (isActive ? 'text-primary font-extrabold flex items-center gap-1.5' : 'text-content-muted')}>
+                  <span className={hasNotification ? 'text-amber-400 font-bold' : 'font-semibold text-emerald-600 dark:text-emerald-400 text-xs flex items-center gap-1.5'}>
                     {hasNotification ? `Otwórz skrzynkę (${notificationCount})` : (isActive ? '● Przeglądasz ten moduł' : 'Otwórz moduł')}
                   </span>
                   <ChevronRight size={14} className={`transition-transform group-hover:translate-x-0.5 ${
-                    hasNotification ? 'text-amber-400' : (isActive ? 'text-primary' : 'text-content-muted')
+                    hasNotification ? 'text-amber-400' : 'text-emerald-600 dark:text-emerald-400'
                   }`} />
                 </div>
               </div>
