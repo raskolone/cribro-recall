@@ -1289,7 +1289,7 @@ function shuffleDistinct(items, random = Math.random) {
 // functions/src/homeworkV2/contracts.ts
 var ENGINE_VERSION = 2;
 var SCHEMA_VERSION = "2.0.0";
-var PROMPT_VERSION = "hw-v2-2026-09-12";
+var PROMPT_VERSION = "hw-v2-2026-09-25";
 var EXERCISE_TYPES_V2 = [
   "micro_translation",
   "fix_sentence",
@@ -1512,16 +1512,20 @@ Nie podszywasz si\u0119 pod lektora. Nigdy nie twierdzisz, \u017Ce Maciej osobi\
 Jeste\u015B spokojny, konkretny, ludzki, cierpliwy i wspieraj\u0105cy.
 Nie cukrujesz, ale zawsze zauwa\u017Casz prawdziwy element post\u0119pu.
 Wynik traktujesz jako informacj\u0119 o etapie nauki, nie ocen\u0119 cz\u0142owieka.`;
-var NATURALNESS_RULES = `ZASADY NATURALNO\u015ACI:
-1. Zdanie ma brzmie\u0107 jak wypowied\u017A \u017Cywego cz\u0142owieka w konkretnej sytuacji, nie jak przyk\u0142ad z podr\u0119cznika.
-2. Polska wersja musi by\u0107 naturaln\u0105 polszczyzn\u0105, a nie kalk\u0105 z angielskiego.
-3. Angielska wersja musi by\u0107 naturaln\u0105 angielszczyzn\u0105, a nie kalk\u0105 z polskiego.
-4. Kontekst ma by\u0107 zwyczajny i ludzki: praca, dom, plany, zm\u0119czenie, jedzenie, dojazdy, znajomi.
-5. S\u0142ownictwo wspieraj\u0105ce musi by\u0107 PROSTSZE ni\u017C cel \u0107wiczenia. Zadanie sprawdza jedn\u0105 rzecz,
-   a nie odporno\u015B\u0107 kursanta na nieznane s\u0142owa obok.
-6. Jedno zadanie = jeden g\u0142\xF3wny cel j\u0119zykowy.
-7. Polecenie i klucz musz\u0105 by\u0107 jednoznaczne. Je\u015Bli da si\u0119 odpowiedzie\u0107 poprawnie na dwa sposoby,
-   oba musz\u0105 by\u0107 w wariantach akceptowanych.`;
+var CRIBRO_SENTENCE_NATURALNESS = `ZASADY NATURALNO\u015ACI ZDA\u0143 \u2014 THE CRIBRO METHOD
+Obowi\u0105zuj\u0105 KA\u017BDE zdanie \u0107wiczenia: angielskie i polskie, poprawne i to z b\u0142\u0119dem.
+1. Test dw\xF3ch sekund. Zdanie ma da\u0107 si\u0119 zrozumie\u0107 za pierwszym czytaniem, w mniej ni\u017C 2 sekundy. Je\u015Bli trzeba je przeczyta\u0107 dwa razy \u2014 skr\xF3\u0107 je albo upro\u015B\u0107.
+2. Jedno zdanie = jedna my\u015Bl. Nie sklejaj dw\xF3ch informacji przez \u201Eand", \u201Ebut" czy \u201Ewhich". Jedno zadanie sprawdza jeden cel j\u0119zykowy.
+3. Standard j\u0119zyka m\xF3wionego. Zdanie brzmi jak co\u015B, co kto\u015B naprawd\u0119 powie na g\u0142os \u2014 znajomemu, w pracy, w sklepie. Skr\xF3ty (I'm, don't, we've) s\u0105 naturalne. \u017Badnych konstrukcji z wypracowania ani z podr\u0119cznika (\u201EIt is essential to facilitate\u2026").
+4. Konkret, nie abstrakcja. Zwyczajna, ludzka sytuacja: praca, dom, dojazdy, jedzenie, plany, znajomi, zm\u0119czenie.
+5. Kontekst samowystarczalny. Zdanie broni si\u0119 bez dopowiadania i nie zak\u0142ada wiedzy spoza materia\u0142u lekcji.
+6. S\u0142ownictwo wspieraj\u0105ce prostsze ni\u017C cel. Wszystko poza \u0107wiczonym s\u0142owem lub konstrukcj\u0105 ma by\u0107 \u0142atwiejsze od niego.
+7. Obie strony naturalne. Polska wersja to naturalna polszczyzna, nie kalka z angielskiego; angielska \u2014 naturalna angielszczyzna, nie kalka z polskiego.
+Przed zwr\xF3ceniem ka\u017Cdego zdania zapytaj: \u201ECzy kto\u015B powiedzia\u0142by to na g\u0142os w zwyk\u0142ej rozmowie?". Je\u015Bli nie \u2014 przepisz.`;
+var NATURALNESS_RULES = `${CRIBRO_SENTENCE_NATURALNESS}
+
+JEDNOZNACZNO\u015A\u0106: polecenie i klucz musz\u0105 by\u0107 jednoznaczne. Je\u015Bli da si\u0119 odpowiedzie\u0107 poprawnie na dwa sposoby,
+oba musz\u0105 by\u0107 w wariantach akceptowanych.`;
 var ANTI_PATTERNS = `ANTYWZORCE \u2014 tego nie wolno produkowa\u0107:
 - Zdania-wydmuszki bez sytuacji: \u201EThe man is tall.", \u201EShe has a book."
 - Konteksty rodem z podr\u0119cznika lat 90.: pi\xF3ra, ciotki, ogrodnicy.
@@ -1532,6 +1536,38 @@ var ANTI_PATTERNS = `ANTYWZORCE \u2014 tego nie wolno produkowa\u0107:
 - Zdania zale\u017Cne od wiedzy o kursancie, kt\xF3rej nie ma w materiale lekcji.
 - Fakty wymy\u015Blone o kursancie: imiona, miejsca, praca, rodzina \u2014 je\u015Bli nie ma ich
   w zatwierdzonym materiale, nie wolno ich u\u017Cy\u0107.`;
+var FIX_SENTENCE_ERROR_TYPES = [
+  "verb_tense",
+  "subject_verb_agreement",
+  "auxiliary_verb",
+  "article",
+  "preposition",
+  "word_order",
+  "word_form",
+  "plural_or_countable",
+  "false_friend",
+  "collocation"
+];
+var FIX_SENTENCE_ERROR_TYPE_GUIDE = {
+  verb_tense: 'z\u0142y czas (\u201EI have seen him yesterday")',
+  subject_verb_agreement: 'brak zgody podmiotu z orzeczeniem (\u201EShe work from home on Fridays")',
+  auxiliary_verb: `z\u0142y czasownik posi\u0142kowy (\u201EShe don't eat meat", \u201EDid you went there?")`,
+  article: `brak lub z\u0142y przedimek (\u201EI'm teacher")`,
+  preposition: 'z\u0142y przyimek (\u201EIt depends from the weather")',
+  word_order: 'z\u0142y szyk (\u201EI like very much coffee")',
+  word_form: 'z\u0142a forma s\u0142owa (\u201EIt was a really interest meeting")',
+  plural_or_countable: 'liczba mnoga / policzalno\u015B\u0107 (\u201ECan you send me the informations?")',
+  false_friend: 'fa\u0142szywy przyjaciel (\u201EPlease control the report before you send it")',
+  collocation: 'z\u0142a kolokacja (\u201EI did a mistake in the email")'
+};
+var FIX_SENTENCE_RULES = `ZASADY ZADANIA \u201EPOPRAW ZDANIE" \u2014 kolejno\u015B\u0107 krok\xF3w jest obowi\u0105zkowa:
+1. correct_sentence \u2014 najpierw u\u0142\xF3\u017C naturalne, w pe\u0142ni poprawne zdanie.
+2. error_type \u2014 wybierz JEDEN typ b\u0142\u0119du, kt\xF3ry pasuje do tego zdania i kt\xF3ry Polak na tym poziomie naprawd\u0119 pope\u0142nia:
+${FIX_SENTENCE_ERROR_TYPES.map((type) => `   - ${type}: ${FIX_SENTENCE_ERROR_TYPE_GUIDE[type]}`).join("\n")}
+3. error_sentence \u2014 przepisz correct_sentence, psuj\u0105c DOK\u0141ADNIE JEDNO miejsce zgodnie z error_type. Reszta zdania zostaje s\u0142owo w s\u0142owo.
+
+WARUNEK KONIECZNY: error_sentence musi zawiera\u0107 prawdziwy b\u0142\u0105d. Nie mo\u017Ce by\u0107 identyczne z correct_sentence ani r\xF3\u017Cni\u0107 si\u0119 od niego tylko interpunkcj\u0105, wielk\u0105 liter\u0105 albo innym, r\xF3wnie poprawnym sformu\u0142owaniem. Takie zadanie jest nierozwi\u0105zywalne i zostanie odrzucone.
+Je\u015Bli do zdania nie pasuje \u017Caden naturalny b\u0142\u0105d z listy \u2014 u\u0142\xF3\u017C inne zdanie. Nie wymy\u015Blaj b\u0142\u0119du na si\u0142\u0119.`;
 var EXERCISE_TYPE_BRIEFS = {
   micro_translation: `T\u0141UMACZENIE MIKRO-KONTEKSTU (micro_translation)
 Kursant t\u0142umaczy jedno polskie zdanie na angielski, u\u017Cywaj\u0105c materia\u0142u z lekcji.
@@ -1543,12 +1579,16 @@ Kursant t\u0142umaczy jedno polskie zdanie na angielski, u\u017Cywaj\u0105c mate
 - \`hintLarge\`: szkielet zdania z lukami.`,
   fix_sentence: `NAPRAW ZDANIE (fix_sentence)
 Kursant przepisuje ca\u0142e zdanie, poprawiaj\u0105c zawarty w nim b\u0142\u0105d.
-- \`content\`: zdanie angielskie z JEDNYM b\u0142\u0119dem \u2014 typowym, nie wymy\u015Blonym.
-- \`modelAnswer\`: pe\u0142ne poprawne zdanie (nie samo wskazanie b\u0142\u0119du).
+W tym typie: \`modelAnswer\` = correct_sentence, \`errorType\` = error_type, \`content\` = error_sentence.
+- \`modelAnswer\`: pe\u0142ne poprawne zdanie (nie samo wskazanie b\u0142\u0119du) \u2014 uk\u0142adasz je NAJPIERW.
+- \`errorType\`: typ b\u0142\u0119du, DOK\u0141ADNIE jedna warto\u015B\u0107 z listy poni\u017Cej (pole obowi\u0105zkowe w tym typie).
+- \`content\`: \`modelAnswer\` z JEDNYM prawdziwym b\u0142\u0119dem typu \`errorType\`. Nigdy identyczne z \`modelAnswer\`.
 - \`acceptedVariants\`: inne poprawne wersje tego zdania.
 - \`requiredMaterial\`: mechanizm j\u0119zykowy, kt\xF3rego dotyczy b\u0142\u0105d.
 - \`hintSmall\`: wskazanie MIEJSCA b\u0142\u0119du, bez nazywania go.
-- \`hintLarge\`: nazwa typu b\u0142\u0119du (np. \u201Ez\u0142y czas"), nadal bez pe\u0142nej poprawki.`,
+- \`hintLarge\`: nazwa typu b\u0142\u0119du (np. \u201Ez\u0142y czas"), nadal bez pe\u0142nej poprawki.
+
+${FIX_SENTENCE_RULES}`,
   gap_from_context: `UZUPE\u0141NIJ Z KONTEKSTU (gap_from_context)
 Kursant sam wpisuje brakuj\u0105ce s\u0142owo lub fraz\u0119. Bez banku s\u0142\xF3w.
 - \`content\`: zdanie angielskie z luk\u0105 oznaczon\u0105 jako \`___\`.
@@ -1597,7 +1637,8 @@ var parseDraft = (raw, fallbackType) => {
     commonMistakes: asStringArray2(d.commonMistakes),
     hintSmall: isNonEmptyString2(d.hintSmall) ? String(d.hintSmall).trim() : "",
     hintLarge: isNonEmptyString2(d.hintLarge) ? String(d.hintLarge).trim() : "",
-    sourceLessonIndex: typeof d.sourceLessonIndex === "number" ? d.sourceLessonIndex : 1
+    sourceLessonIndex: typeof d.sourceLessonIndex === "number" ? d.sourceLessonIndex : 1,
+    ...isNonEmptyString2(d.errorType) ? { errorType: String(d.errorType).trim() } : {}
   };
 };
 var buildGeneratorPrompt = (context, slots) => {
@@ -1639,7 +1680,8 @@ FORMAT ODPOWIEDZI \u2014 obiekt JSON z jednym kluczem \`exercises\`, tablic\u010
       "commonMistakes": ["typowy b\u0142\u0105d przy tym zadaniu"],
       "hintSmall": "podpowied\u017A do pr\xF3by 2",
       "hintLarge": "podpowied\u017A do pr\xF3by 3",
-      "sourceLessonIndex": 1
+      "sourceLessonIndex": 1,
+      "errorType": "TYLKO dla fix_sentence \u2014 typ b\u0142\u0119du z listy; w innych typach pomi\u0144"
     }
   ]
 }`;
@@ -1741,7 +1783,8 @@ ${JSON.stringify(
         acceptedVariants: item.draft.acceptedVariants,
         requiredMaterial: item.draft.requiredMaterial,
         hintSmall: item.draft.hintSmall,
-        hintLarge: item.draft.hintLarge
+        hintLarge: item.draft.hintLarge,
+        ...item.draft.errorType ? { errorType: item.draft.errorType } : {}
       },
       null,
       2
@@ -1770,7 +1813,7 @@ obowi\u0105zywa\u0107. Zachowaj \`exerciseType\` i \`learningObjective\` ka\u017
 
 FORMAT ODPOWIEDZI \u2014 obiekt JSON z kluczem \`results\`, dok\u0142adnie ${input.items.length} obiekt\xF3w,
 \`index\` odpowiada numerowi zadania powy\u017Cej (1-based), reszta p\xF3l jak w oryginalnym zadaniu
-(uzupe\u0142nione o \`commonMistakes\` i \`sourceLessonIndex\`):
+(uzupe\u0142nione o \`commonMistakes\` i \`sourceLessonIndex\`; w \`fix_sentence\` tak\u017Ce \`errorType\`):
 { "results": [ { "index": 1, "exerciseType": "...", "learningObjective": "...", "content": "...", "instruction": "...", "modelAnswer": "...", "acceptedVariants": [], "requiredMaterial": [], "commonMistakes": [], "hintSmall": "...", "hintLarge": "...", "sourceLessonIndex": 1 } ] }`,
     taskName: "hw-v2/regenerate-batch",
     temperature: 0.6
@@ -1800,6 +1843,27 @@ var shapeVerdict = (raw, regenerationCount, modelVersion) => {
     regenerationCount,
     modelVersion,
     checkedAt: (/* @__PURE__ */ new Date()).toISOString()
+  };
+};
+var normalizeSentence = (value) => String(value ?? "").normalize("NFKC").toLowerCase().replace(/[\u2018\u2019\u02BC`\u00B4]/g, "'").replace(/[^\p{L}\p{N}'\s]/gu, " ").replace(/\s+/g, " ").trim();
+var deterministicFailedChecks = (draft) => {
+  if (draft.exerciseType !== "fix_sentence") return [];
+  const failed = [];
+  const errorSentence = normalizeSentence(draft.content);
+  const correctForms = [draft.modelAnswer, ...draft.acceptedVariants].map(normalizeSentence);
+  if (correctForms.includes(errorSentence)) failed.push("fix_sentence_has_no_error");
+  if (!draft.errorType || !FIX_SENTENCE_ERROR_TYPES.includes(draft.errorType)) {
+    failed.push("fix_sentence_missing_error_type");
+  }
+  return failed;
+};
+var withDeterministicChecks = (draft, verdict) => {
+  const failed = deterministicFailedChecks(draft);
+  if (failed.length === 0) return verdict;
+  return {
+    ...verdict,
+    passed: false,
+    failedChecks: [...failed, ...verdict.failedChecks.filter((c) => !failed.includes(c))]
   };
 };
 var buildBatchValidatorPrompt = (context, drafts) => {
@@ -1856,7 +1920,7 @@ Nie uk\u0142adasz zada\u0144. Oceniasz cudze. Jeste\u015B surowy i konkretny.`,
   return drafts.map((_, i) => {
     const byIndex = rawList.find((r) => Number(r?.index) === i + 1);
     const raw = byIndex ?? rawList[i] ?? {};
-    return shapeVerdict(raw, regenerationCounts[i] ?? 0, response.modelUsed);
+    return withDeterministicChecks(drafts[i], shapeVerdict(raw, regenerationCounts[i] ?? 0, response.modelUsed));
   });
 };
 var validateAll = async (input) => {
