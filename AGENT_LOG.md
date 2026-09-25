@@ -6234,3 +6234,70 @@ Nowy endpoint `/api/og-preview` używa istniejącego middleware
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (547/547 zielone),
 npm run build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+[2026-09-25] — Claude Code / Opus 5.5
+
+Zadanie: Batch 1, sesja B — przeprojektowanie generatora ćwiczeń: audyt
+promptów translation/fix_sentence i śladów „rozmowy dwóch modeli", naprawa
+powtórek po „Generuj kolejne zdania", structured output + walidacja dla
+„Popraw zdanie", wplecenie zasad naturalności Cribro Method.
+
+Audyt (zgłoszony Maciejowi przed zmianami, niczego z niego nie usuwano):
+- Tłumaczenia: `generateTranslationExercises` (services/geminiService.ts).
+  „Popraw zdanie" v1: `generateFindErrors` (services/homeworkGenerator.ts).
+  v2: `EXERCISE_TYPE_BRIEFS.fix_sentence` (functions/src/homeworkV2/coreKnowledge.ts).
+- Żywy łańcuch dwóch wywołań: „Weryfikacja logiczna zdań (krok 2)" w
+  `generateTranslationExercises` — uruchamia się, gdy krok 1 zwróci mniej
+  zdań niż zamówiono; drugie wywołanie „poprawia" JSON pierwszego (na
+  ścieżce homework ten sam Gemini 2.5 Flash, na ścieżce kursanta bez
+  override — potencjalnie inny model z PREFERRED_AI_MODELS). Nie dopisuje
+  brakujących zdań, więc nie naprawia tego, co go wyzwala.
+- Martwy relikt council fallback: `EXERCISE_REVIEW_SYSTEM` w
+  services/aiCouncil.ts — eksportowany, nigdzie nieużywany.
+- v2 generator → walidator → regeneracja to świadomy projekt (§10).
+- Tekst Cribro Method: `NATURALNESS_TEST` w services/lessonPlannerMethod.ts.
+
+Zrobione (3 commity, każdy wypchnięty):
+- 6053155 powtórki: utils/exerciseSentenceChecks.ts (normalizeSentence,
+  filterRepeatedSentences, buildUsedSentencesBlock), pamięć sesji w
+  AIExerciseGeneratorScreen, parametr `excludeSentences` w
+  generateTranslationExercises (12. pozycyjny) i HomeworkGenerationRequest.
+- ed36e4a „Popraw zdanie": schemat Gemini z propertyOrdering,
+  checkFixSentenceItem + collectValidFixSentences (1 retry → drop),
+  services/cribroSentenceRules.ts (FIX_SENTENCE_RULES, typy błędów),
+  v2: errorType w DraftExercise, deterministicFailedChecks w walidatorze,
+  PROMPT_VERSION hw-v2-2026-09-25.
+- 0bb8b36 CRIBRO_SENTENCE_NATURALNESS w QUALITY_RULES, prompcie tłumaczeń
+  i NATURALNESS_RULES v2.
+- Testy: tests/exerciseSentenceChecks.test.ts, tests/cribroSentenceRules.test.ts
+  (m.in. zgodność kopii root ↔ functions); fikstura fix_sentence w
+  tests/homeworkV2Flow.test.ts dostała errorType.
+
+Nie dokończone / do sprawdzenia:
+- Cloud Functions NIE wdrożone — zmiany v2 działają dopiero po
+  `npm run deploy:functions` (za flagą HOMEWORK_ENGINE_V2).
+- Jakość zdań na żywym modelu niesprawdzona; warto wygenerować kilka partii
+  „Popraw zdanie" i tłumaczeń na koncie testowym.
+- `constants.ts` w roboczym drzewie ma dopisane na końcu samotne `Z`
+  (niezacommitowane, nie moje) — `tsc` zgłasza TS2304, a po buildzie to
+  ReferenceError przy ładowaniu modułu. Nie ruszałem, nie commitowałem.
+- Log praktyki w trybie pisania zapisuje odpowiedź kursanta zamiast zdania
+  modelu (`exercisesDetails` w handleFinishAll) — osłabia antypowtórki
+  między sesjami. Nie zmieniane (dane czytane też przez widoki lektora).
+
+Decyzje architektoniczne:
+- Kopie reguł w functions/ zamiast wspólnego pakietu — functions nie
+  importuje z katalogu głównego; zgodność pilnowana testem.
+- v2: „1 retry → nie pokazuj" zrealizowane przez istniejącą pętlę
+  regeneracji (MAX_REGENERATIONS = 2) + requiresTeacherReview, zamiast
+  osobnego licznika dla jednego zarzutu. Zadanie nie trafia do kursanta
+  automatycznie, lektor widzi je z ostrzeżeniem.
+- errorType v2 nie wchodzi do ExerciseContractV2 (zamrożony schemat).
+- Kolejność pól w schemacie (correct → type → error) jest celowa: model
+  pisze najpierw naturalne zdanie, błąd dobiera do niego.
+
+Ryzyka: firestore.rules, middleware autoryzacji i ścieżki tokenowe bez
+logowania — NIEDOTKNIĘTE. Nowe pole `errorType` w zagnieżdżonych zdaniach
+prac domowych — reguły nie ograniczają pól zagnieżdżonych.
