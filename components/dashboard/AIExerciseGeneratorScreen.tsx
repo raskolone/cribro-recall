@@ -754,6 +754,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   // przypomnienie sobie. Dostępne są 4 formaty: Sprawdź Się (tłumaczenia),
   // Napraw Zdanie (korekta błędów), Fiszki oraz Dopasowanie.
   const [exerciseFormat, setExerciseFormat] = useState<'typing' | 'puzzle' | 'test' | 'speaking' | 'correction'>('typing');
+  // Zdania, które kursant już dostał na tym ekranie. „Generuj kolejne zdania"
+  // czyści listę ćwiczeń, więc bez tej pamięci model przy tym samym
+  // słownictwie wracał do tych samych zdań.
+  const usedSentencesRef = useRef<string[]>([]);
   const [warmupPhase, setWarmupPhase] = useState<'invite' | 'scrambler' | 'exercises'>('invite');
   const [isLessonSelectorOpen, setIsLessonSelectorOpen] = useState(false);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
@@ -1592,6 +1596,7 @@ ${learningContext?.briefing || ''}
             level: learningContext?.level || level,
             instruction: additionalInstructions || undefined,
             studentId: user?.id,
+            excludeSentences: usedSentencesRef.current,
           },
           sourceMaterial,
           learningContext?.briefing
@@ -1607,6 +1612,7 @@ ${learningContext?.briefing || ''}
         }));
 
         if (mappedItems && mappedItems.length > 0) {
+          usedSentencesRef.current.push(...mappedItems.map(item => item.englishTranslation));
           if (isAppending) {
             setExercises(prev => [...prev, ...mappedItems]);
             setStudentAnswers(prev => [...prev, ...new Array(mappedItems.length).fill('')]);
@@ -1640,11 +1646,13 @@ ${learningContext?.briefing || ''}
           // Wynik tego wywołania zasila też HomeworkWarmupScrambler (patrz JSX
           // niżej) — ta sama granica homework/warm-up, która nie może po
           // cichu schodzić na OpenAI (services/aiModels.ts).
-          [...HOMEWORK_GENERATION_MODELS]
+          [...HOMEWORK_GENERATION_MODELS],
+          usedSentencesRef.current
         );
         
         addLog('generateTranslationExercises returned ' + (generated ? generated.length : 'null'));
         if (generated && generated.length > 0) {
+          usedSentencesRef.current.push(...generated.map(item => item.englishTranslation));
           if (isAppending) {
              setExercises(prev => [...prev, ...generated]);
              setStudentAnswers(prev => [...prev, ...new Array(generated.length).fill('')]);

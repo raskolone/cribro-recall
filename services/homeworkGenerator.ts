@@ -16,6 +16,7 @@ import {
 import { getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
 import { HOMEWORK_GENERATION_MODELS, PRIMARY_MODEL, assertHomeworkModelAllowed } from './aiModels';
 import { getStudentAiContext } from './learningProfile';
+import { buildUsedSentencesBlock, filterRepeatedSentences } from '../utils/exerciseSentenceChecks';
 
 /**
  * Układanie pracy domowej z materiału lektora.
@@ -66,6 +67,11 @@ export interface HomeworkGenerationRequest {
    * samego poziomu z pola `level`.
    */
   studentId?: string;
+  /**
+   * Zdania, które kursant już dostał w tej sesji (np. przed „Generuj kolejne
+   * zdania"). Wchodzą do promptu jako zakaz i odsiewają wynik.
+   */
+  excludeSentences?: string[];
 }
 
 export interface GeneratedSection {
@@ -530,6 +536,8 @@ WYMAGANIA SZCZEGÓŁOWE DLA ZADAŃ TYPU ZNAJDŹ BŁĄD (find_errors):
   4. hint: subtelna wskazówka po polsku kierująca uwagę na obszar błędu (np. "Zwróć uwagę na czasownik posiłkowy w przeczeniu.").
   5. polishHint: naturalne polskie znaczenie zdania (żeby uczeń znał intencję wypowiedzi).
 
+${buildUsedSentencesBlock(req.excludeSentences)}
+
 Zwróć JSON:
 {"items":[{"incorrectSentence":"She don't like working overtime on Fridays.","correctSentence":"She doesn't like working overtime on Fridays.","explanation":"W 3. osobie liczby pojedynczej czasu Present Simple przeczenie tworzymy za pomocą 'doesn't', a nie 'don't'.","hint":"Zwróć uwagę na czasownik posiłkowy w przeczeniu.","polishHint":"Ona nie lubi pracować po godzinach w piątki."}]}`;
 
@@ -547,7 +555,12 @@ Zwróć JSON:
       polishHint: item.polishHint ? String(item.polishHint).trim() : undefined,
     }));
 
-  return { items, modelUsed };
+  const freshItems = filterRepeatedSentences(items, req.excludeSentences || [], (item) => [
+    item.correctSentence,
+    item.incorrectSentence,
+  ]);
+
+  return { items: freshItems, modelUsed };
 };
 
 /** Tłumaczenia — istniejący generator, tylko z materiałem z tego kreatora. */
@@ -571,7 +584,8 @@ const generateTranslations = async (
     undefined,
     undefined,
     undefined,
-    MODELS_FOR_HOMEWORK
+    MODELS_FOR_HOMEWORK,
+    req.excludeSentences
   );
   const items = Array.isArray(result) ? result : [];
   return { items, modelUsed: items[0]?.modelUsed || HOMEWORK_MODEL };

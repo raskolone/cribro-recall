@@ -11,6 +11,7 @@ import { aiMonitor } from './aiMonitorService';
 import { AI_MODEL_CASCADE, cascadeForCategory, HOMEWORK_GENERATION_MODELS, assertHomeworkModelAllowed } from './aiModels';
 import { peekAiOverrides } from './aiConfigService';
 import { toPolishVocative, detectPolishGender } from '../utils/polishVocative';
+import { buildUsedSentencesBlock, filterRepeatedSentences } from '../utils/exerciseSentenceChecks';
 
 
 export const extractJSON = (text: string): string => {
@@ -968,7 +969,13 @@ export const generateTranslationExercises = async (
    * Używane przez generator pracy domowej, który nie może po cichu schodzić
    * na OpenAI — patrz `HOMEWORK_GENERATION_MODELS` w `services/aiModels.ts`.
    */
-  modelsOverride?: string[]
+  modelsOverride?: string[],
+  /**
+   * Zdania, które kursant już dostał w tej sesji. Idą do promptu jako zakaz
+   * i dodatkowo odsiewają wynik — sama prośba w prompcie nie wystarcza,
+   * model przy tym samym słownictwie wraca do tych samych zdań.
+   */
+  excludeSentences?: string[]
 ): Promise<TranslationExercise[]> => {
   const shortLesson = lessonContext ? `\n\n[LESSON / TOPIC CONTEXT]:\n${lessonContext.substring(0, 1000)}` : '';
   const shortProfile = studentProfileContext ? `\n\n[STUDENT SPECIFIC INSTRUCTIONS & PROFILE]:\n${studentProfileContext}` : '';
@@ -1009,7 +1016,7 @@ CRITICAL QUALITY RULES:
 - HINT REQUIREMENT: Pole \`hint\` musi ZAWSZE zawierać kluczowe trudne słowa z danego zdania (angielskie) wraz z tłumaczeniem, plus krótką wskazówkę co do użytej struktury gramatycznej.
 - ANTI-REPETITION: Do NOT generate sentences structurally identical or extremely similar to those in [PAST EXERCISES TO AVOID REPEATS].`;
 
-  const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}${shortMistakes}`;
+  const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}${shortMistakes}${buildUsedSentencesBlock(excludeSentences)}`;
   const customBlock = customPrompt ? `\n\n[ADDITIONAL INSTRUCTIONS / PROMPT OVERRIDE]:\n${customPrompt}` : '';
 
   const finalPrompt = `${masterPrompt}${studentContextBlock}${customBlock}
@@ -1130,10 +1137,16 @@ Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dok
         };
       }).filter(ex => ex.polishSentence && ex.englishTranslation);
 
-      if (exercises && exercises.length > 0) {
-        return exercises;
+      const freshExercises = filterRepeatedSentences(
+        exercises,
+        excludeSentences || [],
+        (ex) => [ex.englishTranslation, ex.polishSentence]
+      );
+
+      if (freshExercises.length > 0) {
+        return freshExercises;
       }
-      console.warn(`Attempt ${attempt}: Received empty exercises, retrying...`);
+      console.warn(`Attempt ${attempt}: Received empty or only repeated exercises, retrying...`);
     } catch (error: any) {
       console.error(`Error generating translation exercises on attempt ${attempt}:`, error);
       if (attempt === MAX_RETRIES) {
