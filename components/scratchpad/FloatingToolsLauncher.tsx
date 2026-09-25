@@ -19,7 +19,7 @@ export const FloatingToolsLauncher: React.FC<FloatingToolsLauncherProps> = ({
       type="button"
       data-testid="floating-tools-launcher"
       onClick={onToggle}
-      className={`fixed right-6 top-24 z-[70] px-3 py-2.5 rounded-2xl border shadow-2xl backdrop-blur-xl flex items-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer select-none ${
+      className={`sticky top-24 self-start ml-3 max-lg:fixed max-lg:top-auto max-lg:bottom-6 max-lg:right-6 max-lg:ml-0 z-[70] px-3 py-2.5 rounded-2xl border shadow-2xl backdrop-blur-xl flex items-center gap-2 font-bold text-xs transition-all duration-200 cursor-pointer select-none ${
         isOpen
           ? 'bg-emerald-500 text-slate-950 border-emerald-400 shadow-emerald-500/25 scale-105 ring-2 ring-emerald-400/40'
           : 'bg-slate-900/90 hover:bg-slate-800 text-slate-100 border-white/15 hover:border-emerald-500/40 hover:text-emerald-300'

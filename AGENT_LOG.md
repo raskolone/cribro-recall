@@ -6149,3 +6149,88 @@ niedotknięte.
 
 Weryfikacja: npx tsc --noEmit (0 błędów), npm test (547/547 zielone),
 npm run build (przechodzi, w tym server.cjs i api/index.js).
+
+---
+
+2026-09-25 — Claude Code / Sonnet 5
+
+Zadanie: Naprawa i refaktoryzacja notatnika wg promptu z pliku
+prompt_kompleksowa_naprawa_notatnika_i_przybornika_tools.md — sticky
+dock widgetu Tools przy kartce A4, czyszczenie przybornika Lesson
+Tools, hierarchia H1/H2 w spisie treści, karty linków Open Graph.
+
+Zrobione:
+- `components/scratchpad/FloatingToolsLauncher.tsx` — zmiana
+  pozycjonowania z `fixed right-6 top-24` na `sticky top-24 self-start`
+  + fallback `max-lg:fixed` (FAB) na wąskich ekranach.
+- `components/scratchpad/ScratchpadEditor.tsx` — przeniesiono render
+  `<FloatingToolsLauncher>` z osobnego, oderwanego miejsca w drzewie do
+  wnętrza `.pad-canvas` (flex sibling obok wyśrodkowanej kartki A4), tak
+  żeby `sticky` śledził scroll właściwego kontenera. Dodano stan
+  `isInsertLinkModalOpen`, ref `insertLinkRangeRef` (zapamiętanie
+  zaznaczenia przed otwarciem modala), `handleConfirmInsertLink`
+  (budowanie i wstawianie HTML karty linku). `handleInsertLink`
+  przepisany: zamiast `window.prompt()` otwiera `InsertLinkModal`.
+- `components/scratchpad/FloatingToolPalette.tsx` — usunięto zakładki
+  TEACH i CANVAS (typ `ToolTab` zwężony do `'CONTENT' | 'DRAW'`, grid
+  zakładek 4→2 kolumny), usunięto przycisk „Usuń zaznaczone", naprawiono
+  kontrast kafelka Exercise Studio i pigułki „Nowe", rozdzielono
+  przycisk nagłówka na „Nagłówek lekcji (H1)" i „Nagłówek sekcji (H2)".
+  Wyczyszczono nieużywane importy ikon po usunięciu zakładek.
+- `components/scratchpad/TeacherDock.tsx` — poprawiony kontrast opisu
+  Focus Zoom (`text-slate-300` → `text-slate-600 dark:text-slate-200
+  font-medium`).
+- `components/scratchpad/InsertLinkModal.tsx` (NOWY) — modal wstawiania
+  linku: pole URL + opcjonalny własny tytuł, pobranie podglądu OG przez
+  nowy endpoint, selektor rozmiaru karty (Kompaktowy/Średnia/Duża),
+  podgląd przed wstawieniem.
+- `server.ts` — nowy endpoint `GET /api/og-preview` (`requireFirebaseAuth`,
+  wzorowany na istniejącym `/api/web-research/scrape`): parsuje
+  `og:title`/`og:description`/`og:image` z pobranego HTML, fallback do
+  samej domeny + favicon Google, gdy strona nie ma metadanych OG lub
+  fetch się nie powiedzie (timeout 8s).
+- `index.css` — style `.pad-link-card` (i warianty `--compact`,
+  `--medium`, `--large`) z wersją jasną/ciemną motywu.
+- `CHANGELOG.md` — wpis BC w sekcji 4.
+
+Nie dokończone / do sprawdzenia:
+- Zero weryfikacji wzrokowej w przeglądarce w tej sesji (brak dostępu) —
+  w szczególności: czy sticky dock faktycznie ładnie „przykleja się"
+  przy różnych szerokościach ekranu i orientacjach A4 (landscape),
+  wygląd karty linku na obu motywach, i czy modal `InsertLinkModal`
+  poprawnie przywraca pozycję kursora po async fetchu OG.
+- Nie zaimplementowano osobnego lightboxa dla miniaturki karty linku —
+  cała karta to pojedynczy `<a target="_blank">`, więc kliknięcie w
+  dowolne miejsce (w tym miniaturkę) otwiera link w nowej karcie. To
+  jeden z dwóch wariantów dopuszczonych w zleceniu („lightbox LUB nowa
+  karta") — jeśli Maciejowi zależy właśnie na lightboxie z podglądem
+  obrazu bez opuszczania notatnika, to osobne zadanie do doprecyzowania.
+- TEACH/CANVAS usunięto tylko z zakładek `FloatingToolPalette` — same
+  funkcje (oznaczenia nauczycielskie, Focus Zoom, tryb prezentacji)
+  nadal istnieją i są dostępne przez `TeacherDock.tsx` oraz pasek
+  formatowania, zgodnie z treścią zlecenia („pozostaw wyłącznie
+  przydatne zakładki").
+
+Decyzje architektoniczne:
+- Zamiast duplikować `FloatingToolsLauncher`/`FloatingToolPalette` w
+  dwóch responsywnych wariantach (sticky-desktop + fixed-mobile jako
+  osobne instancje), użyto jednego renderu z klasami `max-lg:fixed`
+  nadpisującymi `sticky` na małych ekranach — `position: fixed` i tak
+  ignoruje pozycję w drzewie DOM, więc jedna instancja obsługuje oba
+  warianty bez podwójnych nasłuchiwaczy klawiatury/myszy.
+- Karta linku wstawiana jako pojedynczy `<a>` z `contenteditable="false"`
+  (nie osobny `<img>` + osobny link) — prostsze i spójne z resztą
+  notatnika (patrz istniejący wzorzec `.pad-page-break` jako
+  nieedytowalny blok wewnątrz treści).
+- Endpoint `/api/og-preview` jako `GET` (nie `POST` jak
+  `/api/web-research/scrape`) — parametr w query string, żeby dało się
+  łatwo re-fetchować/cache'ować po stronie przeglądarki bez tworzenia
+  body.
+
+Ryzyka: firestore.rules, middleware autoryzacji (`requireFirebaseAuth`,
+`requireFirebaseAdmin`) i ścieżki tokenowe bez logowania — NIEDOTKNIĘTE.
+Nowy endpoint `/api/og-preview` używa istniejącego middleware
+`requireFirebaseAuth` bez zmian w jego logice.
+
+Weryfikacja: npx tsc --noEmit (0 błędów), npm test (547/547 zielone),
+npm run build (przechodzi, w tym server.cjs i api/index.js).

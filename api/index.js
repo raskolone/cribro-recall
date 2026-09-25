@@ -3690,6 +3690,78 @@ function createApp() {
       res.status(500).json({ error: `Nie uda\u0142o si\u0119 pobra\u0107 strony: ${formatErrorString(error)}` });
     }
   });
+  app2.get("/api/og-preview", requireFirebaseAuth, async (req, res) => {
+    try {
+      const rawUrl = typeof req.query.url === "string" ? req.query.url : "";
+      if (!rawUrl || !rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
+        return res.status(400).json({ error: "Nieprawid\u0142owy adres URL. Wymagany protok\xF3\u0142 http:// lub https://" });
+      }
+      let domain = "";
+      try {
+        domain = new URL(rawUrl).hostname.replace(/^www\./, "");
+      } catch {
+        return res.status(400).json({ error: "Nieprawid\u0142owy adres URL." });
+      }
+      const fallback = () => res.json({
+        url: rawUrl,
+        domain,
+        title: domain,
+        description: "",
+        image: null,
+        favicon: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
+      });
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8e3);
+        const response = await fetch(rawUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36 CRIBRO/1.0",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8"
+          },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!response.ok) return fallback();
+        const html = await response.text();
+        const meta = (prop) => {
+          const re = new RegExp(
+            `<meta[^>]+(?:property|name)=["']${prop}["'][^>]+content=["']([^"']*)["']`,
+            "i"
+          );
+          const match = html.match(re) || html.match(new RegExp(
+            `<meta[^>]+content=["']([^"']*)["'][^>]+(?:property|name)=["']${prop}["']`,
+            "i"
+          ));
+          return match ? match[1].trim() : "";
+        };
+        const decodeEntities = (s) => s.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+        const titleMatch = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+        const ogTitle = meta("og:title") || (titleMatch ? titleMatch[1] : "") || domain;
+        const ogDescription = meta("og:description") || meta("description") || "";
+        let ogImage = meta("og:image") || "";
+        if (ogImage && !/^https?:\/\//i.test(ogImage)) {
+          try {
+            ogImage = new URL(ogImage, rawUrl).toString();
+          } catch {
+            ogImage = "";
+          }
+        }
+        res.json({
+          url: rawUrl,
+          domain,
+          title: decodeEntities(ogTitle).replace(/\s+/g, " ").trim().slice(0, 200),
+          description: decodeEntities(ogDescription).replace(/\s+/g, " ").trim().slice(0, 400),
+          image: ogImage || null,
+          favicon: `https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=64`
+        });
+      } catch (fetchErr) {
+        return fallback();
+      }
+    } catch (error) {
+      console.error("[OG Preview Error]:", error);
+      res.status(500).json({ error: `Nie uda\u0142o si\u0119 pobra\u0107 podgl\u0105du linku: ${formatErrorString(error)}` });
+    }
+  });
   const UNSUBSCRIBE_SECRET = process.env.UNSUBSCRIBE_SECRET || "cribro-recall-opt-out-secret-2026";
   const generateUnsubscribeToken = (uid) => {
     return createHmac("sha256", UNSUBSCRIBE_SECRET).update(uid).digest("hex").slice(0, 16);

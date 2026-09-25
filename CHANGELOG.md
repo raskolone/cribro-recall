@@ -3717,6 +3717,21 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
   - **Interfejs Studia:** Zaimplementowano edytor `LessonStudioEditor.tsx` z panelem konfiguracji (Context, Focus, Depth), przyciskiem `[ ✨ Personalize ]` oraz dwukolumnowym widokiem slotów w inspektorze bloku (*Base vs Adapted*) z możliwością ręcznej edycji przez lektora.
 - **Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (513/513 zaliczonych), `npm run build` (przechodzi, w tym server.cjs i api/index.js).
 
+### BC. Zadokowany przybornik Tools przy kartce A4, oczyszczenie palety narzędzi, hierarchia H1/H2 w spisie treści i karty linków Open Graph (2026-09-25)
+- **Sticky dock launchera „Tools" (`components/scratchpad/FloatingToolsLauncher.tsx`, `components/scratchpad/ScratchpadEditor.tsx`):**
+  - Przycisk „Tools" przeniesiony z rogu całego okna przeglądarki (`fixed right-6 top-24`) do wnętrza scrollowanego canvasu (`.pad-canvas`), jako drugi element flex obok wyśrodkowanej kartki A4 — `sticky top-24 self-start`, więc przesuwa się razem ze scrollem strony i zostaje blisko edytowanego fragmentu.
+  - Na wąskich ekranach (`< lg`) wraca do zminimalizowanego FAB w prawym dolnym rogu (`max-lg:fixed max-lg:bottom-6 max-lg:right-6`).
+- **Porządki w `FloatingToolPalette.tsx` („Lesson Tools"):**
+  - Usunięto zakładki TEACH i CANVAS (oznaczenia nauczycielskie i Focus Zoom/Prezentacja pozostają dostępne przez `TeacherDock.tsx` i pasek formatowania — nie zniknęły z aplikacji, tylko z tego jednego panelu); pozostały CONTENT i DRAW.
+  - Usunięto przycisk „Usuń zaznaczone" z siatki CONTENT.
+  - Naprawiono kontrast kafelka „Exercise Studio & Gry”: tło `bg-emerald-950/60`, tekst `text-emerald-200`, pigułka „Nowe” z jawnym `bg-emerald-500 text-slate-950`.
+- **Kontrast w `TeacherDock.tsx`:** opis Focus Zoom („Zaznacz prostokątem lub odręcznym lasso...") zmieniony z wyblakłego `text-slate-300` na `text-slate-600 dark:text-slate-200 font-medium`.
+- **Hierarchia nagłówków H1/H2:** przycisk „Nagłówek sekcji (H2)” w palecie narzędzi rozdzielony na dwa: „Nagłówek lekcji (H1)” i „Nagłówek sekcji (H2)”. Sam mechanizm spisu treści (`rebuildToc` w `ScratchpadEditor.tsx`) już wcześniej budował drzewo z H1 jako punktu nadrzędnego i H2 jako wciętego podelementu — brakowało tylko przycisku wstawiającego H1 w UI.
+- **Karty linków Open Graph (`components/scratchpad/InsertLinkModal.tsx`, nowy endpoint `GET /api/og-preview` w `server.ts`, style `.pad-link-card*` w `index.css`):**
+  - „Wstaw link” w palecie narzędzi otwiera teraz modal zamiast `window.prompt()`: pole URL + opcjonalny własny tytuł, pobranie `og:title`/`og:description`/`og:image`/favicon przez nowy serwerowy endpoint (autoryzacja `requireFirebaseAuth`, wzorowany na istniejącym `/api/web-research/scrape`), z eleganckim fallbackiem (sama domena + favicon Google), gdy strona nie udostępnia metadanych OG lub żąda zbyt długo (timeout 8s).
+  - Selektor rozmiaru karty: Kompaktowy / Karta średnia / Karta duża (banner) — wstawiana jako pojedynczy `<a>` (`contenteditable="false"`), więc kliknięcie w dowolne miejsce karty, łącznie z miniaturką, otwiera link w nowej karcie.
+- **Weryfikacja:** `npx tsc --noEmit` (0 błędów), `npm test` (547/547 zaliczonych), `npm run build` (przechodzi, w tym server.cjs i api/index.js). Brak weryfikacji wzrokowej w przeglądarce w tej sesji — patrz `AGENT_LOG.md`.
+
 ---
 
 

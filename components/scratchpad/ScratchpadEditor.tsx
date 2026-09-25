@@ -114,6 +114,7 @@ import TeacherFormattingToolbar from './TeacherFormattingToolbar';
 import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
 import { FloatingToolPalette } from './FloatingToolPalette';
 import { FloatingToolsLauncher } from './FloatingToolsLauncher';
+import { InsertLinkModal } from './InsertLinkModal';
 import { ExerciseDefinition, RandomWheelPayload } from '../../types/exerciseStudio';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
 import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
@@ -367,6 +368,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [isInsertLessonModalOpen, setIsInsertLessonModalOpen] = useState(false);
   const [isTeacherDockOpen, setIsTeacherDockOpen] = useState(false);
   const [isExerciseStudioOpen, setIsExerciseStudioOpen] = useState(false);
+  const [isInsertLinkModalOpen, setIsInsertLinkModalOpen] = useState(false);
+  const insertLinkRangeRef = useRef<Range | null>(null);
   const [isFocusZoomActive, setIsFocusZoomActive] = useState(false);
   const [isFloatingToolsOpen, setIsFloatingToolsOpen] = useState(false);
   const [activeDrawTool, setActiveDrawTool] = useState<'pen' | 'marker' | 'eraser' | 'line' | 'arrow' | 'rect' | 'circle' | null>(null);
@@ -2221,22 +2224,41 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     handleInput();
   };
 
-  // Wstawienie linku
+  // Wstawienie linku z kartą podglądu Open Graph (patrz InsertLinkModal)
   const handleInsertLink = () => {
     if (isReadOnly) return;
-    const url = window.prompt('Adres linku (https://…)');
-    if (!url || !url.trim()) return;
     const selection = window.getSelection();
-    if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
-      execCmd('createLink', url.trim());
-    } else {
-      window.document.execCommand(
-        'insertHTML',
-        false,
-        `<a href="${url.trim()}" target="_blank" rel="noopener noreferrer">${url.trim()}</a>&nbsp;`
-      );
-      handleInput();
+    insertLinkRangeRef.current =
+      selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+    setIsInsertLinkModalOpen(true);
+  };
+
+  const handleConfirmInsertLink = (
+    data: { url: string; domain: string; title: string; description: string; image: string | null; favicon: string },
+    size: 'compact' | 'medium' | 'large',
+    customTitle?: string
+  ) => {
+    if (isReadOnly || !editorRef.current) return;
+
+    editorRef.current.focus();
+    const selection = window.getSelection();
+    if (selection && insertLinkRangeRef.current) {
+      selection.removeAllRanges();
+      selection.addRange(insertLinkRangeRef.current);
     }
+
+    const title = (customTitle || data.title || data.domain).replace(/</g, '&lt;');
+    const description = (data.description || '').replace(/</g, '&lt;');
+    const showThumb = data.image && (size === 'medium' || size === 'large');
+    const thumbHtml = showThumb ? `<img class="pad-link-card__thumb" src="${data.image}" alt="" />` : '';
+    const descHtml = size !== 'compact' && description
+      ? `<div class="pad-link-card__desc">${description}</div>`
+      : '';
+
+    const cardHtml = `<a href="${data.url}" target="_blank" rel="noopener noreferrer" contenteditable="false" data-link-card="1" data-size="${size}" class="pad-link-card pad-link-card--${size}">${thumbHtml}<div class="pad-link-card__body"><div class="pad-link-card__title">${title}</div>${descHtml}<div class="pad-link-card__domain"><img class="pad-link-card__favicon" src="${data.favicon}" alt="" />${data.domain}</div></div></a><p><br></p>`;
+
+    window.document.execCommand('insertHTML', false, cardHtml);
+    handleInput();
   };
 
   // Lista zadań
@@ -3383,6 +3405,17 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               </div>
             ))}
           </div>
+
+          {/* Zadokowany przy kartce launcher narzędzi (Tools) — sticky w obrębie
+              scrollowanego canvasu, zjeżdża do FAB w prawym dolnym rogu na wąskich
+              ekranach (patrz responsywne klasy max-lg: w FloatingToolsLauncher). */}
+          {isTeacher && !isReadOnly && !docData.presentationState?.active && (
+            <FloatingToolsLauncher
+              isOpen={isFloatingToolsOpen}
+              onToggle={() => setIsFloatingToolsOpen((v) => !v)}
+              isTeacher={isTeacher}
+            />
+          )}
         </div>
 
         {/* PANEL ASYSTENTA AI W DOKUMENCIE (Dostępny wyłącznie dla lektora) */}
@@ -3800,6 +3833,15 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         />
       )}
 
+      {/* Modal wstawiania linku z kartą podglądu Open Graph */}
+      {isTeacher && (
+        <InsertLinkModal
+          isOpen={isInsertLinkModalOpen}
+          onClose={() => setIsInsertLinkModalOpen(false)}
+          onConfirmInsert={handleConfirmInsertLink}
+        />
+      )}
+
       {/* Modal wyboru aktywności do prezentacji live */}
       {isTeacher && (
         <ScratchpadLivePresentationModal
@@ -3822,16 +3864,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
         />
       )}
 
-      {/* Pływający launcher narzędzi (Tools) poza arkuszem A4 — widoczny tylko dla lektora */}
-      {isTeacher && !isReadOnly && !docData.presentationState?.active && (
-        <FloatingToolsLauncher
-          isOpen={isFloatingToolsOpen}
-          onToggle={() => setIsFloatingToolsOpen((v) => !v)}
-          isTeacher={isTeacher}
-        />
-      )}
-
-      {/* Pływająca paleta narzędzi (FloatingToolPalette) z zakładkami CONTENT, TEACH, CANVAS, DRAW */}
+      {/* Pływająca paleta narzędzi (FloatingToolPalette) z zakładkami CONTENT, DRAW —
+          launcher "Tools" jest teraz zadokowany przy kartce A4 (patrz wyżej, sekcja canvasu) */}
       {isTeacher && !isReadOnly && !docData.presentationState?.active && (
         <FloatingToolPalette
           isOpen={isFloatingToolsOpen}

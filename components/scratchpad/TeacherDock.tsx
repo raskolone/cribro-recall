@@ -96,7 +96,7 @@ export const TeacherDock: React.FC<TeacherDockProps> = ({
           </div>
 
           <div className="p-3.5 rounded-2xl border border-white/10 bg-white/5 space-y-2.5">
-            <p className="text-[11px] text-slate-300 leading-relaxed">
+            <p className="text-[11px] text-slate-600 dark:text-slate-200 font-medium leading-relaxed">
               Zaznacz prostokątem lub odręcznym lasso fragment kartki (pytanie, obraz, tabelę), aby płynnie powiększyć go kursantowi.
             </p>
 

@@ -1215,6 +1215,104 @@ tr.liquid-glass-hover:hover {
 }
 
 /*
+ * Karta linku z podglądem Open Graph (wstawiana przez "Wstaw link" w
+ * FloatingToolPalette / InsertLinkModal). Cała karta to <a>, więc kliknięcie
+ * w miniaturkę też otwiera link w nowej karcie — patrz handleInsertLink w
+ * ScratchpadEditor.tsx.
+ */
+.pad-link-card {
+  display: flex;
+  gap: 12px;
+  text-decoration: none;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  overflow: hidden;
+  margin: 10px 0;
+  max-width: 480px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.pad-link-card:hover {
+  border-color: rgba(114, 240, 180, 0.5);
+  background: rgba(255, 255, 255, 0.07);
+}
+:root.light .pad-link-card,
+:root[data-theme="light"] .pad-link-card,
+.pad-paper[data-pad-theme="light"] .pad-link-card {
+  border-color: rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.02);
+}
+:root.light .pad-link-card:hover,
+:root[data-theme="light"] .pad-link-card:hover,
+.pad-paper[data-pad-theme="light"] .pad-link-card:hover {
+  border-color: rgba(16, 150, 90, 0.5);
+  background: rgba(0, 0, 0, 0.04);
+}
+.pad-link-card__body {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 10px 12px;
+  flex: 1;
+}
+.pad-link-card__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--pad-text, #e2e8f0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pad-link-card__desc {
+  font-size: 11.5px;
+  color: var(--pad-muted);
+  margin-top: 2px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.pad-link-card__domain {
+  font-size: 10.5px;
+  color: var(--pad-muted);
+  margin-top: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.pad-link-card__favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.pad-link-card--compact {
+  max-width: 380px;
+  align-items: center;
+  padding: 8px 12px;
+}
+.pad-link-card--compact .pad-link-card__body {
+  padding: 0;
+}
+.pad-link-card--medium .pad-link-card__thumb {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.pad-link-card--large {
+  flex-direction: column;
+  max-width: 520px;
+}
+.pad-link-card--large .pad-link-card__thumb {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+/*
  * Znaczniki (badże) wstawiane przez Asystenta AI w sekcji „Key Language &
  * Corrections" — te same trzy kolory, co ręczne zakreślacze lektorskie
  * (przyciski ❌ Błąd / ✅ Poprawnie / 💡 Słówko), żeby treść wklejona przez AI

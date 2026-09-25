@@ -2,30 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Wrench,
   X,
-  Type,
   Heading1,
   Heading2,
-  Heading3,
   Pilcrow,
   Image as ImageIcon,
   Paperclip,
   Sparkles,
   Link2,
   Copy,
-  Trash2,
-  AlertCircle,
-  CheckCircle2,
-  Bookmark,
-  ArrowRightLeft,
-  Highlighter,
-  Underline,
-  Strikethrough,
-  StickyNote,
-  Crosshair,
   Square,
-  Lasso,
-  RotateCcw,
-  Airplay,
   PenTool,
   Paintbrush,
   Eraser,
@@ -33,14 +18,10 @@ import {
   ArrowRight,
   Circle,
   Grid2x2,
-  Move,
-  Layers,
-  Palette,
-  Sliders,
   Check,
 } from 'lucide-react';
 
-export type ToolTab = 'CONTENT' | 'TEACH' | 'CANVAS' | 'DRAW';
+export type ToolTab = 'CONTENT' | 'DRAW';
 
 export interface FloatingToolPaletteProps {
   isOpen: boolean;
@@ -234,9 +215,9 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
         </div>
       </div>
 
-      {/* ── TABS NAVIGATION (CONTENT | TEACH | CANVAS | DRAW) ── */}
-      <div className="grid grid-cols-4 p-1.5 bg-slate-950/40 border-b border-white/10 gap-1 text-[11px] font-bold">
-        {(['CONTENT', 'TEACH', 'CANVAS', 'DRAW'] as ToolTab[]).map((tab) => {
+      {/* ── TABS NAVIGATION (CONTENT | DRAW) ── */}
+      <div className="grid grid-cols-2 p-1.5 bg-slate-950/40 border-b border-white/10 gap-1 text-[11px] font-bold">
+        {(['CONTENT', 'DRAW'] as ToolTab[]).map((tab) => {
           const isActive = activeTab === tab;
           return (
             <button
@@ -276,11 +257,22 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
 
               <button
                 type="button"
+                onClick={() => onInsertText?.('h1')}
+                title="Główny nagłówek lekcji — pojawia się w spisie treści jako nadrzędny punkt"
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+              >
+                <Heading1 size={14} className="text-emerald-400 shrink-0" />
+                <span>Nagłówek lekcji (H1)</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => onInsertText?.('h2')}
+                title="Nagłówek sekcji — w spisie treści wcięty jako podelement bieżącej lekcji"
                 className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <Heading2 size={14} className="text-emerald-400 shrink-0" />
-                <span>Nagłówek sekcji</span>
+                <span>Nagłówek sekcji (H2)</span>
               </button>
 
               <button
@@ -304,13 +296,13 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={onOpenExerciseStudio}
-                className="col-span-2 p-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-left flex items-center justify-between gap-2 transition-colors cursor-pointer text-xs font-bold text-emerald-300"
+                className="col-span-2 p-2.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-left flex items-center justify-between gap-2 transition-colors cursor-pointer text-xs font-bold text-emerald-200"
               >
                 <div className="flex items-center gap-2">
                   <Sparkles size={15} className="text-emerald-400" />
                   <span>Exercise Studio & Gry</span>
                 </div>
-                <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20">Nowe</span>
+                <span className="text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm bg-emerald-500 text-slate-950">Nowe</span>
               </button>
 
               <button
@@ -339,177 +331,11 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 <Copy size={14} className="text-slate-300 shrink-0" />
                 <span>Duplikuj blok</span>
               </button>
-
-              <button
-                type="button"
-                onClick={onDeleteSelection}
-                className="p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-300 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
-              >
-                <Trash2 size={14} className="text-rose-400 shrink-0" />
-                <span>Usuń zaznaczone</span>
-              </button>
             </div>
           </div>
         )}
 
-        {/* TAB 2: TEACH */}
-        {activeTab === 'TEACH' && (
-          <div className="space-y-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Oznaczenia nauczycielskie (Notatki na żywo)
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('error')}
-                className="p-2.5 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 text-rose-300 font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <AlertCircle size={14} className="text-rose-400" />
-                <span>❌ Błąd</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('correct')}
-                className="p-2.5 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-300 font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <CheckCircle2 size={14} className="text-emerald-400" />
-                <span>✅ Poprawnie</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('vocab')}
-                className="p-2.5 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-500/30 text-cyan-300 font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <Bookmark size={14} className="text-cyan-400" />
-                <span>💡 Słówko</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('correction')}
-                className="p-2.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/30 text-amber-300 font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <ArrowRightLeft size={14} className="text-amber-400" />
-                <span>⇄ Korekta</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('highlight')}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <Highlighter size={14} className="text-yellow-400" />
-                <span>Zakreślacz żółty</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('underline')}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <Underline size={14} className="text-indigo-400" />
-                <span>Podkreślenie</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('strike')}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <Strikethrough size={14} className="text-slate-400" />
-                <span>Przekreślenie</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => onApplyMark?.('note')}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <StickyNote size={14} className="text-purple-400" />
-                <span>Notatka lektora</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={onClearFormatting}
-              className="w-full py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs text-slate-300 font-semibold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-            >
-              <Eraser size={13} />
-              <span>Wyczyść formatowanie zaznaczenia</span>
-            </button>
-          </div>
-        )}
-
-        {/* TAB 3: CANVAS */}
-        {activeTab === 'CANVAS' && (
-          <div className="space-y-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              Kierowanie uwagą & Prezentacja (Focus Zoom)
-            </div>
-
-            <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/25 space-y-2.5">
-              <div className="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                <Crosshair size={14} />
-                <span>Focus Zoom — Wybierz tryb kadru</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => onStartFocusZoom?.('rectangle')}
-                  className="p-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs font-bold flex flex-col items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Square size={14} />
-                  <span>Prostokąt</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onStartFocusZoom?.('lasso')}
-                  className="p-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs font-bold flex flex-col items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Lasso size={14} />
-                  <span>Lasso</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => onStartFocusZoom?.('object')}
-                  className="p-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-200 text-xs font-bold flex flex-col items-center gap-1 transition-colors cursor-pointer"
-                >
-                  <Crosshair size={14} />
-                  <span>Obiekt</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                type="button"
-                onClick={onResetCanvasView}
-                className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 flex items-center gap-2 transition-colors cursor-pointer"
-              >
-                <RotateCcw size={14} className="text-slate-400" />
-                <span>Resetuj widok (1x)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={onOpenPresentation}
-                className="p-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-1.5 shadow-md transition-colors cursor-pointer"
-              >
-                <Airplay size={14} />
-                <span>Tryb Prezentacji</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* TAB 4: DRAW */}
+        {/* TAB 2: DRAW */}
         {activeTab === 'DRAW' && (
           <div className="space-y-3">
             <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
