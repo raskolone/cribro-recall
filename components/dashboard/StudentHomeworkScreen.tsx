@@ -437,6 +437,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             n === 1
               ? 'Nie odpowiedziałeś na 1 zadanie. Kliknij jeszcze raz, żeby odesłać mimo to.'
               : `Nie odpowiedziałeś na ${n} zadań. Kliknij jeszcze raz, żeby odesłać mimo to.`,
+          noAnswers: 'Nie udzielono żadnej odpowiedzi — uzupełnij przynajmniej jedno zadanie przed wysłaniem.',
           sendFailed: 'Nie udało się odesłać pracy. Twoje odpowiedzi są zapisane — spróbuj ponownie.',
           sendAnyway: 'Odeślij mimo to',
           blockCount: (n: number) => `${n} rodzaje zadań`,
@@ -474,6 +475,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             n === 1
               ? '1 task is unanswered. Click again to submit anyway.'
               : `${n} tasks are unanswered. Click again to submit anyway.`,
+          noAnswers: 'No answers were given — fill in at least one task before submitting.',
           sendFailed: 'Could not submit your work. Your answers are saved — try again.',
           sendAnyway: 'Submit anyway',
           blockCount: (n: number) => `${n} exercise types`,
@@ -674,6 +676,15 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       if (typeof a === 'number') return true;
       return String(a || '').trim().length > 0;
     }).length;
+
+    // Całkowicie pusta praca nie dostaje „wyślij mimo to" — to nie jest
+    // przypadek "kursant nie zdążył dokończyć", tylko brak jakiejkolwiek
+    // odpowiedzi. Bez tego zgłoszenie lądowało w kolejce lektora jako
+    // "Nadesłano" z samymi zerami, nie do odróżnienia od realnej pracy.
+    if (answered === 0) {
+      setNotice(L.noAnswers);
+      return;
+    }
 
     // Zamiast okna systemowego: ostrzeżenie pod przyciskiem, a przycisk zmienia
     // się w „wyślij mimo to". Kursant zostaje w zadaniu i widzi, czego brakuje,

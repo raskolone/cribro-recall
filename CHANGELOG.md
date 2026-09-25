@@ -3744,6 +3744,19 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 ---
 
+### BE. Blokada pustego zgłoszenia pracy domowej ("Nadesłano" bez ani jednej odpowiedzi) na wszystkich czterech ścieżkach zapisu + audyt mailingu (2026-09-25)
+- **Audyt (Batch 1 Sesja A, zgłoszony przed dalszymi krokami):** mechanizm mailowy po ocenieniu pracy domowej JUŻ ISTNIAŁ i działał — `notifyStudentOnHomeworkGraded` (`functions/src/index.ts`), Resend + Cloud Functions, statyczny szablon, wyzwalacz na przejściu `status` → `graded`. Dotyczy wyłącznie silnika v1; v2 (`HOMEWORK_ENGINE_V2 = false`, niewdrożony) ma `approveHomeworkV2Grade`, który zapisuje ocenę, ale nie wysyła maila — zostawione bez zmian na tę sesję (Maciej: pominąć, v2 i tak nieaktywne).
+- **Bug:** student mógł oddać pracę domową bez wypełnienia ani jednego pola — zgłoszenie i tak dostawało `status: 'submitted'` ("Nadesłano") i lądowało w kolejce lektora nie do odróżnienia od realnej pracy, tyle że z samymi zerami. Guard (odrzucenie, nie tylko flaga — decyzja Macieja) dodany w czterech miejscach zapisu `status: 'submitted'`/`'graded'` do `specialTasks`:
+  - `components/dashboard/StudentHomeworkScreen.tsx` (`handleSubmit`) — realny ekran zalogowanego kursanta (`Dashboard.tsx` routing: `isTeacher ? TeacherWorkScreen : StudentHomeworkScreen`). Nowy `L.noAnswers` (pl+en), blokuje przed dotychczasowym ostrzeżeniem "X zadań bez odpowiedzi / wyślij mimo to", które zostaje dla częściowych zgłoszeń.
+  - `server.ts` `/api/homework/direct-submit` — ścieżka tokenowa bez logowania (`DirectHomeworkScreen.tsx`, magic link). Nowy 400 `empty_submission` przed zapisem do Firestore.
+  - `components/dashboard/AIExerciseGeneratorScreen.tsx` (`handleFinishAll`, gałąź nie-puzzle) — ten sam guard; gałąź puzzle (układanka) pominięta celowo, tam nie da się "wysłać pustego".
+  - `components/dashboard/HomeworkScreen.tsx` (`handleSubmitTask`) — dodany dla kompletności; ten komponent jest dziś routowany tylko dla `isTeacher`, więc ta konkretna ścieżka może być martwym reliktem sprzed refaktoru modułu prac domowych — nie potwierdzone, do sprawdzenia osobno.
+- **`scripts/backfill-flag-empty-submissions.mjs` (nowy):** wykrywa historyczne puste zgłoszenia sprzed tej naprawy. Wzorowany na `scripts/backfill-task-owners.mjs` — logowanie jako nauczyciel (`FB_USER`/`FB_PASS`), domyślnie suchy przebieg (wypisuje listę), `--apply` dopisuje wyłącznie `isEmptySubmission: true` (nie rusza `status`). Nieuruchomiony w tej sesji — wymaga hasła Macieja.
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów (stray `Z` z `constants.ts`, o którym mowa w poprzednim wpisie, zniknął z roboczego drzewa w trakcie tej sesji — nie nasza zmiana). `npm test` — 573/573, bez regresji.
+- **Ryzyka:** `server.ts` `/api/homework/direct-submit` to ścieżka tokenowa bez logowania (obszar wysokiego ryzyka wg `CLAUDE.md` §3) — dotknięta wyłącznie dodaniem wczesnego `400` przed istniejącą logiką; weryfikacja tokenu, wygaśnięcie dostępu i to, co token ujawnia, bez zmian. `firestore.rules` i middleware autoryzacji — nietknięte.
+
+---
+
 
 
 

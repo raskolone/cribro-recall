@@ -1692,6 +1692,27 @@ export function createApp() {
           .replace(/\s+/g, ' ')
           .trim();
 
+      // Puste zgłoszenie (żadne pole niewypełnione) nie może przejść jako
+      // "Nadesłano" — kursant dostawał wtedy same zera bez ostrzeżenia,
+      // a lektor widział zadanie w kolejce do oceny, choć nie było czego
+      // oceniać. Definicja "pusty" spójna z `answeredCount` w
+      // DirectHomeworkScreen.tsx, żeby licznik na ekranie kursanta i ta
+      // blokada zgadzały się co do tego samego przypadku.
+      const isAnswerBlank = (val: any): boolean => {
+        if (val === undefined || val === null) return true;
+        if (typeof val === 'string') return val.trim().length === 0;
+        if (Array.isArray(val)) return val.length === 0;
+        if (typeof val === 'object') return Object.keys(val).length === 0;
+        return false;
+      };
+      const hasAnyAnswer = items.length === 0 || items.some((_: any, i: number) => !isAnswerBlank(answers[i]));
+      if (!hasAnyAnswer) {
+        return res.status(400).json({
+          error: 'empty_submission',
+          message: 'Nie udzielono żadnej odpowiedzi — uzupełnij przynajmniej jedno ćwiczenie przed wysłaniem.'
+        });
+      }
+
       // Automatyczna ewaluacja odpowiedzi
       const rows: any[] = [];
       const storedAnswers: Record<number, any> = {};

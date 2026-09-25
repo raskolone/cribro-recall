@@ -1130,6 +1130,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
       return true;
     }).length;
 
+    if (answeredCount === 0) {
+      alert('Nie udzielono żadnej odpowiedzi — uzupełnij przynajmniej jedno zdanie przed wysłaniem.');
+      return;
+    }
+
     if (answeredCount < sentenceCount) {
       if (!(await confirmAsync(`Wypełniłeś ${answeredCount} z ${sentenceCount} zdań. Czy na pewno chcesz wysłać pracę domową w takim stanie?`))) {
         return;

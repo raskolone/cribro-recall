@@ -1859,6 +1859,14 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
       return;
     }
 
+    const hasAnyAnswer = exercises.some((_, i) => studentAnswers[i]?.trim());
+    if (!hasAnyAnswer) {
+      alert(language === 'pl'
+        ? 'Nie udzielono żadnej odpowiedzi — uzupełnij przynajmniej jedno zdanie przed wysłaniem.'
+        : 'No answers were given — fill in at least one sentence before submitting.');
+      return;
+    }
+
     setIsGeneratingMore(true);
     let currentEvalResults = { ...singleEvaluationResults };
     
