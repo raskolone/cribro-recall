@@ -198,6 +198,25 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🚀 Full Practice & Zadania Domowe: Pętla uzupełniająca (refill), optymalizacja czasu oceny AI i izolacja zdań (2026-09-26, runda 58)
+
+1. **Gwarancja pełnego zestawu zdań w `generateTranslationExercises` (`services/geminiService.ts`)**:
+   - Usunięto przedwczesny `return freshExercises` po pierwszym wywołaniu modelu, gdy liczba unikalnych zdań była mniejsza niż żądane `numSentences`.
+   - Zaimplementowano pętlę uzupełniającą (*refill loop*) do maksymalnie 3 prób:
+     - W każdej iteracji obliczana jest brakująca liczba zdań: `missingCount = numSentences - collectedExercises.length`.
+     - Prompt jest dynamicznie generowany dla `missingCount` zdań i uzupełniony o blok wykluczeń (`currentExcluded`), zawierający wszystkie dotychczas zebrane zdania oraz przekazane `excludeSentences`.
+     - Dodano `console.warn` w sytuacji awaryjnej, gdy model po 3 próbach nie jest w stanie wygenerować pełnego zestawu (zwracany jest wtedy dotychczas zgromadzony wynik bez wywrotki aplikacji).
+2. **Optymalizacja latencji i siatka bezpieczeństwa w `evaluateTranslations` (`services/geminiService.ts`)**:
+   - Wyłączono niepotrzebny tryb myślenia w Gemini 2.5 Flash poprzez ustawienie `thinkingConfig: { thinkingBudget: 0 }` w `geminiConfig` (tak samo jak w generatorze ćwiczeń), co natychmiast eliminuje kilku-sekundowy narzut na generowanie wewnętrznego toku rozumowania.
+   - Skrócono timeout dla sprawdzania pojedynczego zdania do 12s (`isSingleSentence ? 12000 : (modelsOverride ? 15000 : 25000)`), zachowując pełny mechanizm ponowień i fallback na alternatywne modele w `generateTextWithUnifiedFallback`.
+3. **Izolacja zdań między różnymi typami ćwiczeń (`services/homeworkGenerator.ts` & `components/dashboard/AIExerciseGeneratorScreen.tsx`)**:
+   - W `generateWordOrder` dodano wstrzykiwanie bloku wykluczeń `${buildUsedSentencesBlock(req.excludeSentences)}` oraz filtrowanie duplikatów za pomocą `filterRepeatedSentences`.
+   - W `generateHomeworkSet` zamieniono równoległe wywołanie `Promise.allSettled` na sekwencyjne kaskadowanie generatorów: każda wygenerowana sekcja dopisuje swoje zdania (angielskie, polskie, poprawne i błędne) do puli `accumulatedExcluded`, dzięki czemu kolejne typy zadań (np. układanka po tłumaczeniach) nie otrzymują tych samych zdań bazowych dla tego samego materiału lekcyjnego.
+   - Na frontendzie w `AIExerciseGeneratorScreen.tsx` rozszerzono `usedSentencesRef.current` o rejestrowanie zdań zarówno dla trybu `translation`, jak i `correction`, zapobiegając powtórzeniom przy przełączaniu trybów w ramach jednej sesji.
+4. **Weryfikacja techniczna**:
+   - `npx tsc --noEmit` — 0 błędów.
+   - `npm test` — 573/573 testów jednostkowych zaliczonych.
+
 ---
 
 ### 🚀 Wersje robocze (szkice) notatnika lektora — zakładka obok listy kursantów (2026-09-25, runda 57)
