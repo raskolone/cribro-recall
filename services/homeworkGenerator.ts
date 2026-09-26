@@ -388,6 +388,7 @@ Ułóż ${req.perType} angielskich zdań opartych na powyższym materiale. Każd
 podziel na 4–8 sensownych fragmentów (pojedyncze słowa albo krótkie frazy, np. "have to",
 "in the morning"). Fragmenty podaj W POPRAWNEJ KOLEJNOŚCI — przetasujemy je sami.
 Do każdego zdania dołącz jego polskie znaczenie.
+${buildUsedSentencesBlock(req.excludeSentences)}
 
 WYMAGANIA SZCZEGÓŁOWE DLA UKŁADANIA ZDANIA:
 - Zdanie musi mieć DOKŁADNIE JEDNĄ poprawną kolejność. Jeśli fragmenty da się
@@ -427,7 +428,12 @@ Zwróć JSON:
       };
     });
 
-  return { items, modelUsed };
+  const freshItems = filterRepeatedSentences(items, req.excludeSentences || [], (item) => [
+    item.correctSentence,
+    item.polishHint,
+  ]);
+
+  return { items: freshItems, modelUsed };
 };
 
 /** Wybór formy: pilnujemy, żeby poprawna odpowiedź naprawdę była wśród opcji. */
@@ -684,32 +690,63 @@ export const generateHomeworkSet = async (
   const briefing = context?.briefing;
   const level = context?.level || req.level;
 
-  const runners: Record<string, () => Promise<{ items: any[]; modelUsed: string }>> = {
-    translation: () => generateTranslations(req, sourceText, briefing, level),
-    find_errors: () => generateFindErrors(req, sourceText, briefing),
-    word_order: () => generateWordOrder(req, sourceText, briefing),
-    multiple_choice: () => generateMultipleChoice(req, sourceText, briefing),
-    fill_in_the_blank: () => generateGaps(req, sourceText, briefing, level),
-    matching: () => generateMatching(req, sourceText, briefing),
+  const extractSentencesFromSectionItems = (type: HomeworkType, items: any[]): string[] => {
+    const extracted: string[] = [];
+    if (!Array.isArray(items)) return extracted;
+    for (const item of items) {
+      if (type === 'translation') {
+        if (item.englishTranslation) extracted.push(item.englishTranslation);
+        if (item.polishSentence) extracted.push(item.polishSentence);
+      } else if (type === 'find_errors') {
+        if (item.correctSentence) extracted.push(item.correctSentence);
+        if (item.incorrectSentence) extracted.push(item.incorrectSentence);
+        if (item.polishHint) extracted.push(item.polishHint);
+      } else if (type === 'word_order') {
+        if (item.correctSentence) extracted.push(item.correctSentence);
+        if (item.polishHint) extracted.push(item.polishHint);
+      } else if (type === 'multiple_choice') {
+        if (item.question) extracted.push(item.question);
+      }
+    }
+    return extracted;
+  };
+
+  const accumulatedExcluded = [...(req.excludeSentences || [])];
+  let modelUsed: string | undefined;
+  const sections: GeneratedSection[] = [];
+
+  const runners: Record<string, (subReq: HomeworkGenerationRequest) => Promise<{ items: any[]; modelUsed: string }>> = {
+    translation: (subReq) => generateTranslations(subReq, sourceText, briefing, level),
+    find_errors: (subReq) => generateFindErrors(subReq, sourceText, briefing),
+    word_order: (subReq) => generateWordOrder(subReq, sourceText, briefing),
+    multiple_choice: (subReq) => generateMultipleChoice(subReq, sourceText, briefing),
+    fill_in_the_blank: (subReq) => generateGaps(subReq, sourceText, briefing, level),
+    matching: (subReq) => generateMatching(subReq, sourceText, briefing),
   };
 
   const selected = req.types.filter((type) => runners[type]);
-  const settled = await Promise.allSettled(selected.map((type) => runners[type]()));
 
-  let modelUsed: string | undefined;
-  const sections: GeneratedSection[] = selected.map((type, index) => {
-    const outcome = settled[index];
-    if (outcome.status === 'fulfilled') {
-      modelUsed = modelUsed || outcome.value.modelUsed;
-      return { type, items: outcome.value.items };
+  for (const type of selected) {
+    try {
+      const subReq: HomeworkGenerationRequest = {
+        ...req,
+        excludeSentences: [...accumulatedExcluded],
+      };
+      const runnerResult = await runners[type](subReq);
+      modelUsed = modelUsed || runnerResult.modelUsed;
+      sections.push({ type, items: runnerResult.items });
+
+      const newSentences = extractSentencesFromSectionItems(type, runnerResult.items);
+      accumulatedExcluded.push(...newSentences);
+    } catch (err: any) {
+      console.error(`Nie udało się ułożyć zadań typu ${type}:`, err);
+      sections.push({
+        type,
+        items: [],
+        error: err?.message || 'Model nie zwrócił poprawnych zadań.',
+      });
     }
-    console.error(`Nie udało się ułożyć zadań typu ${type}:`, outcome.reason);
-    return {
-      type,
-      items: [],
-      error: outcome.reason?.message || 'Model nie zwrócił poprawnych zadań.',
-    };
-  });
+  }
 
   return { sections, modelUsed, sourceText };
 };

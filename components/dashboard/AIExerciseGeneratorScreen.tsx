@@ -1612,7 +1612,11 @@ ${learningContext?.briefing || ''}
         }));
 
         if (mappedItems && mappedItems.length > 0) {
-          usedSentencesRef.current.push(...mappedItems.map(item => item.englishTranslation));
+          mappedItems.forEach(item => {
+            if (item.englishTranslation) usedSentencesRef.current.push(item.englishTranslation);
+            if (item.polishSentence) usedSentencesRef.current.push(item.polishSentence);
+            if (item.erroneousSentence) usedSentencesRef.current.push(item.erroneousSentence);
+          });
           if (isAppending) {
             setExercises(prev => [...prev, ...mappedItems]);
             setStudentAnswers(prev => [...prev, ...new Array(mappedItems.length).fill('')]);
@@ -1652,7 +1656,10 @@ ${learningContext?.briefing || ''}
         
         addLog('generateTranslationExercises returned ' + (generated ? generated.length : 'null'));
         if (generated && generated.length > 0) {
-          usedSentencesRef.current.push(...generated.map(item => item.englishTranslation));
+          generated.forEach(item => {
+            if (item.englishTranslation) usedSentencesRef.current.push(item.englishTranslation);
+            if (item.polishSentence) usedSentencesRef.current.push(item.polishSentence);
+          });
           if (isAppending) {
              setExercises(prev => [...prev, ...generated]);
              setStudentAnswers(prev => [...prev, ...new Array(generated.length).fill('')]);

@@ -983,7 +983,7 @@ export const generateTranslationExercises = async (
   const shortPast = pastExercisesContext ? `\n\n[PAST EXERCISES TO AVOID REPEATS]:\n${pastExercisesContext.substring(0, 5000)}` : '';
   const shortMistakes = mistakesContext ? `\n\n[STUDENT MISTAKES (AREAS TO IMPROVE)]:\n${mistakesContext.substring(0, 5000)}` : '';
 
-  const masterPrompt = `ROLE:
+  const masterPromptPrefix = `ROLE:
 You are an expert English Language Content Creator and AI Pedagogue specializing in adaptive, highly personalized language practice.
 
 MASTER GENERATION PIPELINE - EXECUTE IN THIS EXACT SEQUENTIAL ORDER:
@@ -996,18 +996,9 @@ Second, examine [LESSON / TOPIC CONTEXT]. Review the topics, grammar theory, voc
 
 STEP 3: ANALYZE FREQUENT MISTAKES & WEAKNESSES
 Third, examine [STUDENT MISTAKES (AREAS TO IMPROVE)]. Review the frequent errors, grammar pitfalls, and difficult words recorded for this student.
-- ADAPTIVE DIFFICULTY: If the student frequently makes errors in a specific area, incorporate targeted practice sentences for those weaknesses. As their error rate decreases and accuracy improves, dynamically increase vocabulary difficulty and sentence complexity.
+- ADAPTIVE DIFFICULTY: If the student frequently makes errors in a specific area, incorporate targeted practice sentences for those weaknesses. As their error rate decreases and accuracy improves, dynamically increase vocabulary difficulty and sentence complexity.`;
 
-STEP 4: APPLY SELECTED GENERATION SCOPE
-Fourth, review the material selected by the student/teacher for this generation run:
-- Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'Vocabulary from recent lessons'}
-- Selected CEFR Level: ${isGrammar ? 'Grammar Database Match' : (level || 'B2')}
-- Number of Sentences: ${numSentences}
-
-STEP 5: GENERATE NATURAL, LOGICAL SENTENCES
-Synthesize Steps 1-4 to generate ${numSentences} unique, natural, and highly realistic translation/puzzle exercises.
-
-CRITICAL QUALITY RULES:
+  const qualityAndOutputRules = `CRITICAL QUALITY RULES:
 - ZASADA ŻELAZNA - KOLEJNOŚĆ WIDZENIA KONTEKSTU: Master Prompt w pierwszej kolejności analizuje profil kursanta i jego wytyczne, następnie sprawdza historię lekcji oraz często popełniane błędy, a na koniec uwzględnia wybrany przez kursanta zakres materiału do wygenerowania!
 - ZASADA ŻELAZNA - LOGIKA I KONTEKST ŻYCIOWY (IRONCLAD SEMANTIC REALISM): Wyjściowe zdania (zarówno po angielsku, jak i po polsku) MUSISZ tworzyć w 100% logiczne, sensowne, praktyczne i realistyczne. Kategorycznie zakazuje się generowania stwierdzeń dziwacznych, sztucznych, bezmyślnych kalk językowych lub zdań brzmiących niedorzecznie.
 - ZASADA ŻELAZNA - BEZWZGLĘDNA SPÓJNOŚĆ I NATURALNOŚĆ POLSKICH TŁUMACZEŃ (NATURAL POLISH TRANSLATION):
@@ -1019,10 +1010,20 @@ CRITICAL QUALITY RULES:
 
 ${CRIBRO_SENTENCE_NATURALNESS}`;
 
-  const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}${shortMistakes}${buildUsedSentencesBlock(excludeSentences)}`;
-  const customBlock = customPrompt ? `\n\n[ADDITIONAL INSTRUCTIONS / PROMPT OVERRIDE]:\n${customPrompt}` : '';
+  const buildPromptForCount = (count: number, usedList: string[]) => {
+    const step4and5 = `STEP 4: APPLY SELECTED GENERATION SCOPE
+Fourth, review the material selected by the student/teacher for this generation run:
+- Target Vocabulary List: ${words.length > 0 ? words.join(', ') : 'Vocabulary from recent lessons'}
+- Selected CEFR Level: ${isGrammar ? 'Grammar Database Match' : (level || 'B2')}
+- Number of Sentences: ${count}
 
-  const finalPrompt = `${masterPrompt}${studentContextBlock}${customBlock}
+STEP 5: GENERATE NATURAL, LOGICAL SENTENCES
+Synthesize Steps 1-4 to generate ${count} unique, natural, and highly realistic translation/puzzle exercises.`;
+
+    const studentContextBlock = `${shortProfile}${shortLesson}${shortPast}${shortMistakes}${buildUsedSentencesBlock(usedList)}`;
+    const customBlock = customPrompt ? `\n\n[ADDITIONAL INSTRUCTIONS / PROMPT OVERRIDE]:\n${customPrompt}` : '';
+
+    return `${masterPromptPrefix}\n\n${step4and5}\n\n${qualityAndOutputRules}${studentContextBlock}${customBlock}
 
 CRITICAL RULE: The field \`polish_translation\` MUST NEVER be in English. It MUST be the Polish translation. Do NOT output English in the polish_translation field.
 
@@ -1040,6 +1041,7 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     }
   ]
 }`;
+  };
 
   const preferredModels = modelsOverride && modelsOverride.length > 0 ? modelsOverride : PREFERRED_AI_MODELS;
   // Guard TUŻ PRZED wywołaniem dostawcy, POZA pętlą retry poniżej — inaczej
@@ -1052,112 +1054,97 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     preferredModels.forEach(assertHomeworkModelAllowed);
   }
 
-  const MAX_RETRIES = 3;
-  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+  const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. IRONCLAD RULE: Every generated sentence MUST be strictly logical, natural, and make complete real-world sense to teach authentic context (never generate senseless or bizarre sentences just to test vocabulary). Always prioritize natural logic, practical communication context, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
+
+  const geminiConfig = {
+    responseMimeType: "application/json",
+    responseSchema: sentenceGeneratorSchema,
+    thinkingConfig: { thinkingBudget: 0 },
+  };
+
+  const parseAndExtractExercises = (responseText: string, modelUsed: string): TranslationExercise[] => {
+    let jsonText = extractJSON(responseText || "");
+    let parsedRaw: any = null;
     try {
-      const systemInstruction = "You are an expert English Language Content Creator specializing in adaptive, personalized language practice. IRONCLAD RULE: Every generated sentence MUST be strictly logical, natural, and make complete real-world sense to teach authentic context (never generate senseless or bizarre sentences just to test vocabulary). Always prioritize natural logic, practical communication context, and strict JSON output. SPECIAL INSTRUCTION FOR PUZZLE CHUNKS: 1) If the target sentence has FEWER THAN 8 words (< 8 words): split into mostly SINGLE WORDS or small pairs (e.g. phrasal verbs 'look up', prepositions 'in the'). 2) If the target sentence has 8 OR MORE WORDS (>= 8 words): group into LARGER logical phrase chunks (2-4 words per chunk, e.g. 'I decided to go', 'to the grocery store', 'after work'). Limit long sentences to 3 to 5 chunks maximum so it is achievable and serves as a good warmup before typing.";
+      parsedRaw = JSON.parse(jsonText);
+    } catch (parseErr) {
+      console.warn("JSON parse error in parseAndExtractExercises:", parseErr);
+    }
 
-      const geminiConfig = {
-        responseMimeType: "application/json",
-        responseSchema: sentenceGeneratorSchema,
-        ...(modelsOverride ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+    let sentenceList: any[] = [];
+    if (Array.isArray(parsedRaw)) {
+      sentenceList = parsedRaw;
+    } else if (parsedRaw && Array.isArray(parsedRaw.sentences)) {
+      sentenceList = parsedRaw.sentences;
+    }
+
+    return sentenceList.map((item: any) => {
+      const polishSentence = item.polish_translation || item.polishSentence || '';
+      const englishTranslation = item.english_sentence || item.englishTranslation || '';
+      const targetWord = item.target_word_used || item.targetWord || '';
+      const hint = item.hint || (targetWord ? `Użyj słówka: '${targetWord}'` : '');
+
+      return {
+        polishSentence,
+        englishTranslation,
+        hint,
+        puzzleChunks: item.puzzleChunks || undefined,
+        modelUsed,
       };
+    }).filter(ex => ex.polishSentence && ex.englishTranslation);
+  };
 
-      let fallbackRes1 = await generateTextWithUnifiedFallback(
-        finalPrompt,
+  const collectedExercises: TranslationExercise[] = [];
+  const currentExcluded = [...(excludeSentences || [])];
+
+  const MAX_REFILL_ATTEMPTS = 3;
+  for (let refillAttempt = 1; refillAttempt <= MAX_REFILL_ATTEMPTS; refillAttempt++) {
+    const missingCount = numSentences - collectedExercises.length;
+    if (missingCount <= 0) break;
+
+    const currentPrompt = buildPromptForCount(missingCount, currentExcluded);
+
+    try {
+      const fallbackRes = await generateTextWithUnifiedFallback(
+        currentPrompt,
         systemInstruction,
         preferredModels,
         geminiConfig,
         onModelAttempt,
         { taskName: 'Generowanie zdań ćwiczeniowych', category: modelsOverride ? 'homework' : 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
       );
-      let responseText = fallbackRes1.text;
-      let modelUsed = fallbackRes1.modelUsed;
 
-      // Szybka ścieżka: sprawdź, czy krok 1 zwrócił już poprawny JSON ze zdaniami
-      let hasValidSentences = false;
-      try {
-        const quickCheck = JSON.parse(extractJSON(responseText || ""));
-        const list = Array.isArray(quickCheck) ? quickCheck : (quickCheck?.sentences || []);
-        if (Array.isArray(list) && list.length >= numSentences) {
-          hasValidSentences = true;
-        }
-      } catch {
-        hasValidSentences = false;
-      }
-
-      // Krok 2: Weryfikacja uruchamiana tylko wtedy, gdy krok 1 nie zwrócił pełnego zestawu zdań
-      if (!hasValidSentences) {
-        const verificationPrompt = `Przeanalizuj poniższe wygenerowane zdania w formacie JSON:
-${responseText}
-
-TWOJE ZADANIE: Sprawdź spójność logiczną i sens każdego zdania. Upewnij się, że zdania są w 100% logiczne, sensowne i naturalne w realnym świecie, a nie robotyczne, dziwaczne czy sztuczne. Zdania mają uczyć poprawnego, autentycznego kontekstu! Jeśli jakiekolwiek zdanie jest bez sensu, sztuczne lub dziwne, OD RAZU popraw je na w pełni logiczne i życiowe, zachowując docelowe słownictwo.
-PAMIĘTAJ: Pole \`polish_translation\` (lub \`polishSentence\`) MUSI być ZAWSZE po polsku. Pole \`english_sentence\` (lub \`englishTranslation\`) MUSI być ZAWSZE po angielsku. Upewnij się, że nie pozamieniałeś języków miejscami!
-
-Zwróć skorygowany wynik WYŁĄCZNIE jako poprawny obiekt JSON, zachowując dokładnie tę samą strukturę (klucze).`;
-
-        let fallbackRes2 = await generateTextWithUnifiedFallback(
-          verificationPrompt,
-          systemInstruction,
-          preferredModels,
-          geminiConfig,
-          onModelAttempt,
-          { taskName: 'Weryfikacja logiczna zdań (krok 2)', category: modelsOverride ? 'homework' : 'sentence-gen', timeoutMs: 8000, maxRetries: 1 }
-        );
-        if (fallbackRes2.text) {
-          responseText = fallbackRes2.text;
-          modelUsed = fallbackRes2.modelUsed;
-        }
-      }
-
-      let jsonText = extractJSON(responseText || "");
-      let parsedRaw: any = null;
-      try {
-        parsedRaw = JSON.parse(jsonText);
-      } catch (parseErr) {
-        console.warn(`JSON parse error on attempt ${attempt}:`, parseErr);
-      }
-
-      let sentenceList: any[] = [];
-      if (Array.isArray(parsedRaw)) {
-        sentenceList = parsedRaw;
-      } else if (parsedRaw && Array.isArray(parsedRaw.sentences)) {
-        sentenceList = parsedRaw.sentences;
-      }
-
-      const exercises: TranslationExercise[] = sentenceList.map((item: any) => {
-        const polishSentence = item.polish_translation || item.polishSentence || '';
-        const englishTranslation = item.english_sentence || item.englishTranslation || '';
-        const targetWord = item.target_word_used || item.targetWord || '';
-        const hint = item.hint || (targetWord ? `Użyj słówka: '${targetWord}'` : '');
-
-        return {
-          polishSentence,
-          englishTranslation,
-          hint,
-          puzzleChunks: item.puzzleChunks || undefined,
-          modelUsed,
-        };
-      }).filter(ex => ex.polishSentence && ex.englishTranslation);
-
-      const freshExercises = filterRepeatedSentences(
-        exercises,
-        excludeSentences || [],
+      const parsedExercises = parseAndExtractExercises(fallbackRes.text, fallbackRes.modelUsed);
+      const freshBatch = filterRepeatedSentences(
+        parsedExercises,
+        currentExcluded,
         (ex) => [ex.englishTranslation, ex.polishSentence]
       );
 
-      if (freshExercises.length > 0) {
-        return freshExercises;
+      for (const ex of freshBatch) {
+        if (collectedExercises.length < numSentences) {
+          collectedExercises.push(ex);
+          currentExcluded.push(ex.englishTranslation, ex.polishSentence);
+        }
       }
-      console.warn(`Attempt ${attempt}: Received empty or only repeated exercises, retrying...`);
-    } catch (error: any) {
-      console.error(`Error generating translation exercises on attempt ${attempt}:`, error);
-      if (attempt === MAX_RETRIES) {
-        throw new Error(error.message || "Failed to generate translation exercises.");
+
+      if (collectedExercises.length >= numSentences) {
+        break;
+      }
+      console.warn(`[generateTranslationExercises] Refill attempt ${refillAttempt}: Mamy ${collectedExercises.length}/${numSentences} zdań. Dogenerowywanie brakujących ${numSentences - collectedExercises.length}...`);
+    } catch (err: any) {
+      console.error(`[generateTranslationExercises] Błąd podczas próby ${refillAttempt}:`, err);
+      if (refillAttempt === MAX_REFILL_ATTEMPTS && collectedExercises.length === 0) {
+        throw new Error(err.message || "Failed to generate translation exercises.");
       }
     }
   }
-  return [];
+
+  if (collectedExercises.length < numSentences) {
+    console.warn(`[generateTranslationExercises] Ostrzeżenie: Nie udało się wygenerować pełnego zestawu zdań (${collectedExercises.length}/${numSentences}). Zwracam wygenerowane zdania.`);
+  }
+
+  return collectedExercises;
 };
 
 export const evaluateTranslations = async (
@@ -1253,9 +1240,13 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
     try {
       const systemInstruction = "You are a fair, intelligent AI Language Evaluator. Evaluate translations strictly according to the rubric and return valid JSON. CRITICAL PUNCTUATION RULE: Do NOT deduct points or penalize scores for missing or incorrect punctuation/capitalization (punctuation is needed/good practice, but must NOT lower the score).";
 
+      const isSingleSentence = exercises.length === 1;
+      const evalTimeoutMs = isSingleSentence ? 12000 : (modelsOverride ? 15000 : 25000);
+
       const geminiConfig = {
         responseMimeType: "application/json",
         responseSchema: evaluationResultSchema,
+        thinkingConfig: { thinkingBudget: 0 },
       };
 
       const fallbackRes = await generateTextWithUnifiedFallback(
@@ -1264,7 +1255,11 @@ Return ONLY a valid JSON object matching this schema. No markdown, no extra conv
         preferredModels,
         geminiConfig,
         onModelAttempt,
-        { taskName: 'Ocena i analiza tłumaczeń zdań', category: modelsOverride ? 'homework' : 'evaluation' }
+        {
+          taskName: 'Ocena i analiza tłumaczeń zdań',
+          category: modelsOverride ? 'homework' : 'evaluation',
+          timeoutMs: evalTimeoutMs,
+        }
       );
       const responseText = fallbackRes.text;
       const modelUsed = fallbackRes.modelUsed;

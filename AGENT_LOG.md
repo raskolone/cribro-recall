@@ -6400,3 +6400,28 @@ wyłącznie przez konto nauczyciela (isAdmin() ma pełne prawo zapisu), więc
 nie wymaga zmiany reguł.
 
 - **Decyzja 26.09.2026:** `handleMarkAsDone` w `HomeworkScreen.tsx` ("szybkie oznaczenie jako zrobione") świadomie NIE wysyła maila do kursanta. Mail idzie wyłącznie przez pełną ścieżkę oceny (`handleSaveReview` → `/api/homework/notify-graded`). Nie traktować braku maila tutaj jako buga w przyszłości.
+
+---
+
+2026-09-26 — Antigravity / Gemini 2.5 Flash
+
+Zadanie: Naprawa trzech błędów w module Full Practice / tłumaczenia zdań:
+1. `generateTranslationExercises` czasem generowało tylko 1 zdanie zamiast pełnego zestawu (`numSentences`).
+2. `evaluateTranslations` trwało zbyt długo (narzut thinking mode i wysoki timeout).
+3. Różne typy ćwiczeń z tej samej lekcji generowały identyczne zdania bazowe.
+
+Zrobione:
+- `services/geminiService.ts`:
+  - `generateTranslationExercises`: usunięto przedwczesny return przy częściowym zestawie (`if (freshExercises.length > 0) return freshExercises;`). Wprowadzono pętlę uzupełniającą (do 3 prób refill), która zbiera wygenerowane zdania, przekazuje dotychczas zebrane i wykluczone zdania jako listę zakazaną, dynamicznie prosi model o brakującą liczbę zdań (`missingCount = numSentences - collectedExercises.length`) i zwraca pełen zestaw (lub loguje ostrzeżenie, jeśli po 3 próbach nie udało się osiągnąć `numSentences`).
+  - `evaluateTranslations`: dodano `thinkingConfig: { thinkingBudget: 0 }` do `geminiConfig` oraz zmniejszono timeout dla pojedynczego sprawdzania zdania (`exercises.length === 1`) z 25s do 12s, zachowując pełny mechanizm retry/fallback na alternatywne modele.
+- `services/homeworkGenerator.ts`:
+  - `generateWordOrder`: dodano wstrzykiwanie bloku wykluczeń `${buildUsedSentencesBlock(req.excludeSentences)}` oraz filtrowanie powtórzonych zdań przez `filterRepeatedSentences(items, req.excludeSentences || [], ...)`.
+  - `generateHomeworkSet`: zmieniono współbieżne `Promise.allSettled` na sekwencyjne generowanie sekcji, agregując zdania z poprzednich sekcji (`accumulatedExcluded`) i przekazując je do kolejnych generatorów, zapobiegając duplikacji zdań w różnych typach ćwiczeń.
+- `components/dashboard/AIExerciseGeneratorScreen.tsx`:
+  - Rozszerzono `usedSentencesRef.current` o rejestrowanie zdań zarówno dla trybu `translation` (angielskie i polskie), jak i `correction` (`erroneousSentence`, `correctSentence`), dzięki czemu przełączanie trybów w obrębie sesji zachowuje wykluczenia.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 573/573 testów zaliczonych (38 suites, 0 fail).
+- Utworzono branch `fix/full-practice-bugs`.
+
