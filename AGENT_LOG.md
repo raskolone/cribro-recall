@@ -6398,3 +6398,5 @@ Nowe pole `isEmptySubmission` (w skrypcie, jeszcze nieużyte na
 produkcji) nie jest ograniczone przez `firestore.rules` — dopisywane
 wyłącznie przez konto nauczyciela (isAdmin() ma pełne prawo zapisu), więc
 nie wymaga zmiany reguł.
+
+- **Decyzja 26.09.2026:** `handleMarkAsDone` w `HomeworkScreen.tsx` ("szybkie oznaczenie jako zrobione") świadomie NIE wysyła maila do kursanta. Mail idzie wyłącznie przez pełną ścieżkę oceny (`handleSaveReview` → `/api/homework/notify-graded`). Nie traktować braku maila tutaj jako buga w przyszłości.

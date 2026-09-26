@@ -118,7 +118,6 @@ test('buildStaticHomeworkNote: statyczna notatka zawiera wołacz, temat i link, 
 
   assert.ok(note.startsWith('Hej, Bartłomieju!'));
   assert.ok(note.includes('From Symptom to Solution: Troubleshooting an Aircraft Problem'));
-  assert.ok(note.includes('Link do zadań: https://app.maciej.pro/hw?token=abc123.'));
   assert.ok(note.includes('Daj znać, jak Ci poszło!'));
   // Ten sam temat nie może się powtórzyć (topicTitle i lessonTopics są identyczne).
   const topicOccurrences = note.split('Troubleshooting an Aircraft Problem').length - 1;
@@ -155,7 +154,6 @@ test('buildStaticHomeworkNote: wersja EN dla kursanta anglojęzycznego', async (
 
   assert.ok(note.startsWith('Hi Anna!'));
   assert.ok(note.includes('Business Idioms'));
-  assert.ok(note.includes('Access link: https://app.maciej.pro/hw?token=xyz789.'));
   assert.ok(note.includes('Let me know how it goes!'));
 });
 

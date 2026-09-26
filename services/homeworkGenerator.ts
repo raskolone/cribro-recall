@@ -300,15 +300,13 @@ export function buildStaticHomeworkNote(params: BuildStaticHomeworkNoteParams): 
     const firstName = formatOnlyFirstName(studentName);
     const greeting = firstName ? `Hi ${firstName}!` : 'Hi!';
     const topicText = topic || 'a review set';
-    const linkFragment = link ? ` Access link: ${link}.` : '';
-    return `${greeting} Following our last lesson, I've prepared a set of practice exercises for you: ${topicText}.${linkFragment} Let me know how it goes!`;
+    return `${greeting} Following our last lesson, I've prepared a set of practice exercises for you: ${topicText}. Let me know how it goes!`;
   }
 
   const vocative = toPolishVocative(studentName);
   const greeting = vocative ? `Hej, ${vocative}!` : 'Cześć!';
   const topicText = topic || 'zestaw powtórkowy';
-  const linkFragment = link ? ` Link do zadań: ${link}.` : '';
-  return `${greeting} Po naszej ostatniej lekcji przygotowałem dla Ciebie zestaw ćwiczeń: ${topicText}.${linkFragment} Daj znać, jak Ci poszło!`;
+  return `${greeting} Po naszej ostatniej lekcji przygotowałem dla Ciebie zestaw ćwiczeń: ${topicText}. Daj znać, jak Ci poszło!`;
 }
 
 /**

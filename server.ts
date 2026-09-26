@@ -2396,6 +2396,15 @@ export function createApp() {
       const userData = userSnap.data() || {};
       const nowIso = new Date().toISOString();
 
+      if (taskId) {
+        const taskRef = adminDb.collection('specialTasks').doc(taskId);
+        const taskSnap = await taskRef.get();
+        if (taskSnap.exists && taskSnap.data()?.emailGradedNotificationSent) {
+          console.log(`[notify-graded] Powiadomienie dla zadania ${taskId} zostało już wysłane (idempotency).`);
+          return res.status(200).json({ ok: true, skipped: true, reason: 'Already sent' });
+        }
+      }
+
       // Aktualizacja profilu kursanta (wyskakujący pop-up na żywo w aplikacji)
       await userDocRef.update({
         hasGradedHomework: true,
@@ -2458,6 +2467,16 @@ export function createApp() {
 
           if (response.ok) {
             console.log(`[Graded Homework Email Sent] Do ${studentEmail} dla zadania ${taskId}`);
+            if (taskId) {
+              try {
+                await adminDb.collection('specialTasks').doc(taskId).update({
+                  emailGradedNotificationSent: true,
+                  emailGradedNotificationSentAt: nowIso
+                });
+              } catch (updateErr) {
+                console.error(`Nie udało się zapisać flagi idempotency dla ${taskId}:`, updateErr);
+              }
+            }
           } else {
             console.warn(`[Graded Homework Email Warning] Resend status ${response.status}`);
           }
