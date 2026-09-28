@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import {
   collection,
   doc,
@@ -16,6 +16,30 @@ import { StudentGroup, ScratchpadDocument } from '../types';
 import { Group, normalizeGroup } from '../types/group';
 
 const GROUPS_COLLECTION = 'groups';
+
+/**
+ * Grupy widoczne dla zalogowanego lektora/admina, przez `/api/groups`
+ * (Admin SDK po stronie serwera, filtr po roli i `teacherProfileId`).
+ *
+ * To jedyne poprawne źródło listy grup dla widoków lektora — bezpośrednie
+ * zapytanie klienckie bez `where` na kolekcji `groups` (jak stara
+ * `getGroups()` poniżej) trafia w regułę Firestore, która wymaga, żeby
+ * KAŻDY zwrócony dokument spełniał `teacherProfileId == uid` lub
+ * `uid in memberProfileIds` — bez takiego filtra w zapytaniu odmawia
+ * całego `list`, więc lektor (nie-admin) dostawał permission-denied,
+ * cicho połykane przez `.catch(() => [])` u wołających.
+ */
+export async function fetchGroupsForCaller(): Promise<Group[]> {
+  const token = await auth.currentUser?.getIdToken();
+  const res = await fetch('/api/groups', {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  const data = await res.json().catch(() => ({} as any));
+  if (!res.ok) {
+    throw new Error(data.error || 'Nie udało się pobrać grup');
+  }
+  return (data.groups || []).map(normalizeGroup);
+}
 
 export async function getGroups(): Promise<StudentGroup[]> {
   try {

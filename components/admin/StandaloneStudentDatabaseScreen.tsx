@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { doc, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
 import { User, LessonRecord } from '../../types';
+import { Group } from '../../types/group';
 import { getAllUsers, updateCachedUser, addCachedUser, removeCachedUser, UserWithId } from '../../services/userService';
+import { fetchGroupsForCaller, ensureCanonicalGroupScratchpad } from '../../services/groupService';
+import { findLegacyGroupUserIdsCoveredByCanonical, filterCanonicalGroupsForCrm } from '../../utils/groupFilters';
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { createLessonRecordWithVocabularySet, getAllLessonRecordsForTeacher } from '../../services/lessonRecord';
@@ -58,7 +62,8 @@ import {
   ChevronUp,
   LayoutGrid,
   Table,
-  ArrowDownAZ
+  ArrowDownAZ,
+  Loader2
 } from 'lucide-react';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
@@ -82,6 +87,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   onRefreshUsers,
 }) => {
   const { language } = useLanguage();
+  const { user: teacherProfile } = useAuth();
   const [users, setUsers] = useState<User[]>(initialUsers || []);
   const [lessons, setLessons] = useState<LessonRecord[]>(initialLessons || []);
   const [isLoading, setIsLoading] = useState(!initialUsers || initialUsers.length === 0);
@@ -92,6 +98,15 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
   const [isExpanded, setIsExpanded] = useState(false);
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
   const [sortBy, setSortBy] = useState<'activity' | 'alphabetical'>('activity');
+
+  // Grupy kanoniczne (kolekcja `groups`, model Group/GroupWithMembers) — osobne
+  // od pseudo-kursantów `users` z flagą `isGroup` (stary model par/grup 1:1).
+  const [canonicalGroups, setCanonicalGroups] = useState<Group[]>([]);
+  const [scratchpadLoadingGroupId, setScratchpadLoadingGroupId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchGroupsForCaller().then(setCanonicalGroups).catch(() => {});
+  }, []);
 
   // Modals & Dropdown state
   const [isAddDropdownOpen, setIsAddDropdownOpen] = useState(false);
@@ -219,9 +234,21 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
     return userLessons.sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0];
   };
 
+  // Legacy pseudo-kursanci reprezentujący grupy (`isGroup`/`lessonType==='Group'`),
+  // które mają już odpowiednik w kanonicznej kolekcji `groups` — dedupikujemy
+  // z widoku CRM (bez usuwania dokumentu `users/{uid}`), żeby ta sama grupa nie
+  // pokazywała się dwa razy: raz jako karta grupy, raz jako stary pseudo-kursant.
+  const legacyGroupUserIdsCoveredByCanonical = useMemo(
+    () => findLegacyGroupUserIdsCoveredByCanonical(users, canonicalGroups),
+    [users, canonicalGroups]
+  );
+
   // Filter & Sort users based on active tab, search query, and sortBy
   const filteredUsers = useMemo(() => {
     const list = users.filter((s) => {
+      // Legacy grupa z odpowiednikiem w kanonicznej kolekcji `groups` — pokazujemy tylko kartę grupy.
+      if (s.id && legacyGroupUserIdsCoveredByCanonical.has(s.id)) return false;
+
       // Role filter - only students & groups (exclude pure admins/teachers unless taking lessons)
       if (s.role === 'admin' && !s.isGroup && !s.level) return false;
 
@@ -261,7 +288,46 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
       const nameB = b.displayName || b.name || b.username || '';
       return nameA.localeCompare(nameB, 'pl');
     });
-  }, [users, lessons, activeTab, searchQuery, sortBy]);
+  }, [users, lessons, activeTab, searchQuery, sortBy, legacyGroupUserIdsCoveredByCanonical]);
+
+  // Grupy kanoniczne widoczne w tej samej zakładce/wyszukiwarce co kursanci
+  // indywidualni — pojawiają się w "Wszyscy" i "Grupy & Pary", znikają
+  // z "Indywidualni (1:1)"; zakładka "Aktywni" pokazuje tylko status active.
+  const filteredCanonicalGroups = useMemo(
+    () => filterCanonicalGroupsForCrm(canonicalGroups, activeTab, searchQuery),
+    [canonicalGroups, activeTab, searchQuery]
+  );
+
+  const studentsById = useMemo(() => {
+    const map = new Map<string, User>();
+    users.forEach((s) => {
+      const id = String((s as any).uid || s.id || (s as any).profileId || s.username || '').trim();
+      if (id) map.set(id, s);
+    });
+    return map;
+  }, [users]);
+
+  const handleOpenGroupNotebook = async (group: Group) => {
+    if (group.activeScratchpadId) {
+      openScratchpadTab(group.activeScratchpadId, group.name);
+      return;
+    }
+    if (!teacherProfile) return;
+
+    setScratchpadLoadingGroupId(group.id);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const teacherUid = String((teacherProfile as any).uid || teacherProfile.id || '').trim();
+      const teacherName = (teacherProfile as any).displayName || teacherProfile.firstName || 'Lektor CRIBRO';
+      const scratchpadId = await ensureCanonicalGroupScratchpad(group, { uid: teacherUid, name: teacherName }, token);
+      setCanonicalGroups((prev) => prev.map((g) => (g.id === group.id ? { ...g, activeScratchpadId: scratchpadId } : g)));
+      openScratchpadTab(scratchpadId, group.name);
+    } catch (err) {
+      console.error('[StandaloneStudentDatabaseScreen] Błąd otwierania notatnika grupy:', err);
+    } finally {
+      setScratchpadLoadingGroupId(null);
+    }
+  };
 
   // Selection handlers
   const handleToggleSelectUser = (id: string) => {
@@ -634,7 +700,8 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                 <span>Moi kursanci & Grupy (CRM)</span>
               </h1>
               <span className="text-xs font-mono font-bold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
-                {filteredUsers.length} {filteredUsers.length === 1 ? 'rekord' : 'rekordów'}
+                {filteredUsers.length + filteredCanonicalGroups.length}{' '}
+                {filteredUsers.length + filteredCanonicalGroups.length === 1 ? 'rekord' : 'rekordów'}
               </span>
             </div>
             <p className="text-xs text-content-muted mt-0.5">
@@ -923,7 +990,90 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
       {/* ── CRM CONTENT: CARDS VIEW LUB NOTION TABLE ── */}
       {viewMode === 'cards' ? (
         <div className="space-y-6">
-          {filteredUsers.length === 0 ? (
+          {filteredCanonicalGroups.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
+              {filteredCanonicalGroups.map((group) => {
+                const isArchived = group.status === 'archived';
+                return (
+                  <Card
+                    key={group.id}
+                    className={`flex flex-col justify-between border ${
+                      isArchived ? 'opacity-60 bg-base-200/50 border-line-weak' : 'border-purple-500/30 hover:border-purple-500/50'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-start mb-3">
+                        <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1.5">
+                          <Users size={12} /> Grupa · {group.level}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 text-xs font-medium rounded-md ${
+                            isArchived ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          }`}
+                        >
+                          {isArchived ? 'Zarchiwizowana' : 'Aktywna'}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-text-hi mb-1">{group.name}</h3>
+                      {group.company && (
+                        <p className="text-xs text-content-muted mb-2 font-medium">Firma: {group.company}</p>
+                      )}
+                      <div className="mt-3 pt-3 border-t border-line-weak/50 space-y-1">
+                        <p className="text-xs text-content-muted mb-1">
+                          {(group.memberProfileIds || []).length} kursantów:
+                        </p>
+                        {(group.memberProfileIds || []).map((memberId) => {
+                          const member = studentsById.get(memberId);
+                          const name = member
+                            ? (`${member.firstName || ''} ${member.lastName || ''}`.trim() || member.displayName || member.username || 'Kursant')
+                            : 'Nieznany kursant';
+                          return (
+                            <div key={memberId} className="text-xs text-text-mute truncate flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400/60 shrink-0" />
+                              <span className="truncate">{name}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-line-weak flex items-center gap-2">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setEditingGroup(null);
+                          setIsGroupModalOpen(true);
+                        }}
+                        className="flex items-center gap-1.5"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        Edytuj
+                      </Button>
+                      {!isArchived && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleOpenGroupNotebook(group)}
+                          disabled={scratchpadLoadingGroupId === group.id}
+                          className="flex items-center gap-1.5"
+                          title="Otwórz wspólny notatnik A4"
+                        >
+                          {scratchpadLoadingGroupId === group.id ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <BookOpen className="w-3.5 h-3.5 text-accent" />
+                          )}
+                          Notatnik
+                        </Button>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+
+          {filteredUsers.length === 0 && filteredCanonicalGroups.length === 0 ? (
             <div className="p-12 text-center rounded-2xl border border-line-strong bg-base-200/50">
               <Users size={34} className="mx-auto mb-2 opacity-30 text-content-muted" />
               <p className="font-semibold text-text-hi text-base">Nie znaleziono kursantów ani grup</p>
@@ -931,7 +1081,7 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
                 Zmień filtr lub dodaj nowego kursanta / grupę do bazy.
               </p>
             </div>
-          ) : (
+          ) : filteredUsers.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
               {(isExpanded || pageSize === 'all'
                 ? filteredUsers

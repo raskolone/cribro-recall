@@ -2500,10 +2500,12 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               )}
             </div>
             <div className="flex items-center gap-2 text-[11px] text-text-faint mt-0.5">
-              <span className={`truncate ${!docData.studentId ? 'text-amber-400 font-semibold' : ''}`}>
-                {docData.studentId && docData.studentName
-                  ? `Kursant: ${docData.studentName}`
-                  : 'Brak przypisanego kursanta'}
+              <span className={`truncate ${!docData.studentId && !docData.groupId ? 'text-amber-400 font-semibold' : ''}`}>
+                {docData.groupId && docData.groupName
+                  ? `Grupa: ${docData.groupName} · ${(docData.memberIds || []).length} kursantów`
+                  : docData.studentId && docData.studentName
+                    ? `Kursant: ${docData.studentName}`
+                    : 'Brak przypisanego kursanta'}
               </span>
               <span aria-hidden>•</span>
               {saveStatus === 'saving' ? (

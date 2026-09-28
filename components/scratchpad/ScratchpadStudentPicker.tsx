@@ -1,6 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { FileEdit, Plus, Search, Trash2, Users, X } from 'lucide-react';
-import { NoteDraft, StudentGroup, User } from '../../types';
+import { NoteDraft, User } from '../../types';
+import { Group } from '../../types/group';
+import { filterGroupsForPicker } from '../../utils/groupFilters';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { formatDraftDate } from '../../services/draftsService';
 
@@ -14,8 +16,8 @@ interface ScratchpadStudentPickerProps {
    * indywidualnych — każda ma jeden wspólny notatnik (`notebooks/{groupId}`
    * w opisie zlecenia, w tym repo `sp_group_{groupId}`, patrz `groupService.ts`).
    */
-  groups?: StudentGroup[];
-  onPickGroup?: (group: StudentGroup) => void;
+  groups?: Group[];
+  onPickGroup?: (group: Group) => void;
   title?: string;
   subtitle?: string;
   icon?: React.ReactNode;
@@ -100,11 +102,7 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
     );
   }, [students, searchTerm]);
 
-  const matchingGroups = useMemo(() => {
-    const needle = searchTerm.trim().toLowerCase();
-    if (!needle) return groups;
-    return groups.filter(g => g.name.toLowerCase().includes(needle));
-  }, [groups, searchTerm]);
+  const matchingGroups = useMemo(() => filterGroupsForPicker(groups, searchTerm), [groups, searchTerm]);
 
   if (!isOpen) return null;
 
@@ -286,7 +284,7 @@ export const ScratchpadStudentPicker: React.FC<ScratchpadStudentPickerProps> = (
                   <span className="min-w-0 flex-1">
                     <span className="block text-xs font-semibold text-content truncate">{group.name}</span>
                     <span className="block text-[11px] text-text-faint truncate">
-                      {group.memberIds.length} kursantów
+                      {(group.memberProfileIds || []).length} kursantów
                     </span>
                   </span>
                 </button>

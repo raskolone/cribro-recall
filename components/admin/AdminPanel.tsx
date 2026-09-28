@@ -24,7 +24,8 @@ import gsap from 'gsap';
 import { motion, AnimatePresence } from 'motion/react';
 import { collection, getDocs, getDoc, doc, deleteDoc, query, orderBy, setDoc, writeBatch, updateDoc, addDoc, where, onSnapshot } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../../firebase';
-import { User, PracticeLog, FlashcardSet, LessonRecord, GeneratedLessonScenario, RejectedNotionItem, StudentGroup, NoteDraft } from '../../types';
+import { User, PracticeLog, FlashcardSet, LessonRecord, GeneratedLessonScenario, RejectedNotionItem, NoteDraft } from '../../types';
+import { Group } from '../../types/group';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { generateLessonSummary, generateBulkLessonSummary } from '../../services/geminiService';
@@ -61,7 +62,7 @@ import AdminMailingScreen from './AdminMailingScreen';
 import { GroupsManager } from './GroupsManager';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import GroupManagementModal from './GroupManagementModal';
-import { getGroups, ensureGroupScratchpad } from '../../services/groupService';
+import { fetchGroupsForCaller, ensureCanonicalGroupScratchpad } from '../../services/groupService';
 import LessonSummaryEmailModal from './LessonSummaryEmailModal';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { subscribeDrafts, createDraft, renameDraft, deleteDraft } from '../../services/draftsService';
@@ -147,10 +148,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   const [assistantOverlayOpen, setAssistantOverlayOpen] = useState(false);
   const [showGroupsModal, setShowGroupsModal] = useState(false);
   const [homeworkInitialGroupId, setHomeworkInitialGroupId] = useState<string | null>(null);
-  const [teacherGroups, setTeacherGroups] = useState<StudentGroup[]>([]);
+  const [teacherGroups, setTeacherGroups] = useState<Group[]>([]);
 
   useEffect(() => {
-    getGroups().then(setTeacherGroups).catch(() => {});
+    fetchGroupsForCaller().then(setTeacherGroups).catch(() => {});
   }, []);
   const [notebookDrafts, setNotebookDrafts] = useState<NoteDraft[]>([]);
 
@@ -6112,7 +6113,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         isOpen={isNotebookPickerOpen}
         onClose={() => setIsNotebookPickerOpen(false)}
         students={users}
-        groups={teacherGroups}
+        groups={teacherGroups.filter(g => g.status === 'active')}
         title="Wybierz notatnik kursanta"
         subtitle="Otwórz dedykowany notatnik z historii lekcji lub rozpocznij pusty szkic."
         onPick={(picked) => {
@@ -6123,10 +6124,13 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           setIsNotebookPickerOpen(false);
           if (!currentUser?.id) return;
           try {
-            const scratchpadId = await ensureGroupScratchpad(group, {
-              uid: currentUser.id,
-              name: currentUser.name || currentUser.displayName || 'Lektor',
-            });
+            const token = await auth.currentUser?.getIdToken();
+            const scratchpadId = await ensureCanonicalGroupScratchpad(
+              group,
+              { uid: currentUser.id, name: currentUser.name || currentUser.displayName || 'Lektor' },
+              token
+            );
+            setTeacherGroups(prev => prev.map(g => (g.id === group.id ? { ...g, activeScratchpadId: scratchpadId } : g)));
             openScratchpadTab(scratchpadId, group.name);
           } catch (err) {
             console.error('[AdminPanel] Błąd otwierania notatnika grupy:', err);
