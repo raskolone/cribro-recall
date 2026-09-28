@@ -18,7 +18,8 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
-import { RecallItem, RetrievalResult, StudentGroup } from '../../types';
+import { RecallItem, RetrievalResult } from '../../types';
+import { Group } from '../../types/group';
 import { getDueRecallItems, logReviewSession, recordRetrievalAttempt } from '../../services/recallItems';
 import { getGroupsForStudent } from '../../services/groupService';
 import { openScratchpadTab } from '../../services/scratchpadService';
@@ -154,7 +155,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   const [revealed, setRevealed] = useState(false);
   const [results, setResults] = useState<RetrievalResult[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  const [studentGroups, setStudentGroups] = useState<StudentGroup[]>([]);
+  const [studentGroups, setStudentGroups] = useState<Group[]>([]);
 
   useEffect(() => {
     if (!targetId) {

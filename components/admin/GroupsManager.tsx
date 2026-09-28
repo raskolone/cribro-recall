@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import i18n from 'i18next';
 import { Users, Plus, Edit2, Archive, Check, X, AlertCircle, Loader2, BookOpen, Search } from 'lucide-react';
 import { Group, GroupWithMembers, User } from '../../types';
+import { normalizeGroup } from '../../types/group';
 import { auth } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import { ensureCanonicalGroupScratchpad } from '../../services/groupService';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 
@@ -31,6 +33,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [scratchpadLoadingGroupId, setScratchpadLoadingGroupId] = useState<string | null>(null);
 
   // Modal tworzenia / edycji
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,7 +57,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Nie udało się pobrać grup');
-      setGroups(data.groups || []);
+      setGroups((data.groups || []).map(normalizeGroup));
     } catch (err: any) {
       setError(err.message || 'Wystąpił błąd podczas ładowania grup');
     } finally {
@@ -191,6 +194,41 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
   // Filtrujemy tylko aktywnych kursantów do dodawania do grupy
   const activeStudents = students.filter(s => !s.isArchived && !s.isSuspended && s.statusWspolpracy !== 'Nieaktywny');
 
+  // Mapa profileId -> kursant, do wypisania członków grupy na karcie bez ponownego czytania surowego dokumentu.
+  const studentsById = useMemo(() => {
+    const map = new Map<string, User>();
+    students.forEach(s => {
+      const id = String((s as any).uid || s.id || (s as any).profileId || s.username || '').trim();
+      if (id) map.set(id, s);
+    });
+    return map;
+  }, [students]);
+
+  const handleOpenNotebook = async (group: Group) => {
+    if (!onOpenScratchpad) return;
+
+    if (group.activeScratchpadId) {
+      onOpenScratchpad(group.activeScratchpadId);
+      return;
+    }
+
+    if (!isTeacherProfileReady || !teacherProfile) return;
+
+    setScratchpadLoadingGroupId(group.id);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const teacherUid = String((teacherProfile as any).uid || teacherProfile.id || '').trim();
+      const teacherName = (teacherProfile as any).displayName || teacherProfile.firstName || 'Lektor CRIBRO';
+      const scratchpadId = await ensureCanonicalGroupScratchpad(group, { uid: teacherUid, name: teacherName }, token);
+      setGroups(prev => prev.map(g => (g.id === group.id ? { ...g, activeScratchpadId: scratchpadId } : g)));
+      onOpenScratchpad(scratchpadId);
+    } catch (err: any) {
+      setError(err.message || 'Nie udało się otworzyć notatnika grupy');
+    } finally {
+      setScratchpadLoadingGroupId(null);
+    }
+  };
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 md:p-6">
       {/* Nagłówek */}
@@ -268,12 +306,31 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
                   )}
 
                   <div className="mt-4 pt-4 border-t border-line-weak/50">
-                    <div className="flex items-center justify-between text-xs text-text-2">
+                    <div className="flex items-center justify-between text-xs text-text-2 mb-2">
                       <span>Liczba kursantów:</span>
                       <span className="font-bold text-text-hi bg-ink px-2 py-0.5 rounded border border-line-weak">
                         {memberCount}
                       </span>
                     </div>
+                    {memberCount > 0 && (
+                      <div className="space-y-1">
+                        {(group.memberProfileIds || []).map(memberId => {
+                          const member = studentsById.get(memberId);
+                          const name = member
+                            ? (`${member.firstName || ''} ${member.lastName || ''}`.trim() || member.displayName || member.username || 'Kursant')
+                            : 'Nieznany kursant';
+                          return (
+                            <div key={memberId} className="text-xs text-text-mute truncate flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary/50 shrink-0" />
+                              <span className="truncate">
+                                {name}
+                                {member?.email ? ` · ${member.email}` : ''}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -288,15 +345,20 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
                       <Edit2 className="w-3.5 h-3.5" />
                       Edytuj
                     </Button>
-                    {group.activeScratchpadId && onOpenScratchpad && (
+                    {!isArchived && onOpenScratchpad && (
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => onOpenScratchpad(group.activeScratchpadId!)}
+                        onClick={() => handleOpenNotebook(group)}
+                        disabled={scratchpadLoadingGroupId === group.id}
                         className="flex items-center gap-1.5"
                         title="Otwórz wspólny notatnik A4"
                       >
-                        <BookOpen className="w-3.5 h-3.5 text-accent" />
+                        {scratchpadLoadingGroupId === group.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <BookOpen className="w-3.5 h-3.5 text-accent" />
+                        )}
                         Notatnik
                       </Button>
                     )}

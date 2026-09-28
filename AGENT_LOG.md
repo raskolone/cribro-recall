@@ -6509,3 +6509,30 @@ middleware `requireFirebaseAdmin`-chronionych endpointów w `server.ts`,
 ale wyłącznie w warstwie odczytu `req.adminUid` vs `req.userUid` i dodania
 wczesnego guardu błędu — sama logika middleware (weryfikacja tokenu,
 sprawdzanie roli) nie zmieniona.
+
+2026-09-28 — Claude Code / Sonnet 5
+
+Zadanie: SLICE 1 grup — unifikacja modelu Group/StudentGroup, lista członków na karcie grupy, wspólny notatnik grupowy (przycisk „Notatnik" zawsze widoczny, tworzony na klik, nie w useEffect), naprawa `getGroupsForStudent` tak, by kursant-członek widział swoją grupę w TodayScreen.
+
+Zrobione:
+- `types/group.ts`: dodano `normalizeGroup(raw): Group` — jedno miejsce sprowadzające dokument kanoniczny lub legacy (`memberIds`/`teacherId`) do `Group`; nie rzuca na `null`/`undefined`/uszkodzonych danych.
+- `services/groupService.ts`:
+  - `getGroupsForStudent` odpytuje teraz OBA pola (`memberProfileIds` i `memberIds`) dwoma zapytaniami array-contains, merguje po ID i przepuszcza przez `normalizeGroup` — wcześniej odpytywał tylko legacy `memberIds`, więc kursant zapisany w kanonicznym `memberProfileIds` (czyli każda grupa tworzona dziś przez `GroupsManager`/backend) nie widział swojej grupy wcale.
+  - Dodano nową funkcję `ensureCanonicalGroupScratchpad(group: Group, teacher, idToken?)` — osobna od istniejącej legacy `ensureGroupScratchpad(group: StudentGroup, ...)`, żeby nie zmieniać zachowania dwóch istniejących wywołań legacy (`GroupManagementModal.tsx`, `AdminPanel.tsx` → `ScratchpadStudentPicker`). Nowa funkcja: tworzy dokument notatnika idempotentnie (`getDoc` przed `setDoc`, nigdy nie nadpisuje istniejącej treści), a powiązanie `activeScratchpadId` zapisuje WYŁĄCZNIE przez `PUT /api/groups/:id` (Admin SDK) — nigdy przez `updateDoc` z klienta.
+- `components/admin/GroupsManager.tsx`: karta grupy pokazuje listę członków (imię + e-mail z propa `students`, nieznane ID → „Nieznany kursant", bez crasha). Przycisk „Notatnik" renderuje się teraz zawsze dla aktywnych grup (wcześniej tylko gdy `activeScratchpadId` już istniał) i na klik woła `ensureCanonicalGroupScratchpad`; drugi klik używa już zapisanego `activeScratchpadId` i nie tworzy nic ponownie. Odpowiedź `/api/groups` przepuszczana przez `normalizeGroup`.
+- `components/dashboard/TodayScreen.tsx`: typ `studentGroups` zmieniony z legacy `StudentGroup` na kanoniczny `Group` (naprawa `getGroupsForStudent` naprawia to automatycznie — kafelek notatnika grupowego u kursanta zacznie się pojawiać).
+- `tests/groupNormalize.test.ts` (nowy): 5 testów `normalizeGroup` — dokument kanoniczny, legacy, pusty/`null`/uszkodzony (typy niepoprawne w tablicach), normalizacja `status`, pomijanie pustych pól opcjonalnych.
+
+Jak otwiera się notatnik grupowy: `GroupsManager` → `onOpenScratchpad` (prop) → w `AdminPanel.tsx` (zakładka „groups") i w `StandaloneStudentDatabaseScreen.tsx` (modal „Moduł Grup Zajęciowych", ok. L1480) prop jest już podłączony do `openScratchpadTab(scratchpadId)` z `services/scratchpadService.ts` (otwiera nową kartę `/scratchpad?id=...`). U kursanta: `TodayScreen.tsx` już renderował kafelki grupowe na podstawie `getGroupsForStudent` — sam fix zapytania wystarczył, nie trzeba było zmieniać UI kafelka.
+
+Nie dokończone / do sprawdzenia:
+- Krok 6 (opcjonalny przycisk „Zadaj pracę domową" z preselekcją grupy) — POMINIĘTY. `TeacherWorkScreen`/`HomeworkComposer` już mają `initialGroupId`, ale ten stan (`homeworkInitialGroupId`) i nawigacja `setActiveTab('homework')` żyją w `AdminPanel.tsx`, a `GroupsManager` renderuje się też osobno w `StandaloneStudentDatabaseScreen.tsx` bez dostępu do tego stanu — czyste dodanie wymagałoby przekazania nowego callbacka przez oba miejsca montowania, więc uznałem to za wykraczające poza „< ~30 linii" z opisu zadania.
+- Testy automatyczne pokrywają wyłącznie `normalizeGroup` (czysta funkcja). `getGroupsForStudent` i `ensureCanonicalGroupScratchpad` dotykają Firestore/`fetch` — w repo nie ma istniejącej infrastruktury do mockowania `firebase/firestore` w testach node:test, więc zostały bez automatycznych testów; wymagają weryfikacji manualnej wg DoD z zadania (grupa "Jacobs" z 2 członkami, klik „Notatnik" dwa razy, konto kursanta-członka).
+- Ręczna weryfikacja w przeglądarce NIE wykonana w tej sesji (brak dostępu do interaktywnej przeglądarki).
+- Znaleziono (nie naprawiono, poza zakresem): `GET /api/groups` na backendzie filtruje grupy lektora tylko po `teacherProfileId` — grupa zapisana z legacy `teacherId` (przez `GroupManagementModal.tsx`) nie pojawi się w ogóle na liście `GroupsManager`. Nie dotyczy to kursanta (naprawione w tym slice'ie), tylko widoku lektora dla ewentualnych starych, legacy grup.
+
+Decyzje architektoniczne:
+- Nie zmieniano istniejącej legacy `ensureGroupScratchpad(group: StudentGroup, teacher)` — dodano równoległą `ensureCanonicalGroupScratchpad`, żeby zero ryzyka regresji dla dwóch istniejących wywołań legacy (`GroupManagementModal.tsx`, `AdminPanel.tsx`/`ScratchpadStudentPicker`), które zostają nietknięte zgodnie z „legacy StudentGroup zostaje tylko do odczytu" z treści zadania.
+- Nie synchronizowano pola `memberIds` w dokumencie `scratchpads/{id}` przy zmianie składu grupy (`PUT /api/groups/:id`) — reguła edycji notatnika grupowego (`firestore.rules` ok. L726) i tak czyta uprawnienia DYNAMICZNIE z `groups/{groupId}.memberProfileIds` przez `get()`, a notatnik ma dodatkowo `allowStudentEdit: true`, więc statyczna kopia `memberIds` w dokumencie notatnika nie ma wpływu na uprawnienia — dopisanie synchronizacji byłoby zmianą bez efektu.
+
+Ryzyka: `firestore.rules` i `storage.rules` — NIETKNIĘTE (potwierdzone `git diff --stat`). Zmiany dotknęły wyłącznie warstwę klienta (`services/groupService.ts`, `components/`) — żaden endpoint w `server.ts` nie był modyfikowany, middleware autoryzacji bez zmian. Weryfikacja: `npx tsc --noEmit` — 0 błędów; `npm test` — 582/582 (577 + 5 nowych); `npm run build` — przechodzi, `api/index.js` przebudowany.

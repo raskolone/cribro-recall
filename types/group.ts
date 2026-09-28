@@ -74,3 +74,45 @@ export interface GroupHomeworkFanOutResult {
   assignments: GroupHomeworkAssignmentItem[];
   createdAt: string;
 }
+
+/**
+ * Sprowadza surowy dokument grupy (kanoniczny albo legacy `StudentGroup`,
+ * albo częściowo uszkodzony) do kształtu `Group`. Widoki nie mają czytać
+ * `memberProfileIds`/`teacherProfileId` bezpośrednio z surowych danych —
+ * zawsze przez tę funkcję, żeby legacy pola (`memberIds`/`teacherId`) nie
+ * trzeba było znać w każdym miejscu z osobna.
+ */
+export function normalizeGroup(raw: unknown): Group {
+  const data = (raw && typeof raw === 'object' ? raw : {}) as Record<string, any>;
+
+  const memberProfileIds = Array.isArray(data.memberProfileIds)
+    ? data.memberProfileIds.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
+    : Array.isArray(data.memberIds)
+      ? data.memberIds.filter((id: unknown): id is string => typeof id === 'string' && id.trim().length > 0)
+      : [];
+
+  const group: Group = {
+    id: typeof data.id === 'string' ? data.id : '',
+    name: typeof data.name === 'string' ? data.name : '',
+    teacherProfileId:
+      typeof data.teacherProfileId === 'string'
+        ? data.teacherProfileId
+        : typeof data.teacherId === 'string'
+          ? data.teacherId
+          : '',
+    status: data.status === 'archived' ? 'archived' : 'active',
+    level: typeof data.level === 'string' ? data.level : '',
+    memberProfileIds,
+    createdAt: typeof data.createdAt === 'string' ? data.createdAt : '',
+    updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : '',
+  };
+
+  if (typeof data.company === 'string' && data.company.trim()) {
+    group.company = data.company;
+  }
+  if (typeof data.activeScratchpadId === 'string' && data.activeScratchpadId.trim()) {
+    group.activeScratchpadId = data.activeScratchpadId;
+  }
+
+  return group;
+}

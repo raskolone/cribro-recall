@@ -13,6 +13,7 @@ import {
   serverTimestamp,
 } from 'firebase/firestore';
 import { StudentGroup, ScratchpadDocument } from '../types';
+import { Group, normalizeGroup } from '../types/group';
 
 const GROUPS_COLLECTION = 'groups';
 
@@ -57,15 +58,26 @@ export async function getGroupsForTeacher(teacherId: string): Promise<StudentGro
   }
 }
 
-export async function getGroupsForStudent(studentId: string): Promise<StudentGroup[]> {
+/**
+ * Grupy, których dany kursant jest członkiem — po polu kanonicznym
+ * (`memberProfileIds`) LUB legacy (`memberIds`). Firestore nie umożliwia OR
+ * na dwóch polach w jednym zapytaniu, więc odpytujemy dwa razy i mergujemy
+ * po ID, tak by kursant zapisany tylko przez stary klient nie zniknął.
+ */
+export async function getGroupsForStudent(studentId: string): Promise<Group[]> {
   if (!studentId) return [];
   try {
-    const q = query(
-      collection(db, GROUPS_COLLECTION),
-      where('memberIds', 'array-contains', studentId)
-    );
-    const snap = await getDocs(q);
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() } as StudentGroup));
+    const [byCanonicalField, byLegacyField] = await Promise.all([
+      getDocs(query(collection(db, GROUPS_COLLECTION), where('memberProfileIds', 'array-contains', studentId))),
+      getDocs(query(collection(db, GROUPS_COLLECTION), where('memberIds', 'array-contains', studentId))),
+    ]);
+
+    const byId = new Map<string, Group>();
+    [...byCanonicalField.docs, ...byLegacyField.docs].forEach((d) => {
+      const normalized = normalizeGroup({ id: d.id, ...d.data() });
+      if (normalized.id) byId.set(normalized.id, normalized);
+    });
+    return Array.from(byId.values());
   } catch (err) {
     console.warn(`[groupService] Błąd pobierania grup dla kursanta ${studentId}:`, err);
     return [];
@@ -165,6 +177,73 @@ export async function ensureGroupScratchpad(
 
   // Zapisujemy powiązanie w dokumencie grupy
   await updateGroup(group.id, { activeScratchpadId: docId });
+
+  return docId;
+}
+
+/**
+ * Wariant `ensureGroupScratchpad` dla kanonicznego modelu `Group`
+ * (`memberProfileIds` / `teacherProfileId`, z `services/groupService.ts` +
+ * `/api/groups`). W odróżnieniu od wariantu legacy powyżej, powiązanie
+ * `activeScratchpadId` zapisuje WYŁĄCZNIE przez backend (`PUT /api/groups/:id`,
+ * Admin SDK) — nigdy przez `updateDoc` z klienta, zgodnie z zasadą "read nie
+ * mutuje danych" z lekcji z 20.09. Tworzenie dokumentu notatnika jest
+ * idempotentne: drugi klik (gdy zapis `activeScratchpadId` już się udał)
+ * kończy się wcześniejszym `return`; jeśli pierwszy klik zdążył utworzyć
+ * dokument, ale PUT się nie powiódł, kolejny klik NIE nadpisuje treści
+ * (sprawdzamy `getDoc` przed `setDoc`).
+ */
+export async function ensureCanonicalGroupScratchpad(
+  group: Group,
+  teacher: { uid: string; name: string },
+  idToken?: string | null
+): Promise<string> {
+  if (group.activeScratchpadId) {
+    return group.activeScratchpadId;
+  }
+
+  const docId = `sp_group_${group.id}`;
+  const ref = scratchpadDocRef(docId);
+  const existing = await getDoc(ref);
+
+  if (!existing.exists()) {
+    const pin = normalizeAccessCode(generateAccessCode(6));
+    const now = new Date().toISOString();
+    const initial = getInitialScratchpadContent(group.name);
+
+    const newDoc: ScratchpadDocument = {
+      id: docId,
+      pin,
+      groupId: group.id,
+      groupName: group.name,
+      memberIds: group.memberProfileIds || [],
+      studentName: group.name,
+      teacherUid: teacher.uid,
+      teacherName: teacher.name || 'Lektor CRIBRO',
+      title: `Notatnik: ${group.name}${group.level ? ` (${group.level})` : ''}`,
+      contentHtml: initial.html,
+      contentText: initial.text,
+      allowStudentEdit: true,
+      version: 1,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    await setDoc(ref, newDoc);
+    await ensureScratchpadPinIndex(pin, docId);
+  }
+
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (idToken) headers.Authorization = `Bearer ${idToken}`;
+  const res = await fetch(`/api/groups/${group.id}`, {
+    method: 'PUT',
+    headers,
+    body: JSON.stringify({ activeScratchpadId: docId }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({} as any));
+    throw new Error(data.message || 'Nie udało się przypisać notatnika do grupy.');
+  }
 
   return docId;
 }
