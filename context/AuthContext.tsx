@@ -13,10 +13,13 @@ import {
   linkWithPopup
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot, deleteField } from 'firebase/firestore';
+import i18n from 'i18next';
 
 interface AuthContextType {
   user: User | null;
   isAuthReady: boolean;
+  authError: string | null;
+  clearAuthError: () => void;
   login: () => Promise<void>;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
   registerWithEmail: (email: string, pass: string) => Promise<void>;
@@ -73,6 +76,8 @@ const getDaysBetween = (date1: string | Date, date2: string | Date): number => {
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const clearAuthError = () => setAuthError(null);
 
   useEffect(() => {
     let userUnsub: (() => void) | null = null;
@@ -128,6 +133,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
               // Profil w Firestore nie istnieje — blokujemy cichą rejestrację.
               // Inwariant: FirebaseAuth.uid === canonicalProfileId === users/{profileId}
               console.warn(`[Auth] Konto ${firebaseUser.uid} (${firebaseUser.email}) nie istnieje w Firestore. Wylogowuję.`);
+              setAuthError(i18n.t('To konto nie ma jeszcze przypisanego profilu kursanta. Skontaktuj się z lektorem.'));
               signOut(auth).catch(console.error);
               setUser(null);
               setIsAuthReady(true);
@@ -455,7 +461,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthReady, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, connectGoogleWorkspace, connectGoogleCalendar, linkGoogleAccount }}>
+    <AuthContext.Provider value={{ user, isAuthReady, authError, clearAuthError, login, loginWithEmail, registerWithEmail, loginAnonymously, logout, updateUserStreak, connectGoogleDrive, connectGoogleWorkspace, connectGoogleCalendar, linkGoogleAccount }}>
       {children}
     </AuthContext.Provider>
   );

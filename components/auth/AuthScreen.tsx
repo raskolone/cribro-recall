@@ -5,18 +5,29 @@ import { useAuth } from '../../context/AuthContext';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
 import i18n from "i18next";
+import { mapFirebaseAuthErrorToMessage } from '../../utils/authErrorMessages';
 
 interface AuthScreenProps {
   onBack?: () => void;
 }
 
 const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
-  const { login, loginWithEmail, registerWithEmail } = useAuth();
+  const { login, loginWithEmail, registerWithEmail, authError, clearAuthError } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Kursant zalogował się poprawnie do Firebase Auth, ale bez powiązanego
+  // profilu w Firestore — AuthContext wylogowuje go automatycznie i wystawia
+  // ten komunikat zamiast cichego powrotu do ekranu logowania bez wyjaśnienia.
+  useEffect(() => {
+    if (authError) {
+      setError(authError);
+      clearAuthError();
+    }
+  }, [authError, clearAuthError]);
 
   const handleGoogleLogin = async () => {
     setError('');
@@ -53,16 +64,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
         await registerWithEmail(normalizedEmail, password);
       }
     } catch (err: any) {
-      let message = err.message || 'Authentication failed';
-      if (err.code === 'auth/invalid-email') message = 'Wprowadź poprawny format adresu e-mail lub login.';
-      else if (
-        err.code === 'auth/user-not-found' ||
-        err.code === 'auth/wrong-password' ||
-        err.code === 'auth/invalid-credential'
-      ) message = 'Nieprawidłowy login lub hasło.';
-      else if (err.code === 'auth/too-many-requests') message = 'Zbyt wiele nieudanych prób logowania. Odczekaj chwilę.';
-      else if (err.code === 'auth/email-already-in-use') message = 'User is already registered';
-      else if (err.code === 'auth/weak-password') message = 'Password should be at least 6 characters';
+      const message = mapFirebaseAuthErrorToMessage(err.code, err.message || 'Authentication failed');
       setError(message);
       setIsLoading(false);
     }
@@ -103,15 +105,15 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
         <form onSubmit={handleEmailAuth} className="space-y-4">
           <div>
             <label className="block text-sm font-bold text-text-faint dark:text-content mb-1">
-              {isLoginMode ? i18n.t("E-mail lub login") : i18n.t("Adres e-mail")}
+              {i18n.t("Adres e-mail")}
             </label>
             <input
               type={isLoginMode ? "text" : "email"}
-              autoComplete={isLoginMode ? "username" : "email"}
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-4 py-2 bg-ink backdrop-blur-md border border-line-strong text-text-hi placeholder-content-muted rounded-xl focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-200"
-              placeholder={isLoginMode ? i18n.t("twoj.email@firma.pl lub login") : i18n.t("twoj.email@firma.pl")}
+              placeholder={i18n.t("twoj.email@firma.pl")}
               required
             />
           </div>

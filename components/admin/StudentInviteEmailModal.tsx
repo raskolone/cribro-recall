@@ -19,9 +19,11 @@ import {
   BellOff
 } from 'lucide-react';
 import { doc, updateDoc } from 'firebase/firestore';
+import i18n from 'i18next';
 import { db, auth } from '../../firebase';
 import { User } from '../../types';
 import { buildWelcomeEmail } from '../../services/homeworkEmail';
+import { changePasswordBeforeInvite } from '../../utils/studentInviteFlow';
 import { formatPolishGreeting } from '../../utils/polishVocative';
 import { useFirebaseAdminApi } from '../../hooks/useFirebaseAdminApi';
 import Button from '../ui/Button';
@@ -218,6 +220,21 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error('Brak aktywnej sesji administratora/lektora.');
 
+      // 1. Zapis nowego/zaktualizowanego hasła w Firebase Auth — PRZED wysyłką
+      //    maila i BEZ połykania błędu. Wcześniej ten krok mógł się nie udać
+      //    (np. brak uprawnień, rozjazd UID) i mimo to modal wysyłał mail z
+      //    danymi logowania i pokazywał "Zaproszenie wysłane pomyślnie" —
+      //    kursant dostawał instrukcje z hasłem, które nigdy nie trafiło do
+      //    jego konta.
+      const willChangePassword = Boolean(savePasswordToProfile && password && password !== student.tempPassword);
+      await changePasswordBeforeInvite(
+        willChangePassword,
+        () => changeUserPassword(student.id, password.trim()),
+        i18n.t(
+          'Nie udało się zapisać nowego hasła na koncie kursanta. Zaproszenie NIE zostało wysłane — sprawdź uprawnienia i spróbuj ponownie.'
+        )
+      );
+
       const fromAddressToUse = `${senderName.trim()} <${senderEmail.trim()}>`;
 
       const res = await fetch('/api/mailing/test-send', {
@@ -250,15 +267,9 @@ export const StudentInviteEmailModal: React.FC<StudentInviteEmailModalProps> = (
         invitationSentAt: new Date().toISOString(),
       };
 
-      // 1. Zapis nowego/zaktualizowanego hasła
-      if (savePasswordToProfile && password && password !== student.tempPassword) {
+      if (willChangePassword) {
         profileUpdates.tempPassword = password.trim();
         profileUpdates.requirePasswordChange = true;
-        try {
-          await changeUserPassword(student.id, password.trim());
-        } catch (pwErr) {
-          console.warn('Nie udało się zaktualizować hasła w Firebase Auth (może wymagać uprawnień admina):', pwErr);
-        }
       }
 
       // 2. Jeśli lektor zaznaczył aktualizację adresu e-mail

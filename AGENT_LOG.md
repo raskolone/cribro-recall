@@ -6567,3 +6567,33 @@ Decyzje architektoniczne:
 - `fetchGroupsForCaller()` w `services/groupService.ts` jest teraz jedynym poprawnym sposobem pobierania listy grup lektora z klienta — stara `getGroups()` (bezpośrednie zapytanie Firestore bez `where`) zostaje NIETKNIĘTA dla zgodności z `GroupManagementModal.tsx`/`HomeworkComposerV2.tsx`, ale nie powinna być używana w nowym kodzie (nie działa dla roli `teacher`, tylko dla `admin`).
 
 Ryzyka: `firestore.rules` i `storage.rules` — NIETKNIĘTE (potwierdzone `git status --short`). Zmiany dotknęły wyłącznie warstwę klienta (`services/groupService.ts`, `utils/`, `components/`) — żaden endpoint w `server.ts` nie był modyfikowany, middleware autoryzacji bez zmian. Weryfikacja: `npx tsc --noEmit` — 0 błędów; `npm test` — 594/594 (582 + 12 nowych); `npm run build` — przechodzi, `api/index.js` przebudowany.
+
+2026-09-28 (3) — Claude Code / Sonnet 5
+
+Zadanie: P0 logowanie kursantów — diagnoza (odczyt), migracja e-maili Auth↔Firestore dla zgłoszonych kont (produkcja), naprawa kodu przed testami na żywo (Część 2: E, D, A — zatwierdzone; F odłożone na osobne "OK").
+
+Zrobione — dane produkcyjne (skrypty tymczasowe w /tmp, bez zmian w repo):
+- Zdiagnozowano przyczynę: Firebase Auth kont starszych niż migracja "logowanie e-mailem" (2026-09-21) trzyma nadal placeholder `@student.vocabboost.com`, podczas gdy Firestore ma już prawdziwy e-mail kursanta — `signInWithEmailAndPassword` z prawdziwym e-mailem zawsze kończy się `auth/user-not-found`.
+- Zmigrowano Auth-e-mail (`adminAuth.updateUser(uid, {email, emailVerified:false})`, bez zmiany hasła) dla 4 kont po weryfikacji braku kolizji: Aleksander Ziółkowski, Bartłomiej Ciura, Aleksandra Skop, Kasia Skrzypiec. Backupy przed każdym zapisem w `/tmp/auth_backup_*.json`.
+- Kasia Skrzypiec: dodatkowo usunięto zduplikowane, puste konto Google (`1E2ANRd3DzPF6IGUOJ7d99hamS53`, zero śladów w żadnej kolekcji, potwierdzone dwukrotnie przed usunięciem) i dopiero potem przeniesiono jej prawdziwy e-mail na właściwe konto (`kiAP6g…`).
+- Wyjątki NIETKNIĘTE (na wyraźne polecenie): Monika Kowalska (`UzXmWZ…`, e-mail Firestore to prywatny e-mail lektora — artefakt testowy), Marta/`z2yaLt…` (konto testowe), Beata Nosek i Agnieszka Wyrozumska (nieaktywne, do archiwum), Konrad Cofór (`M04yLC…`, 0 powiązanych danych, do usunięcia przez lektora), duplikat Jerzego Główki (`lS87be…` realne dane/`specialTasks`, `Prvqxy…` logowanie Google bez danych — opisany, nierozwiązany).
+
+Zrobione — kod (Część 2, tylko E/D/A):
+- `context/AuthContext.tsx`: dodano `authError`/`clearAuthError` do kontekstu. Gdy zalogowany `uid` nie ma dokumentu `users/{uid}`, zamiast cichego `signOut` (tylko `console.warn`) ustawia teraz statyczny komunikat i18n ("To konto nie ma jeszcze przypisanego profilu kursanta...").
+- `components/auth/AuthScreen.tsx`: subskrybuje `authError` i pokazuje go w banerze błędu. Etykieta pola logowania ujednolicona do "Adres e-mail" (usunięto "E-mail lub login" i placeholder "...lub login") — login przez sam username NIE jest już reklamowany w UI, ale mapowanie `brak "@" → dopisz @student.vocabboost.com` w `handleEmailAuth` ZOSTAŁO (9 kont w Auth nadal ma ten placeholder — usunięcie złamałoby im logowanie). Komunikat dla `auth/invalid-email` zmieniony na "Wprowadź poprawny adres e-mail." (bez wzmianki o loginie).
+- `components/admin/StudentInviteEmailModal.tsx`: `changeUserPassword` przeniesiony PRZED wysyłkę maila (`fetch('/api/mailing/test-send')`) i jego błąd NIE jest już połykany — przerywa całą operację (`throw`), więc mail nie zostaje wysłany, a modal pokazuje `errorMessage` zamiast "Zaproszenie wysłane pomyślnie".
+- Nowe pliki (logika wydzielona do czystych funkcji, żeby dało się je testować bez renderowania Reacta/mockowania Firebase): `utils/authErrorMessages.ts` (`mapFirebaseAuthErrorToMessage`), `utils/studentInviteFlow.ts` (`changePasswordBeforeInvite`).
+- `pl.json`/`en.json`: trzy nowe klucze i18n dla powyższych komunikatów.
+- `tests/authLoginFixes.test.ts` (nowy, 7 testów): mapowanie błędu invalid-email bez słowa "login", pozostałe kody bez zmian, fallback dla nieznanego kodu; obecność i niepustość nowych kluczy i18n w obu plikach; `changePasswordBeforeInvite` — brak wywołania gdy nie trzeba, sukces, oraz błąd przerywający PRZED (symulowaną) wysyłką maila.
+
+Nie dokończone / do sprawdzenia:
+- Część 2, punkt F (flaga `GOOGLE_SIGNIN_ENABLED`, ukrycie przycisku Google, usunięcie wzmianek o Google z szablonów maili) — WYRAŹNIE ODŁOŻONE, czeka na osobne "OK". Istotne dla decyzji: konto `Prvqxy…` (Jerzy Główka, duplikat) loguje się WYŁĄCZNIE przez Google — wyłączenie przycisku odetnie mu jedyny dostęp.
+- Duplikat Jerzy Główka (`lS87be…` vs `Prvqxy…`) — opisany, brak decyzji/akcji.
+- Konrad Cofór, Beata Nosek, Agnieszka Wyrozumska — czekają na decyzję lektora (archiwizacja/usunięcie), nietknięte.
+- Ręczna weryfikacja logowania w przeglądarce dla zmigrowanych kont (Aleksander, Bartłomiej, Aleksandra, Kasia) NIE wykonana w tej sesji.
+
+Decyzje architektoniczne:
+- `changeUserPassword` w `StudentInviteEmailModal` przerywa CAŁĄ wysyłkę przy błędzie (nie tylko pomija krok zapisu hasła) — zgodnie z wprost zadanym wymaganiem "brak wysyłki maila" przy błędzie hasła; lektor musi naprawić przyczynę (uprawnienia/UID) i spróbować ponownie, zamiast dostać fałszywe potwierdzenie.
+- Domyślne mapowanie "brak @ → @student.vocabboost.com" w `AuthScreen.tsx` ZOSTAJE (nie usunięte), bo w Auth wciąż istnieje 9 kont z tym placeholderem — usunięcie złamałoby im logowanie bez migracji. Etykieta/placeholder/komunikat błędu zostały poprawione, żeby nie reklamować tego jako oficjalnej ścieżki logowania.
+
+Ryzyka: `firestore.rules` i `storage.rules` — NIETKNIĘTE. Żadne hasła nie były zmieniane, żadne maile nie zostały wysłane w trakcie diagnozy/migracji. Operacje na PRODUKCYJNYM Firebase Auth (4 zmiany e-maila + 1 usunięcie konta) wykonane wyłącznie po jawnym zatwierdzeniu uid przez lektora, z odczytem-weryfikacją po każdej zmianie i backupem przed każdym zapisem. Weryfikacja kodu: `npx tsc --noEmit` — 0 błędów; `npm test` — 601/601 (594 + 7 nowych); `npm run build` — przechodzi, `api/index.js` przebudowany.
