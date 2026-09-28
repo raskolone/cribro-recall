@@ -453,5 +453,7 @@
   "Nie udało się wczytać treści tego zadania. Możesz przejść do kolejnego ćwiczenia.": "This exercise couldn't be loaded. You can move on to the next one.",
   "Świetnie ułożone!": "Great job!",
   "Byłeś/Byłaś blisko!": "So close!",
-  "Miałeś/Miałaś wszystkie właściwe słowa — tylko szyk był inny. Poprawna kolejność:": "You had all the right words — just in a different order. The correct sentence:"
+  "Miałeś/Miałaś wszystkie właściwe słowa — tylko szyk był inny. Poprawna kolejność:": "You had all the right words — just in a different order. The correct sentence:",
+  "Nie udało się zidentyfikować profilu lektora. Zaloguj się ponownie i spróbuj ponownie.": "Could not identify your teacher profile. Please log in again and retry.",
+  "Profil lektora się ładuje, spróbuj za chwilę.": "Teacher profile is still loading, please try again in a moment."
 }

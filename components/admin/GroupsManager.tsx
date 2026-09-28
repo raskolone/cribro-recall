@@ -1,9 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import i18n from 'i18next';
 import { Users, Plus, Edit2, Archive, Check, X, AlertCircle, Loader2, BookOpen, Search } from 'lucide-react';
 import { Group, GroupWithMembers, User } from '../../types';
 import { auth } from '../../firebase';
+import { useAuth } from '../../context/AuthContext';
 import Button from '../ui/Button';
 import Card from '../ui/Card';
+
+// Statyczne komunikaty dla kodów błędów zwracanych przez /api/groups —
+// zamiast surowego komunikatu Firestore/serwera pokazujemy jawny tekst.
+const GROUP_ERROR_MESSAGES: Record<string, string> = {
+  missing_teacher_profile: i18n.t('Nie udało się zidentyfikować profilu lektora. Zaloguj się ponownie i spróbuj ponownie.'),
+};
+
+function resolveGroupErrorMessage(errorCode: string | undefined, fallback: string): string {
+  if (errorCode && GROUP_ERROR_MESSAGES[errorCode]) {
+    return GROUP_ERROR_MESSAGES[errorCode];
+  }
+  return fallback;
+}
 
 interface GroupsManagerProps {
   students: User[];
@@ -11,6 +26,8 @@ interface GroupsManagerProps {
 }
 
 export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenScratchpad }) => {
+  const { user: teacherProfile, isAuthReady } = useAuth();
+  const isTeacherProfileReady = isAuthReady && !!teacherProfile;
   const [groups, setGroups] = useState<Group[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -99,6 +116,11 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    if (!isTeacherProfileReady) {
+      setError(GROUP_ERROR_MESSAGES.missing_teacher_profile);
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     try {
@@ -121,7 +143,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
           }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Nie udało się zaktualizować grupy');
+        if (!res.ok) throw new Error(resolveGroupErrorMessage(data.error, data.message || 'Nie udało się zaktualizować grupy'));
       } else {
         // Create
         const res = await fetch('/api/groups', {
@@ -135,7 +157,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
           }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Nie udało się utworzyć grupy');
+        if (!res.ok) throw new Error(resolveGroupErrorMessage(data.error, data.message || 'Nie udało się utworzyć grupy'));
       }
 
       setIsModalOpen(false);
@@ -182,7 +204,12 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
             Twórz grupy, zarządzaj składem osobowym i przypisuj prace domowe całej grupie jednym kliknięciem (Fan-Out).
           </p>
         </div>
-        <Button onClick={handleOpenCreateModal} className="flex items-center gap-2">
+        <Button
+          onClick={handleOpenCreateModal}
+          disabled={!isTeacherProfileReady}
+          title={!isTeacherProfileReady ? i18n.t('Profil lektora się ładuje, spróbuj za chwilę.') : undefined}
+          className="flex items-center gap-2"
+        >
           <Plus className="w-4 h-4" />
           Nowa grupa
         </Button>
@@ -448,7 +475,7 @@ export const GroupsManager: React.FC<GroupsManagerProps> = ({ students, onOpenSc
                 >
                   Anuluj
                 </Button>
-                <Button type="submit" disabled={isSaving || !formData.name.trim()} className="flex items-center gap-2">
+                <Button type="submit" disabled={isSaving || !formData.name.trim() || !isTeacherProfileReady} className="flex items-center gap-2">
                   {isSaving && <Loader2 className="w-4 h-4 animate-spin" />}
                   {editingGroup ? 'Zapisz zmiany' : 'Utwórz grupę'}
                 </Button>

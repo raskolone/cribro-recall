@@ -305,7 +305,7 @@ import path from "path";
 import fs from "fs";
 import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore as getFirestore2 } from "firebase-admin/firestore";
+import { getFirestore as getFirestore2, FieldValue } from "firebase-admin/firestore";
 import { createHmac } from "crypto";
 import { GoogleGenAI as GoogleGenAI4, Type as Type4 } from "@google/genai";
 
@@ -2766,6 +2766,40 @@ function formatLessonDateDDMMYYYY(dateStr) {
   });
 }
 
+// utils/groupPayload.ts
+var MissingTeacherProfileError = class extends Error {
+  constructor() {
+    super("Nie uda\u0142o si\u0119 zidentyfikowa\u0107 profilu lektora. Zaloguj si\u0119 ponownie.");
+    this.code = "missing_teacher_profile";
+    this.name = "MissingTeacherProfileError";
+  }
+};
+function buildNewGroupPayload(teacherUid, groupId, input, nowIso) {
+  if (!teacherUid || typeof teacherUid !== "string") {
+    throw new MissingTeacherProfileError();
+  }
+  const cleanMemberIds = Array.isArray(input.memberProfileIds) ? Array.from(new Set(input.memberProfileIds.map((id) => String(id).trim()).filter(Boolean))) : [];
+  const payload = {
+    id: groupId,
+    name: input.name.trim(),
+    teacherProfileId: teacherUid,
+    status: "active",
+    level: (input.level || "B2").trim(),
+    memberProfileIds: cleanMemberIds,
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+  const company = input.company ? String(input.company).trim() : "";
+  if (company) {
+    payload.company = company;
+  }
+  const activeScratchpadId = input.activeScratchpadId ? String(input.activeScratchpadId).trim() : "";
+  if (activeScratchpadId) {
+    payload.activeScratchpadId = activeScratchpadId;
+  }
+  return payload;
+}
+
 // server.ts
 import crypto from "crypto";
 function mapToActualOpenAIModel(modelName) {
@@ -3349,29 +3383,29 @@ function createApp() {
   });
   app2.post("/api/groups", requireFirebaseAdmin, async (req, res) => {
     try {
-      const teacherUid = req.userUid;
+      const teacherUid = req.adminUid;
       const { name, level, company, memberProfileIds, activeScratchpadId } = req.body;
       if (!name || typeof name !== "string" || !name.trim()) {
         return res.status(400).json({ error: "invalid_name", message: "Nazwa grupy jest wymagana." });
       }
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
-      const cleanMemberIds = Array.isArray(memberProfileIds) ? Array.from(new Set(memberProfileIds.map((id) => String(id).trim()).filter(Boolean))) : [];
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-      const newGroupRef = adminDb.collection("groups").doc();
       const groupId = `grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
-      const groupPayload = {
-        id: groupId,
-        name: name.trim(),
-        teacherProfileId: teacherUid,
-        status: "active",
-        level: (level || "B2").trim(),
-        company: company ? String(company).trim() : void 0,
-        memberProfileIds: cleanMemberIds,
-        activeScratchpadId: activeScratchpadId ? String(activeScratchpadId).trim() : void 0,
-        createdAt: nowIso,
-        updatedAt: nowIso
-      };
+      let groupPayload;
+      try {
+        groupPayload = buildNewGroupPayload(
+          teacherUid,
+          groupId,
+          { name, level, company, memberProfileIds, activeScratchpadId },
+          nowIso
+        );
+      } catch (validationError) {
+        if (validationError instanceof MissingTeacherProfileError) {
+          return res.status(401).json({ error: validationError.code, message: validationError.message });
+        }
+        throw validationError;
+      }
       await adminDb.collection("groups").doc(groupId).set(groupPayload);
       res.json({ ok: true, group: groupPayload });
     } catch (error) {
@@ -3381,8 +3415,11 @@ function createApp() {
   app2.put("/api/groups/:id", requireFirebaseAdmin, async (req, res) => {
     try {
       const groupId = req.params.id;
-      const teacherUid = req.userUid;
+      const teacherUid = req.adminUid;
       const { name, level, company, status, memberProfileIds, activeScratchpadId } = req.body;
+      if (!teacherUid) {
+        return res.status(401).json({ error: "missing_teacher_profile", message: "Nie uda\u0142o si\u0119 zidentyfikowa\u0107 profilu lektora. Zaloguj si\u0119 ponownie." });
+      }
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       const groupRef = adminDb.collection("groups").doc(groupId);
@@ -3401,13 +3438,17 @@ function createApp() {
       };
       if (name && typeof name === "string") updates.name = name.trim();
       if (level && typeof level === "string") updates.level = level.trim();
-      if (company !== void 0) updates.company = company ? String(company).trim() : void 0;
+      if (company !== void 0) {
+        const trimmedCompany = company ? String(company).trim() : "";
+        updates.company = trimmedCompany || FieldValue.delete();
+      }
       if (status === "active" || status === "archived") updates.status = status;
       if (Array.isArray(memberProfileIds)) {
         updates.memberProfileIds = Array.from(new Set(memberProfileIds.map((id) => String(id).trim()).filter(Boolean)));
       }
       if (activeScratchpadId !== void 0) {
-        updates.activeScratchpadId = activeScratchpadId ? String(activeScratchpadId).trim() : void 0;
+        const trimmedScratchpadId = activeScratchpadId ? String(activeScratchpadId).trim() : "";
+        updates.activeScratchpadId = trimmedScratchpadId || FieldValue.delete();
       }
       await groupRef.update(updates);
       const updatedSnap = await groupRef.get();
@@ -3419,8 +3460,11 @@ function createApp() {
   app2.post("/api/groups/:id/assign-homework", requireFirebaseAdmin, async (req, res) => {
     try {
       const groupId = req.params.id;
-      const callerUid = req.userUid;
+      const callerUid = req.adminUid;
       const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
+      if (!callerUid) {
+        return res.status(401).json({ error: "missing_teacher_profile", message: "Nie uda\u0142o si\u0119 zidentyfikowa\u0107 profilu lektora. Zaloguj si\u0119 ponownie." });
+      }
       if (!sentences || !Array.isArray(sentences) || sentences.length === 0) {
         return res.status(400).json({ error: "missing_sentences", message: "Brak zada\u0144 w pracy domowej." });
       }
@@ -4017,6 +4061,20 @@ function createApp() {
       }
       const items = taskData.sentences || [];
       const normalizeSimple = (str) => String(str || "").toLowerCase().replace(/[.,!?;:"„”]/g, "").replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+      const isAnswerBlank = (val) => {
+        if (val === void 0 || val === null) return true;
+        if (typeof val === "string") return val.trim().length === 0;
+        if (Array.isArray(val)) return val.length === 0;
+        if (typeof val === "object") return Object.keys(val).length === 0;
+        return false;
+      };
+      const hasAnyAnswer = items.length === 0 || items.some((_, i) => !isAnswerBlank(answers[i]));
+      if (!hasAnyAnswer) {
+        return res.status(400).json({
+          error: "empty_submission",
+          message: "Nie udzielono \u017Cadnej odpowiedzi \u2014 uzupe\u0142nij przynajmniej jedno \u0107wiczenie przed wys\u0142aniem."
+        });
+      }
       const rows = [];
       const storedAnswers = {};
       items.forEach((item, i) => {
@@ -4581,6 +4639,14 @@ RESEND_API_KEY=${cleanKey}
       }
       const userData = userSnap.data() || {};
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
+      if (taskId) {
+        const taskRef = adminDb.collection("specialTasks").doc(taskId);
+        const taskSnap = await taskRef.get();
+        if (taskSnap.exists && taskSnap.data()?.emailGradedNotificationSent) {
+          console.log(`[notify-graded] Powiadomienie dla zadania ${taskId} zosta\u0142o ju\u017C wys\u0142ane (idempotency).`);
+          return res.status(200).json({ ok: true, skipped: true, reason: "Already sent" });
+        }
+      }
       await userDocRef.update({
         hasGradedHomework: true,
         lastGradedHomeworkId: taskId || "",
@@ -4637,6 +4703,16 @@ RESEND_API_KEY=${cleanKey}
           });
           if (response.ok) {
             console.log(`[Graded Homework Email Sent] Do ${studentEmail} dla zadania ${taskId}`);
+            if (taskId) {
+              try {
+                await adminDb.collection("specialTasks").doc(taskId).update({
+                  emailGradedNotificationSent: true,
+                  emailGradedNotificationSentAt: nowIso
+                });
+              } catch (updateErr) {
+                console.error(`Nie uda\u0142o si\u0119 zapisa\u0107 flagi idempotency dla ${taskId}:`, updateErr);
+              }
+            }
           } else {
             console.warn(`[Graded Homework Email Warning] Resend status ${response.status}`);
           }

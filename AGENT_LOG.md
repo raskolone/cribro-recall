@@ -6425,3 +6425,87 @@ Weryfikacja:
 - `npm test` — 573/573 testów zaliczonych (38 suites, 0 fail).
 - Utworzono branch `fix/full-practice-bugs`.
 
+
+---
+
+2026-09-28 — Claude Code / Sonnet 5
+
+Zadanie: Bugfix "Cannot use 'undefined' as a Firestore value (teacherProfileId)"
+przy tworzeniu grupy w GroupsManager ("Nowa grupa", moduł Zarządzanie Grupami
+Lekcyjnymi). Tryb: diagnoza read-only, potem minimalna poprawka przyczyny
+źródłowej.
+
+Przyczyna źródłowa: middleware `requireFirebaseAdmin` w `server.ts` ustawia
+`(req as any).adminUid`, natomiast handlery `POST /api/groups`,
+`PUT /api/groups/:id` i `POST /api/groups/:id/assign-homework` (wszystkie
+chronione tym middleware) czytały nieistniejące `(req as any).userUid` —
+zawsze `undefined`. W efekcie `teacherProfileId: teacherUid` trafiało do
+Firestore `.set()` jako `undefined`, co Admin SDK odrzuca. To samo pole
+`userUid` istnieje i jest poprawnie ustawiane przez `requireFirebaseAuth`
+(inny middleware) — pomyłka polegała na skopiowaniu nazwy pola z innego
+miejsca w pliku.
+
+Zrobione:
+- `server.ts`: w POST/PUT `/api/groups*` i `assign-homework` czytamy teraz
+  `(req as any).adminUid`; dodano jawny guard `401 missing_teacher_profile`
+  zamiast pozwalać, by `undefined` trafiło do zapisu.
+- Wydzielono budowę payloadu nowej grupy do `utils/groupPayload.ts`
+  (`buildNewGroupPayload`, `MissingTeacherProfileError`) — testowalne bez
+  Express/Firestore, rzuca jawny błąd przy braku `teacherUid` i nigdy nie
+  zwraca payloadu z polem `undefined` (opcjonalne `company`/
+  `activeScratchpadId` są pomijane, a nie ustawiane na `undefined`).
+- Przy okazji naprawiono ten sam wzorzec w `PUT /api/groups/:id`: czyszczenie
+  `company`/`activeScratchpadId` przez pusty string robiło
+  `updates.company = undefined` (Firestore `.update()` też to odrzuca) —
+  zamieniono na `FieldValue.delete()`.
+- `components/admin/GroupsManager.tsx`: przycisk "Nowa grupa" i submit
+  modala są zablokowane, dopóki `useAuth()` nie zwróci gotowego profilu
+  (`isAuthReady && user`); błędy z kodem `missing_teacher_profile` z
+  backendu mapowane na statyczny, przetłumaczony komunikat zamiast
+  surowego `data.error`.
+- `en.json`/`pl.json`: dodano dwa nowe klucze (komunikat błędu +
+  komunikat ładowania profilu).
+- `tests/groupPayload.test.ts`: nowy test (brak `teacherUid` → rzuca
+  `MissingTeacherProfileError`; poprawny `teacherUid` → payload bez
+  jakiegokolwiek pola `undefined`; opcjonalne pola pomijane, gdy puste).
+- Przebudowano `api/index.js` (`npm run build`) — to jest bundle
+  faktycznie wystawiany na Vercelu (CLAUDE.md sekcja 2), bez rebuildu fix
+  nie trafiłby na produkcję.
+
+Weryfikacja:
+- `npx tsc --noEmit` — 0 błędów.
+- `npm test` — 577/577 zielone (38 suites), w tym 4 nowe testy
+  `groupPayload.test.ts`. Baseline 573 + 4 nowe.
+- Ręcznie w przeglądarce NIE sprawdzone w tej sesji (brak dostępu do
+  interaktywnej przeglądarki) — Maciej powinien kliknąć "Nowa grupa" po
+  wdrożeniu i potwierdzić, że grupa zapisuje się i pojawia na liście.
+
+Nie dokończone / do sprawdzenia:
+- Manualna weryfikacja w UI (patrz wyżej) — nieodhaczona.
+- `firestore.rules` dla kolekcji `groups` nie było przedmiotem tego
+  zadania i nie było sprawdzane — jeśli reguły też odwołują się do
+  `teacherProfileId`/roli, warto to zweryfikować osobno.
+- `GroupManagementModal.tsx` + `services/groupService.ts` to osobna,
+  równoległa, klientocentryczna implementacja grup (inny model danych:
+  `StudentGroup`, pole `teacherId` zamiast `teacherProfileId`, zapis
+  bezpośrednio z klienta przez `setDoc`). Wygląda na nieużywaną ścieżkę
+  (nigdzie niewpięta w `StandaloneStudentDatabaseScreen.tsx`, który
+  renderuje `GroupsManager`, nie `GroupManagementModal`) — możliwy dług
+  techniczny / martwy kod, nietknięty w tym zadaniu (poza zakresem
+  zgłoszenia).
+
+Decyzje architektoniczne:
+- Nie włączono `ignoreUndefinedProperties` (zgodnie z zakazem w treści
+  zadania) — zamiast tego payload jest budowany tak, by nigdy nie
+  zawierał klucza z wartością `undefined`.
+- Walidacja `teacherUid`/`callerUid` w PUT i assign-homework jest prostym
+  guardem inline, nie przez `buildNewGroupPayload` — te endpointy mają
+  inny kształt payloadu (aktualizacja częściowa / fan-out), więc dzielenie
+  z endpointem tworzenia grupy dodałoby pośrednią abstrakcję bez realnej
+  korzyści.
+
+Ryzyka: Nie dotknięto `firestore.rules` ani `storage.rules`. Dotknięto
+middleware `requireFirebaseAdmin`-chronionych endpointów w `server.ts`,
+ale wyłącznie w warstwie odczytu `req.adminUid` vs `req.userUid` i dodania
+wczesnego guardu błędu — sama logika middleware (weryfikacja tokenu,
+sprawdzanie roli) nie zmieniona.

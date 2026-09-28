@@ -3776,6 +3776,17 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 
 ---
 
+### BF. Naprawa: „Cannot use 'undefined' as a Firestore value (teacherProfileId)" przy tworzeniu grupy w GroupsManager (2026-09-28)
+- **Przyczyna źródłowa:** middleware `requireFirebaseAdmin` (`server.ts`) ustawia `(req as any).adminUid`; handlery `POST /api/groups`, `PUT /api/groups/:id` i `POST /api/groups/:id/assign-homework` — wszystkie chronione tym middleware — czytały nieistniejące `(req as any).userUid` (pole, które ustawia inny middleware, `requireFirebaseAuth`). `teacherUid`/`callerUid` był więc zawsze `undefined`, co przy `teacherProfileId: teacherUid` w zapisie do Firestore kończyło się dokładnie zgłoszonym błędem.
+- **Fix:** trzy handlery czytają teraz `req.adminUid`; dodano jawny `401 missing_teacher_profile` zamiast przepuszczać `undefined` do zapisu. Budowa payloadu nowej grupy wydzielona do `utils/groupPayload.ts` (`buildNewGroupPayload`) — nigdy nie zwraca pola z wartością `undefined` (opcjonalne `company`/`activeScratchpadId` są pomijane, nie ustawiane na `undefined`). Przy okazji naprawiono ten sam wzorzec w `PUT /api/groups/:id`: czyszczenie `company`/`activeScratchpadId` pustym stringiem ustawiało `undefined` w obiekcie `updates` przekazywanym do `.update()` — zamienione na `FieldValue.delete()`.
+- **Frontend (`GroupsManager.tsx`):** przycisk „Nowa grupa" i submit modala zablokowane, dopóki `useAuth()` nie zwróci gotowego profilu lektora; kod błędu `missing_teacher_profile` z backendu mapowany na statyczny, przetłumaczony komunikat (nowe klucze w `en.json`/`pl.json`) zamiast surowego komunikatu serwera.
+- **Test:** `tests/groupPayload.test.ts` — brak `teacherUid` rzuca `MissingTeacherProfileError`; poprawny `teacherUid` daje payload bez żadnego pola `undefined`; opcjonalne pola pomijane, gdy puste.
+- **Uwaga poboczna (nietknięta, poza zakresem):** `GroupManagementModal.tsx` + `services/groupService.ts` to osobna, równoległa implementacja grup (model `StudentGroup`, pole `teacherId`, zapis bezpośrednio z klienta) — wygląda na nieużywaną ścieżkę, `StandaloneStudentDatabaseScreen.tsx` renderuje wyłącznie `GroupsManager`. Możliwy dług techniczny do sprawdzenia osobno.
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 577/577 (573 + 4 nowe). `npm run build` — przechodzi; `api/index.js` przebudowany (to jest bundle faktycznie wystawiany na Vercelu, patrz `CLAUDE.md` §2 — bez rebuildu fix nie trafiłby na produkcję). Ręczna weryfikacja w przeglądarce NIEODHACZONA w tej sesji.
+- **Ryzyka:** `firestore.rules` i `storage.rules` — nietknięte. Middleware `requireFirebaseAdmin` dotknięty wyłącznie w warstwie odczytu `req.adminUid` vs `req.userUid` w trzech handlerach grup + dodanie guardu błędu; logika weryfikacji tokenu/roli w samym middleware — bez zmian.
+
+---
+
 
 
 

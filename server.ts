@@ -172,7 +172,7 @@ import path from "path";
 import fs from "fs";
 import { initializeApp, cert, getApps, getApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { createHmac } from "crypto";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -211,6 +211,7 @@ import {
 import { fetchNotionBlocksText } from "./utils/notionBlocksFetcher";
 import { isJunkIsoTopic, formatLessonDateDDMMYYYY } from "./utils/lessonDisplay";
 import { Group, GroupWithMembers, GroupMemberPreview, GroupHomeworkFanOutResult, GroupHomeworkAssignmentItem } from "./types/group";
+import { buildNewGroupPayload, MissingTeacherProfileError } from "./utils/groupPayload";
 import crypto from 'crypto';
 let pdfParse: any;
 try {
@@ -802,7 +803,7 @@ export function createApp() {
   // Utworzenie nowej grupy
   app.post('/api/groups', requireFirebaseAdmin, async (req, res) => {
     try {
-      const teacherUid = (req as any).userUid as string;
+      const teacherUid = (req as any).adminUid as string;
       const { name, level, company, memberProfileIds, activeScratchpadId } = req.body;
 
       if (!name || typeof name !== 'string' || !name.trim()) {
@@ -812,26 +813,23 @@ export function createApp() {
       const adminApp = getAdminApp();
       const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
 
-      const cleanMemberIds = Array.isArray(memberProfileIds)
-        ? Array.from(new Set(memberProfileIds.map((id: any) => String(id).trim()).filter(Boolean)))
-        : [];
-
       const nowIso = new Date().toISOString();
-      const newGroupRef = adminDb.collection('groups').doc();
       const groupId = `grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString('hex')}`;
 
-      const groupPayload: Group = {
-        id: groupId,
-        name: name.trim(),
-        teacherProfileId: teacherUid,
-        status: 'active',
-        level: (level || 'B2').trim(),
-        company: company ? String(company).trim() : undefined,
-        memberProfileIds: cleanMemberIds,
-        activeScratchpadId: activeScratchpadId ? String(activeScratchpadId).trim() : undefined,
-        createdAt: nowIso,
-        updatedAt: nowIso,
-      };
+      let groupPayload: Group;
+      try {
+        groupPayload = buildNewGroupPayload(
+          teacherUid,
+          groupId,
+          { name, level, company, memberProfileIds, activeScratchpadId },
+          nowIso
+        );
+      } catch (validationError: any) {
+        if (validationError instanceof MissingTeacherProfileError) {
+          return res.status(401).json({ error: validationError.code, message: validationError.message });
+        }
+        throw validationError;
+      }
 
       await adminDb.collection('groups').doc(groupId).set(groupPayload);
       res.json({ ok: true, group: groupPayload });
@@ -844,8 +842,12 @@ export function createApp() {
   app.put('/api/groups/:id', requireFirebaseAdmin, async (req, res) => {
     try {
       const groupId = req.params.id as string;
-      const teacherUid = (req as any).userUid as string;
+      const teacherUid = (req as any).adminUid as string;
       const { name, level, company, status, memberProfileIds, activeScratchpadId } = req.body;
+
+      if (!teacherUid) {
+        return res.status(401).json({ error: 'missing_teacher_profile', message: 'Nie udało się zidentyfikować profilu lektora. Zaloguj się ponownie.' });
+      }
 
       const adminApp = getAdminApp();
       const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
@@ -870,13 +872,17 @@ export function createApp() {
 
       if (name && typeof name === 'string') updates.name = name.trim();
       if (level && typeof level === 'string') updates.level = level.trim();
-      if (company !== undefined) updates.company = company ? String(company).trim() : undefined;
+      if (company !== undefined) {
+        const trimmedCompany = company ? String(company).trim() : '';
+        updates.company = (trimmedCompany || FieldValue.delete()) as any;
+      }
       if (status === 'active' || status === 'archived') updates.status = status;
       if (Array.isArray(memberProfileIds)) {
         updates.memberProfileIds = Array.from(new Set(memberProfileIds.map((id: any) => String(id).trim()).filter(Boolean)));
       }
       if (activeScratchpadId !== undefined) {
-        updates.activeScratchpadId = activeScratchpadId ? String(activeScratchpadId).trim() : undefined;
+        const trimmedScratchpadId = activeScratchpadId ? String(activeScratchpadId).trim() : '';
+        updates.activeScratchpadId = (trimmedScratchpadId || FieldValue.delete()) as any;
       }
 
       await groupRef.update(updates);
@@ -891,8 +897,12 @@ export function createApp() {
   app.post('/api/groups/:id/assign-homework', requireFirebaseAdmin, async (req, res) => {
     try {
       const groupId = req.params.id as string;
-      const callerUid = (req as any).userUid as string;
+      const callerUid = (req as any).adminUid as string;
       const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
+
+      if (!callerUid) {
+        return res.status(401).json({ error: 'missing_teacher_profile', message: 'Nie udało się zidentyfikować profilu lektora. Zaloguj się ponownie.' });
+      }
 
       if (!sentences || !Array.isArray(sentences) || sentences.length === 0) {
         return res.status(400).json({ error: 'missing_sentences', message: 'Brak zadań w pracy domowej.' });
