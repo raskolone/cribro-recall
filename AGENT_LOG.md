@@ -6605,3 +6605,11 @@ Zrobione: `components/admin/HomeworkComposerV2.tsx` (tryb, UI z wyszukiwarką/Za
 Nie dokończone / do sprawdzenia: ręczna weryfikacja w przeglądarce (2 kursantów testowych → 2 `specialTasks` z tym samym `homeworkSetId`) NIE wykonana; test „3 dokumenty" sprawdza `buildV2TaskPayload`, nie zapis do Firestore.
 Decyzje architektoniczne: „Zaznacz wszystkich" zaznacza tylko widocznych po filtrze (dokłada do już zaznaczonych); logika wydzielona do utils, bo w repo nie ma @testing-library/react.
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0 błędów; npm test zielono.
+
+2026-09-29 (2) — Claude Code / Sonnet 5.5
+
+Zadanie: tryb odbiorcy 'multiple' w HomeworkComposer.tsx (V1, aktywny silnik) — ad-hoc bez grupy.
+Zrobione: `components/admin/HomeworkComposer.tsx` (przycisk, wyszukiwarka, Zaznacz wszystkich/Wyczyść, podsumowanie, kursant bazowy, zapis N dokumentów klientem, kolejka modali mailowych), `utils/homeworkRecipients.ts` (+`buildAdHocHomeworkPayloads`, `newAdHocHomeworkSetId`), test, CHANGELOG.
+Nie dokończone / do sprawdzenia: RĘCZNY TEST W PRZEGLĄDARCE (Monika + Marta) NIE wykonany — brak dostępu do przeglądarki/kont w tej sesji. Commit lokalny, NIE wypchnięty (push na main = produkcja Vercel).
+Decyzje architektoniczne: V1 'student' zapisuje klientem (addDoc, status 'pending', skipAutoEmail, accessToken jawny, bez indeksu directHomeworkTokens); V1 'group' idzie przez serwer (Admin SDK, status 'assigned', accessTokenHash + directHomeworkTokens, homeworkSetId hwset_grp_, groupId). 'multiple' kopiuje kształt 'student' (nie 'group') + homeworkSetId, żeby wyglądał jak zwykłe zadanie V1 i przechodził tę samą ścieżkę maila/linku.
+Ryzyka: firestore.rules/storage.rules/autoryzacja/ścieżki tokenowe NIETKNIĘTE (reguły dopuszczają create dla admina z dowolnymi polami). tsc 0 błędów; npm test 607/607.

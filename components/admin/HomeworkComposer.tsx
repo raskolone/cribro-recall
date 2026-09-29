@@ -15,7 +15,16 @@ import {
 import { taskOwnerFields } from '../../utils/homework';
 import { cleanVocabularyTopic, splitVocabularyLines } from '../../utils/vocabulary';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
-import { generateSecureHomeworkToken } from '../../utils/token';
+import { generateSecureHomeworkToken, generateSecureToken } from '../../utils/token';
+import {
+  NO_RECIPIENTS_MESSAGE,
+  buildAdHocHomeworkPayloads,
+  filterByName,
+  newAdHocHomeworkSetId,
+  selectAllIds,
+  toggleId,
+  validateMultipleRecipients,
+} from '../../utils/homeworkRecipients';
 
 interface HomeworkComposerProps {
   /** Kursant wskazany z zewnątrz (np. z profilu w panelu lektora). */
@@ -24,7 +33,7 @@ interface HomeworkComposerProps {
   onAssigned?: () => void;
 }
 
-type RecipientMode = 'student' | 'group';
+type RecipientMode = 'student' | 'group' | 'multiple';
 type SourceMode = 'lessons' | 'text';
 
 const PER_TYPE_OPTIONS = [3, 5, 8];
@@ -72,10 +81,20 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
   const [assignedCount, setAssignedCount] = useState(0);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [pendingEmailTask, setPendingEmailTask] = useState<any>(null);
+  // Tryb „multiple": ad-hoc wybór kursantów bez grupy. Kolejka służy do
+  // potwierdzania maili po kolei, osobno dla każdego odbiorcy.
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [studentQuery, setStudentQuery] = useState('');
+  const [emailQueue, setEmailQueue] = useState<Array<{ student: User | null; task: any }>>([]);
+  const [pendingEmailStudent, setPendingEmailStudent] = useState<User | null>(null);
   const [groupFanOutResult, setGroupFanOutResult] = useState<GroupHomeworkFanOutResult | null>(null);
 
   const student = students.find((s) => s.id === studentId);
   const group = groups.find((g) => g.id === groupId);
+  const visibleStudents = useMemo(
+    () => filterByName(students, studentQuery, studentLabel),
+    [students, studentQuery]
+  );
 
   useEffect(() => {
     getAllUsers()
@@ -208,6 +227,13 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
 
   const handleAssign = async () => {
     if ((recipientMode === 'student' && !studentId) || (recipientMode === 'group' && !groupId) || totalItems === 0) return;
+    if (recipientMode === 'multiple') {
+      const msg = validateMultipleRecipients(selectedStudentIds);
+      if (msg) {
+        setError(msg);
+        return;
+      }
+    }
     setIsAssigning(true);
     setError('');
     try {
@@ -265,6 +291,73 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
         setAssignedCount(items.length * (data.result?.assignedCount || 1));
         setSections([]);
         setGroupFanOutResult(data.result);
+        return;
+      }
+
+      if (recipientMode === 'multiple') {
+        // Ad-hoc bez grupy: endpoint grupowy wymaga dokumentu w `groups`, więc
+        // zapisujemy po stronie klienta N dokumentów jak w ścieżce
+        // indywidualnej, połączonych wspólnym `homeworkSetId` (bez `groupId`).
+        const recipients = selectedStudentIds.map((id) => {
+          const s = students.find((x) => x.id === id);
+          return {
+            id,
+            name: s ? studentLabel(s) : 'Kursant',
+            email: s?.email,
+            username: s?.username,
+          };
+        });
+        const originUrl = typeof window !== 'undefined' ? window.location.origin : 'https://app.maciej.pro';
+        const payloads = buildAdHocHomeworkPayloads(
+          recipients,
+          {
+            title,
+            type: usable[0].type,
+            types: usable.map((section) => section.type),
+            instructions: usable.map((section) => HOMEWORK_TYPE_LABELS[section.type].hint.pl).join(' '),
+            sentences: items,
+            dueDate,
+            createdAt: nowIso,
+            origin: originUrl,
+          },
+          newAdHocHomeworkSetId(() => generateSecureToken(4)),
+          generateSecureHomeworkToken
+        );
+
+        const lessonTopics = selectedLessons
+          .map((l) => cleanVocabularyTopic(l.topic) || l.topic)
+          .filter(Boolean);
+        const vocabLines: string[] = [];
+        selectedLessons.forEach((l) => {
+          if (l.vocabularyText) vocabLines.push(...splitVocabularyLines(l.vocabularyText));
+        });
+
+        const queue: Array<{ student: User | null; task: any }> = [];
+        for (let i = 0; i < payloads.length; i++) {
+          const docRef = await addDoc(collection(db, 'specialTasks'), payloads[i]);
+          try {
+            await updateDoc(doc(db, 'users', recipients[i].id), { hasNewHomework: true });
+          } catch (e) {
+            console.warn('Nie udało się ustawić flagi hasNewHomework:', e);
+          }
+          queue.push({
+            student: students.find((x) => x.id === recipients[i].id) || null,
+            task: {
+              id: docRef.id,
+              ...payloads[i],
+              itemCount: items.length,
+              lessonTopics,
+              vocabularySample: vocabLines.slice(0, 10),
+            },
+          });
+        }
+
+        setAssignedCount(items.length * payloads.length);
+        setSections([]);
+        setPendingEmailStudent(queue[0].student);
+        setPendingEmailTask(queue[0].task);
+        setEmailQueue(queue.slice(1));
+        setIsEmailModalOpen(true);
         return;
       }
 
@@ -380,6 +473,20 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
           >
             Grupa ({groups.length})
           </button>
+          <button
+            type="button"
+            onClick={() => {
+              setRecipientMode('multiple');
+              setSections([]);
+            }}
+            className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+              recipientMode === 'multiple'
+                ? 'bg-primary/15 border-primary text-primary'
+                : 'border-white/10 text-content-muted hover:text-white'
+            }`}
+          >
+            Kilku kursantów
+          </button>
         </div>
 
         {recipientMode === 'student' ? (
@@ -396,6 +503,100 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
               </option>
             ))}
           </select>
+        ) : recipientMode === 'multiple' ? (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-content-muted">Odbiorcy</span>
+              <div className="flex gap-2 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedStudentIds((cur) => selectAllIds(cur, visibleStudents.map((s) => s.id)))
+                  }
+                  className="text-primary hover:underline"
+                >
+                  Zaznacz wszystkich
+                </button>
+                <span className="text-white/20">|</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudentIds([])}
+                  className="text-content-muted hover:text-white hover:underline"
+                >
+                  Wyczyść
+                </button>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={studentQuery}
+              onChange={(e) => setStudentQuery(e.target.value)}
+              placeholder="Szukaj kursanta…"
+              className="w-full min-h-[2.75rem] px-3 bg-base-100 text-white border border-white/15 rounded-xl text-sm focus:border-primary focus:outline-none"
+            />
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {visibleStudents.length === 0 ? (
+                <p className="text-xs text-content-muted p-2">Brak kursantów pasujących do wyszukiwania.</p>
+              ) : (
+                visibleStudents.map((s) => {
+                  const checked = selectedStudentIds.includes(s.id);
+                  return (
+                    <label
+                      key={s.id}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs cursor-pointer transition ${
+                        checked
+                          ? 'bg-primary/10 border-primary/35 text-white'
+                          : 'border-white/10 text-content-muted'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => setSelectedStudentIds((cur) => toggleId(cur, s.id))}
+                        className="accent-primary"
+                      />
+                      {studentLabel(s)}
+                      {s.level ? ` · ${s.level}` : ''}
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            {selectedStudentIds.length > 0 ? (
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-primary">
+                  {selectedStudentIds.length}{' '}
+                  {selectedStudentIds.length === 1 ? 'kursant wybrany' : 'kursantów wybranych'}
+                </p>
+                <p className="text-xs text-content-muted">
+                  {students
+                    .filter((s) => selectedStudentIds.includes(s.id))
+                    .map(studentLabel)
+                    .join(', ')}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-warn">{NO_RECIPIENTS_MESSAGE}</p>
+            )}
+            <label className="block space-y-1 pt-1">
+              <span className="text-xs text-content-muted">
+                Kursant bazowy (źródło lekcji i poziom) — niezależny od odbiorców
+              </span>
+              <select
+                value={studentId}
+                onChange={(e) => setStudentId(e.target.value)}
+                className="w-full min-h-[3rem] px-3 bg-base-100 text-white border border-white/15 rounded-xl text-sm font-semibold focus:border-primary focus:outline-none"
+              >
+                <option value="">— wybierz kursanta —</option>
+                {students.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {studentLabel(s)}
+                    {s.level ? ` · ${s.level}` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         ) : (
           <select
             value={groupId}
@@ -691,7 +892,11 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
               </>
             ) : (
               <>
-                <Send size={16} /> {recipientMode === 'group' ? `Przypisz całej grupie (${totalItems})` : `Przypisz kursantowi (${totalItems})`}
+                <Send size={16} /> {recipientMode === 'group'
+                  ? `Przypisz całej grupie (${totalItems})`
+                  : recipientMode === 'multiple'
+                  ? `Przypisz wybranym (${selectedStudentIds.length} os.) (${totalItems})`
+                  : `Przypisz kursantowi (${totalItems})`}
               </>
             )}
           </button>
@@ -775,28 +980,32 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
         </div>
       )}
 
-      {isEmailModalOpen && pendingEmailTask && (
-        <HomeworkEmailConfirmationModal
-          isOpen={isEmailModalOpen}
-          student={student || null}
-          task={pendingEmailTask}
-          onEmailSent={() => {
-            setIsEmailModalOpen(false);
-            setPendingEmailTask(null);
-            if (onAssigned) onAssigned();
-          }}
-          onSkip={() => {
-            setIsEmailModalOpen(false);
-            setPendingEmailTask(null);
-            if (onAssigned) onAssigned();
-          }}
-          onClose={() => {
-            setIsEmailModalOpen(false);
-            setPendingEmailTask(null);
-            if (onAssigned) onAssigned();
-          }}
-        />
-      )}
+      {isEmailModalOpen && pendingEmailTask && (() => {
+        // Przy trybie „multiple" modal przechodzi po kolei przez odbiorców.
+        const advance = () => {
+          if (emailQueue.length > 0) {
+            setPendingEmailStudent(emailQueue[0].student);
+            setPendingEmailTask(emailQueue[0].task);
+            setEmailQueue(emailQueue.slice(1));
+            return;
+          }
+          setIsEmailModalOpen(false);
+          setPendingEmailTask(null);
+          setPendingEmailStudent(null);
+          if (onAssigned) onAssigned();
+        };
+        return (
+          <HomeworkEmailConfirmationModal
+            key={pendingEmailTask.id}
+            isOpen={isEmailModalOpen}
+            student={pendingEmailStudent || student || null}
+            task={pendingEmailTask}
+            onEmailSent={advance}
+            onSkip={advance}
+            onClose={advance}
+          />
+        );
+      })()}
     </div>
   );
 };

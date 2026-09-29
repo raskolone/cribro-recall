@@ -6,6 +6,8 @@ import {
   filterByName,
   selectAllIds,
   toggleId,
+  buildAdHocHomeworkPayloads,
+  newAdHocHomeworkSetId,
   validateMultipleRecipients,
 } from '../utils/homeworkRecipients';
 import { buildV2TaskPayload, newHomeworkSetId } from '../functions/src/homeworkV2/assignment';
@@ -58,4 +60,41 @@ test('0 kursantów blokuje przypisanie z czytelnym komunikatem', () => {
   assert.equal(validateMultipleRecipients([]), NO_RECIPIENTS_MESSAGE);
   assert.match(NO_RECIPIENTS_MESSAGE, /co najmniej jednego kursanta/);
   assert.equal(validateMultipleRecipients(['a']), null);
+});
+
+test('V1 ad-hoc: 3 kursantów → 3 dokumenty, wspólny homeworkSetId, bez groupId i engineVersion', () => {
+  let n = 0;
+  const setId = newAdHocHomeworkSetId(() => 'abcd');
+  const docs = buildAdHocHomeworkPayloads(
+    [
+      { id: 'a', name: 'Anna', email: 'a@x.pl' },
+      { id: 'b', name: 'Bartek' },
+      { id: 'c', name: 'Celina', username: 'cel' },
+    ],
+    {
+      title: 'Praca domowa',
+      type: 'translation',
+      types: ['translation'],
+      instructions: 'x',
+      sentences: [{ type: 'translation' }],
+      dueDate: '2026-10-06',
+      createdAt: '2026-09-29T10:00:00.000Z',
+      origin: 'https://app.test',
+    },
+    setId,
+    () => `tok${++n}`
+  );
+  assert.equal(docs.length, 3);
+  assert.equal(new Set(docs.map((d) => d.homeworkSetId)).size, 1);
+  assert.match(String(docs[0].homeworkSetId), /^hwset_multi_/);
+  assert.deepEqual(docs.map((d) => d.studentUid), ['a', 'b', 'c']);
+  assert.equal(new Set(docs.map((d) => d.accessToken)).size, 3);
+  assert.equal(docs[0].accessUrl, 'https://app.test/hw?token=tok1');
+  docs.forEach((d) => {
+    assert.equal('groupId' in d, false);
+    assert.equal('engineVersion' in d, false);
+    assert.equal(d.status, 'pending');
+    assert.equal(d.skipAutoEmail, true);
+    assert.deepEqual(d.studentIds, [d.studentUid]);
+  });
 });
