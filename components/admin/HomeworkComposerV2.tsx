@@ -15,6 +15,13 @@ import {
   ExerciseTypeV2,
   MAX_LESSONS_AS_FUEL,
 } from '../../services/homeworkV2/contracts';
+import {
+  NO_RECIPIENTS_MESSAGE,
+  filterByName,
+  selectAllIds,
+  toggleId,
+  validateMultipleRecipients,
+} from '../../utils/homeworkRecipients';
 import { assignHomeworkSetV2, generateHomeworkSetV2 } from '../../services/homeworkV2Client';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
 import { showAppAlert } from '../../utils/appAlert';
@@ -75,12 +82,15 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
   const [dueDate, setDueDate] = useState(() => todayPlusDays(7));
 
   // --- odbiorca: kursant indywidualny albo grupa (fan-out) -------------------
-  const [recipientMode, setRecipientMode] = useState<'individual' | 'group'>(
+  const [recipientMode, setRecipientMode] = useState<'individual' | 'group' | 'multiple'>(
     initialGroupId ? 'group' : 'individual'
   );
   const [groups, setGroups] = useState<StudentGroup[]>([]);
   const [groupId, setGroupId] = useState(initialGroupId || '');
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  // Tryb „multiple": ad-hoc wybór kursantów z pełnej listy, bez grupy.
+  const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
+  const [studentQuery, setStudentQuery] = useState('');
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [isAssigning, setIsAssigning] = useState(false);
@@ -235,6 +245,13 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
     if (sendable.length === 0) return;
     if (recipientMode === 'individual' && !studentId) return;
     if (recipientMode === 'group' && (!groupId || selectedMemberIds.length === 0)) return;
+    if (recipientMode === 'multiple') {
+      const msg = validateMultipleRecipients(selectedStudentIds);
+      if (msg) {
+        setError(msg);
+        return;
+      }
+    }
     setIsAssigning(true);
     setError('');
     try {
@@ -256,7 +273,12 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
       // Odbiorcy: albo jeden kursant, albo cała (odznaczona częściowo) grupa —
       // fan-out tworzy niezależny rekord `specialTasks` na każdego z nich,
       // patrz `assignHomeworkSetV2` / `assignHomeworkV2`.
-      const recipientIds = recipientMode === 'group' ? selectedMemberIds : [studentId];
+      const recipientIds =
+        recipientMode === 'group'
+          ? selectedMemberIds
+          : recipientMode === 'multiple'
+          ? selectedStudentIds
+          : [studentId];
       const recipientStudents = recipientIds.map(
         (id) => students.find((s) => s.id === id) || (id === studentId ? student : undefined)
       );
@@ -315,7 +337,16 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
   const canGenerate = Boolean(studentId) && selectedLessonIds.length > 0 && types.length > 0;
   const canAssign =
     sendable.length > 0 &&
-    (recipientMode === 'individual' ? Boolean(studentId) : Boolean(groupId) && selectedMemberIds.length > 0);
+    (recipientMode === 'individual'
+      ? Boolean(studentId)
+      : recipientMode === 'multiple'
+      ? selectedStudentIds.length > 0
+      : Boolean(groupId) && selectedMemberIds.length > 0);
+
+  const visibleStudents = useMemo(
+    () => filterByName(students, studentQuery, studentLabel),
+    [students, studentQuery]
+  );
 
   return (
     <div className="max-w-3xl mx-auto space-y-4 pb-24">
@@ -327,7 +358,7 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
         </h3>
 
         <div className="flex gap-2">
-          {(['individual', 'group'] as const).map((m) => (
+          {(['individual', 'group', 'multiple'] as const).map((m) => (
             <button
               key={m}
               type="button"
@@ -338,7 +369,7 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
                   : 'border-line-strong bg-ink text-text-2'
               }`}
             >
-              {m === 'individual' ? 'Kursant indywidualny' : 'Grupa'}
+              {m === 'individual' ? 'Kursant indywidualny' : m === 'group' ? 'Grupa' : 'Kilku kursantów'}
             </button>
           ))}
         </div>
@@ -395,9 +426,85 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
           </div>
         )}
 
+        {recipientMode === 'multiple' && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-xs text-text-2">Odbiorcy</span>
+              <div className="flex gap-2 text-xs font-medium">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedStudentIds((cur) => selectAllIds(cur, visibleStudents.map((s) => s.id)))
+                  }
+                  className="text-primary hover:underline"
+                >
+                  Zaznacz wszystkich
+                </button>
+                <span className="text-text-hi/20">|</span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedStudentIds([])}
+                  className="text-text-2 hover:text-text-hi hover:underline"
+                >
+                  Wyczyść
+                </button>
+              </div>
+            </div>
+            <input
+              type="text"
+              value={studentQuery}
+              onChange={(e) => setStudentQuery(e.target.value)}
+              placeholder="Szukaj kursanta…"
+              className="w-full rounded-xl border border-line-strong bg-ink px-3 py-2 text-sm text-text-hi"
+            />
+            <div className="max-h-40 overflow-y-auto space-y-1">
+              {visibleStudents.length === 0 ? (
+                <p className="text-xs text-text-2 p-2">Brak kursantów pasujących do wyszukiwania.</p>
+              ) : (
+                visibleStudents.map((s) => {
+                  const checked = selectedStudentIds.includes(s.id);
+                  return (
+                    <label
+                      key={s.id}
+                      className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-xs cursor-pointer transition ${
+                        checked
+                          ? 'border-primary/50 bg-primary/10 text-text-hi'
+                          : 'border-line-strong bg-ink text-text-2'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={() => setSelectedStudentIds((cur) => toggleId(cur, s.id))}
+                        className="accent-primary"
+                      />
+                      {studentLabel(s)}
+                    </label>
+                  );
+                })
+              )}
+            </div>
+            {selectedStudentIds.length > 0 ? (
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-primary">
+                  {selectedStudentIds.length} {selectedStudentIds.length === 1 ? 'kursant wybrany' : 'kursantów wybranych'}
+                </p>
+                <p className="text-xs text-text-2">
+                  {students
+                    .filter((s) => selectedStudentIds.includes(s.id))
+                    .map(studentLabel)
+                    .join(', ')}
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-warn">{NO_RECIPIENTS_MESSAGE}</p>
+            )}
+          </div>
+        )}
+
         <label className="block space-y-1">
           <span className="text-xs text-text-2">
-            {recipientMode === 'group' ? 'Materiał źródłowy (lekcje kursanta)' : 'Kursant'}
+            {recipientMode !== 'individual' ? 'Materiał źródłowy (lekcje kursanta)' : 'Kursant'}
           </span>
           <select
             value={studentId}
@@ -656,6 +763,8 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
                 ? 'Wysyłam…'
                 : recipientMode === 'group'
                 ? `Przypisz ${sendable.length} ${exerciseNoun(sendable.length)} grupie (${selectedMemberIds.length} os.)`
+                : recipientMode === 'multiple'
+                ? `Przypisz ${sendable.length} ${exerciseNoun(sendable.length)} (${selectedStudentIds.length} os.)`
                 : `Wyślij ${sendable.length} ${exerciseNoun(sendable.length)}`}
             </button>
           </div>

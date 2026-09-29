@@ -6597,3 +6597,11 @@ Decyzje architektoniczne:
 - Domyślne mapowanie "brak @ → @student.vocabboost.com" w `AuthScreen.tsx` ZOSTAJE (nie usunięte), bo w Auth wciąż istnieje 9 kont z tym placeholderem — usunięcie złamałoby im logowanie bez migracji. Etykieta/placeholder/komunikat błędu zostały poprawione, żeby nie reklamować tego jako oficjalnej ścieżki logowania.
 
 Ryzyka: `firestore.rules` i `storage.rules` — NIETKNIĘTE. Żadne hasła nie były zmieniane, żadne maile nie zostały wysłane w trakcie diagnozy/migracji. Operacje na PRODUKCYJNYM Firebase Auth (4 zmiany e-maila + 1 usunięcie konta) wykonane wyłącznie po jawnym zatwierdzeniu uid przez lektora, z odczytem-weryfikacją po każdej zmianie i backupem przed każdym zapisem. Weryfikacja kodu: `npx tsc --noEmit` — 0 błędów; `npm test` — 601/601 (594 + 7 nowych); `npm run build` — przechodzi, `api/index.js` przebudowany.
+
+2026-09-29 — Claude Code / Sonnet 5.5
+
+Zadanie: HomeworkComposerV2 — trzeci tryb odbiorcy `multiple` (ad-hoc multi-select bez grupy).
+Zrobione: `components/admin/HomeworkComposerV2.tsx` (tryb, UI z wyszukiwarką/Zaznacz wszystkich/Wyczyść/podsumowaniem, walidacja 0 odbiorców, etykieta przycisku), nowe `utils/homeworkRecipients.ts` i `tests/homeworkRecipients.test.ts`, CHANGELOG.
+Nie dokończone / do sprawdzenia: ręczna weryfikacja w przeglądarce (2 kursantów testowych → 2 `specialTasks` z tym samym `homeworkSetId`) NIE wykonana; test „3 dokumenty" sprawdza `buildV2TaskPayload`, nie zapis do Firestore.
+Decyzje architektoniczne: „Zaznacz wszystkich" zaznacza tylko widocznych po filtrze (dokłada do już zaznaczonych); logika wydzielona do utils, bo w repo nie ma @testing-library/react.
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0 błędów; npm test zielono.

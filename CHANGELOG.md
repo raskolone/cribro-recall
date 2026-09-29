@@ -198,6 +198,12 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🚀 Zadania i testy: tryb odbiorcy „Kilku kursantów" (ad-hoc, bez grupy) (2026-09-29)
+
+- `HomeworkComposerV2.tsx`: trzeci tryb odbiorcy `multiple` obok `individual`/`group` — lista wszystkich kursantów z checkboxami, wyszukiwarka po imieniu, „Zaznacz wszystkich" (działa na widocznych po filtrze) / „Wyczyść", podsumowanie „N kursantów wybranych" + lista imion. Zapis idzie tym samym fan-outem co grupa (`assignHomeworkSetV2`, wspólny `homeworkSetId`), bez `groupId`. Materiał (kursant bazowy) i sekwencja modali mailowych bez zmian. Zero wybranych = komunikat i zablokowany przycisk.
+- Nowe: `utils/homeworkRecipients.ts` (czysta logika), `tests/homeworkRecipients.test.ts` (5 testów).
+- Bez zmian: `firestore.rules`, `storage.rules`, schemat Firestore.
+
 ### 🚀 Full Practice & Zadania Domowe: Pętla uzupełniająca (refill), optymalizacja czasu oceny AI i izolacja zdań (2026-09-26, runda 58)
 
 1. **Gwarancja pełnego zestawu zdań w `generateTranslationExercises` (`services/geminiService.ts`)**:
