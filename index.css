@@ -2020,70 +2020,35 @@ tr.liquid-glass-hover:hover {
 
 
 
-/* ── Teacher Notebook Formatting Marks ── */
-.pad-mark-error {
-  color: #f87171;
-  background-color: rgba(239, 68, 68, 0.16);
-  border-bottom: 2px wavy #ef4444;
-  border-radius: 4px;
-  padding: 0 4px;
-}
-:root.light .pad-mark-error,
-:root[data-theme="light"] .pad-mark-error {
-  color: #b91c1c;
-  background-color: rgba(239, 68, 68, 0.12);
-  border-bottom: 2px wavy #dc2626;
-}
-
-.pad-mark-correct {
-  color: #4ade80;
-  background-color: rgba(34, 197, 94, 0.16);
-  border-bottom: 2px solid #22c55e;
-  border-radius: 4px;
-  padding: 0 4px;
-  font-weight: 600;
-}
-:root.light .pad-mark-correct,
-:root[data-theme="light"] .pad-mark-correct {
-  color: #15803d;
-  background-color: rgba(34, 197, 94, 0.12);
-  border-bottom: 2px solid #16a34a;
-}
-
-.pad-mark-vocab {
-  color: #67e8f9;
-  background-color: rgba(6, 182, 212, 0.16);
-  border: 1px solid rgba(6, 182, 212, 0.35);
-  border-radius: 6px;
-  padding: 1px 6px;
-  font-weight: 600;
-}
-:root.light .pad-mark-vocab,
-:root[data-theme="light"] .pad-mark-vocab {
-  color: #0e7490;
-  background-color: rgba(6, 182, 212, 0.12);
-  border: 1px solid rgba(6, 182, 212, 0.3);
-}
-
+/* ── Teacher Notebook Formatting Marks ──
+   Jeden wspólny kształt (kolorowa czcionka + tło + ramka), kolory z
+   zmiennych. Motyw bierzemy z papieru (data-pad-theme), nie z aplikacji —
+   papier może być jasny przy ciemnej aplikacji i odwrotnie. */
+.pad-mark-error,
+.pad-mark-correct,
+.pad-mark-vocab,
 .pad-mark-correction {
-  color: #fcd34d;
-  background-color: rgba(245, 158, 11, 0.18);
+  color: var(--mark-fg);
+  background-color: var(--mark-bg);
+  border: 1px solid var(--mark-bd);
   border-radius: 4px;
   padding: 0 4px;
-  font-style: italic;
+  font-weight: 600;
 }
-:root.light .pad-mark-correction,
-:root[data-theme="light"] .pad-mark-correction {
-  color: #b45309;
-  background-color: rgba(245, 158, 11, 0.14);
-}
+.pad-mark-error      { --mark-fg: #f87171; --mark-bg: rgba(239, 68, 68, 0.16);  --mark-bd: rgba(239, 68, 68, 0.40); }
+.pad-mark-correct    { --mark-fg: #4ade80; --mark-bg: rgba(34, 197, 94, 0.16);  --mark-bd: rgba(34, 197, 94, 0.40); }
+.pad-mark-vocab      { --mark-fg: #67e8f9; --mark-bg: rgba(6, 182, 212, 0.16);  --mark-bd: rgba(6, 182, 212, 0.35); }
+.pad-mark-correction { --mark-fg: #fcd34d; --mark-bg: rgba(245, 158, 11, 0.18);  --mark-bd: rgba(245, 158, 11, 0.40); }
+[data-pad-theme="light"] .pad-mark-error      { --mark-fg: #b91c1c; --mark-bg: rgba(239, 68, 68, 0.12);  --mark-bd: rgba(220, 38, 38, 0.40); }
+[data-pad-theme="light"] .pad-mark-correct    { --mark-fg: #15803d; --mark-bg: rgba(34, 197, 94, 0.14);  --mark-bd: rgba(22, 163, 74, 0.40); }
+[data-pad-theme="light"] .pad-mark-vocab      { --mark-fg: #0e7490; --mark-bg: rgba(6, 182, 212, 0.12);  --mark-bd: rgba(8, 145, 178, 0.40); }
+[data-pad-theme="light"] .pad-mark-correction { --mark-fg: #b45309; --mark-bg: rgba(245, 158, 11, 0.16); --mark-bd: rgba(217, 119, 6, 0.45); }
 
 .pad-mark-accent {
   color: #72f0b4;
   font-weight: 600;
 }
-:root.light .pad-mark-accent,
-:root[data-theme="light"] .pad-mark-accent {
+[data-pad-theme="light"] .pad-mark-accent {
   color: #0d8a5f;
 }
 

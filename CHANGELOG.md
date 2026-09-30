@@ -198,6 +198,11 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🎨 Notatnik: spójne style znaczników Błąd/Poprawnie/Słówko/Korekta + czytelny toolbar (2026-09-30)
+- `index.css`: cztery `.pad-mark-*` mają jeden kształt (kolorowa czcionka + tło + ramka 1px + pogrubienie), kolory ze zmiennych `--mark-*`. Wcześniej różniły się dekoracją (falista linia, kursywa, ramka tylko przy Słówku). Kolory: Błąd czerwony, Poprawnie zielony, Słówko cyan (bez zmian), Korekta bursztynowy.
+- Motyw znaczników bierze się teraz z papieru (`data-pad-theme`), nie z motywu aplikacji — przy jasnym papierze w ciemnej aplikacji pastelowe kolory były nieczytelne.
+- `TeacherFormattingToolbar.tsx`: ikony S/B/I/gumka i separator na tokenach (`text-text-hi`, `bg-line-soft`, `bg-line-strong`) zamiast `slate-300`/`white/10` — tło paska w trybie dziennym jest jasne (`#f8fafc`), więc ikony były niewidoczne.
+
 ### 🚀 Notatnik: edytowalny tytuł lekcji, tytuł z datą + tematem, pasek „roboczy" bez grupy (2026-09-30)
 
 - **Pasek „Notatnik roboczy — nikt go jeszcze nie widzi"** (`TeacherScratchpadScreen.tsx`) nie pokazuje się już dla notatnika z `groupId` (notatnik grupowy nie ma `studentId`, ale widzą go członkowie). Dla grupy nie ma zastępczego komunikatu — przypisanie jednego kursanta przeniosłoby treść z grupy, więc nie oferujemy go wcale. Warunek: `utils/scratchpadAssignBar.ts`.

@@ -6621,3 +6621,11 @@ Zrobione: `utils/scratchpadAssignBar.ts` + `TeacherScratchpadScreen.tsx` (pasek 
 Nie dokończone / do sprawdzenia: ręczny test w działającej aplikacji NIE wykonany (brak logowania w sesji) — zwijanie ▾, edycja tytułu i spis treści sprawdzone tylko w Chromium na stronie testowej z prawdziwym szablonem i regułami CSS (zwijanie: kopia `setSectionCollapsed`, nie kod z aplikacji). Commity lokalne, NIE wypchnięte (push na main = produkcja Vercel).
 Decyzje architektoniczne: format tytułu `Lesson N — {data} • {temat}` (jedna linia; dwie linie psułyby `textContent` w spisie treści, a `•` był już użyty w `handleInsertAsStructuredLesson`). Dla notatnika grupowego pasek „roboczy" znika bez zastępnika. Istniejące nagłówki nie są migrowane (zostają zablokowane).
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0 błędów; npm test 624/624; build OK.
+
+2026-09-30 (2) — Claude Code / Sonnet 5.5
+
+Zadanie: punkty 8+9 — czytelność toolbara formatowania i spójne style 4 znaczników.
+Zrobione: `index.css` (bloki `.pad-mark-*`), `TeacherFormattingToolbar.tsx` (klasy neutralnych przycisków), CHANGELOG.
+Nie dokończone / do sprawdzenia: ręczny test wzrokowy w przeglądarce NIE wykonany. Commit lokalny, NIE wypchnięty.
+Decyzje architektoniczne: selektory motywu zmienione z `:root.light` na `[data-pad-theme]` (papier ma własny motyw). Słówko zostaje cyan (nie niebieskie).
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Mechanizm DOM nietknięty. tsc 0; npm test 624/624; build OK.

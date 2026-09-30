@@ -184,14 +184,14 @@ export const TeacherFormattingToolbar: React.FC<TeacherFormattingToolbarProps> =
         <span>Korekta</span>
       </button>
 
-      <div className="w-[1px] h-4 bg-white/20 mx-0.5" />
+      <div className="w-[1px] h-4 bg-line-strong mx-0.5" />
 
       {/* 5. PRZEKREŚLENIE */}
       <button
         type="button"
         onClick={() => applyExecCommand('strikeThrough')}
         title="Przekreślenie"
-        className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-text-hi hover:bg-line-soft transition-colors cursor-pointer"
       >
         <Strikethrough size={13} />
       </button>
@@ -201,7 +201,7 @@ export const TeacherFormattingToolbar: React.FC<TeacherFormattingToolbarProps> =
         type="button"
         onClick={() => applyExecCommand('bold')}
         title="Pogrubienie"
-        className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-text-hi hover:bg-line-soft transition-colors cursor-pointer"
       >
         <Bold size={13} />
       </button>
@@ -211,7 +211,7 @@ export const TeacherFormattingToolbar: React.FC<TeacherFormattingToolbarProps> =
         type="button"
         onClick={() => applyExecCommand('italic')}
         title="Kursywa"
-        className="p-1.5 rounded-lg text-slate-300 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-text-hi hover:bg-line-soft transition-colors cursor-pointer"
       >
         <Italic size={13} />
       </button>
@@ -231,7 +231,7 @@ export const TeacherFormattingToolbar: React.FC<TeacherFormattingToolbarProps> =
         type="button"
         onClick={clearFormatting}
         title="Wyczyść formatowanie"
-        className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+        className="p-1.5 rounded-lg text-text-hi hover:bg-line-soft transition-colors cursor-pointer"
       >
         <Eraser size={13} />
       </button>
