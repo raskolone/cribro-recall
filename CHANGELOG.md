@@ -212,6 +212,12 @@ we dwoje na żywo.
 - Bez zmian: `firestore.rules`, `storage.rules`, struktura dokumentu (model płaski, bez kontenerów sekcji).
 - Nie zweryfikowane w działającej aplikacji (brak logowania w sesji) — sprawdzone w Chromium na osobnej stronie z prawdziwym szablonem i regułami CSS.
 
+### 🚀 Notatnik: przycisk „Zwiń wszystkie" z podpisem + separator lekcji po zwinięciu (2026-09-30)
+
+- **Przycisk „Zwiń wszystkie"** (`ScratchpadEditor.tsx`): był ikoną bez podpisu z tooltipem „Zwiń / Rozwiń", choć zawsze zwijał. Ma teraz podpis (`hidden sm:inline`), tooltip „Zwiń wszystkie lekcje", jest widoczny tylko dla lektora (`isTeacher`) i `disabled` przy ≤1 lekcji (`lessonSectionCount` z `[data-toggle="1"]`, przeliczane po zmianie `toc`). `setSectionCollapsed`/`rebuildToc`/`measurePages`/`handleCollapseAll` bez zmian. Test pętli zwijania na 3 nagłówkach: `tests/editableLessonHeading.test.ts`.
+- **Separator „Strona A4 • Nowa Lekcja" nie znika po zwinięciu** (`index.css`): `setSectionCollapsed` chował `.pad-page-break` inline jak każde rodzeństwo nagłówka. Reguła `@media screen { .pad-paper .pad-page-break { display: flex !important } }` utrzymuje go na ekranie; druk i PDF bez zmian (osobna reguła w `@media print`).
+- Bez zmian: `firestore.rules`, `storage.rules`, dane w Firestore. `tsc` 0 błędów, `npm test` 657/657. Oba punkty zatwierdzone ręcznym testem.
+
 ### 🚀 Kreator v1 (aktywny): tryb odbiorcy „Kilku kursantów" bez grupy (2026-09-29)
 
 - `HomeworkComposer.tsx` (v1, jedyny kreator widoczny przy `HOMEWORK_ENGINE_V2 = false`): trzeci przycisk odbiorcy, lista z wyszukiwarką, „Zaznacz wszystkich" (tylko widoczni po filtrze) / „Wyczyść", podsumowanie z imionami, osobny wybór „kursanta bazowego" (źródło lekcji/poziom). Zapis po stronie klienta: N dokumentów `specialTasks` w kształcie ścieżki „indywidualny kursant" (bez `engineVersion`, bez `groupId`), wspólne `homeworkSetId` (`hwset_multi_…`), osobny token dostępu na kursanta; modale potwierdzenia maila po kolei.

@@ -6629,3 +6629,19 @@ Zrobione: `index.css` (bloki `.pad-mark-*`), `TeacherFormattingToolbar.tsx` (kla
 Nie dokończone / do sprawdzenia: ręczny test wzrokowy w przeglądarce NIE wykonany. Commit lokalny, NIE wypchnięty.
 Decyzje architektoniczne: selektory motywu zmienione z `:root.light` na `[data-pad-theme]` (papier ma własny motyw). Słówko zostaje cyan (nie niebieskie).
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Mechanizm DOM nietknięty. tsc 0; npm test 624/624; build OK.
+
+2026-09-30 (3) — Claude Code / Sonnet 5.5
+
+Zadanie: przycisk „Zwiń wszystkie" — podpis, tooltip, bramka dla lektora, disabled przy ≤1 lekcji.
+Zrobione: `ScratchpadEditor.tsx` (przycisk, `lessonSectionCount`), `tests/editableLessonHeading.test.ts` (pętla zwijania na 3 nagłówkach), CHANGELOG.
+Nie dokończone / do sprawdzenia: nic — zatwierdzone ręcznym testem. Test sprawdza kopię logiki `setSectionCollapsed`, nie kod z komponentu.
+Decyzje architektoniczne: bramka `isTeacher` (jak „+ Nowa lekcja"), bo w pliku nie ma `isStudent`; liczba lekcji z DOM przeliczana po `toc`.
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0; npm test 657/657.
+
+2026-09-30 (4) — Claude Code / Sonnet 5.5
+
+Zadanie: separator lekcji nie znika po zwinięciu (etap 1/B1 po diagnozie kontenerów lekcji).
+Zrobione: `index.css` (`@media screen { .pad-paper .pad-page-break { display: flex !important } }`), CHANGELOG.
+Nie dokończone / do sprawdzenia: nic — zatwierdzone ręcznym testem. Wygląd separatora między zwiniętymi paskami (marginesy 52/40 px) może się okazać za ciężki.
+Decyzje architektoniczne: CSS zamiast zmiany `setSectionCollapsed`; reguła tylko `@media screen`, bo przy wyższej specyficzności wygrałaby z regułą druku. Migracja do kontenerów `<section>` odradzona w diagnozie (płaski HTML w Firestore zostaje).
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Brak migracji danych. tsc 0; npm test 657/657.
