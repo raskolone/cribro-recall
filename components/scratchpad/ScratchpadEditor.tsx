@@ -111,6 +111,7 @@ import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDr
 import TeacherDock from './TeacherDock';
 import ExerciseStudioModal from '../exercise/ExerciseStudioModal';
 import TeacherFormattingToolbar from './TeacherFormattingToolbar';
+import { wrapSelectedTextInline, applyInlineStrikeCorrect } from '../../utils/scratchpadDom';
 import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
 import { FloatingToolPalette } from './FloatingToolPalette';
 import { FloatingToolsLauncher } from './FloatingToolsLauncher';
@@ -2089,50 +2090,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     refreshTemplates();
   }, [refreshTemplates]);
 
-  /**
-   * Owija każdy fragment tekstu WEWNĄTRZ zaznaczenia własnym `<span>`, zamiast
-   * jednym spanem na cały `range`. Zaznaczenie przechodzące przez więcej niż
-   * jeden blok (np. dwa akapity) w wersji "jeden span na cały range" wyciągało
-   * `<div>`/`<p>` do środka jednego `<span>` — nielegalny, ale tolerowany przez
-   * przeglądarkę układ, który renderował się jako pełnoszerokie, puste
-   * kolorowe pasy zamiast zwykłego podświetlenia w linii. Dzieląc tekst na
-   * węzły i owijając TYLKO fragmenty tekstowe (z podziałem węzła na granicach
-   * zaznaczenia), struktura akapitów nigdy się nie rusza.
-   */
-  const wrapSelectedTextInline = (range: Range, styleFn: (span: HTMLSpanElement) => void): HTMLSpanElement[] => {
-    let root: Node = range.commonAncestorContainer;
-    if (root.nodeType === Node.TEXT_NODE) root = root.parentNode as Node;
-    if (!root) return [];
 
-    const walker = window.document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
-      acceptNode: node => (range.intersectsNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT),
-    });
-
-    const textNodes: Text[] = [];
-    let node: Node | null;
-    while ((node = walker.nextNode())) textNodes.push(node as Text);
-
-    const createdSpans: HTMLSpanElement[] = [];
-    textNodes.forEach(textNode => {
-      const isStart = textNode === range.startContainer;
-      const isEnd = textNode === range.endContainer;
-      const start = isStart ? range.startOffset : 0;
-      const end = isEnd ? range.endOffset : textNode.length;
-      if (start >= end) return;
-
-      let target = textNode;
-      if (end < target.length) target.splitText(end);
-      if (start > 0) target = target.splitText(start);
-      if (!target.textContent || !target.textContent.trim()) return;
-
-      const span = window.document.createElement('span');
-      styleFn(span);
-      target.parentNode?.insertBefore(span, target);
-      span.appendChild(target);
-      createdSpans.push(span);
-    });
-    return createdSpans;
-  };
 
   // Zakreślacze lektorskie — czysty element liniowy (inline mark / <span>) bez rozbijania akapitu
   const handleHighlight = (bgColor: string, textColor: string) => {
@@ -2190,7 +2148,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     handleInput();
   };
 
-  // Korekta w locie — przekreśla zaznaczenie i stawia obok puste miejsce na poprawną formę
+  // Korekta w locie — przekreśla zaznaczenie liniowo i stawia obok puste miejsce na poprawną formę
   const handleStrikeCorrect = () => {
     if (isReadOnly) return;
     const selection = window.getSelection();
@@ -2198,28 +2156,14 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
     const range = selection.getRangeAt(0);
     if (!range.toString().trim()) return;
 
-    const struck = window.document.createElement('span');
-    struck.style.textDecoration = 'line-through';
-    struck.style.color = '#fb7185';
-    struck.style.textDecorationColor = '#f43f5e';
-    struck.appendChild(range.extractContents());
-
-    const correction = window.document.createElement('span');
-    correction.style.color = '#34d399';
-    correction.style.fontWeight = '600';
-    correction.textContent = ' ';
-
-    const fragment = window.document.createDocumentFragment();
-    fragment.appendChild(struck);
-    fragment.appendChild(window.document.createTextNode(' '));
-    fragment.appendChild(correction);
-    range.insertNode(fragment);
-
-    const newRange = window.document.createRange();
-    newRange.selectNodeContents(correction);
-    newRange.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(newRange);
+    const correction = applyInlineStrikeCorrect(range);
+    if (correction) {
+      const newRange = window.document.createRange();
+      newRange.selectNodeContents(correction);
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    }
 
     handleInput();
   };

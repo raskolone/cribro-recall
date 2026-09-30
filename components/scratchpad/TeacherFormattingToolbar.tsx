@@ -3,6 +3,7 @@ import {
   AlertCircle, CheckCircle2, Bookmark, ArrowRightLeft,
   Strikethrough, Bold, Italic, Palette, Eraser, Sparkles
 } from 'lucide-react';
+import { applyInlineMarkup } from '../../utils/scratchpadDom';
 
 export interface SelectionCoord {
   top: number;
@@ -84,17 +85,13 @@ export const TeacherFormattingToolbar: React.FC<TeacherFormattingToolbarProps> =
 
   if (!coords || isReadOnly || isStudent) return null;
 
-  // Aplikowanie stylu oznaczenia
+  // Aplikowanie stylu oznaczenia bez rozcinania bloków akapitu
   const applyMarkup = (className: string) => {
     const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
 
     const range = selection.getRangeAt(0);
-    const selectedContent = range.extractContents();
-    const span = document.createElement('span');
-    span.className = className;
-    span.appendChild(selectedContent);
-    range.insertNode(span);
+    applyInlineMarkup(range, className);
 
     selection.removeAllRanges();
     setCoords(null);
