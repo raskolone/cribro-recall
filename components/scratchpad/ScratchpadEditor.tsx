@@ -1162,6 +1162,13 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     }
   };
 
+  // Liczba zwijanych lekcji; przeliczana po każdej zmianie struktury (toc)
+  const lessonSectionCount = useMemo(
+    () => editorRef.current?.querySelectorAll('[data-toggle="1"]').length ?? 0,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [toc]
+  );
+
   /** Zwinięcie albo rozwinięcie wszystkich rozdziałów zwijanych w dokumencie */
   const handleCollapseAll = (collapsed: boolean) => {
     const root = editorRef.current;
@@ -3140,11 +3147,20 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             <ListTree size={14} />
             <span className="hidden sm:inline">Spis treści</span>
           </button>
-          <FormatButton
-            icon={<ChevronsDownUp size={14} />}
-            title="Zwiń / Rozwiń rozdziały w dokumencie"
-            onClick={() => handleCollapseAll(true)}
-          />
+          {isTeacher && (
+            <button
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => handleCollapseAll(true)}
+              disabled={lessonSectionCount <= 1}
+              title="Zwiń wszystkie lekcje"
+              aria-label="Zwiń wszystkie lekcje"
+              className="h-7 px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 text-text-2 hover:text-content hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0 disabled:opacity-40 disabled:cursor-default disabled:hover:bg-transparent"
+            >
+              <ChevronsDownUp size={14} />
+              <span className="hidden sm:inline">Zwiń wszystkie</span>
+            </button>
+          )}
         </div>
       </div>
 
