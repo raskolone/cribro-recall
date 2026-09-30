@@ -17,6 +17,7 @@ import {
 } from '../../services/scratchpadService';
 import ScratchpadEditor from './ScratchpadEditor';
 import { confirmAsync } from '../../utils/appAlert';
+import { shouldShowUnassignedBar } from '../../utils/scratchpadAssignBar';
 
 /**
  * Notatnik lektora jako WŁASNY EKRAN, nie okno nad panelem.
@@ -445,7 +446,7 @@ export const TeacherScratchpadScreen: React.FC<TeacherScratchpadScreenProps> = (
                 kursant jest wybrany; po przypisaniu nie ma już czego
                 wybierać, a stały pasek byłby stałym przypomnieniem o
                 decyzji, która zapadła. */}
-            {!scratchpadDoc.studentId && assignableStudents.length > 0 && (
+            {shouldShowUnassignedBar(scratchpadDoc, assignableStudents.length) && (
               <div className="px-4 py-2.5 border-b border-line-strong bg-primary/[0.06] flex flex-wrap items-center gap-2">
                 <span className="text-xs text-content-muted">
                   Notatnik roboczy — nikt go jeszcze nie widzi.
