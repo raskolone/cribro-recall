@@ -1234,6 +1234,14 @@ tr.liquid-glass-hover:hover {
   border: 1px solid rgba(0, 0, 0, 0.14);
   color: #475569;
 }
+/* Separator lekcji zostaje widoczny po zwinięciu: setSectionCollapsed chowa go
+   inline (display:none) jak każde rodzeństwo nagłówka. Tylko ekran — druk ma
+   własną regułę display:none !important w @media print poniżej. */
+@media screen {
+  .pad-paper .pad-page-break {
+    display: flex !important;
+  }
+}
 
 /*
  * Karta linku z podglądem Open Graph (wstawiana przez "Wstaw link" w
