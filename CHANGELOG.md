@@ -198,6 +198,15 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🚀 Notatnik: edytowalny tytuł lekcji, tytuł z datą + tematem, pasek „roboczy" bez grupy (2026-09-30)
+
+- **Pasek „Notatnik roboczy — nikt go jeszcze nie widzi"** (`TeacherScratchpadScreen.tsx`) nie pokazuje się już dla notatnika z `groupId` (notatnik grupowy nie ma `studentId`, ale widzą go członkowie). Dla grupy nie ma zastępczego komunikatu — przypisanie jednego kursanta przeniosłoby treść z grupy, więc nie oferujemy go wcale. Warunek: `utils/scratchpadAssignBar.ts`.
+- **Edytowalny tekst tytułu lekcji:** w nowo wstawianych nagłówkach `<h2 class="pad-locked-heading" contenteditable="false">` tytuł siedzi w `<span class="pad-heading-text" contenteditable="true">`; `<h2>` i strzałka `.pad-toggle` zostają zablokowane (Backspace jej nie skasuje). Enter w tytule jest blokowany, wklejanie do tytułu = zwykły tekst w jednej linii. Ręcznie poprawiony numer („Lesson 12") liczy się do `highestLessonNumber` i trafia do spisu treści (`headingPlainText` w `utils/scratchpadDom.ts`, używane przez `rebuildToc`). **Istniejące dokumenty nie są migrowane** — ich nagłówki zostają zablokowane.
+- **Tytuł nowej lekcji:** zawsze `Lesson N — {data}`, temat (opcjonalny) dopisany po kropce: `Lesson N — {data} • {temat}` (wcześniej temat zastępował datę). Ten sam format ma wstawianie ustrukturyzowanej lekcji. Podgląd w `InsertLessonModal` używa tej samej funkcji `buildLessonTitleText`. Temat jest escapowany w HTML.
+- Testy: `tests/scratchpadAssignBar.test.ts`, `tests/editableLessonHeading.test.ts` (jsdom), rozszerzony `tests/lessonTemplate.test.ts`. `tsc` 0 błędów, `npm test` 624/624, `npm run build` przechodzi.
+- Bez zmian: `firestore.rules`, `storage.rules`, struktura dokumentu (model płaski, bez kontenerów sekcji).
+- Nie zweryfikowane w działającej aplikacji (brak logowania w sesji) — sprawdzone w Chromium na osobnej stronie z prawdziwym szablonem i regułami CSS.
+
 ### 🚀 Kreator v1 (aktywny): tryb odbiorcy „Kilku kursantów" bez grupy (2026-09-29)
 
 - `HomeworkComposer.tsx` (v1, jedyny kreator widoczny przy `HOMEWORK_ENGINE_V2 = false`): trzeci przycisk odbiorcy, lista z wyszukiwarką, „Zaznacz wszystkich" (tylko widoczni po filtrze) / „Wyczyść", podsumowanie z imionami, osobny wybór „kursanta bazowego" (źródło lekcji/poziom). Zapis po stronie klienta: N dokumentów `specialTasks` w kształcie ścieżki „indywidualny kursant" (bez `engineVersion`, bez `groupId`), wspólne `homeworkSetId` (`hwset_multi_…`), osobny token dostępu na kursanta; modale potwierdzenia maila po kolei.
