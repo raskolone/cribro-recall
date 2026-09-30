@@ -111,14 +111,14 @@ import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDr
 import TeacherDock from './TeacherDock';
 import ExerciseStudioModal from '../exercise/ExerciseStudioModal';
 import TeacherFormattingToolbar from './TeacherFormattingToolbar';
-import { wrapSelectedTextInline, applyInlineStrikeCorrect } from '../../utils/scratchpadDom';
+import { wrapSelectedTextInline, applyInlineStrikeCorrect, headingPlainText } from '../../utils/scratchpadDom';
 import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
 import { FloatingToolPalette } from './FloatingToolPalette';
 import { FloatingToolsLauncher } from './FloatingToolsLauncher';
 import { InsertLinkModal } from './InsertLinkModal';
 import { ExerciseDefinition, RandomWheelPayload } from '../../types/exerciseStudio';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
-import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
+import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonHeadingTextHtml, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
 import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, NOTEBOOK_SWATCHES_EXTENDED, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { generateTextWithUnifiedFallback } from '../../services/geminiService';
@@ -543,12 +543,10 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       if (level === 1) {
         currentH1Id = id;
       }
-      const clone = heading.cloneNode(true) as HTMLElement;
-      clone.querySelectorAll('.pad-toggle').forEach(el => el.remove());
       return {
         id,
         level,
-        text: (clone.textContent || '').trim() || 'Bez tytułu',
+        text: headingPlainText(heading) || 'Bez tytułu',
         collapsed: heading.getAttribute('data-collapsed') === '1',
         parentId: level === 2 ? currentH1Id : undefined,
       };
@@ -1204,6 +1202,14 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   /** Wklejenie obrazu ze schowka */
   const handlePaste = async (event: React.ClipboardEvent<HTMLDivElement>) => {
     if (isReadOnly) return;
+    // Do tekstu nagłówka wklejamy wyłącznie zwykły tekst w jednej linii —
+    // bloki i style z schowka rozbiłyby zablokowany <h2>
+    if ((event.target as HTMLElement).closest?.('.pad-heading-text')) {
+      event.preventDefault();
+      const plain = event.clipboardData.getData('text/plain').replace(/\s*[\r\n]+\s*/g, ' ');
+      window.document.execCommand('insertText', false, plain);
+      return;
+    }
     const file = imageFromClipboard(event.clipboardData);
     if (!file) return;
 
@@ -1980,7 +1986,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
       ${pageBreakHtml}
       <h2 data-toggle="1" data-collapsed="0" contenteditable="false" class="pad-locked-heading" style="${lessonTitleStyle(paperTheme)}">
         <span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>
-        Lesson ${nextNum} — ${lessonDate}${topic ? ` • ${topic}` : ''}
+        ${lessonHeadingTextHtml(`Lesson ${nextNum} — ${lessonDate}${topic ? ` • ${topic}` : ''}`)}
       </h2>
     `;
 
@@ -3212,6 +3218,12 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                   if (e.altKey && e.code === 'KeyH') {
                     e.preventDefault();
                     handleHighlight('#fef3c7', '#92400e');
+                    return;
+                  }
+
+                  // Tytuł lekcji to jedna linia: Enter w edytowalnym tekście nagłówka nic nie robi
+                  if (e.key === 'Enter' && (e.target as HTMLElement).closest?.('.pad-heading-text')) {
+                    e.preventDefault();
                     return;
                   }
 

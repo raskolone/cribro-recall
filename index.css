@@ -1135,6 +1135,16 @@ tr.liquid-glass-hover:hover {
   cursor: default;
   user-select: none;
 }
+/* Tekst tytułu lekcji — jedyna edytowalna część zablokowanego nagłówka H2.
+   `inline-block` + `min-width` trzymają kursor, gdy tekst zostanie skasowany do zera. */
+.pad-heading-text {
+  display: inline-block;
+  min-width: 2ch;
+  cursor: text;
+  -webkit-user-select: text;
+  user-select: text;
+  outline: none;
+}
 .pad-paper [data-collapsed="1"] > .pad-toggle { transform: rotate(-90deg); }
 /* Zwinięty rozdział dostaje wielokropek, żeby nie wyglądał na pusty. */
 .pad-paper [data-collapsed="1"]::after {

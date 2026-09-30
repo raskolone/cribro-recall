@@ -100,3 +100,14 @@ export const applyInlineStrikeCorrect = (
 
   return correction;
 };
+
+/**
+ * Tekst nagłówka bez strzałki `.pad-toggle` — to, co trafia do spisu treści.
+ * Czyta `textContent`, więc nie zależy od tego, czy tytuł siedzi w
+ * `.pad-heading-text` (edytowalny span), czy bezpośrednio w nagłówku.
+ */
+export const headingPlainText = (heading: HTMLElement): string => {
+  const clone = heading.cloneNode(true) as HTMLElement;
+  clone.querySelectorAll('.pad-toggle').forEach(el => el.remove());
+  return (clone.textContent || '').trim();
+};

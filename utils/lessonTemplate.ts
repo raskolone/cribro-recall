@@ -43,6 +43,16 @@ export const sectionHeadingStyle = (titleOrTheme?: string, fallbackTheme?: 'ligh
 };
 
 /**
+ * Tekst tytułu lekcji jako OSOBNY, edytowalny element wewnątrz zablokowanego
+ * `<h2>`. Sam `<h2>` i strzałka `.pad-toggle` zostają `contenteditable="false"`
+ * (Backspace nie skasuje strzałki), a lektor może poprawić numer lub tekst.
+ * `rebuildToc` i `highestLessonNumber` czytają tekst nagłówka, więc poprawka
+ * trafia do spisu treści i do numeracji następnej lekcji bez dodatkowej logiki.
+ */
+export const lessonHeadingTextHtml = (text: string): string =>
+  `<span class="pad-heading-text" contenteditable="true">${text}</span>`;
+
+/**
  * Szablon wpisu lekcyjnego w notatniku.
  *
  * ══ DLACZEGO NUMER LEKCJI LICZY SIĘ Z DOKUMENTU ══
@@ -215,6 +225,6 @@ export const buildLessonTemplate = (options?: {
     ? `<div class="pad-page-break" data-page-break="1" contenteditable="false"><span class="pad-page-break-badge">── Strona A4 • Nowa Lekcja ──</span></div>`
     : '';
 
-  return `${pageBreakHtml}<h2 data-toggle="1" data-collapsed="0" contenteditable="false" class="pad-locked-heading" style="${lessonTitleStyle(paperTheme)}"><span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>${titleText}</h2>${sections}`;
+  return `${pageBreakHtml}<h2 data-toggle="1" data-collapsed="0" contenteditable="false" class="pad-locked-heading" style="${lessonTitleStyle(paperTheme)}"><span class="pad-toggle" contenteditable="false" title="Zwiń / rozwiń lekcję">▾</span>${lessonHeadingTextHtml(titleText)}</h2>${sections}`;
 };
 
