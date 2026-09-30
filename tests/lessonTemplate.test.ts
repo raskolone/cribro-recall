@@ -2,6 +2,8 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   buildLessonTemplate,
+  buildLessonTitleText,
+  templateDate,
   extractLastLessonSections,
   highestLessonNumber,
 } from '../utils/lessonTemplate';
@@ -33,9 +35,30 @@ describe('utils/lessonTemplate', () => {
     assert.ok(buildLessonTemplate({ previousHtml: html, lessonNumber: 99 }).includes('Lesson 99 —'));
   });
 
-  it('dodanie tematu tworzy tytuł z tematem', () => {
-    const html = buildLessonTemplate({ topic: 'Business Negotiations' });
-    assert.ok(html.includes('Lesson 1 — Business Negotiations'));
+  it('tytuł zawsze niesie datę; temat (opcjonalny) jest dopisany obok, nie zamiast daty', () => {
+    const withTopic = buildLessonTemplate({ topic: 'Business Negotiations', date: '30.09.2026' });
+    assert.ok(withTopic.includes('Lesson 1 — 30.09.2026 • Business Negotiations'));
+
+    const withoutTopic = buildLessonTemplate({ date: '30.09.2026' });
+    assert.ok(withoutTopic.includes('>Lesson 1 — 30.09.2026</span>'));
+    assert.ok(!withoutTopic.includes('•'));
+
+    const blankTopic = buildLessonTemplate({ topic: '   ', date: '30.09.2026' });
+    assert.ok(blankTopic.includes('>Lesson 1 — 30.09.2026</span>'));
+  });
+
+  it('data w tytule domyślnie pochodzi z systemu, gdy nie podano date', () => {
+    assert.ok(buildLessonTemplate({ topic: 'X' }).includes(`— ${templateDate()} • X`));
+  });
+
+  it('temat jest escapowany w HTML, ale podgląd (buildLessonTitleText) zostaje zwykłym tekstem', () => {
+    assert.ok(buildLessonTemplate({ topic: 'Q&A <b>', date: 'd' }).includes('d • Q&amp;A &lt;b&gt;'));
+    assert.equal(buildLessonTitleText(2, 'd', 'Q&A'), 'Lesson 2 — d • Q&A');
+  });
+
+  it('tytuł z datą i tematem nadal daje poprawny numer następnej lekcji', () => {
+    const html = buildLessonTemplate({ lessonNumber: 7, topic: 'Travel', date: '30.09.2026' });
+    assert.equal(highestLessonNumber(html), 7);
   });
 
   it('nagłówki szablonów nie są wliczane do numeracji', () => {

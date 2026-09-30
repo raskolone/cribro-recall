@@ -52,6 +52,20 @@ export const sectionHeadingStyle = (titleOrTheme?: string, fallbackTheme?: 'ligh
 export const lessonHeadingTextHtml = (text: string): string =>
   `<span class="pad-heading-text" contenteditable="true">${text}</span>`;
 
+const escapeHtml = (text: string): string =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+/**
+ * Tekst tytułu lekcji: zawsze `Lesson N — {data}`, temat (jeśli podany)
+ * dopisany po kropce środkowej — `Lesson N — {data} • {temat}`. Ten sam format
+ * wstawia `handleInsertAsStructuredLesson`. Data jest zawsze z systemu.
+ * Zwraca zwykły tekst (bez escapowania) — HTML escapuje `buildLessonTemplate`.
+ */
+export const buildLessonTitleText = (number: number, dateStr: string, topic?: string): string => {
+  const cleanTopic = topic?.trim();
+  return cleanTopic ? `Lesson ${number} — ${dateStr} • ${cleanTopic}` : `Lesson ${number} — ${dateStr}`;
+};
+
 /**
  * Szablon wpisu lekcyjnego w notatniku.
  *
@@ -153,7 +167,7 @@ export const LESSON_SECTIONS: { title: string; defaultContent: string }[] = [
 
 /**
  * HTML jednego wpisu lekcyjnego.
- * Tytuł: `Lesson [numer] — [temat]` lub `Lesson [numer] — [data]`.
+ * Tytuł: `Lesson [numer] — [data]` lub `Lesson [numer] — [data] • [temat]`.
  * Sekcje: QUICK RECALL, TODAY’S LESSON, LANGUAGE NOTES, AFTER THE LESSON.
  */
 export const buildLessonTemplate = (options?: {
@@ -181,9 +195,7 @@ export const buildLessonTemplate = (options?: {
       : templateDate(options?.date instanceof Date ? options.date : undefined);
   const paperTheme = options?.paperTheme || 'light';
 
-  const cleanTopic = options?.topic?.trim();
-  const headerSuffix = cleanTopic && cleanTopic.length > 0 ? cleanTopic : dateStr;
-  const titleText = `Lesson ${number} — ${headerSuffix}`;
+  const titleText = buildLessonTitleText(number, dateStr, options?.topic && escapeHtml(options.topic));
 
   const sections = LESSON_SECTIONS.map((section) => {
     let innerBody = section.defaultContent;

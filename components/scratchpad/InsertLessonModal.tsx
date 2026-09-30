@@ -14,6 +14,7 @@ import Card from '../ui/Card';
 import Button from '../ui/Button';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { LessonRecord } from '../../types';
+import { buildLessonTitleText, templateDate } from '../../utils/lessonTemplate';
 import { RecallType, RECALL_TYPE_LABELS } from '../../services/scratchpadAiService';
 
 interface InsertLessonModalProps {
@@ -146,7 +147,7 @@ export const InsertLessonModal: React.FC<InsertLessonModalProps> = ({
             className="w-full px-3.5 py-2.5 rounded-xl bg-black/30 border border-white/10 text-sm text-text-hi placeholder:text-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
           />
           <p className="text-[11px] text-slate-400 mt-1">
-            Tytuł w notatniku: {topic.trim() ? `Lesson ${nextLessonNumber} — ${topic.trim()}` : `Lesson ${nextLessonNumber} — dzisiejsza data`}
+            Tytuł w notatniku: {buildLessonTitleText(nextLessonNumber, templateDate(), topic)}
           </p>
         </div>
 
