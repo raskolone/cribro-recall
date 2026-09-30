@@ -1101,8 +1101,19 @@ tr.liquid-glass-hover:hover {
 }
 .pad-paper table { border-collapse: collapse; }
 .pad-paper td, .pad-paper th { border: 1px solid var(--pad-line); padding: 0.35em 0.6em; }
-.pad-paper th { background: var(--pad-mark); color: var(--pad-h); font-weight: 700; }
-.pad-paper input[type="checkbox"] { accent-color: var(--pad-link); }
+.pad-paper input[type="checkbox"] {
+  accent-color: var(--pad-link);
+  cursor: pointer;
+}
+.pad-paper .pad-task-item {
+  margin: 0.3em 0;
+  line-height: 1.5;
+}
+.pad-paper .pad-task-done {
+  text-decoration: line-through;
+  opacity: 0.6;
+  transition: opacity 0.15s ease;
+}
 
 /* ── Nagłówki zwijane (toggle) ──
    Strzałka jest osobnym, NIEEDYTOWALNYM elementem wewnątrz nagłówka, a nie

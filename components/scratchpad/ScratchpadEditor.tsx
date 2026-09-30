@@ -111,7 +111,17 @@ import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDr
 import TeacherDock from './TeacherDock';
 import ExerciseStudioModal from '../exercise/ExerciseStudioModal';
 import TeacherFormattingToolbar from './TeacherFormattingToolbar';
-import { wrapSelectedTextInline, applyInlineStrikeCorrect, headingPlainText } from '../../utils/scratchpadDom';
+import {
+  wrapSelectedTextInline,
+  applyInlineStrikeCorrect,
+  headingPlainText,
+  selectLineFromTarget,
+  tryConvertParagraphToList,
+  revertAutoListToParagraph,
+  syncChecklistState,
+  removeEmptyChecklistItem,
+  insertChecklistBlock,
+} from '../../utils/scratchpadDom';
 import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
 import { FloatingToolPalette } from './FloatingToolPalette';
 import { FloatingToolsLauncher } from './FloatingToolsLauncher';
@@ -695,6 +705,60 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       return;
     }
 
+    const isChecklist =
+      currentBlock.classList.contains('pad-task-item') ||
+      !!currentBlock.querySelector('input[type="checkbox"]');
+
+    if (isChecklist) {
+      const rawText = currentBlock.textContent?.replace(/[\s\u00a0]/g, '') || '';
+      if (!rawText) {
+        // Pusta linia checklisty -> zamiana na akapit (analogicznie do pustego li)
+        e.preventDefault();
+        const p = window.document.createElement('p');
+        p.innerHTML = '<br>';
+        currentBlock.replaceWith(p);
+        const newRange = window.document.createRange();
+        newRange.setStart(p, 0);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+        handleInput();
+        return;
+      }
+
+      // Linia z tekstem -> wstawienie nowego elementu checklisty poniżej
+      e.preventDefault();
+      const newTask = window.document.createElement('div');
+      newTask.className = 'pad-task-item';
+      newTask.innerHTML =
+        '<input type="checkbox" contenteditable="false" style="margin-right:6px;vertical-align:middle;" />&nbsp;';
+
+      const endRange = window.document.createRange();
+      endRange.setStart(range.startContainer, range.startOffset);
+      endRange.setEndAfter(currentBlock.lastChild || currentBlock);
+      const extracted = endRange.extractContents();
+      if (extracted.textContent?.trim()) {
+        newTask.innerHTML =
+          '<input type="checkbox" contenteditable="false" style="margin-right:6px;vertical-align:middle;" />';
+        newTask.appendChild(extracted);
+      }
+
+      currentBlock.parentNode?.insertBefore(newTask, currentBlock.nextSibling);
+
+      const newRange = window.document.createRange();
+      const targetNode = newTask.childNodes[1] || newTask;
+      if (targetNode.nodeType === Node.TEXT_NODE) {
+        newRange.setStart(targetNode, targetNode.textContent === '\u00a0' ? 1 : 0);
+      } else {
+        newRange.setStart(targetNode, 0);
+      }
+      newRange.collapse(true);
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+      handleInput();
+      return;
+    }
+
     if (['td', 'th'].includes(currentBlock.tagName.toLowerCase())) {
       return;
     }
@@ -755,6 +819,18 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   /** Kliknięcie w kartkę — obsługa kontrolek grafiki, zaznaczanie obrazu i strzałki zwijania */
   const handlePaperClick = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
+
+    // Przechwycenie kliknięcia w checkbox listy zadań (checklist)
+    if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'checkbox') {
+      if (isReadOnly) {
+        event.preventDefault();
+        return;
+      }
+      const checkbox = target as HTMLInputElement;
+      syncChecklistState(checkbox, editorRef.current);
+      handleInput();
+      return;
+    }
 
     // Przycisk Zoom 50% / Lupa na obrazku lub załączniku
     const zoomBtn = target.closest('.pad-img-btn-zoom') as HTMLElement | null;
@@ -821,6 +897,77 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     rebuildToc();
     measurePages();
     if (editorRef.current) triggerDebouncedSave(editorRef.current.innerHTML);
+  };
+
+  /** Podwójny klik w kartkę — zaznaczenie całej linii / akapitu zamiast pojedynczego słowa */
+  const handlePaperDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
+    if (isReadOnly) return;
+    const target = event.target as HTMLElement | null;
+    if (selectLineFromTarget(target, editorRef.current)) {
+      event.preventDefault();
+    }
+  };
+
+  /** Śledzenie świeżo utworzonej listy, aby umożliwić natychmiastowe wycofanie klawiszem Backspace */
+  const lastAutoListRef = useRef<{ li: HTMLLIElement; trigger: string } | null>(null);
+
+  /** Wykrycie spacji po '-', '*' lub '1.' na początku akapitu i konwersja na listę */
+  const handleSpaceKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (isReadOnly || !editorRef.current) return;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return;
+    const range = selection.getRangeAt(0);
+
+    const result = tryConvertParagraphToList(range, editorRef.current);
+    if (result) {
+      e.preventDefault();
+      lastAutoListRef.current = { li: result.liElement, trigger: result.triggerText };
+      handleInput();
+      measurePages();
+    }
+  };
+
+  /** Wycofanie świeżej konwersji listy po wciśnięciu Backspace w pustym punkcie */
+  const handleBackspaceKey = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
+    if (isReadOnly || !editorRef.current || !lastAutoListRef.current) return false;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+
+    let node: Node | null = selection.getRangeAt(0).startContainer;
+    if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+    const currentLi = (node instanceof HTMLElement ? node : null)?.closest<HTMLLIElement>('li');
+
+    if (
+      currentLi &&
+      currentLi === lastAutoListRef.current.li &&
+      (!currentLi.textContent || !currentLi.textContent.trim())
+    ) {
+      e.preventDefault();
+      revertAutoListToParagraph(currentLi, lastAutoListRef.current.trigger, editorRef.current);
+      lastAutoListRef.current = null;
+      handleInput();
+      measurePages();
+      return true;
+    }
+
+    lastAutoListRef.current = null;
+    return false;
+  };
+
+  /** Obsługa Backspace na początku pustej linii checklisty — usuwa cały element checklisty bez osierocenia checkboxa */
+  const handleChecklistBackspace = (e: React.KeyboardEvent<HTMLDivElement>): boolean => {
+    if (isReadOnly || !editorRef.current) return false;
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || !selection.isCollapsed) return false;
+
+    const handled = removeEmptyChecklistItem(selection.getRangeAt(0), editorRef.current);
+    if (handled) {
+      e.preventDefault();
+      handleInput();
+      measurePages();
+      return true;
+    }
+    return false;
   };
 
   /** Custom context menu dla grafik na prawy przycisk myszy */
@@ -1183,6 +1330,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
         // papierze — nie zapisuje nic do bazy, tylko to, co trafia do DOM-u.
         editorRef.current.innerHTML = sanitizeFrozenHeadingContrast(docData.contentHtml || '', paperTheme);
         wrapUnwrappedImages(editorRef.current);
+        editorRef.current.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => {
+          cb.checked = cb.hasAttribute('checked');
+        });
         const txt = extractText(docData.contentHtml || '');
         setWordCount(txt.trim() ? txt.trim().split(/\s+/).length : 0);
         setContentBytes(scratchpadContentBytes(docData.contentHtml || ''));
@@ -2213,13 +2363,10 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
 
   // Lista zadań
   const handleInsertChecklist = () => {
-    if (isReadOnly) return;
-    window.document.execCommand(
-      'insertHTML',
-      false,
-      '<div><input type="checkbox" style="margin-right:6px;vertical-align:middle;" />&nbsp;</div>'
-    );
+    if (isReadOnly || !editorRef.current) return;
+    insertChecklistBlock(editorRef.current);
     handleInput();
+    measurePages();
   };
 
   /**
@@ -3211,6 +3358,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 contentEditable={!isReadOnly}
                 onInput={handleInput}
                 onClick={handlePaperClick}
+                onDoubleClick={handlePaperDoubleClick}
                 onPaste={handlePaste}
                 onKeyDown={(e) => {
                   // Alt+H (Option+H na Macu) — natychmiastowe żółte wyróżnienie zaznaczenia,
@@ -3229,7 +3377,27 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
 
                   // Izolacja formatowania tekstu: likwidacja krwawienia stylów po Enterze
                   if (e.key === 'Enter' && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
+                    lastAutoListRef.current = null;
                     handleEnterKey(e);
+                    return;
+                  }
+
+                  // Auto-wykrywanie list: Spacja po '-', '*' lub '1.' na początku akapitu
+                  if (e.key === ' ' && !e.shiftKey && !e.altKey && !e.metaKey && !e.ctrlKey) {
+                    handleSpaceKey(e);
+                    return;
+                  }
+
+                  // Wycofanie pustego punktu checklisty lub świeżej konwersji listy po naciśnięciu Backspace
+                  if (e.key === 'Backspace' && !e.altKey && !e.metaKey && !e.ctrlKey) {
+                    if (handleChecklistBackspace(e)) {
+                      return;
+                    }
+                    if (handleBackspaceKey(e)) {
+                      return;
+                    }
+                  } else {
+                    lastAutoListRef.current = null;
                   }
                 }}
                 suppressContentEditableWarning
@@ -3839,6 +4007,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           }}
           onInsertLink={handleInsertLink}
           onInsertTable={(rows) => handleInsertTable((rows === 3 ? 3 : 2) as 2 | 3)}
+          onInsertChecklist={handleInsertChecklist}
           onDuplicateSelection={() => {
             const sel = window.getSelection();
             if (sel && !sel.isCollapsed && sel.rangeCount > 0) {

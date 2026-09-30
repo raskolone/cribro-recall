@@ -19,6 +19,7 @@ import {
   Circle,
   Grid2x2,
   Check,
+  CheckSquare,
 } from 'lucide-react';
 
 export type ToolTab = 'CONTENT' | 'DRAW';
@@ -35,6 +36,7 @@ export interface FloatingToolPaletteProps {
   onOpenExerciseStudio?: () => void;
   onInsertLink?: () => void;
   onInsertTable?: (rows: number) => void;
+  onInsertChecklist?: () => void;
   onDuplicateSelection?: () => void;
   onDeleteSelection?: () => void;
   // Akcje TEACH
@@ -83,6 +85,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
   onOpenExerciseStudio,
   onInsertLink,
   onInsertTable,
+  onInsertChecklist,
   onDuplicateSelection,
   onDeleteSelection,
   onApplyMark,
@@ -321,6 +324,17 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               >
                 <Link2 size={14} className="text-indigo-400 shrink-0" />
                 <span>Wstaw link</span>
+              </button>
+
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={onInsertChecklist}
+                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                title="Wstaw pole zadania z możliwością odhaczania (Checklist)"
+              >
+                <CheckSquare size={14} className="text-emerald-400 shrink-0" />
+                <span>Lista zadań</span>
               </button>
 
               <button
