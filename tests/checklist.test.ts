@@ -247,5 +247,106 @@ describe('Checklista z przekreśleniem (Scratchpad Checklist)', () => {
     const curRange = curSel.getRangeAt(0);
     assert.ok(taskItem.contains(curRange.startContainer), 'Kursor po wstawieniu musi być wewnątrz zadania');
   });
+
+  test('9. Zaznaczenie 2 linii tekstu konwertuje obie na 2 osobne elementy checklisty', () => {
+    const editor = mount('<p>Kupić chleb</p><p>Kupić mleko</p>');
+    const paragraphs = editor.querySelectorAll('p');
+
+    const range = dom.window.document.createRange();
+    range.setStart(paragraphs[0].firstChild!, 0);
+    range.setEnd(paragraphs[1].firstChild!, paragraphs[1].firstChild!.textContent!.length);
+    const selection = dom.window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    insertChecklistBlock(editor);
+
+    const taskItems = editor.querySelectorAll('.pad-task-item');
+    assert.equal(taskItems.length, 2, 'Muszą powstać dokładnie 2 elementy .pad-task-item');
+    assert.equal(editor.querySelectorAll('input[type="checkbox"]').length, 2, 'Każde zadanie musi mieć własny checkbox');
+    assert.match(taskItems[0].textContent || '', /Kupić chleb/);
+    assert.match(taskItems[1].textContent || '', /Kupić mleko/);
+    assert.equal(editor.querySelectorAll('p').length, 0, 'Żaden stary <p> nie może wisieć wewnątrz ani na zewnątrz');
+  });
+
+  test('10. Ponowne kliknięcie w checkliście odwraca zadanie z powrotem do zwykłego akapitu <p>', () => {
+    const editor = mount('<div class="pad-task-item"><input type="checkbox" contenteditable="false">Kupić chleb</div>');
+    const taskItem = editor.querySelector('.pad-task-item')!;
+
+    const range = dom.window.document.createRange();
+    range.selectNodeContents(taskItem);
+    const selection = dom.window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    insertChecklistBlock(editor);
+
+    assert.equal(editor.querySelectorAll('.pad-task-item').length, 0, 'Zadanie musi zostać odwrócone');
+    assert.equal(editor.querySelectorAll('p').length, 1, 'Musi powstać zwykły akapit <p>');
+    assert.equal(editor.querySelectorAll('input[type="checkbox"]').length, 0, 'Checkbox musi zniknąć');
+    assert.match(editor.querySelector('p')!.textContent || '', /Kupić chleb/);
+  });
+
+  test('11. Backspace na początku niepustego zadania odwraca je do <p> z zachowanym tekstem (scenariusz 2A)', () => {
+    const editor = mount('<div class="pad-task-item"><input type="checkbox" contenteditable="false">Zadanie 2</div>');
+    const task = editor.querySelector('.pad-task-item')!;
+    const textNode = task.childNodes[1] as Text;
+
+    const range = dom.window.document.createRange();
+    range.setStart(textNode, 0);
+    range.collapse(true);
+    const selection = dom.window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const handled = removeEmptyChecklistItem(range, editor);
+    assert.equal(handled, true, 'removeEmptyChecklistItem musi obsłużyć Backspace na początku zadania');
+    assert.equal(editor.querySelectorAll('.pad-task-item').length, 0);
+    const p = editor.querySelector('p');
+    assert.ok(p, 'Zadanie musi stać się akapitem');
+    assert.equal(p.textContent, 'Zadanie 2', 'Tekst musi zostać zachowany');
+  });
+
+  test('12. Backspace w pustym środkowym zadaniu usuwa je i scala z poprzednim (scenariusz 2B)', () => {
+    const editor = mount(
+      '<div class="pad-task-item"><input type="checkbox" contenteditable="false">Zadanie 1</div>' +
+      '<div class="pad-task-item"><input type="checkbox" contenteditable="false">&nbsp;</div>' +
+      '<div class="pad-task-item"><input type="checkbox" contenteditable="false">Zadanie 3</div>'
+    );
+    const tasks = editor.querySelectorAll('.pad-task-item');
+    const emptyTask = tasks[1];
+
+    const range = dom.window.document.createRange();
+    range.setStart(emptyTask.childNodes[1], 1);
+    range.collapse(true);
+    const selection = dom.window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const handled = removeEmptyChecklistItem(range, editor);
+    assert.equal(handled, true);
+    assert.equal(editor.querySelectorAll('.pad-task-item').length, 2, 'Puste zadanie musi zostać usunięte bez dziury <p><br></p>');
+    assert.equal(editor.querySelectorAll('p').length, 0, 'Nie może powstać zbędny pusty <p>');
+  });
+
+  test('13. Backspace na zaznaczonym całym bloku zadania usuwa je (scenariusz 2E)', () => {
+    const editor = mount(
+      '<div class="pad-task-item"><input type="checkbox" contenteditable="false">Zadanie 1</div>' +
+      '<div class="pad-task-item"><input type="checkbox" contenteditable="false">Zadanie 2</div>' +
+      '<div class="pad-task-item"><input type="checkbox" contenteditable="false">Zadanie 3</div>'
+    );
+    const tasks = editor.querySelectorAll('.pad-task-item');
+
+    const range = dom.window.document.createRange();
+    range.selectNode(tasks[1]);
+    const selection = dom.window.getSelection()!;
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    const handled = removeEmptyChecklistItem(range, editor);
+    assert.equal(handled, true);
+    assert.equal(editor.querySelectorAll('.pad-task-item').length, 2, 'Zadanie 2 musi zostać w całości usunięte');
+  });
 });
+
 

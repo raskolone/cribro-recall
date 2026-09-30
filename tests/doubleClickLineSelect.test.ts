@@ -129,4 +129,27 @@ describe('selectLineFromTarget — podwójny klik zaznaczający całą linię', 
     const selection = dom.window.getSelection();
     assert.equal(selection?.toString(), 'Treść komórki tabeli');
   });
+
+  test('10. Zaznaczenie <li> z zagnieżdżoną listą <ul> zaznacza TYLKO linię nadrzędną, bez dzieci', () => {
+    const editor = mount(
+      '<ul>' +
+        '<li>' +
+          'Punkt nadrzędny listy' +
+          '<ul>' +
+            '<li>Punkt zagnieżdżony 1</li>' +
+            '<li>Punkt zagnieżdżony 2</li>' +
+          '</ul>' +
+        '</li>' +
+      '</ul>'
+    );
+    const parentLi = editor.querySelector('li')!;
+    const textNode = parentLi.firstChild as Text;
+
+    const handled = selectLineFromTarget(textNode.parentElement, editor);
+    assert.equal(handled, true);
+
+    const selection = dom.window.getSelection();
+    assert.equal(selection?.toString(), 'Punkt nadrzędny listy');
+    assert.ok(!selection?.toString().includes('zagnieżdżony'), 'Zaznaczenie nie może obejmować zagnieżdżonych dzieci');
+  });
 });

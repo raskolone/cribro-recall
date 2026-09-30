@@ -888,6 +888,15 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       setSelectedImage(null);
     }
 
+    // Potrójny klik (triple-click) — zaznaczenie całej linii / akapitu (bez zagnieżdżonych dzieci w listach)
+    if (event.detail === 3 && !isReadOnly) {
+      const target = event.target as HTMLElement | null;
+      if (selectLineFromTarget(target, editorRef.current)) {
+        event.preventDefault();
+        return;
+      }
+    }
+
     const chevron = target.closest?.('.pad-toggle') as HTMLElement | null;
     if (!chevron) return;
     const heading = chevron.closest('h1, h2, h3') as HTMLElement | null;
@@ -897,15 +906,6 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     rebuildToc();
     measurePages();
     if (editorRef.current) triggerDebouncedSave(editorRef.current.innerHTML);
-  };
-
-  /** Podwójny klik w kartkę — zaznaczenie całej linii / akapitu zamiast pojedynczego słowa */
-  const handlePaperDoubleClick = (event: React.MouseEvent<HTMLDivElement>) => {
-    if (isReadOnly) return;
-    const target = event.target as HTMLElement | null;
-    if (selectLineFromTarget(target, editorRef.current)) {
-      event.preventDefault();
-    }
   };
 
   /** Śledzenie świeżo utworzonej listy, aby umożliwić natychmiastowe wycofanie klawiszem Backspace */
@@ -3358,7 +3358,6 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 contentEditable={!isReadOnly}
                 onInput={handleInput}
                 onClick={handlePaperClick}
-                onDoubleClick={handlePaperDoubleClick}
                 onPaste={handlePaste}
                 onKeyDown={(e) => {
                   // Alt+H (Option+H na Macu) — natychmiastowe żółte wyróżnienie zaznaczenia,

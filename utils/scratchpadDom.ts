@@ -113,7 +113,8 @@ export const headingPlainText = (heading: HTMLElement): string => {
 };
 
 /**
- * Zaznacza całą linię / blok tekstowy na skutek podwójnego kliknięcia (zamiast słowa).
+ * Zaznacza całą linię / blok tekstowy na skutek potrójnego kliknięcia.
+ * W przypadku <li> z zagnieżdżoną listą <ul>/<ol>, zaznacza tylko treść nadrzędną (kończy się przed zagnieżdżeniem).
  * Zwraca `true` jeśli zaznaczenie zostało wykonane i należy wywołać `preventDefault()`.
  */
 export const selectLineFromTarget = (
@@ -149,7 +150,7 @@ export const selectLineFromTarget = (
   if (!isEditable) return false;
 
   // 4. Znajdź najbliższy blok tekstowy
-  const blockNode = target.closest<HTMLElement>('p, li, h1, h2, h3, blockquote, td, th');
+  const blockNode = target.closest<HTMLElement>('p, li, h1, h2, h3, blockquote, td, th, .pad-task-item');
   if (!blockNode || blockNode === editorRoot || !editorRoot.contains(blockNode)) {
     return false;
   }
@@ -163,7 +164,24 @@ export const selectLineFromTarget = (
   if (!selection) return false;
 
   const range = doc.createRange();
-  range.selectNodeContents(targetNode);
+
+  // W zagnieżdżonej liście <li> zaznacz tylko treść punktu nadrzędnego (zakończ przed zagnieżdżonym <ul>/<ol>)
+  const nestedList = blockNode.tagName.toLowerCase() === 'li' ? blockNode.querySelector('ul, ol') : null;
+  if (nestedList && targetNode === blockNode) {
+    range.setStart(targetNode, 0);
+    range.setEndBefore(nestedList);
+  } else if (blockNode.classList.contains('pad-task-item') && targetNode === blockNode) {
+    const checkbox = blockNode.querySelector('input[type="checkbox"]');
+    if (checkbox && checkbox.nextSibling) {
+      range.setStartBefore(checkbox.nextSibling);
+      range.setEndAfter(blockNode.lastChild || blockNode);
+    } else {
+      range.selectNodeContents(targetNode);
+    }
+  } else {
+    range.selectNodeContents(targetNode);
+  }
+
   selection.removeAllRanges();
   selection.addRange(range);
 
@@ -352,28 +370,78 @@ export const syncChecklistState = (
 };
 
 /**
- * Usuwa cały pusty element checklisty po naciśnięciu Backspace na początku pustej linii,
- * zastępując go czystym akapitem <p><br></p> (analogicznie do pustego <li> w edytorze),
- * nie pozostawiając osieroconego checkboxa.
+ * Obsługa Backspace / Delete w elemencie checklisty:
+ * 1. Kursor na początku tekstu zadania (zaraz za checkboxem, niepusty tekst) -> odwraca zadanie do zwykłego <p> z zachowaniem tekstu
+ * 2. Zadanie puste -> usuwa cały element i przenosi kursor na koniec poprzedniej linii (scalenie)
+ * 3. Zaznaczony cały blok (niecollapsed) -> usuwa cały blok zadania
  */
 export const removeEmptyChecklistItem = (
   range: Range,
   editorRoot: HTMLElement
 ): boolean => {
-  if (!range.collapsed) return false;
+  const doc = editorRoot.ownerDocument || window.document;
+  const win = doc.defaultView || window;
+  const selection = win.getSelection();
 
-  let node: Node | null = range.startContainer;
-  if (node.nodeType === Node.TEXT_NODE) {
-    node = node.parentElement;
+  // 1. Zaznaczony cały blok (niecollapsed)
+  if (!range.collapsed) {
+    let startNode: Node | null = range.startContainer;
+    if (startNode.nodeType === Node.TEXT_NODE) startNode = startNode.parentElement;
+    let taskItem = startNode ? (startNode as HTMLElement).closest('.pad-task-item') as HTMLElement | null : null;
+    if (!taskItem && startNode && startNode.childNodes.length > 0) {
+      const child = startNode.childNodes[range.startOffset] || startNode.childNodes[Math.max(0, range.startOffset - 1)];
+      if (child) {
+        taskItem = (child.nodeType === Node.TEXT_NODE ? child.parentElement : child as HTMLElement)?.closest('.pad-task-item') as HTMLElement | null;
+      }
+    }
+    if (taskItem && editorRoot.contains(taskItem) && taskItem !== editorRoot) {
+      const prev = taskItem.previousElementSibling as HTMLElement | null;
+      const next = taskItem.nextElementSibling as HTMLElement | null;
+      taskItem.remove();
+
+      if (prev) {
+        const newRange = doc.createRange();
+        newRange.selectNodeContents(prev);
+        newRange.collapse(false);
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      } else if (next) {
+        const newRange = doc.createRange();
+        newRange.setStart(next, 0);
+        newRange.collapse(true);
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      } else {
+        const p = doc.createElement('p');
+        p.innerHTML = '<br>';
+        editorRoot.appendChild(p);
+        const newRange = doc.createRange();
+        newRange.setStart(p, 0);
+        newRange.collapse(true);
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+      return true;
+    }
+    return false;
   }
-  if (!node || !(node instanceof HTMLElement)) return false;
 
-  const taskItem =
-    (node.closest('.pad-task-item') as HTMLElement | null) ||
-    (node.querySelector('input[type="checkbox"]') ? node : null) ||
-    (node.closest('div, li, p')?.querySelector('input[type="checkbox"]')
-      ? (node.closest('div, li, p') as HTMLElement)
-      : null);
+  // 2. Kursor w jednym miejscu (collapsed)
+  let node: Node | null = range.startContainer;
+  let offset = range.startOffset;
+
+  let taskItem: HTMLElement | null = null;
+  if (node.nodeType === Node.TEXT_NODE) {
+    taskItem = node.parentElement?.closest('.pad-task-item') as HTMLElement | null;
+  } else if (node instanceof HTMLElement) {
+    taskItem = node.closest('.pad-task-item') as HTMLElement | null;
+  }
 
   if (!taskItem || !editorRoot.contains(taskItem) || taskItem === editorRoot) {
     return false;
@@ -382,44 +450,90 @@ export const removeEmptyChecklistItem = (
   const checkbox = taskItem.querySelector('input[type="checkbox"]');
   if (!checkbox) return false;
 
-  // Sprawdzamy czy w elemencie jest jakikolwiek tekst poza checkboxem i białymi znakami / nbsp
   const rawText = taskItem.textContent?.replace(/[\s\u00a0]/g, '') || '';
-  if (rawText.length > 0) {
-    return false;
-  }
 
-  const doc = taskItem.ownerDocument || window.document;
-  const p = doc.createElement('p');
-  p.innerHTML = '<br>';
-
-  const parentList = taskItem.closest('ul, ol');
-  if (parentList && parentList.parentNode) {
+  // SCENARIUSZ A: Zadanie jest puste (brak tekstu poza białymi znakami / nbsp)
+  if (rawText.length === 0) {
+    const prev = taskItem.previousElementSibling as HTMLElement | null;
+    const next = taskItem.nextElementSibling as HTMLElement | null;
     taskItem.remove();
-    parentList.parentNode.insertBefore(p, parentList.nextSibling);
-    if (!parentList.hasChildNodes()) parentList.remove();
-  } else {
+
+    if (prev) {
+      const newRange = doc.createRange();
+      newRange.selectNodeContents(prev);
+      newRange.collapse(false);
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+    } else if (next) {
+      const newRange = doc.createRange();
+      newRange.setStart(next, 0);
+      newRange.collapse(true);
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+    } else {
+      const p = doc.createElement('p');
+      p.innerHTML = '<br>';
+      editorRoot.appendChild(p);
+      const newRange = doc.createRange();
+      newRange.setStart(p, 0);
+      newRange.collapse(true);
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+    }
+    return true;
+  }
+
+  // SCENARIUSZ B: Zadanie NIE JEST puste, ale kursor stoi na początku tekstu (zaraz za checkboxem)
+  const isAtStartOfText = (() => {
+    if (node === taskItem) {
+      return offset <= 1;
+    }
+    if (node.nodeType === Node.TEXT_NODE) {
+      let prevSibling = node.previousSibling;
+      while (prevSibling && prevSibling !== checkbox && prevSibling.textContent === '') {
+        prevSibling = prevSibling.previousSibling;
+      }
+      return prevSibling === checkbox && offset === 0;
+    }
+    return false;
+  })();
+
+  if (isAtStartOfText) {
+    const p = doc.createElement('p');
+    checkbox.remove();
+    while (taskItem.firstChild) {
+      p.appendChild(taskItem.firstChild);
+    }
     taskItem.replaceWith(p);
-  }
 
-  const win = doc.defaultView || window;
-  const selection = win.getSelection();
-  if (selection) {
     const newRange = doc.createRange();
-    newRange.setStart(p, 0);
+    newRange.setStart(p.firstChild || p, 0);
     newRange.collapse(true);
-    selection.removeAllRanges();
-    selection.addRange(newRange);
+    if (selection) {
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    }
+    return true;
   }
 
-  return true;
+  return false;
 };
 
 /**
- * Wstawia element checklisty w miejscu kursora lub konwertuje zaznaczony tekst na zadanie.
- * Zamiast zawodnego execCommand('insertHTML'), operuje bezpośrednio na DOM API:
- * - Jeśli jest zaznaczony tekst: zachowuje go i przenosi do zadania obok checkboxa
- * - Jeśli brak zaznaczenia (collapsed): wstawia nowy element zadania z checkboxem i spacją na tekst
- * - Po wstawieniu ustawia kursor w edytowalnym miejscu za checkboxem
+ * Wstawia element checklisty w miejscu kursora lub konwertuje zaznaczone bloki na zadania.
+ * Obsługuje zarówno zaznaczenie jednoliniowe, jak i wieloliniowe (multi-line):
+ * - Identyfikuje wszystkie bloki (<p>, <li>, nagłówki zwykłe, .pad-task-item) przecinające range
+ * - Dla każdego bloku z osobna:
+ *   - jeśli to już .pad-task-item -> odwraca z powrotem do <p> (toggle)
+ *   - jeśli zwykły blok tekstowy -> przekształca w <div class="pad-task-item"><input type="checkbox"...>{treść}</div>
+ * - Dla collapsed range: przekształca bieżący blok (jeśli pusta linia, tworzy czysty element zadania)
+ * - Ustawia kursor na końcu ostatniego przekształconego elementu
  */
 export const insertChecklistBlock = (
   editorRoot: HTMLElement
@@ -439,36 +553,123 @@ export const insertChecklistBlock = (
     range.collapse(false);
   }
 
-  const taskDiv = doc.createElement('div');
-  taskDiv.className = 'pad-task-item';
+  const createCheckbox = () => {
+    const cb = doc.createElement('input');
+    cb.type = 'checkbox';
+    cb.setAttribute('contenteditable', 'false');
+    cb.style.marginRight = '6px';
+    cb.style.verticalAlign = 'middle';
+    return cb;
+  };
 
-  const checkbox = doc.createElement('input');
-  checkbox.type = 'checkbox';
-  checkbox.setAttribute('contenteditable', 'false');
-  checkbox.style.marginRight = '6px';
-  checkbox.style.verticalAlign = 'middle';
-  taskDiv.appendChild(checkbox);
+  const convertBlockToTask = (block: HTMLElement): HTMLElement => {
+    const taskDiv = doc.createElement('div');
+    taskDiv.className = 'pad-task-item';
+    taskDiv.appendChild(createCheckbox());
 
-  if (!range.collapsed) {
-    // 1. Gdy jest zaznaczony tekst: zachowaj go obok checkboxa
-    const fragment = range.extractContents();
-    taskDiv.appendChild(fragment);
-
-    if (!taskDiv.textContent?.trim()) {
+    const isBlank = !block.textContent || !block.textContent.replace(/[\s\u00a0]/g, '');
+    if (isBlank) {
       taskDiv.appendChild(doc.createTextNode('\u00a0'));
+    } else {
+      while (block.firstChild) {
+        taskDiv.appendChild(block.firstChild);
+      }
     }
 
+    block.replaceWith(taskDiv);
+    return taskDiv;
+  };
+
+  const convertTaskToParagraph = (taskItem: HTMLElement): HTMLElement => {
+    const p = doc.createElement('p');
+    const checkbox = taskItem.querySelector('input[type="checkbox"]');
+    if (checkbox) checkbox.remove();
+
+    while (taskItem.firstChild) {
+      p.appendChild(taskItem.firstChild);
+    }
+    const isBlank = !p.textContent || !p.textContent.replace(/[\s\u00a0]/g, '');
+    if (isBlank) {
+      p.innerHTML = '<br>';
+    }
+    taskItem.replaceWith(p);
+    return p;
+  };
+
+  if (range.collapsed) {
+    // 1. Kursor w jednym miejscu (collapsed)
     let startNode: Node | null = range.startContainer;
     if (startNode.nodeType === Node.TEXT_NODE) startNode = startNode.parentElement;
-    const currentBlock = startNode ? (startNode as HTMLElement).closest('p, h1, h2, h3, li, div, blockquote') : null;
+    const currentBlock = startNode ? (startNode as HTMLElement).closest('p, li, .pad-task-item, h1, h2, h3, blockquote, div') as HTMLElement | null : null;
 
-    if (currentBlock && currentBlock !== editorRoot && (!currentBlock.textContent || !currentBlock.textContent.trim())) {
-      currentBlock.replaceWith(taskDiv);
-    } else {
+    if (!currentBlock || currentBlock === editorRoot || !editorRoot.contains(currentBlock)) {
+      const taskDiv = doc.createElement('div');
+      taskDiv.className = 'pad-task-item';
+      taskDiv.appendChild(createCheckbox());
+      taskDiv.appendChild(doc.createTextNode('\u00a0'));
       range.insertNode(taskDiv);
+      const newRange = doc.createRange();
+      newRange.selectNodeContents(taskDiv);
+      newRange.collapse(false);
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+      return true;
     }
 
-    // Ustaw kursor na końcu przeniesionego tekstu wewnątrz zadania
+    // Wyklucz zablokowane nagłówki szablonu lekcji
+    if (currentBlock.closest('.pad-locked-heading')) {
+      return false;
+    }
+
+    if (currentBlock.classList.contains('pad-task-item') || currentBlock.querySelector('input[type="checkbox"]')) {
+      const p = convertTaskToParagraph(currentBlock.classList.contains('pad-task-item') ? currentBlock : (currentBlock.closest('.pad-task-item') || currentBlock));
+      const newRange = doc.createRange();
+      newRange.selectNodeContents(p);
+      newRange.collapse(false);
+      if (selection) {
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+      }
+      return true;
+    }
+
+    const task = convertBlockToTask(currentBlock);
+    const newRange = doc.createRange();
+    newRange.selectNodeContents(task);
+    newRange.collapse(false);
+    if (selection) {
+      selection.removeAllRanges();
+      selection.addRange(newRange);
+    }
+    return true;
+  }
+
+  // 2. Zaznaczenie (może obejmować jeden lub wiele bloków)
+  const allBlocks = Array.from(editorRoot.querySelectorAll('p, .pad-task-item, li, h1, h2, h3, blockquote')) as HTMLElement[];
+  let targetBlocks = allBlocks.filter(b => {
+    if (b.closest('.pad-locked-heading')) return false;
+    return range!.intersectsNode(b);
+  });
+
+  if (targetBlocks.length === 0) {
+    let startNode: Node | null = range.startContainer;
+    if (startNode.nodeType === Node.TEXT_NODE) startNode = startNode.parentElement;
+    const single = startNode ? (startNode as HTMLElement).closest('p, .pad-task-item, li, div') as HTMLElement | null : null;
+    if (single && single !== editorRoot && editorRoot.contains(single) && !single.closest('.pad-locked-heading')) {
+      targetBlocks = [single];
+    }
+  }
+
+  if (targetBlocks.length === 0) {
+    const taskDiv = doc.createElement('div');
+    taskDiv.className = 'pad-task-item';
+    taskDiv.appendChild(createCheckbox());
+    const fragment = range.extractContents();
+    taskDiv.appendChild(fragment);
+    if (!taskDiv.textContent?.trim()) taskDiv.appendChild(doc.createTextNode('\u00a0'));
+    range.insertNode(taskDiv);
     const newRange = doc.createRange();
     newRange.selectNodeContents(taskDiv);
     newRange.collapse(false);
@@ -476,28 +677,23 @@ export const insertChecklistBlock = (
       selection.removeAllRanges();
       selection.addRange(newRange);
     }
-  } else {
-    // 2. Gdy kursor jest bez zaznaczenia (collapsed)
-    const textNode = doc.createTextNode('\u00a0');
-    taskDiv.appendChild(textNode);
+    return true;
+  }
 
-    let startNode: Node | null = range.startContainer;
-    if (startNode.nodeType === Node.TEXT_NODE) startNode = startNode.parentElement;
-    const currentBlock = startNode ? (startNode as HTMLElement).closest('p, h1, h2, h3, li, div, blockquote') : null;
-
-    if (currentBlock && currentBlock !== editorRoot && (!currentBlock.textContent || !currentBlock.textContent.trim())) {
-      // Pusta linia (np. <p><br></p>) -> zastąp czystym elementem checklisty
-      currentBlock.replaceWith(taskDiv);
-    } else if (currentBlock && currentBlock !== editorRoot) {
-      currentBlock.parentNode?.insertBefore(taskDiv, currentBlock.nextSibling);
+  let lastResultElement: HTMLElement | null = null;
+  targetBlocks.forEach(block => {
+    if (block.classList.contains('pad-task-item') || block.querySelector('input[type="checkbox"]')) {
+      const taskElem = block.classList.contains('pad-task-item') ? block : (block.closest('.pad-task-item') as HTMLElement || block);
+      lastResultElement = convertTaskToParagraph(taskElem);
     } else {
-      range.insertNode(taskDiv);
+      lastResultElement = convertBlockToTask(block);
     }
+  });
 
-    // Ustaw kursor zaraz za checkboxem (w miejscu na tekst zadania)
+  if (lastResultElement) {
     const newRange = doc.createRange();
-    newRange.setStart(textNode, 1);
-    newRange.collapse(true);
+    newRange.selectNodeContents(lastResultElement);
+    newRange.collapse(false);
     if (selection) {
       selection.removeAllRanges();
       selection.addRange(newRange);
