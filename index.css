@@ -2072,3 +2072,74 @@ tr.liquid-glass-hover:hover {
 }
 
 
+
+
+/* ── Lesson Tools (FloatingToolPalette) ──
+   Panel idzie przez portal do <body>, więc nie dziedziczy motywu z powłoki —
+   dostaje `data-pad-theme` jako prop. Zasada jak przy .pad-bar: jasny, gdy
+   jasna jest aplikacja ALBO kartka; w pozostałych przypadkach ciemny. */
+.pad-tools {
+  --pt-bg: rgba(15, 23, 42, 0.95);
+  --pt-head: rgba(30, 41, 59, 0.80);
+  --pt-sub: rgba(2, 6, 23, 0.45);
+  --pt-fg: #f1f5f9;
+  --pt-muted: #94a3b8;
+  --pt-line: rgba(255, 255, 255, 0.12);
+  --pt-btn: rgba(255, 255, 255, 0.05);
+  --pt-btn-hover: rgba(255, 255, 255, 0.10);
+  --pt-accent: #10b981;
+  --pt-accent-fg: #020617;
+  --pt-studio-bg: rgba(6, 78, 59, 0.55);
+  --pt-studio-line: rgba(16, 185, 129, 0.50);
+  --pt-studio-fg: #a7f3d0;
+  background: var(--pt-bg);
+  border-color: var(--pt-line);
+  color: var(--pt-fg);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--pt-line);
+}
+:root.light .pad-tools,
+:root[data-theme="light"] .pad-tools,
+.pad-tools[data-pad-theme="light"] {
+  --pt-bg: rgba(255, 255, 255, 0.97);
+  --pt-head: #f1f5f9;
+  --pt-sub: #f1f5f9;
+  --pt-fg: #0f172a;
+  --pt-muted: #475569;
+  --pt-line: rgba(15, 23, 42, 0.18);
+  --pt-btn: #ffffff;
+  --pt-btn-hover: #e2e8f0;
+  --pt-accent: #0b7a53;
+  --pt-accent-fg: #ffffff;
+  --pt-studio-bg: #ecfdf5;
+  --pt-studio-line: rgba(11, 122, 83, 0.45);
+  --pt-studio-fg: #065f46;
+  box-shadow: 0 12px 32px rgba(16, 24, 40, 0.18), 0 0 0 1px var(--pt-line);
+}
+.pad-tools-head { background: var(--pt-head); border-color: var(--pt-line); }
+.pad-tools-tabs { background: var(--pt-sub); border-color: var(--pt-line); }
+.pad-tools-sub { background: var(--pt-sub); border-color: var(--pt-line); }
+.pad-tools-btn { background: var(--pt-btn); border-color: var(--pt-line); color: var(--pt-fg); }
+.pad-tools-btn:hover { background: var(--pt-btn-hover); }
+.pad-tools-tab { color: var(--pt-muted); }
+.pad-tools-tab:hover { color: var(--pt-fg); background: var(--pt-btn-hover); }
+.pad-tools-active { background: var(--pt-accent); color: var(--pt-accent-fg); border-color: transparent; }
+.pad-tools-label { color: var(--pt-muted); }
+.pad-tools-chip { background: var(--pt-btn-hover); color: var(--pt-muted); }
+.pad-tools-iconbtn { color: var(--pt-muted); }
+.pad-tools-iconbtn:hover { color: var(--pt-fg); background: var(--pt-btn-hover); }
+.pad-tools-studio { background: var(--pt-studio-bg); border-color: var(--pt-studio-line); color: var(--pt-studio-fg); }
+.pad-tools-neutral-ic { color: var(--pt-muted); }
+.pad-tools-swatch-on { border-color: var(--pt-fg); }
+/* Ikony akcentowe w jasnym panelu — ciemniejsze odcienie dla kontrastu */
+:root.light .pad-tools .text-emerald-400,
+:root[data-theme="light"] .pad-tools .text-emerald-400,
+.pad-tools[data-pad-theme="light"] .text-emerald-400 { color: #047857; }
+:root.light .pad-tools .text-sky-400,
+:root[data-theme="light"] .pad-tools .text-sky-400,
+.pad-tools[data-pad-theme="light"] .text-sky-400 { color: #0369a1; }
+:root.light .pad-tools .text-amber-400,
+:root[data-theme="light"] .pad-tools .text-amber-400,
+.pad-tools[data-pad-theme="light"] .text-amber-400 { color: #b45309; }
+:root.light .pad-tools .text-indigo-400,
+:root[data-theme="light"] .pad-tools .text-indigo-400,
+.pad-tools[data-pad-theme="light"] .text-indigo-400 { color: #4338ca; }

@@ -124,6 +124,7 @@ import {
 } from '../../utils/scratchpadDom';
 import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
 import { FloatingToolPalette } from './FloatingToolPalette';
+import { measureImageBaseWidth, zoomedImageWidth } from '../../utils/imageZoom';
 import { FloatingToolsLauncher } from './FloatingToolsLauncher';
 import { InsertLinkModal } from './InsertLinkModal';
 import { ExerciseDefinition, RandomWheelPayload } from '../../types/exerciseStudio';
@@ -287,6 +288,8 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null);
   /** Podgląd grafiki w powiększeniu (Zoom 50% / Lupa) */
   const [zoomModalImageSrc, setZoomModalImageSrc] = useState<string | null>(null);
+  /** Szerokość obrazu na kartce w chwili kliknięcia — podgląd ma 150% tej wartości */
+  const [zoomModalBaseWidth, setZoomModalBaseWidth] = useState(0);
   /** Podgląd grafiki w trybie prezentacyjnym / pełnoekranowym (Present) */
   const [presentModalImageSrc, setPresentModalImageSrc] = useState<string | null>(null);
   /** Błąd ładowania obrazu w modalu podglądu */
@@ -841,6 +844,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       const img = wrapper?.querySelector('img') as HTMLImageElement | null;
       if (img && img.src) {
         setImageModalError(false);
+        setZoomModalBaseWidth(measureImageBaseWidth(img));
         setZoomModalImageSrc(img.src);
       }
       return;
@@ -869,9 +873,21 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       const img = wrapper?.querySelector('img') as HTMLImageElement | null;
       if (img && img.src) {
         setImageModalError(false);
+        setZoomModalBaseWidth(measureImageBaseWidth(img));
         setZoomModalImageSrc(img.src);
       }
       return;
+    }
+
+    // Kursant (tryb tylko do odczytu) nie zaznacza obrazów — klik otwiera pełnoekranowy podgląd
+    if (target.tagName === 'IMG' && isReadOnly) {
+      const src = (target as HTMLImageElement).src;
+      if (src) {
+        event.preventDefault();
+        setImageModalError(false);
+        setPresentModalImageSrc(src);
+        return;
+      }
     }
 
     // Zaznaczanie obrazu do resize / manipulacji
@@ -4012,6 +4028,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           isOpen={isFloatingToolsOpen}
           onClose={() => setIsFloatingToolsOpen(false)}
           isTeacher={isTeacher}
+          paperTheme={paperTheme}
           editorRef={editorRef}
           onInsertText={(tag) => handleFormatBlock(tag)}
           onInsertImage={() => imageFileInputRef.current?.click()}
@@ -4195,7 +4212,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               </div>
             </div>
 
-            <div className="p-4 overflow-auto flex items-center justify-center min-w-[300px] min-h-[200px] bg-black/40">
+            <div className="p-4 overflow-auto flex items-start justify-center min-w-[300px] min-h-[200px] bg-black/40">
               {imageModalError ? (
                 <div className="flex flex-col items-center gap-3 p-6 text-center">
                   <AlertTriangle size={32} className="text-warn" />
@@ -4219,8 +4236,9 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                   src={zoomModalImageSrc}
                   alt="Powiększona grafika"
                   onError={() => setImageModalError(true)}
-                  className="max-w-none w-[150%] max-h-[85vh] object-contain select-none rounded shadow"
-                  style={{ maxWidth: '150%' }}
+                  data-testid="image-zoom-preview"
+                  className="max-w-none max-h-none shrink-0 select-none rounded shadow"
+                  style={zoomModalBaseWidth > 0 ? { width: zoomedImageWidth(zoomModalBaseWidth) } : { width: '150%' }}
                 />
               )}
             </div>

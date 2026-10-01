@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Wrench,
   X,
+  ChevronDown,
+  ChevronUp,
   Heading1,
   Heading2,
   Pilcrow,
@@ -28,6 +31,8 @@ export interface FloatingToolPaletteProps {
   isOpen: boolean;
   onClose: () => void;
   isTeacher: boolean;
+  /** Motyw kartki (ten sam co `data-pad-theme` na powłoce notatnika) */
+  paperTheme?: 'light' | 'dark';
   editorRef: React.RefObject<HTMLDivElement | null>;
   // Akcje CONTENT
   onInsertText?: (tag: 'p' | 'h1' | 'h2' | 'h3' | 'blockquote') => void;
@@ -78,6 +83,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
   isOpen,
   onClose,
   isTeacher,
+  paperTheme = 'dark',
   editorRef,
   onInsertText,
   onInsertImage,
@@ -103,6 +109,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
   onChangeDrawOpacity,
 }) => {
   const [activeTab, setActiveTab] = useState<ToolTab>('CONTENT');
+  // Domyślnie zwinięty: sam pasek tytułowy, pełne narzędzia po rozwinięciu
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const [position, setPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef<{ startX: number; startY: number; posX: number; posY: number }>({
@@ -116,8 +124,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
   // Pozycja początkowa: prawy górny róg workspace
   useEffect(() => {
     if (isOpen && position.x === 0 && position.y === 0) {
-      const defaultX = Math.max(20, window.innerWidth - 380);
-      const defaultY = 80;
+      const defaultX = Math.max(20, window.innerWidth - 320);
+      const defaultY = 150;
       setPosition({ x: defaultX, y: defaultY });
     }
   }, [isOpen, position.x, position.y]);
@@ -152,7 +160,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
       const deltaX = e.clientX - dragStartRef.current.startX;
       const deltaY = e.clientY - dragStartRef.current.startY;
 
-      const maxX = Math.max(0, window.innerWidth - (panelRef.current?.offsetWidth || 340) - 10);
+      const maxX = Math.max(0, window.innerWidth - (panelRef.current?.offsetWidth || 300) - 10);
       const maxY = Math.max(0, window.innerHeight - (panelRef.current?.offsetHeight || 400) - 10);
 
       const nextX = Math.max(10, Math.min(maxX, dragStartRef.current.posX + deltaX));
@@ -175,42 +183,57 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
 
   if (!isOpen || !isTeacher) return null;
 
-  return (
+  return createPortal(
     <div
       ref={panelRef}
       role="dialog"
       aria-label="Floating Tool Palette"
       data-testid="floating-tool-palette"
-      className="fixed z-[75] w-[340px] rounded-2xl bg-slate-900/95 border border-white/15 shadow-2xl backdrop-blur-2xl text-slate-100 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 select-none"
+      data-pad-theme={paperTheme}
+      data-collapsed={isCollapsed ? '1' : '0'}
+      className={`pad-tools fixed z-[75] ${isCollapsed ? 'w-[220px]' : 'w-[300px]'} rounded-2xl border shadow-2xl backdrop-blur-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150 select-none`}
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.1)',
       }}
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* ── DRAG HEADER ── */}
       <div
         onMouseDown={handleDragStart}
-        className="px-3.5 py-2.5 bg-slate-800/80 border-b border-white/10 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing"
+        className={`pad-tools-head px-3 py-2 flex items-center justify-between gap-2 cursor-grab active:cursor-grabbing ${isCollapsed ? '' : 'border-b'}`}
       >
         <div className="flex items-center gap-2">
           <div className="p-1 rounded-lg bg-emerald-500/20 text-emerald-400">
             <Wrench size={14} />
           </div>
-          <span className="text-xs font-bold tracking-tight text-white flex items-center gap-1.5">
+          <span className="text-xs font-bold tracking-tight flex items-center gap-1.5">
             <span>Lesson Tools</span>
-            <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-white/10 text-emerald-300 font-normal">
-              Canvas
-            </span>
+            {!isCollapsed && (
+              <span className="pad-tools-chip text-[10px] font-mono px-1.5 py-0.2 rounded font-normal">
+                Canvas
+              </span>
+            )}
           </span>
         </div>
 
         <div className="flex items-center gap-1">
           <button
             type="button"
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={() => setIsCollapsed((v) => !v)}
+            className="pad-tools-iconbtn p-1 rounded-lg transition-colors cursor-pointer"
+            title={isCollapsed ? 'Rozwiń panel' : 'Zwiń panel'}
+            aria-label={isCollapsed ? 'Rozwiń panel' : 'Zwiń panel'}
+            aria-expanded={!isCollapsed}
+          >
+            {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+          </button>
+          <button
+            type="button"
+            onMouseDown={(e) => e.stopPropagation()}
             onClick={onClose}
-            className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+            className="pad-tools-iconbtn p-1 rounded-lg transition-colors cursor-pointer"
             title="Zamknij panel (Esc)"
           >
             <X size={14} />
@@ -218,8 +241,9 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
         </div>
       </div>
 
+      {!isCollapsed && (<>
       {/* ── TABS NAVIGATION (CONTENT | DRAW) ── */}
-      <div className="grid grid-cols-2 p-1.5 bg-slate-950/40 border-b border-white/10 gap-1 text-[11px] font-bold">
+      <div className="pad-tools-tabs grid grid-cols-2 p-1.5 border-b gap-1 text-[11px] font-bold">
         {(['CONTENT', 'DRAW'] as ToolTab[]).map((tab) => {
           const isActive = activeTab === tab;
           return (
@@ -229,8 +253,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               onClick={() => setActiveTab(tab)}
               className={`py-1.5 rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
                 isActive
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm font-extrabold'
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-white/5'
+                  ? 'pad-tools-active shadow-sm font-extrabold'
+                  : 'pad-tools-tab'
               }`}
             >
               <span>{tab}</span>
@@ -240,11 +264,11 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
       </div>
 
       {/* ── TAB CONTENT ── */}
-      <div className="p-3 space-y-3 max-h-[380px] overflow-y-auto">
+      <div className="p-3 space-y-3 max-h-[min(380px,55vh)] overflow-y-auto">
         {/* TAB 1: CONTENT */}
         {activeTab === 'CONTENT' && (
           <div className="space-y-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="pad-tools-label text-[10px] font-bold uppercase tracking-wider">
               Wstawianie i edycja treści
             </div>
 
@@ -252,7 +276,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={() => onInsertText?.('p')}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <Pilcrow size={14} className="text-emerald-400 shrink-0" />
                 <span>Akapit (Tekst)</span>
@@ -262,7 +286,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 type="button"
                 onClick={() => onInsertText?.('h1')}
                 title="Główny nagłówek lekcji — pojawia się w spisie treści jako nadrzędny punkt"
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <Heading1 size={14} className="text-emerald-400 shrink-0" />
                 <span>Nagłówek lekcji (H1)</span>
@@ -272,7 +296,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 type="button"
                 onClick={() => onInsertText?.('h2')}
                 title="Nagłówek sekcji — w spisie treści wcięty jako podelement bieżącej lekcji"
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <Heading2 size={14} className="text-emerald-400 shrink-0" />
                 <span>Nagłówek sekcji (H2)</span>
@@ -281,7 +305,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={onInsertImage}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <ImageIcon size={14} className="text-sky-400 shrink-0" />
                 <span>Wstaw obraz</span>
@@ -290,7 +314,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={onInsertAttachment}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <Paperclip size={14} className="text-sky-400 shrink-0" />
                 <span>Załącznik lekcji</span>
@@ -299,19 +323,19 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={onOpenExerciseStudio}
-                className="col-span-2 p-2.5 rounded-xl bg-emerald-950/60 hover:bg-emerald-900/80 border border-emerald-500/50 text-left flex items-center justify-between gap-2 transition-colors cursor-pointer text-xs font-bold text-emerald-200"
+                className="pad-tools-studio col-span-2 p-2.5 rounded-xl border text-left flex items-center justify-between gap-2 transition-colors cursor-pointer text-xs font-bold"
               >
                 <div className="flex items-center gap-2">
                   <Sparkles size={15} className="text-emerald-400" />
                   <span>Exercise Studio & Gry</span>
                 </div>
-                <span className="text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm bg-emerald-500 text-slate-950">Nowe</span>
+                <span className="pad-tools-active text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm">Nowe</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => onInsertTable?.(2)}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <Grid2x2 size={14} className="text-amber-400 shrink-0" />
                 <span>Tabela 2×2</span>
@@ -320,7 +344,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={onInsertLink}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
                 <Link2 size={14} className="text-indigo-400 shrink-0" />
                 <span>Wstaw link</span>
@@ -330,7 +354,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 type="button"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={onInsertChecklist}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
                 title="Wstaw pole zadania z możliwością odhaczania (Checklist)"
               >
                 <CheckSquare size={14} className="text-emerald-400 shrink-0" />
@@ -340,9 +364,9 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={onDuplicateSelection}
-                className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
+                className="p-2 rounded-xl pad-tools-btn border text-left flex items-center gap-2 transition-colors cursor-pointer text-xs font-semibold"
               >
-                <Copy size={14} className="text-slate-300 shrink-0" />
+                <Copy size={14} className="pad-tools-neutral-ic shrink-0" />
                 <span>Duplikuj blok</span>
               </button>
             </div>
@@ -352,7 +376,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
         {/* TAB 2: DRAW */}
         {activeTab === 'DRAW' && (
           <div className="space-y-3">
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+            <div className="pad-tools-label text-[10px] font-bold uppercase tracking-wider">
               Rysowanie, pisak i kształty
             </div>
 
@@ -362,8 +386,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 onClick={() => onSelectDrawTool?.(activeDrawTool === 'pen' ? null : 'pen')}
                 className={`p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
                   activeDrawTool === 'pen'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                    ? 'pad-tools-active shadow-md'
+                    : 'pad-tools-btn border'
                 }`}
               >
                 <PenTool size={14} />
@@ -375,8 +399,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 onClick={() => onSelectDrawTool?.(activeDrawTool === 'marker' ? null : 'marker')}
                 className={`p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
                   activeDrawTool === 'marker'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                    ? 'pad-tools-active shadow-md'
+                    : 'pad-tools-btn border'
                 }`}
               >
                 <Paintbrush size={14} />
@@ -388,8 +412,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 onClick={() => onSelectDrawTool?.(activeDrawTool === 'eraser' ? null : 'eraser')}
                 className={`p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
                   activeDrawTool === 'eraser'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                    ? 'pad-tools-active shadow-md'
+                    : 'pad-tools-btn border'
                 }`}
               >
                 <Eraser size={14} />
@@ -401,8 +425,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 onClick={() => onSelectDrawTool?.(activeDrawTool === 'arrow' ? null : 'arrow')}
                 className={`p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
                   activeDrawTool === 'arrow'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                    ? 'pad-tools-active shadow-md'
+                    : 'pad-tools-btn border'
                 }`}
               >
                 <ArrowRight size={14} />
@@ -414,8 +438,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 onClick={() => onSelectDrawTool?.(activeDrawTool === 'line' ? null : 'line')}
                 className={`p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
                   activeDrawTool === 'line'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                    ? 'pad-tools-active shadow-md'
+                    : 'pad-tools-btn border'
                 }`}
               >
                 <Minus size={14} />
@@ -427,8 +451,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 onClick={() => onSelectDrawTool?.(activeDrawTool === 'rect' ? null : 'rect')}
                 className={`p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
                   activeDrawTool === 'rect'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                    ? 'pad-tools-active shadow-md'
+                    : 'pad-tools-btn border'
                 }`}
               >
                 <Square size={14} />
@@ -440,8 +464,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                 onClick={() => onSelectDrawTool?.(activeDrawTool === 'circle' ? null : 'circle')}
                 className={`p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 transition-all cursor-pointer ${
                   activeDrawTool === 'circle'
-                    ? 'bg-emerald-500 text-slate-950 shadow-md'
-                    : 'bg-white/5 hover:bg-white/10 text-slate-200 border border-white/10'
+                    ? 'pad-tools-active shadow-md'
+                    : 'pad-tools-btn border'
                 }`}
               >
                 <Circle size={14} />
@@ -451,7 +475,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
               <button
                 type="button"
                 onClick={() => onSelectDrawTool?.(null)}
-                className="p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 bg-white/5 hover:bg-white/10 text-slate-400 border border-white/10 transition-all cursor-pointer"
+                className="p-2 rounded-xl text-xs font-bold flex flex-col items-center gap-1 pad-tools-btn border transition-all cursor-pointer"
                 title="Wyłącz narzędzie rysowania"
               >
                 <X size={14} />
@@ -461,10 +485,10 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
 
             {/* PARAMETRY PISAKA / KSZTAŁTU */}
             {activeDrawTool && (
-              <div className="p-3 rounded-xl bg-slate-950/60 border border-white/10 space-y-2.5 animate-in fade-in duration-150">
+              <div className="pad-tools-sub p-3 rounded-xl border space-y-2.5 animate-in fade-in duration-150">
                 {/* Kolory */}
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400">Kolor</span>
+                  <span className="pad-tools-label text-[10px] font-bold">Kolor</span>
                   <div className="flex items-center gap-1.5 flex-wrap">
                     {DRAW_COLORS.map((c) => (
                       <button
@@ -472,7 +496,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                         type="button"
                         onClick={() => onChangeDrawColor?.(c.value)}
                         className={`w-6 h-6 rounded-full border-2 transition-transform cursor-pointer flex items-center justify-center ${
-                          drawColor === c.value ? 'border-white scale-110 shadow-sm' : 'border-transparent hover:scale-105'
+                          drawColor === c.value ? 'pad-tools-swatch-on scale-110 shadow-sm' : 'border-transparent hover:scale-105'
                         }`}
                         style={{ backgroundColor: c.value }}
                         title={c.name}
@@ -487,7 +511,7 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
 
                 {/* Grubość */}
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400">Grubość linii</span>
+                  <span className="pad-tools-label text-[10px] font-bold">Grubość linii</span>
                   <div className="grid grid-cols-4 gap-1">
                     {STROKE_WIDTHS.map((w) => (
                       <button
@@ -496,8 +520,8 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                         onClick={() => onChangeDrawStrokeWidth?.(w.value)}
                         className={`py-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                           drawStrokeWidth === w.value
-                            ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                            : 'bg-white/5 hover:bg-white/10 text-slate-300'
+                            ? 'pad-tools-active shadow-sm'
+                            : 'pad-tools-btn'
                         }`}
                       >
                         {w.label}
@@ -510,7 +534,9 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
           </div>
         )}
       </div>
-    </div>
+      </>)}
+    </div>,
+    document.body
   );
 };
 
