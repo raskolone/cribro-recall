@@ -6645,3 +6645,27 @@ Zrobione: `index.css` (`@media screen { .pad-paper .pad-page-break { display: fl
 Nie dokończone / do sprawdzenia: nic — zatwierdzone ręcznym testem. Wygląd separatora między zwiniętymi paskami (marginesy 52/40 px) może się okazać za ciężki.
 Decyzje architektoniczne: CSS zamiast zmiany `setSectionCollapsed`; reguła tylko `@media screen`, bo przy wyższej specyficzności wygrałaby z regułą druku. Migracja do kontenerów `<section>` odradzona w diagnozie (płaski HTML w Firestore zostaje).
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Brak migracji danych. tsc 0; npm test 657/657.
+
+2026-10-01 — Claude Code / Sonnet 5.5
+
+Zadanie: przyciski listy punktowanej/numerowanej w głównym toolbarze notatnika.
+Zrobione: `utils/scratchpadDom.ts` (`toggleListFormat`, `ListFormatType`), `TeacherFormattingToolbar.tsx` (2 przyciski za Kursywą, `applyList`), `tests/toggleListFormat.test.ts` (8 testów), CHANGELOG.
+Nie dokończone / do sprawdzenia: ręczny test w działającej aplikacji NIE wykonany (brak logowania w sesji). Dowód: prawdziwy `TeacherFormattingToolbar` + prawdziwy `scratchpadDom.ts` zbundlowane esbuildem na stronie testowej w Chromium (Playwright); handler spacji na tej stronie to kopia z `ScratchpadEditor.handleSpaceKey`, wywołująca prawdziwe `tryConvertParagraphToList`. Strona bez Tailwinda (toolbar nieostylowany). Zmiany NIE zacommitowane — czekają na zgodę po teście lektora.
+Decyzje architektoniczne: `<li>` zagnieżdżone / z zagnieżdżoną listą pomijane (zakres „bez zagnieżdżeń"). Stan `range.collapsed` czytany raz na początku, bo żywy range zapada się po podmianie węzłów (błąd złapany w Chromium: po toggle znikało zaznaczenie i toolbar).
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0; npm test 665/665.
+
+2026-10-01 (2) — Claude Code / Sonnet 5.5
+
+Zadanie: zoom obrazka (realnie +50%, fullscreen, podgląd kursanta) + mały zwijany panel Lesson Tools zgodny z motywem.
+Zrobione: `utils/imageZoom.ts`, `ScratchpadEditor.tsx` (modal zoom, klik w obraz u kursanta, prop `paperTheme`), `FloatingToolPalette.tsx` (zwijanie, portal, klasy `pad-tools*`), `index.css` (zmienne `--pt-*`), 2 pliki testów, CHANGELOG.
+Nie dokończone / do sprawdzenia: ręczny test w PRAWDZIWEJ aplikacji NIE wykonany (brak logowania). Dowód: prawdziwy `ScratchpadEditor` na tymczasowym serwerze Vite (port 4399, nie 3000) z dokumentem testowym, Chromium/Playwright; harness usunięty z repo. Zoom stary nie był mierzony — opis przyczyny z czytania kodu. Zmiany NIE zacommitowane.
+Decyzje architektoniczne: portal do body (powłoka `.pad-shell` ma backdrop-filter → fixed względem powłoki); motyw = jasny gdy jasna aplikacja LUB kartka (jak `.pad-bar`), bo kartka ma własny przełącznik; zoom = 150% szerokości z kartki; klik w obraz u kursanta otwiera Present, u lektora nadal zaznacza do resize (przyciski bez zmian); stan zwinięcia nie jest zapamiętywany.
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0; npm test 672/672.
+
+2026-10-01 (3) — Claude Code / Sonnet 5.5
+
+Zadanie: 4 poprawki po teście lektora: (A) kolor DRAW, (B) kontrast ikon/panelu, (C) jeden pad-mark-* na fragment, (D) przycisk „Akapit (Tekst)".
+Zrobione: `utils/scratchpadDom.ts` (`applyInlineMarkup` + `replaceOuterMark`, `insertEmptyParagraph`), `ScratchpadEditor.tsx` (`handleInsertParagraph`), `FloatingToolPalette.tsx` (podgląd pisaka), `index.css` (ikony na obrazku, waga znaczników 500), testy, CHANGELOG.
+Nie dokończone / do sprawdzenia: (A) w edytorze brak warstwy rysującej — kolor/narzędzia nic nie rysują (poza zakresem, zgłoszone). (B) nieczytelnych nagłówków ciemnego panelu nie odtworzono; naprawiono odtworzoną usterkę ikon na obrazku w jasnej aplikacji. (C) treść zlecenia jest sprzeczna (pkt 2: Bold współistnieje; test: „Bold zniknął") — zrealizowano pkt 2. Ręczny test w prawdziwej aplikacji NIE wykonany; dowody z Chromium na tymczasowym Vite (port 4399), harness usunięty. Wszystko niezacommitowane (razem z listami, zoomem, panelem).
+Decyzje architektoniczne: waga `.pad-mark-*` 600→500 (zmiana wizualna: znaczniki odrobinę lżejsze); Akapit wstawia nowy pusty <p> za blokiem, bez kursora na końcu dokumentu (nie „bieżącej lekcji" — brak niezawodnego pojęcia bieżącej lekcji bez ruszania spisu treści).
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE; rebuildToc/setSectionCollapsed nietknięte. tsc 0; npm test 685/685.
