@@ -1191,48 +1191,59 @@ tr.liquid-glass-hover:hover {
   border: 1px solid var(--pad-line);
 }
 
+/* Separator lekcji = "pusta kartka-przerwa": zostaje w DOM i zajmuje miejsce (rozdziela lekcje,
+   trzyma display:flex poniżej), ale wizualnie jest kolorem kanwy wokół kartki (.pad-canvas),
+   więc lekcje wyglądają jak odrębne kartki. Kolor kanwy: ciemny #09101c, jasny #e9edf2 — jasny, gdy
+   jasna jest aplikacja ALBO kartka (te same warunki co `.pad-canvas` wyżej, żeby 4 kombinacje
+   motywu zgadzały się z tłem). */
 .pad-page-break {
   display: flex;
   align-items: center;
   justify-content: center;
   height: 42px;
-  margin: 52px -76px 40px;
-  background: #080d1a;
-  border-top: 2px solid rgba(255, 255, 255, 0.12);
-  border-bottom: 2px solid rgba(255, 255, 255, 0.12);
-  box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.65);
+  /* -77px = 76px marginesu kartki + 1px jej ramki: separator przykrywa też ramkę boczną */
+  margin: 52px -77px 40px;
+  background: #09101c;
   user-select: none;
   page-break-before: always;
   break-before: page;
   position: relative;
   z-index: 5;
 }
+/* Pas tła wychodzący poza ramkę i cień kartki (do wysokości paddingu kanwy), żeby nie przebijały
+   przez przerwę. Tylko jasna kanwa (płaski #e9edf2, gdzie cień jest wyraźny): na ciemnej kanwie
+   jest gradient, którego płaski pas nie dopasuje, a cień jest tam ledwo widoczny. Szerokość
+   dopasowana do paddingu .pad-canvas: 12px / 24px / 40px. */
+:root.light .pad-page-break::before,
+:root[data-theme="light"] .pad-page-break::before,
+.pad-paper[data-pad-theme="light"] .pad-page-break::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -11px;
+  right: -11px;
+  background: inherit;
+  pointer-events: none;
+}
+@media (min-width: 640px) {
+  :root.light .pad-page-break::before,
+  :root[data-theme="light"] .pad-page-break::before,
+  .pad-paper[data-pad-theme="light"] .pad-page-break::before { left: -23px; right: -23px; }
+}
+@media (min-width: 768px) {
+  :root.light .pad-page-break::before,
+  :root[data-theme="light"] .pad-page-break::before,
+  .pad-paper[data-pad-theme="light"] .pad-page-break::before { left: -39px; right: -39px; }
+}
 :root.light .pad-page-break,
 :root[data-theme="light"] .pad-page-break,
 .pad-paper[data-pad-theme="light"] .pad-page-break {
-  background: #cbd5e1;
-  border-top: 2px solid rgba(0, 0, 0, 0.16);
-  border-bottom: 2px solid rgba(0, 0, 0, 0.16);
-  box-shadow: inset 0 4px 14px rgba(0, 0, 0, 0.12);
+  background: #e9edf2;
 }
+/* Tekst plakietki "Strona A4 • Nowa Lekcja" zostaje w DOM (zapisane dokumenty), ale jest niewidoczny. */
 .pad-page-break-badge {
-  font-size: 10.5px;
-  font-weight: 700;
-  font-family: var(--font-mono);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--pad-muted);
-  padding: 4px 14px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-}
-:root.light .pad-page-break-badge,
-:root[data-theme="light"] .pad-page-break-badge,
-.pad-paper[data-pad-theme="light"] .pad-page-break-badge {
-  background: rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(0, 0, 0, 0.14);
-  color: #475569;
+  display: none;
 }
 /* Separator lekcji zostaje widoczny po zwinięciu: setSectionCollapsed chowa go
    inline (display:none) jak każde rodzeństwo nagłówka. Tylko ekran — druk ma
@@ -1241,6 +1252,21 @@ tr.liquid-glass-hover:hover {
   .pad-paper .pad-page-break {
     display: flex !important;
   }
+}
+
+/* Zwinięta lekcja = kompaktowy pasek. Styl H2 jest wpisany inline w zapisanych dokumentach,
+   stąd !important. Nie ruszamy font-size, żeby tekst nie skakał przy zwijaniu. */
+.pad-paper h2[data-collapsed="1"] {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  padding-bottom: 2px !important;
+}
+/* Separator bezpośrednio przed zwiniętą lekcją — węższa przerwa (ukryte rodzeństwo
+   zostaje w DOM, więc selektor `h2 + .pad-page-break` by tu nie zadziałał). */
+.pad-paper .pad-page-break:has(+ h2[data-collapsed="1"]) {
+  height: 14px;
+  margin-top: 16px;
+  margin-bottom: 10px;
 }
 
 /*
@@ -1372,10 +1398,15 @@ tr.liquid-glass-hover:hover {
   padding-top: 0 !important;
 }
 
+@media (max-width: 840px) {
+  /* padding kartki .pad-sheet = 22px + 1px ramki */
+  .pad-page-break {
+    margin-left: -23px;
+    margin-right: -23px;
+  }
+}
 @media (max-width: 768px) {
   .pad-page-break {
-    margin-left: -20px;
-    margin-right: -20px;
     height: 34px;
     margin-top: 36px;
     margin-bottom: 28px;
