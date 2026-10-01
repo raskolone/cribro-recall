@@ -6669,3 +6669,11 @@ Zrobione: `utils/scratchpadDom.ts` (`applyInlineMarkup` + `replaceOuterMark`, `i
 Nie dokończone / do sprawdzenia: (A) w edytorze brak warstwy rysującej — kolor/narzędzia nic nie rysują (poza zakresem, zgłoszone). (B) nieczytelnych nagłówków ciemnego panelu nie odtworzono; naprawiono odtworzoną usterkę ikon na obrazku w jasnej aplikacji. (C) treść zlecenia jest sprzeczna (pkt 2: Bold współistnieje; test: „Bold zniknął") — zrealizowano pkt 2. Ręczny test w prawdziwej aplikacji NIE wykonany; dowody z Chromium na tymczasowym Vite (port 4399), harness usunięty. Wszystko niezacommitowane (razem z listami, zoomem, panelem).
 Decyzje architektoniczne: waga `.pad-mark-*` 600→500 (zmiana wizualna: znaczniki odrobinę lżejsze); Akapit wstawia nowy pusty <p> za blokiem, bez kursora na końcu dokumentu (nie „bieżącej lekcji" — brak niezawodnego pojęcia bieżącej lekcji bez ruszania spisu treści).
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE; rebuildToc/setSectionCollapsed nietknięte. tsc 0; npm test 685/685.
+
+2026-10-02 — Claude Code / Sonnet 5.5
+
+Zadanie: commit i push kompaktowego separatora lekcji i zwiniętego nagłówka (zmiany CSS potwierdzone wzrokowo przez lektora).
+Zrobione: `index.css` (separator, plakietka ukryta, zwinięty H2, mobile), commit `82c265e`, CHANGELOG.
+Nie dokończone / do sprawdzenia: poprawka ciemnej kartki (`--pad-fg: #eae8e3` w `.pad-paper[data-pad-theme="dark"].pad-sheet`) czeka w working tree NIEZACOMMITOWANA — osobna zmiana, bez zgody na commit; hunk wykluczony z commita separatora. Ciemny motyw separatora odłożony.
+Decyzje architektoniczne: dwie zmiany w jednym pliku rozdzielone przez `git apply --cached` (jeden commit = jedna zmiana).
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0; npm test 685/685.

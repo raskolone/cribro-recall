@@ -218,6 +218,12 @@ we dwoje na żywo.
 - **Separator „Strona A4 • Nowa Lekcja" nie znika po zwinięciu** (`index.css`): `setSectionCollapsed` chował `.pad-page-break` inline jak każde rodzeństwo nagłówka. Reguła `@media screen { .pad-paper .pad-page-break { display: flex !important } }` utrzymuje go na ekranie; druk i PDF bez zmian (osobna reguła w `@media print`).
 - Bez zmian: `firestore.rules`, `storage.rules`, dane w Firestore. `tsc` 0 błędów, `npm test` 657/657. Oba punkty zatwierdzone ręcznym testem.
 
+### 🎨 Notatnik: kompaktowy separator lekcji i zwinięty nagłówek (2026-10-02)
+
+- `index.css`: `.pad-page-break` zostaje w DOM (zajmuje miejsce, rozdziela lekcje), ale wygląda jak przerwa w kolorze kanwy (ciemna `#09101c`, jasna `#e9edf2`), bez ramek, cienia i widocznej plakietki „Strona A4 • Nowa Lekcja" (`.pad-page-break-badge { display:none }`, tekst zostaje w zapisanych dokumentach). Separator przykrywa boczną ramkę kartki (-77px) i, na jasnej kanwie, jej cień (`::before`); wersja mobilna ≤840px dopasowana do paddingu kartki.
+- Zwinięty nagłówek H2 jest kompaktowym paskiem (bez marginesów), a separator tuż przed nim węższy (`:has(+ h2[data-collapsed="1"])`).
+- Ciemny motyw tej zmiany świadomie odłożony. Bez zmian: `firestore.rules`, `storage.rules`, logika edytora.
+
 ### 🐛 Notatnik: 4 poprawki po teście (kolor DRAW, kontrast ikon, jeden znacznik, Akapit) (2026-10-01)
 
 - **A. Paleta kolorów DRAW** (`FloatingToolPalette.tsx`): handler i porównanie stanu były poprawne (klik przenosi ptaszek: Rose→Sky→Purple), zielony „zostawał" bo jedyny widoczny skutek wyboru to ptaszek, a w edytorze NIE MA warstwy rysującej — `activeDrawTool`/`drawColor`/`drawStrokeWidth` czyta wyłącznie paleta. Dodany „Podgląd" pisaka (kolor, grubość, krycie). Samo rysowanie na kartce nadal nie istnieje (świadomie poza zakresem).
