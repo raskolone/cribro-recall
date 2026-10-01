@@ -509,6 +509,22 @@ export const FloatingToolPalette: React.FC<FloatingToolPaletteProps> = ({
                   </div>
                 </div>
 
+                {/* Podgląd pisaka: aktywny kolor, grubość i krycie */}
+                <div className="space-y-1">
+                  <span className="pad-tools-label text-[10px] font-bold">Podgląd</span>
+                  <div className="pad-tools-btn border rounded-lg h-8 flex items-center px-3">
+                    <div
+                      data-testid="draw-preview"
+                      className="w-full rounded-full"
+                      style={{
+                        height: Math.min(drawStrokeWidth, 16),
+                        backgroundColor: drawColor,
+                        opacity: drawOpacity,
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {/* Grubość */}
                 <div className="space-y-1">
                   <span className="pad-tools-label text-[10px] font-bold">Grubość linii</span>

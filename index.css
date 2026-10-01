@@ -2143,3 +2143,17 @@ tr.liquid-glass-hover:hover {
 :root.light .pad-tools .text-indigo-400,
 :root[data-theme="light"] .pad-tools .text-indigo-400,
 .pad-tools[data-pad-theme="light"] .text-indigo-400 { color: #4338ca; }
+
+/* ── Ikony zoom / present na obrazku ──
+   Pasek ma stałe czarne tło (bg-black/80), a w trybie jasnym `text-white`
+   jest odwracany na ciemny token — ciemne ikony na czarnym pasku znikały.
+   `--on-fill` to wbudowany mechanizm tej odwrotki: na wypełnieniu zostaje biel. */
+.pad-img-toolbar {
+  --on-fill: #ffffff;
+  color: #ffffff;
+}
+/* Karta załącznika ma jasne tło w trybie jasnym, a `hover:text-white` robiło z ikon biel na bieli */
+:root.light .pad-img-attachment button:hover,
+:root[data-theme="light"] .pad-img-attachment button:hover {
+  color: var(--color-text-hi);
+}
