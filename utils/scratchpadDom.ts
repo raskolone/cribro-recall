@@ -702,3 +702,150 @@ export const insertChecklistBlock = (
 
   return true;
 };
+
+export type ListFormatType = 'bullet' | 'numbered';
+
+/**
+ * Ręczny przełącznik listy punktowanej/numerowanej (przyciski toolbara).
+ * Działa na wszystkich blokach <p>/<li> przecinających `range` albo — przy
+ * collapsed range — na bieżącej linii:
+ * - wszystkie bloki są już listą żądanego typu -> wracają do <p> (toggle)
+ * - w przeciwnym razie <p> staje się <li>, a <li> innego typu zmienia typ listy
+ *   (bez zagnieżdżania); sąsiednie listy tego samego typu są scalane
+ * Pomijane: zablokowane nagłówki / `.pad-heading-text`, checklisty
+ * (`.pad-task-item`), h1–h3, blockquote oraz <li> zagnieżdżone lub z zagnieżdżoną
+ * listą. Zwraca `true`, jeśli DOM został zmieniony. Nie rusza auto-wykrywania.
+ */
+export const toggleListFormat = (
+  range: Range,
+  type: ListFormatType,
+  editorRoot: HTMLElement
+): boolean => {
+  const doc = editorRoot.ownerDocument || window.document;
+  const win = doc.defaultView || window;
+  const tag = type === 'bullet' ? 'ul' : 'ol';
+  // `range` jest żywy — po podmianie węzłów zapadnie się, więc stan odczytujemy raz
+  const wasCollapsed = range.collapsed;
+
+  const isExcluded = (el: HTMLElement): boolean =>
+    Boolean(el.closest('.pad-heading-text, .pad-locked-heading, .pad-task-item')) ||
+    Boolean(el.querySelector('input[type="checkbox"]')) ||
+    // <li> zagnieżdżony lub z zagnieżdżoną listą — poza zakresem
+    (el.tagName === 'LI' && (Boolean(el.querySelector('ul, ol')) || Boolean(el.parentElement?.parentElement?.closest('li'))));
+
+  let targets: HTMLElement[];
+  if (wasCollapsed) {
+    let n: Node | null = range.startContainer;
+    if (n.nodeType === Node.TEXT_NODE) n = n.parentElement;
+    const block = n instanceof HTMLElement ? n.closest<HTMLElement>('p, li, h1, h2, h3, blockquote, .pad-task-item') : null;
+    targets = block && block !== editorRoot && editorRoot.contains(block) && (block.tagName === 'P' || block.tagName === 'LI') ? [block] : [];
+  } else {
+    targets = Array.from(editorRoot.querySelectorAll<HTMLElement>('p, li')).filter(b => range.intersectsNode(b));
+  }
+  targets = targets.filter(b => !isExcluded(b));
+  if (targets.length === 0) return false;
+
+  const emptyToBr = (el: HTMLElement) => {
+    if (!el.textContent || !el.textContent.replace(/[\s ]/g, '')) {
+      if (!el.querySelector('br')) el.innerHTML = '<br>';
+    }
+  };
+
+  const moveChildren = (from: Node, to: Node) => {
+    while (from.firstChild) to.appendChild(from.firstChild);
+  };
+
+  // Wydziela <li> do własnej listy (dzieli listę rodzica przed i po nim)
+  const isolate = (li: HTMLElement): HTMLElement => {
+    const list = li.parentElement as HTMLElement;
+    const after: Element[] = [];
+    for (let s = li.nextElementSibling; s; s = s.nextElementSibling) after.push(s);
+    if (after.length) {
+      const tail = list.cloneNode(false) as HTMLElement;
+      after.forEach(s => tail.appendChild(s));
+      list.after(tail);
+    }
+    if (li.previousElementSibling) {
+      const mid = list.cloneNode(false) as HTMLElement;
+      mid.appendChild(li);
+      list.after(mid);
+      return mid;
+    }
+    return list;
+  };
+
+  const allAlreadyList = targets.every(b => b.tagName === 'LI' && b.parentElement?.tagName.toLowerCase() === tag);
+  const results: HTMLElement[] = [];
+  const converted: HTMLElement[] = [];
+
+  if (allAlreadyList) {
+    targets.forEach(li => {
+      const list = isolate(li);
+      const p = doc.createElement('p');
+      moveChildren(li, p);
+      emptyToBr(p);
+      list.replaceWith(p);
+      results.push(p);
+    });
+  } else {
+    targets.forEach(block => {
+      if (block.tagName === 'LI') {
+        let list = isolate(block);
+        if (list.tagName.toLowerCase() !== tag) {
+          const swapped = doc.createElement(tag);
+          moveChildren(list, swapped);
+          list.replaceWith(swapped);
+          list = swapped;
+        }
+        results.push(list);
+        converted.push(block);
+      } else {
+        const list = doc.createElement(tag);
+        const li = doc.createElement('li');
+        moveChildren(block, li);
+        emptyToBr(li);
+        list.appendChild(li);
+        block.replaceWith(list);
+        results.push(list);
+        converted.push(li);
+      }
+    });
+
+    // Scal sąsiednie listy tego samego typu
+    results.forEach(list => {
+      if (!list.isConnected) return;
+      let cur = list;
+      for (let prev = cur.previousElementSibling; prev && prev.tagName.toLowerCase() === tag; prev = cur.previousElementSibling) {
+        moveChildren(cur, prev);
+        cur.remove();
+        cur = prev as HTMLElement;
+      }
+      for (let next = cur.nextElementSibling; next && next.tagName.toLowerCase() === tag; next = cur.nextElementSibling) {
+        moveChildren(next, cur);
+        next.remove();
+      }
+    });
+  }
+
+  // Przywróć zaznaczenie na przekonwertowanych liniach (kolejny klik działa jak toggle)
+  const selection = win.getSelection();
+  if (selection) {
+    const blocks = allAlreadyList ? results : converted;
+    const first = blocks[0];
+    const last = blocks[blocks.length - 1];
+    if (first && last) {
+      const r = doc.createRange();
+      if (wasCollapsed) {
+        r.selectNodeContents(last);
+        r.collapse(false);
+      } else {
+        r.setStart(first, 0);
+        r.setEnd(last, last.childNodes.length);
+      }
+      selection.removeAllRanges();
+      selection.addRange(r);
+    }
+  }
+
+  return true;
+};

@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useRef } from 'react';
 import {
   AlertCircle, CheckCircle2, Bookmark, ArrowRightLeft,
-  Strikethrough, Bold, Italic, Palette, Eraser, Sparkles
+  Strikethrough, Bold, Italic, Palette, Eraser, Sparkles, List, ListOrdered
 } from 'lucide-react';
-import { applyInlineMarkup } from '../../utils/scratchpadDom';
+import { applyInlineMarkup, toggleListFormat, ListFormatType } from '../../utils/scratchpadDom';
 
 export interface SelectionCoord {
   top: number;
@@ -102,6 +102,17 @@ export const TeacherFormattingToolbar: React.FC<TeacherFormattingToolbarProps> =
   const applyExecCommand = (cmd: string, value?: string) => {
     window.document.execCommand(cmd, false, value);
     if (onContentChange) onContentChange();
+  };
+
+  // Lista punktowana / numerowana na zaznaczeniu (zaznaczenie zostaje, więc kolejny klik cofa)
+  const applyList = (type: ListFormatType) => {
+    const editor = editorRef.current;
+    const selection = window.getSelection();
+    if (!editor || !selection || selection.rangeCount === 0) return;
+
+    const range = selection.getRangeAt(0);
+    if (!editor.contains(range.commonAncestorContainer)) return;
+    if (toggleListFormat(range, type, editor) && onContentChange) onContentChange();
   };
 
   // Wyczyszczenie oznaczeń
@@ -214,6 +225,28 @@ export const TeacherFormattingToolbar: React.FC<TeacherFormattingToolbarProps> =
         className="p-1.5 rounded-lg text-text-hi hover:bg-line-soft transition-colors cursor-pointer"
       >
         <Italic size={13} />
+      </button>
+
+      {/* 7a. LISTA PUNKTOWANA */}
+      <button
+        type="button"
+        onClick={() => applyList('bullet')}
+        title="Lista punktowana"
+        aria-label="Lista punktowana"
+        className="p-1.5 rounded-lg text-text-hi hover:bg-line-soft transition-colors cursor-pointer"
+      >
+        <List size={13} />
+      </button>
+
+      {/* 7b. LISTA NUMEROWANA */}
+      <button
+        type="button"
+        onClick={() => applyList('numbered')}
+        title="Lista numerowana"
+        aria-label="Lista numerowana"
+        className="p-1.5 rounded-lg text-text-hi hover:bg-line-soft transition-colors cursor-pointer"
+      >
+        <ListOrdered size={13} />
       </button>
 
       {/* 8. KOLOR AKCENTOWY */}
