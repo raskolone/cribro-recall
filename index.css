@@ -2052,7 +2052,9 @@ tr.liquid-glass-hover:hover {
   border: 1px solid var(--mark-bd);
   border-radius: 4px;
   padding: 0 4px;
-  font-weight: 600;
+  /* 500, nie 600: od 600 przeglądarka uznaje tekst za pogrubiony i execCommand('bold')
+     na znaczniku POGRUBIENIE ZDEJMUJE (font-weight: normal) zamiast je dodać. */
+  font-weight: 500;
 }
 .pad-mark-error      { --mark-fg: #f87171; --mark-bg: rgba(239, 68, 68, 0.16);  --mark-bd: rgba(239, 68, 68, 0.40); }
 .pad-mark-correct    { --mark-fg: #4ade80; --mark-bg: rgba(34, 197, 94, 0.16);  --mark-bd: rgba(34, 197, 94, 0.40); }
@@ -2065,7 +2067,7 @@ tr.liquid-glass-hover:hover {
 
 .pad-mark-accent {
   color: #72f0b4;
-  font-weight: 600;
+  font-weight: 500;
 }
 [data-pad-theme="light"] .pad-mark-accent {
   color: #0d8a5f;

@@ -121,6 +121,7 @@ import {
   syncChecklistState,
   removeEmptyChecklistItem,
   insertChecklistBlock,
+  insertEmptyParagraph,
 } from '../../utils/scratchpadDom';
 import { FocusZoomSelectionLayer } from './FocusZoomSelectionLayer';
 import { FloatingToolPalette } from './FloatingToolPalette';
@@ -1155,6 +1156,15 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       heading.setAttribute('data-toggle', '1');
       heading.setAttribute('data-collapsed', '0');
     }
+    handleInput();
+  };
+
+  /** Nowy pusty akapit za bieżącym blokiem (formatBlock('p') na istniejącym <p> nic nie zmieniał) */
+  const handleInsertParagraph = () => {
+    if (isReadOnly || !editorRef.current) return;
+    const p = insertEmptyParagraph(editorRef.current);
+    if (!p) return;
+    editorRef.current.focus();
     handleInput();
   };
 
@@ -4030,7 +4040,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           isTeacher={isTeacher}
           paperTheme={paperTheme}
           editorRef={editorRef}
-          onInsertText={(tag) => handleFormatBlock(tag)}
+          onInsertText={(tag) => (tag === 'p' ? handleInsertParagraph() : handleFormatBlock(tag))}
           onInsertImage={() => imageFileInputRef.current?.click()}
           onInsertAttachment={() => imageFileInputRef.current?.click()}
           onOpenExerciseStudio={() => {

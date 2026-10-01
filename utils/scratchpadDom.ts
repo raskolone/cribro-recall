@@ -64,9 +64,71 @@ export const applyInlineMarkup = (
   range: Range,
   className: string
 ): HTMLSpanElement[] => {
-  return wrapSelectedTextInline(range, span => {
+  const spans = wrapSelectedTextInline(range, span => {
     span.className = className;
   });
+  // Znaczniki pad-mark-* nie nakładają się: jeden na fragment tekstu
+  if (className.startsWith('pad-mark-')) spans.forEach(span => replaceOuterMark(span, className));
+  return spans;
+};
+
+/** extractContents zostawia puste klony (<b></b>) po stronie odciętej części */
+const pruneEmptyInline = (el: HTMLElement): void => {
+  Array.from(el.querySelectorAll('*'))
+    .reverse()
+    .forEach(n => {
+      if (!n.textContent && !n.querySelector('br, img')) n.remove();
+    });
+};
+
+const MARK_SELECTOR = '[class*="pad-mark-"]';
+
+const hasMarkClass = (el: Element): boolean =>
+  Array.from(el.classList).some(c => c.startsWith('pad-mark-'));
+
+/**
+ * `span` (świeżo owinięty fragment) leży wewnątrz starszego znacznika pad-mark-*.
+ * Rozcina stary znacznik na część przed i za `span`, a sam `span` wynosi na
+ * zewnątrz — pogrubienie/kursywa pośrodku (<b>, <i>) zostają wokół niego.
+ * Ten sam typ znacznika = brak zmiany (nowy span jest zdejmowany).
+ */
+const replaceOuterMark = (span: HTMLSpanElement, className: string): void => {
+  const doc = span.ownerDocument || window.document;
+  let outer = span.parentElement?.closest<HTMLElement>(MARK_SELECTOR) ?? null;
+  while (outer && !hasMarkClass(outer)) {
+    outer = outer.parentElement?.closest<HTMLElement>(MARK_SELECTOR) ?? null;
+  }
+  while (outer) {
+    if (outer.className === className) {
+      while (span.firstChild) span.parentNode?.insertBefore(span.firstChild, span);
+      span.remove();
+      return;
+    }
+
+    const after = doc.createRange();
+    after.setStartAfter(span);
+    after.setEnd(outer, outer.childNodes.length);
+    const afterEl = outer.cloneNode(false) as HTMLElement;
+    afterEl.appendChild(after.extractContents());
+
+    const before = doc.createRange();
+    before.setStart(outer, 0);
+    before.setEndBefore(span);
+    const beforeEl = outer.cloneNode(false) as HTMLElement;
+    beforeEl.appendChild(before.extractContents());
+
+    pruneEmptyInline(afterEl);
+    pruneEmptyInline(beforeEl);
+    if (afterEl.textContent) outer.after(afterEl);
+    if (beforeEl.textContent) outer.before(beforeEl);
+    while (outer.firstChild) outer.parentNode?.insertBefore(outer.firstChild, outer);
+    outer.remove();
+
+    outer = span.parentElement?.closest<HTMLElement>(MARK_SELECTOR) ?? null;
+    while (outer && !hasMarkClass(outer)) {
+      outer = outer.parentElement?.closest<HTMLElement>(MARK_SELECTOR) ?? null;
+    }
+  }
 };
 
 /**
@@ -848,4 +910,45 @@ export const toggleListFormat = (
   }
 
   return true;
+};
+
+/**
+ * Wstawia nowy, pusty akapit `<p><br></p>` i ustawia w nim kursor.
+ * - kursor w edytorze: akapit ląduje tuż za bieżącym blokiem najwyższego poziomu
+ *   (dla punktu listy — za całą listą, nie w jej środku)
+ * - brak kursora w edytorze: akapit na końcu dokumentu
+ * Zwraca wstawiony akapit albo `null`, gdy nie wolno (kursor w zablokowanym
+ * nagłówku szablonu lekcji).
+ */
+export const insertEmptyParagraph = (editorRoot: HTMLElement): HTMLParagraphElement | null => {
+  const doc = editorRoot.ownerDocument || window.document;
+  const win = doc.defaultView || window;
+  const selection = win.getSelection();
+
+  let anchor: Node | null = null;
+  if (selection && selection.rangeCount > 0 && editorRoot.contains(selection.anchorNode)) {
+    anchor = selection.anchorNode;
+  }
+
+  let top: HTMLElement | null = null;
+  if (anchor) {
+    let n: Node | null = anchor;
+    while (n && n.parentNode !== editorRoot) n = n.parentNode;
+    top = n instanceof HTMLElement ? n : null;
+  }
+  if (top?.closest('.pad-locked-heading')) return null;
+
+  const p = doc.createElement('p');
+  p.innerHTML = '<br>';
+  if (top) top.after(p);
+  else editorRoot.appendChild(p);
+
+  if (selection) {
+    const r = doc.createRange();
+    r.setStart(p, 0);
+    r.collapse(true);
+    selection.removeAllRanges();
+    selection.addRange(r);
+  }
+  return p;
 };
