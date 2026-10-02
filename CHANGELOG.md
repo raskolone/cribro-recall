@@ -224,6 +224,27 @@ we dwoje na żywo.
 - Zwinięty nagłówek H2 jest kompaktowym paskiem (bez marginesów), a separator tuż przed nim węższy (`:has(+ h2[data-collapsed="1"])`).
 - Ciemny motyw tej zmiany świadomie odłożony. Bez zmian: `firestore.rules`, `storage.rules`, logika edytora.
 
+### 🐛 Notatnik: spis treści z hierarchią lekcja → nagłówek lektora + granica zwijania lekcji (2026-10-01)
+
+- **Kryterium** (`utils/lessonOutline.ts`, nowy): lekcja = `h2[data-toggle="1"]` (wszystkie szablony lekcji; klasa `pad-locked-heading` NIE jest wymagana, bo lekcje sprzed 18.09.2026 jej nie mają). Każdy inny h1/h2 (przybornik wstawia przez `formatBlock`, który zdejmuje `data-toggle`) to nagłówek lektora. Granica lekcji: następna lekcja, `.pad-page-break` albo koniec dokumentu.
+- **Zwijanie lekcji** (`setSectionCollapsed`): chowa całą lekcję łącznie z nagłówkami lektora w środku — wcześniej zatrzymywało się na każdym h1/h2, więc własny H2 lektora odsłaniał resztę lekcji. Separator nie jest już chowany przez JS; separator schowany przez starą wersję (zapisany z `display:none`) wraca przy przełączeniu sąsiedniej lekcji. Rozwinięcie lekcji zeruje `data-collapsed` zwiniętych nagłówków w środku (stare dokumenty ze zwijanymi h1/h2 lektora).
+- **Spis treści** (`rebuildToc` → `buildTocEntries`): nagłówek lektora jest dzieckiem bieżącej lekcji; przed pierwszą lekcją zostaje na najwyższym poziomie. Strzałka zwijania w spisie (`collapsedTocLessons`) przepięta z H1 na lekcje i pokazywana tylko przy lekcji z dziećmi. Wiersz lekcji ma miejsce na przyszłe akcje (np. usuwanie).
+- **Skok ze spisu** (`handleJumpToHeading`): najpierw rozwija zwiniętą lekcję-rodzica, potem przewija do celu.
+- **„Wstaw do sekcji" z czatu AI** (`handleInsertIntoSection`): „ostatnia lekcja" = ostatni `h2[data-toggle="1"]`, nie dowolny H2; nagłówek lektora w sekcji nie ucina jej końca.
+- „Zwiń wszystkie" i licznik lekcji liczą tylko lekcje; lista nagłówków dla czatu AI oznacza lekcje jako `H2 (lekcja)`.
+- Bez zmian: zapisywany HTML (zero migracji), `firestore.rules`, `storage.rules`, reguła B1 (`display:flex !important` separatora — nadal potrzebna dla dokumentów zapisanych ze schowanym separatorem). Testy: `tests/lessonOutline.test.ts` (11, na prawdziwym module).
+
+### 🐛 Notatnik: pusta przestrzeń pod zwiniętą ostatnią lekcją + puste nagłówki w spisie (2026-10-02)
+
+- **Pusta przestrzeń** (`ScratchpadEditor.tsx`, `isLastLessonCollapsed` w `utils/lessonOutline.ts`): kartka miała stały `minHeight` = pełna strona A4 (od 2026-09-16), więc po zwinięciu ostatniej lekcji zostawało do ~870 px pustego papieru. Gdy ostatnia lekcja jest zwinięta, `minHeight` jest pomijany (zwinięcie chowa wszystko do końca dokumentu); po rozwinięciu wraca 1123 px. Wybrano „ostatnia lekcja", nie „wszystkie": wystarcza, bo zwinięta ostatnia kończy dokument, a wartość liczy się ze stanu `toc`, który i tak odświeżają zwinięcie, „Zwiń wszystkie" i załadowanie dokumentu. `measurePages` liczy tylko `.pad-page-break`, nie wysokość — bez zmian.
+- **Spis treści** (`buildTocEntries`): pusty h1/h2 lektora jest pomijany (wpis wraca po wpisaniu tekstu); lekcja z wyczyszczonym tytułem zostaje jako „Lekcja N (bez tytułu)", N = pozycja wśród lekcji (numer z tytułu przepadł razem z nim).
+- Znany, zaakceptowany efekt uboczny: `highestLessonNumber` czyta numer z tekstu nagłówka, więc wyczyszczony tytuł najwyższej lekcji może dać duplikat numeru przy „Nowa lekcja" (dwie z trzech ścieżek dodatkowo bierze `max(liczba lekcji w rekordach + 1, ...)`). Nie zmieniano — numer w tekście jest źródłem prawdy (patrz komentarz w `lessonTemplate.ts`).
+- Poza zakresem (punkt 38): ochrona zablokowanych nagłówków przed usunięciem. Bez zmian: `firestore.rules`, `storage.rules`, A+B, D. Testy: `tests/lessonOutline.test.ts` (15).
+
+### 🐛 Notatnik: czytelny tekst na ciemnej kartce (2026-10-02)
+
+- `index.css`: `.pad-paper[data-pad-theme="dark"].pad-sheet` dostaje `--pad-fg: #eae8e3` i `color: var(--pad-fg)`. Zwykły tekst bez inline koloru dziedziczył ciemny `#18212a` z reguły wspólnej dla obu motywów, więc na ciemnej kartce był nieczytelny (kolor = `NOTEBOOK_INK.dark`). Potwierdzone wzrokowo przez lektora. Bez zmian: `firestore.rules`, `storage.rules`, logika edytora.
+
 ### 🐛 Notatnik: 4 poprawki po teście (kolor DRAW, kontrast ikon, jeden znacznik, Akapit) (2026-10-01)
 
 - **A. Paleta kolorów DRAW** (`FloatingToolPalette.tsx`): handler i porównanie stanu były poprawne (klik przenosi ptaszek: Rose→Sky→Purple), zielony „zostawał" bo jedyny widoczny skutek wyboru to ptaszek, a w edytorze NIE MA warstwy rysującej — `activeDrawTool`/`drawColor`/`drawStrokeWidth` czyta wyłącznie paleta. Dodany „Podgląd" pisaka (kolor, grubość, krycie). Samo rysowanie na kartce nadal nie istnieje (świadomie poza zakresem).

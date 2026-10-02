@@ -6677,3 +6677,27 @@ Zrobione: `index.css` (separator, plakietka ukryta, zwinięty H2, mobile), commi
 Nie dokończone / do sprawdzenia: poprawka ciemnej kartki (`--pad-fg: #eae8e3` w `.pad-paper[data-pad-theme="dark"].pad-sheet`) czeka w working tree NIEZACOMMITOWANA — osobna zmiana, bez zgody na commit; hunk wykluczony z commita separatora. Ciemny motyw separatora odłożony.
 Decyzje architektoniczne: dwie zmiany w jednym pliku rozdzielone przez `git apply --cached` (jeden commit = jedna zmiana).
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. tsc 0; npm test 685/685.
+
+2026-10-01 (4) — Claude Code / Opus 5.5
+
+Zadanie: D — hierarchia spisu treści (H2 lektora pod lekcją) + naprawa granicy zwijania lekcji.
+Zrobione: `utils/lessonOutline.ts` (nowy: `isLessonHeading`, `LESSON_HEADING_SELECTOR`, `isLessonBoundary`, `sectionBodyNodes`, `setSectionCollapsed`, `findParentLesson`, `buildTocEntries`, typ `TocEntry`), `ScratchpadEditor.tsx` (`rebuildToc`, `setSectionCollapsed`, `lessonSectionCount`, `handleCollapseAll`, `toggleTocLesson`, `handleJumpToHeading`, `handleInsertIntoSection`, lista nagłówków dla AI, render spisu treści + `tocLessonsWithChildren`), `tests/lessonOutline.test.ts` (11 testów), CHANGELOG.
+Nie dokończone / do sprawdzenia: ręczny test w PRAWDZIWEJ aplikacji NIE wykonany (brak logowania). Dowód: prawdziwy `ScratchpadEditor` na tymczasowym Vite (port 4399) w Chromium/Playwright, H2 lektora wstawiony przyciskiem „Nagłówek sekcji (H2)" z przybornika; harness usunięty. NIEZACOMMITOWANE — czeka na zgodę po teście lektora. `extractLastLessonSections` (utils/lessonTemplate.ts) ma ten sam błąd (tnie po dowolnym h2), ale nie ma wywołań w kodzie produkcyjnym — nie ruszany. Przycisk przybornika „Nagłówek lekcji (H1)" ma mylący podpis (to nagłówek lektora, nie lekcja) — nie ruszany.
+Decyzje architektoniczne: kryterium lekcji bez wymogu `pad-locked-heading` (lekcje 14–18.09.2026 jej nie mają); h1 nigdy nie jest lekcją; stare zwijane h1/h2 lektora zwijają się po staremu, ale nie wychodzą poza lekcję; separator `.pad-page-break` jest granicą lekcji i zeruje rodzica w spisie; strzałka w spisie tylko przy lekcji z dziećmi; skok ze spisu nie zapisuje dokumentu (jak wcześniej). B1 zostaje.
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Zapisywany HTML bez zmian struktury. tsc 0; npm test 696/696.
+
+2026-10-02 (2) — Claude Code / Sonnet 5.5
+
+Zadanie: bug 36 (pusta przestrzeń pod zwiniętą ostatnią lekcją) + bug 37 (duch „Bez tytułu" w spisie).
+Zrobione: `utils/lessonOutline.ts` (`buildTocEntries`: pomija puste nagłówki lektora, lekcja bez tytułu → „Lekcja N (bez tytułu)"; nowe `isLastLessonCollapsed`), `ScratchpadEditor.tsx` (`lastLessonCollapsed`, warunkowy `minHeight` kartki), `tests/lessonOutline.test.ts` (+4), CHANGELOG.
+Nie dokończone / do sprawdzenia: ręczny test w prawdziwej aplikacji NIE wykonany (brak logowania); dowód z prawdziwego `ScratchpadEditor` w Chromium na tymczasowym Vite (port 4399, poza repo). NIEZACOMMITOWANE — razem z D i poprawką ciemnej kartki w `index.css` czeka na zgodę.
+Decyzje architektoniczne: warunek „ostatnia lekcja zwinięta" zamiast „wszystkie" (prostsze, wystarcza); numer w fallbacku = pozycja wśród lekcji, nie próba zgadywania numeru z sąsiadów; `highestLessonNumber` bez zmian (efekt uboczny opisany w CHANGELOG).
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe, obsługa klawiszy/ochrona nagłówków — NIETKNIĘTE. tsc 0; npm test 700/700.
+
+2026-10-02 (3) — Claude Code / Sonnet 5.5
+
+Zadanie: commit i push etapu: D, bugi 36/37, ciemna kartka.
+Zrobione: 3 commity (kod D+36/37; `index.css` ciemna kartka; dokumentacja) i push na main. CHANGELOG uzupełniony o wpis o ciemnej kartce (brakował).
+Nie dokończone / do sprawdzenia: punkt 38 — ochrona zablokowanych nagłówków (h3 i h2 lekcji) przed usunięciem przez zaznaczenie/Backspace — świadomie poza zakresem.
+Decyzje architektoniczne: dokumentacja w osobnym commicie (jeden commit = jedna zmiana).
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Push na main = produkcja Vercel. tsc 0; npm test 700/700.
