@@ -114,7 +114,6 @@ import TeacherFormattingToolbar from './TeacherFormattingToolbar';
 import {
   wrapSelectedTextInline,
   applyInlineStrikeCorrect,
-  headingPlainText,
   selectLineFromTarget,
   tryConvertParagraphToList,
   revertAutoListToParagraph,
@@ -130,6 +129,7 @@ import { FloatingToolsLauncher } from './FloatingToolsLauncher';
 import { InsertLinkModal } from './InsertLinkModal';
 import { ExerciseDefinition, RandomWheelPayload } from '../../types/exerciseStudio';
 import { InteractiveExercise } from '../../services/lessonPlannerMethod';
+import { buildTocEntries, findParentLesson, isLastLessonCollapsed, isLessonBoundary, isLessonHeading, LESSON_HEADING_SELECTOR, setSectionCollapsed as setLessonSectionCollapsed, TocEntry } from '../../utils/lessonOutline';
 import { buildLessonTemplate, highestLessonNumber, LESSON_SECTIONS, lessonHeadingTextHtml, lessonTitleStyle, sectionHeadingStyle } from '../../utils/lessonTemplate';
 import { NOTEBOOK_INK, NOTEBOOK_SWATCHES, NOTEBOOK_SWATCHES_EXTENDED, sanitizeFrozenHeadingContrast } from '../../utils/notebookPalette';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
@@ -163,15 +163,6 @@ const PAGE_WIDTH_PX = 794;
 
 /** Margines dokumentu — 2 cm, czyli standard Worda i Google Docs. */
 const PAGE_MARGIN_PX = 76;
-
-/** Pozycja w spisie treści — H1 (nadrzędny/lekcja) lub H2 (rozdział/sekcja). H3 nie trafia do spisu. */
-interface TocEntry {
-  id: string;
-  level: 1 | 2;
-  text: string;
-  collapsed: boolean;
-  parentId?: string;
-}
 
 /** Przycisk paska formatowania — jeden kształt dla wszystkich narzędzi edytora. */
 const FormatButton: React.FC<{
@@ -530,9 +521,10 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   /* ═══════════════════════════════════════════════════════════════════
      SPIS TREŚCI, NAGŁÓWKI ZWIJANE I PODZIAŁ NA STRONY
-     - Nagłówek 1 (H1) = nadrzędny (lekcja), w spisie treści zwija swoje H2
-     - Nagłówek 2 (H2) = rozdziały w lekcji
+     - Lekcja = h2[data-toggle="1"] z szablonu; w spisie treści zwija swoje dzieci
+     - Nagłówki lektora (h1/h2 z przybornika) = dzieci bieżącej lekcji
      - Nagłówek 3 (H3) = sekcja szczegółowa, NIE pojawia się w spisie treści
+     Kryterium i granice lekcji: utils/lessonOutline.ts
      ═══════════════════════════════════════════════════════════════════ */
 
   /** Nadaje nagłówkowi trwały identyfikator, jeśli jeszcze go nie ma. */
@@ -548,25 +540,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     const root = editorRef.current;
     if (!root) return;
     // Spis treści budujemy TYLKO z H1 i H2 — H3 celowo pomijamy!
-    const headings = Array.from(root.querySelectorAll('h1, h2')) as HTMLElement[];
-    let currentH1Id: string | undefined = undefined;
+    const entries = buildTocEntries(root, ensureHeadingId);
 
-    const entries: TocEntry[] = headings.map((heading, index) => {
-      const id = ensureHeadingId(heading, index);
-      const level = Number(heading.tagName.charAt(1)) as 1 | 2;
-      if (level === 1) {
-        currentH1Id = id;
-      }
-      return {
-        id,
-        level,
-        text: headingPlainText(heading) || 'Bez tytułu',
-        collapsed: heading.getAttribute('data-collapsed') === '1',
-        parentId: level === 2 ? currentH1Id : undefined,
-      };
-    });
-
-    const signature = entries.map(e => `${e.level}|${e.id}|${e.text}|${e.collapsed}|${e.parentId}`).join('\n');
+    const signature = entries.map(e => `${e.level}|${e.id}|${e.text}|${e.collapsed}|${e.isLesson}|${e.parentId}`).join('\n');
     if (signature === tocSignatureRef.current) return;
     tocSignatureRef.current = signature;
     setToc(entries);
@@ -632,24 +608,10 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   }, [measurePages]);
 
   /**
-   * Zwinięcie rozdziału w treści dokumentu:
-   * H1 zwija wszystko do następnego H1.
-   * H2 zwija wszystko do następnego H2 lub H1.
+   * Zwinięcie rozdziału w treści dokumentu: lekcja zwija wszystko (łącznie z
+   * nagłówkami lektora) do następnej lekcji, separatora strony lub końca.
    */
-  const setSectionCollapsed = useCallback(
-    (heading: HTMLElement, collapsed: boolean) => {
-      const level = Number(heading.tagName.charAt(1));
-      let node = heading.nextElementSibling as HTMLElement | null;
-      while (node) {
-        const match = /^H([1-6])$/.exec(node.tagName);
-        if (match && Number(match[1]) <= level) break;
-        node.style.display = collapsed ? 'none' : '';
-        node = node.nextElementSibling as HTMLElement | null;
-      }
-      heading.setAttribute('data-collapsed', collapsed ? '1' : '0');
-    },
-    []
-  );
+  const setSectionCollapsed = setLessonSectionCollapsed;
 
   /** Izolacja formatowania tekstu: likwidacja krwawienia stylów po Enterze */
   const handleEnterKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -1190,16 +1152,16 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   // Liczba zwijanych lekcji; przeliczana po każdej zmianie struktury (toc)
   const lessonSectionCount = useMemo(
-    () => editorRef.current?.querySelectorAll('[data-toggle="1"]').length ?? 0,
+    () => editorRef.current?.querySelectorAll(LESSON_HEADING_SELECTOR).length ?? 0,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [toc]
   );
 
-  /** Zwinięcie albo rozwinięcie wszystkich rozdziałów zwijanych w dokumencie */
+  /** Zwinięcie albo rozwinięcie wszystkich lekcji w dokumencie */
   const handleCollapseAll = (collapsed: boolean) => {
     const root = editorRef.current;
     if (!root) return;
-    (Array.from(root.querySelectorAll('[data-toggle="1"]')) as HTMLElement[]).forEach(heading =>
+    (Array.from(root.querySelectorAll(LESSON_HEADING_SELECTOR)) as HTMLElement[]).forEach(heading =>
       setSectionCollapsed(heading, collapsed)
     );
     rebuildToc();
@@ -1207,20 +1169,37 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     if (!isReadOnly) triggerDebouncedSave(root.innerHTML);
   };
 
-  /** Przełączenie zwinięcia lekcji (H1) w samym spisie treści */
-  const toggleTocLesson = (h1Id: string) => {
+  // Zwinięta ostatnia lekcja: kartka bez minimalnej wysokości A4 (inaczej zostaje pusta przestrzeń pod paskiem)
+  const lastLessonCollapsed = useMemo(() => isLastLessonCollapsed(toc), [toc]);
+
+  // Lekcje, które mają w spisie zagnieżdżone nagłówki lektora (tylko one dostają strzałkę)
+  const tocLessonsWithChildren = useMemo(
+    () => new Set(toc.map(e => e.parentId).filter((id): id is string => !!id)),
+    [toc]
+  );
+
+  /** Przełączenie zwinięcia lekcji (h2[data-toggle]) w samym spisie treści */
+  const toggleTocLesson = (lessonId: string) => {
     setCollapsedTocLessons(prev => ({
       ...prev,
-      [h1Id]: !prev[h1Id],
+      [lessonId]: !prev[lessonId],
     }));
   };
 
-  /** Przejście do nagłówka ze spisu treści */
+  /**
+   * Przejście do nagłówka ze spisu treści. Nagłówek lektora w zwiniętej
+   * lekcji ma display:none — najpierw rozwijamy lekcję-rodzica, potem cel.
+   */
   const handleJumpToHeading = (id: string) => {
-    const heading = editorRef.current?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
-    if (!heading) return;
-    if (heading.getAttribute('data-collapsed') === '1') {
-      setSectionCollapsed(heading, false);
+    const root = editorRef.current;
+    const heading = root?.querySelector(`#${CSS.escape(id)}`) as HTMLElement | null;
+    if (!root || !heading) return;
+    const parentLesson = findParentLesson(heading, root);
+    const toExpand = [parentLesson, heading].filter(
+      (h): h is HTMLElement => !!h && h.getAttribute('data-collapsed') === '1'
+    );
+    if (toExpand.length) {
+      toExpand.forEach(h => setSectionCollapsed(h, false));
       rebuildToc();
       measurePages();
     }
@@ -1955,7 +1934,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       // zamiast zgadywać ze streszczenia całej treści.
       const headingsList = editorRef.current
         ? (Array.from(editorRef.current.querySelectorAll('h1, h2, h3')) as HTMLElement[])
-            .map(h => `${h.tagName}: ${(h.textContent || '').replace(/[▾▸]/g, '').trim()}`)
+            .map(h => `${isLessonHeading(h) ? 'H2 (lekcja)' : h.tagName}: ${(h.textContent || '').replace(/[▾▸]/g, '').trim()}`)
             .filter(line => line.length > 4)
             .join('\n')
         : '';
@@ -2200,30 +2179,30 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
   /**
    * Wstawia treść AI pod WYBRANĄ sekcję bieżącej (ostatniej) lekcji, zamiast
    * tworzyć nową lekcję. Sekcja to nagłówek H3 z `LESSON_SECTIONS` — szuka go
-   * w obrębie ostatniego bloku lekcyjnego (od ostatniego H2 do końca
-   * dokumentu albo do następnego H2) i dopisuje treść na końcu tej sekcji,
-   * przed kolejnym nagłówkiem.
+   * w obrębie ostatniej lekcji (od ostatniego h2[data-toggle] do separatora
+   * albo końca dokumentu) i dopisuje treść na końcu tej sekcji, przed
+   * kolejnym H3. Nagłówki lektora (h1/h2 bez data-toggle) są treścią sekcji.
    *
-   * Jeśli w dokumencie nie ma jeszcze żadnej lekcji (H2), nie zgaduje gdzie
+   * Jeśli w dokumencie nie ma jeszcze żadnej lekcji, nie zgaduje gdzie
    * wstawić — dopisuje na końcu dokumentu, tak jak „Dopisz na końcu”.
    */
   const handleInsertIntoSection = (sectionTitle: string, text: string) => {
     if (isReadOnly || !editorRef.current) return;
 
-    const allH2 = Array.from(editorRef.current.querySelectorAll('h2')) as HTMLElement[];
-    const lastH2 = allH2[allH2.length - 1];
-    if (!lastH2) {
+    const allLessons = Array.from(editorRef.current.querySelectorAll(LESSON_HEADING_SELECTOR)) as HTMLElement[];
+    const lastLesson = allLessons[allLessons.length - 1];
+    if (!lastLesson) {
       handleAppendAiMessageToDoc(text);
       return;
     }
 
-    // Wszystkie węzły od ostatniego H2 (włącznie) do następnego H2 lub końca dokumentu.
+    // Wszystkie węzły od ostatniej lekcji (włącznie) do separatora lub końca dokumentu.
     const lessonNodes: Element[] = [];
-    let node: Element | null = lastH2;
+    let node: Element | null = lastLesson;
     while (node) {
       lessonNodes.push(node);
       node = node.nextElementSibling;
-      if (node && node.tagName === 'H2') break;
+      if (node && isLessonBoundary(node)) break;
     }
 
     const targetH3 = lessonNodes.find(
@@ -2235,10 +2214,10 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
       return;
     }
 
-    // Ostatni węzeł tej sekcji: wszystko po `targetH3` aż do kolejnego H2/H3.
+    // Ostatni węzeł tej sekcji: wszystko po `targetH3` aż do kolejnego H3 lub granicy lekcji.
     let insertAfter: Element = targetH3;
     let sibling = targetH3.nextElementSibling;
-    while (sibling && sibling.tagName !== 'H2' && sibling.tagName !== 'H3') {
+    while (sibling && sibling.tagName !== 'H3' && !isLessonBoundary(sibling)) {
       insertAfter = sibling;
       sibling = sibling.nextElementSibling;
     }
@@ -3234,31 +3213,37 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
 
             {toc.length === 0 ? (
               <p className="px-4 py-6 text-xs leading-relaxed text-text-faint text-center">
-                Spis treści zbuduje się automatycznie z nagłówków w dokumencie. Użyj Styl → Nagłówek 1 (Lekcja) i Nagłówek 2 (Rozdział).
+                Spis treści zbuduje się automatycznie z lekcji (+ Nowa lekcja) i nagłówków wstawionych z przybornika.
               </p>
             ) : (
               <nav className="py-2 px-1.5 space-y-0.5">
                 {toc.map(entry => {
-                  if (entry.level === 1) {
+                  // Wiersz najwyższego poziomu: lekcja albo nagłówek lektora przed pierwszą lekcją
+                  if (!entry.parentId) {
+                    const hasChildren = entry.isLesson && tocLessonsWithChildren.has(entry.id);
                     const isLessonCollapsed = !!collapsedTocLessons[entry.id];
                     return (
                       <div key={entry.id} className="group/toc flex items-center w-full rounded-lg hover:bg-white/[0.05] transition-colors">
-                        <button
-                          type="button"
-                          onClick={() => toggleTocLesson(entry.id)}
-                          title={isLessonCollapsed ? 'Rozwiń sekcje tej lekcji' : 'Zwiń sekcje tej lekcji'}
-                          className="p-1.5 text-text-faint hover:text-text-hi transition-transform cursor-pointer"
-                        >
-                          <ChevronRight
-                            size={12}
-                            className={`transition-transform duration-150 ${isLessonCollapsed ? '' : 'rotate-90 text-primary'}`}
-                          />
-                        </button>
+                        {hasChildren ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleTocLesson(entry.id)}
+                            title={isLessonCollapsed ? 'Rozwiń sekcje tej lekcji' : 'Zwiń sekcje tej lekcji'}
+                            className="p-1.5 shrink-0 text-text-faint hover:text-text-hi transition-transform cursor-pointer"
+                          >
+                            <ChevronRight
+                              size={12}
+                              className={`transition-transform duration-150 ${isLessonCollapsed ? '' : 'rotate-90 text-primary'}`}
+                            />
+                          </button>
+                        ) : (
+                          <span className="w-6 shrink-0" aria-hidden="true" />
+                        )}
                         <button
                           type="button"
                           onClick={() => handleJumpToHeading(entry.id)}
                           title={entry.text}
-                          className={`flex-1 text-left py-1.5 pr-2 text-[12px] font-bold leading-snug truncate transition-colors cursor-pointer ${
+                          className={`flex-1 min-w-0 text-left py-1.5 pr-2 text-[12px] font-bold leading-snug truncate transition-colors cursor-pointer ${
                             activeHeadingId === entry.id
                               ? 'text-primary font-extrabold'
                               : 'text-content'
@@ -3266,13 +3251,14 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                         >
                           {entry.text}
                         </button>
+                        {/* Miejsce na akcje wiersza lekcji (np. usuwanie — osobne zadanie) */}
                       </div>
                     );
                   }
 
-                  // Nagłówek 2 (H2) — podrzędny pod H1
-                  if (entry.parentId && collapsedTocLessons[entry.parentId]) {
-                    return null; // Ukryty, gdy nadrzędna lekcja H1 jest zwinięta w spisie treści
+                  // Nagłówek lektora wewnątrz lekcji — dziecko lekcji
+                  if (collapsedTocLessons[entry.parentId]) {
+                    return null; // Ukryty, gdy lekcja jest zwinięta w spisie treści
                   }
 
                   return (
@@ -3448,7 +3434,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 style={{
                   wordBreak: 'break-word',
                   boxShadow: 'var(--pad-shadow)',
-                  minHeight: activePageHeight,
+                  minHeight: lastLessonCollapsed ? undefined : activePageHeight,
                   padding: `${PAGE_MARGIN_PX}px`,
                   boxSizing: 'border-box',
                 }}
