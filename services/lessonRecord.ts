@@ -156,6 +156,13 @@ export async function createLessonRecordWithVocabularySet(input: {
   scenarioId?: string;
   scenarioTopic?: string;
   scenarioContent?: string;
+  /** Formalna grupa (kolekcja `groups`), jeśli lekcja jest grupowa. Pominięcie = lekcja ad-hoc, jak dotąd. */
+  groupId?: string;
+  groupName?: string;
+  /** Wspólny identyfikator wszystkich kopii tej samej lekcji grupowej — ten sam dla każdego wywołania w pętli po kursantach. */
+  groupLessonId?: string;
+  /** Pełna lista kursantów obecnych na tej lekcji grupowej (po odznaczeniu nieobecnych). */
+  studentIds?: string[];
   /** Pozycje zatwierdzone do powtórek. Pominięcie = cały `vocabularyText`. */
   approvedItems?: string[];
   /**
@@ -222,6 +229,10 @@ export async function createLessonRecordWithVocabularySet(input: {
     scenarioId: input.scenarioId,
     scenarioTopic: input.scenarioTopic,
     scenarioContent: input.scenarioContent,
+    groupId: input.groupId,
+    groupName: input.groupName,
+    groupLessonId: input.groupLessonId,
+    studentIds: input.studentIds,
     createdAt: now,
     updatedAt: now,
   };

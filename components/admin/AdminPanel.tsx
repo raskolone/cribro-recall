@@ -894,12 +894,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
     const approvedItems = splitVocabularyLines(lessonFormWords)
       .filter(line => !lessonFormExcludedItems.includes(line));
 
+    /* Lekcja grupowa: jeden wspólny `groupLessonId` dla wszystkich kopii tego
+       zapisu (po jednej na kursanta), żeby dało się je później złączyć w jeden
+       wpis na karcie grupy. Bez wybranej grupy (ad-hoc) — bez zmian względem
+       dotychczasowego zachowania. */
+    const groupLessonId = lessonFormGroupId
+      ? `grouplesson-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+      : undefined;
+
     setIsSavingLessonRecord(true);
     let primaryLessonRecordId: string | undefined = editingRecordId || undefined;
     try {
       if (editingRecordId) {
         const primaryStudentId = lessonFormStudentId || targetStudentIds[0];
-        const recordData = {
+        const recordData: Record<string, any> = {
           studentId: primaryStudentId,
           date: lessonFormDate,
           topic: lessonFormTopic,
@@ -921,7 +929,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
           pendingReason: '',
           updatedAt: new Date().toISOString()
         };
-        
+        if (lessonFormGroupId) {
+          recordData.groupId = lessonFormGroupId;
+          recordData.groupName = lessonFormGroupName;
+          recordData.groupLessonId = groupLessonId;
+          recordData.studentIds = targetStudentIds;
+        }
+
         // Fetch the existing record to see if it has a vocabularySetId
         const recordDoc = await getDocs(query(collection(db, `users/${primaryStudentId}/lessonRecords`), where("__name__", "==", editingRecordId)));
         let vocabSetId = "";
@@ -979,7 +993,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             scenarioId: lessonFormScenarioId || '',
             scenarioTopic: lessonFormScenarioTopic || '',
             scenarioContent: lessonFormScenarioContent || '',
-            approvedItems: approvedItems
+            approvedItems: approvedItems,
+            groupId: lessonFormGroupId || undefined,
+            groupName: lessonFormGroupId ? lessonFormGroupName : undefined,
+            groupLessonId,
+            studentIds: lessonFormGroupId ? targetStudentIds : undefined
           });
           if (lessonFormRecallCandidates.length > 0) {
             await saveRecallReview(sId, extra.lessonRecordId, lessonFormRecallCandidates);
@@ -1008,7 +1026,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
             scenarioId: lessonFormScenarioId || '',
             scenarioTopic: lessonFormScenarioTopic || '',
             scenarioContent: lessonFormScenarioContent || '',
-            approvedItems: approvedItems
+            approvedItems: approvedItems,
+            groupId: lessonFormGroupId || undefined,
+            groupName: lessonFormGroupId ? lessonFormGroupName : undefined,
+            groupLessonId,
+            studentIds: lessonFormGroupId ? targetStudentIds : undefined
           });
 
           if (lessonFormRecallCandidates.length > 0) {
@@ -1537,6 +1559,10 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   const [showLessonRecordModal, setShowLessonRecordModal] = useState(false);
   const [lessonFormStudentId, setLessonFormStudentId] = useState('');
   const [lessonFormStudentIds, setLessonFormStudentIds] = useState<string[]>([]);
+  // Grupa formalna (kolekcja `groups`) wybrana dla tej lekcji — puste = lekcja
+  // ad-hoc, bez odniesienia do `groups/{groupId}` (zachowanie sprzed tej zmiany).
+  const [lessonFormGroupId, setLessonFormGroupId] = useState('');
+  const [lessonFormGroupName, setLessonFormGroupName] = useState('');
   const [lessonFormDate, setLessonFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [lessonFormTopic, setLessonFormTopic] = useState('');
   const [lessonFormWords, setLessonFormWords] = useState('');
@@ -1712,12 +1738,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       setLessonFormScenarioId(record.scenarioId || '');
       setLessonFormScenarioTopic(record.scenarioTopic || '');
       setLessonFormScenarioContent(record.scenarioContent || '');
+      // Odtwórz wybór grupy, jeśli ten wpis był zapisany jako lekcja grupowa.
+      setLessonFormGroupId(record.groupId || '');
+      setLessonFormGroupName(record.groupName || '');
       setRawMeetingNotes('');
     } else {
       if (!preserveData) {
         const defaultStudentId = selectedUser?.id || '';
         setLessonFormStudentId(defaultStudentId);
         setLessonFormStudentIds(defaultStudentId ? [defaultStudentId] : []);
+        setLessonFormGroupId('');
+        setLessonFormGroupName('');
         setEditingRecordId(null);
         setViewingRecord(null);
         setLessonFormDate(new Date().toISOString().split('T')[0]);
@@ -1751,6 +1782,8 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setLessonFormScenarioId('');
     setLessonFormScenarioTopic('');
     setLessonFormScenarioContent('');
+    setLessonFormGroupId('');
+    setLessonFormGroupName('');
   };
 
   const handleLinkScenarioToRecord = async (scenario: GeneratedLessonScenario) => {
@@ -5219,28 +5252,72 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <>
                     <div className="space-y-4 mb-6">
                       <div>
+                        <label className="block text-sm font-bold text-content-muted mb-1">
+                          {i18n.t("Grupa (opcjonalnie)")}
+                        </label>
+                        <select
+                          value={lessonFormGroupId}
+                          onChange={(e) => {
+                            const gid = e.target.value;
+                            if (!gid) {
+                              setLessonFormGroupId('');
+                              setLessonFormGroupName('');
+                              return;
+                            }
+                            const group = teacherGroups.find(g => g.id === gid);
+                            if (!group) return;
+                            setLessonFormGroupId(group.id);
+                            setLessonFormGroupName(group.name);
+                            // Auto-zaznaczenie aktywnych członków — ten sam warunek
+                            // co lista kursantów do wyboru w GroupsManager.tsx
+                            // (pomija zarchiwizowanych/zawieszonych/nieaktywnych).
+                            const activeMemberIds = (group.memberProfileIds || []).filter((id) => {
+                              const member = users.find((u) => u.id === id);
+                              return member && !member.isArchived && !member.isSuspended && member.statusWspolpracy !== 'Nieaktywny';
+                            });
+                            setLessonFormStudentIds(activeMemberIds);
+                            setLessonFormStudentId(activeMemberIds[0] || '');
+                          }}
+                          className="w-full px-3 py-2 bg-ink border border-line-strong rounded-xl text-text-hi text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">{i18n.t("— Brak (wybór ad-hoc poniżej) —")}</option>
+                          {teacherGroups.filter(g => g.status === 'active').map(g => (
+                            <option key={g.id} value={g.id}>{g.name}</option>
+                          ))}
+                        </select>
+                        {lessonFormGroupId && (
+                          <p className="text-xs text-content-muted mt-1">
+                            {i18n.t("Zaznaczono członków grupy poniżej — odznacz nieobecnych, jeśli trzeba.")}
+                          </p>
+                        )}
+                      </div>
+                      <div>
                         <div className="flex items-center justify-between mb-2">
                           <label className="block text-sm font-bold text-content-muted">
                             {i18n.t("Kursant / Kursanci (zajęcia indywidualne lub grupowe)")}
                           </label>
                           <div className="flex gap-2">
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => {
                                 const allIds = users.map(u => u.id);
                                 setLessonFormStudentIds(allIds);
                                 if (allIds.length > 0) setLessonFormStudentId(allIds[0]);
+                                setLessonFormGroupId('');
+                                setLessonFormGroupName('');
                               }}
                               className="text-xs text-primary hover:underline font-medium"
                             >
                               {i18n.t("Zaznacz wszystkich")}
                             </button>
                             <span className="text-text-hi/20">|</span>
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               onClick={() => {
                                 setLessonFormStudentIds([]);
                                 setLessonFormStudentId('');
+                                setLessonFormGroupId('');
+                                setLessonFormGroupName('');
                               }}
                               className="text-xs text-content-muted hover:text-text-hi hover:underline font-medium"
                             >

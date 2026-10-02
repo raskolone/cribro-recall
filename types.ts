@@ -526,6 +526,8 @@ export interface LessonRecord {
   studentName?: string;
   groupId?: string | null;
   groupName?: string | null;
+  /** Wspólny identyfikator wszystkich kopii jednej lekcji grupowej (jedna wartość na zapis, N dokumentów). */
+  groupLessonId?: string;
   date: string;
   topic: string;
   vocabularyText: string;
