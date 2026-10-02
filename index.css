@@ -2051,9 +2051,13 @@ tr.liquid-glass-hover:hover {
   transition: box-shadow 0.25s ease, border-color 0.25s ease;
 }
 
+/* Atrament ciemnej kartki = NOTEBOOK_INK.dark (utils/notebookPalette.ts). Bez tego zwykły
+   tekst bez inline koloru dziedziczył ciemny #18212a z reguły wspólnej dla obu motywów. */
 .pad-paper[data-pad-theme="dark"].pad-sheet {
   background: linear-gradient(180deg, #0e1728 0%, #0a111e 100%);
   border: 1px solid rgba(114, 240, 180, 0.14);
+  --pad-fg: #eae8e3;
+  color: var(--pad-fg);
 }
 
 .pad-paper[data-pad-theme="light"].pad-sheet {
