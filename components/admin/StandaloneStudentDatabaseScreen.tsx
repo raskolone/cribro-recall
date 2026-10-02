@@ -69,6 +69,8 @@ import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface StandaloneStudentDatabaseScreenProps {
   onSelectUser: (userId: string, targetTab?: string) => void;
+  /** Klik w kartę grupy — otwiera kartę grupy (AdminPanel → GroupDetailView). */
+  onSelectGroup?: (group: Group) => void;
   onOpenMailing?: () => void;
   onBack: () => void;
   initialUsers?: User[];
@@ -80,6 +82,7 @@ type TabFilter = 'all' | 'active' | 'individual' | 'group';
 
 export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabaseScreenProps> = ({
   onSelectUser,
+  onSelectGroup,
   onOpenMailing,
   onBack,
   initialUsers,
@@ -994,80 +997,92 @@ export const StandaloneStudentDatabaseScreen: React.FC<StandaloneStudentDatabase
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 sm:gap-4">
               {filteredCanonicalGroups.map((group) => {
                 const isArchived = group.status === 'archived';
+                const memberIds = group.memberProfileIds || [];
+                const memberNames = memberIds.map((memberId) => {
+                  const member = studentsById.get(memberId);
+                  return member
+                    ? (`${member.firstName || ''} ${member.lastName || ''}`.trim() || member.displayName || member.username || 'Kursant')
+                    : 'Nieznany kursant';
+                });
+                const metaParts = [`Grupa · ${group.level}`, group.company, `${memberIds.length} os.`].filter(Boolean);
+                /* Kafelek w rozmiarze karty kursanta (StudentCard): jeden wiersz,
+                   dwie linie tekstu. Członkowie w drugiej linii (ucięci; pełna
+                   lista w podpowiedzi i na karcie grupy). Klik w kafelek otwiera
+                   kartę grupy; Notatnik i Edytuj zostają jako mikro-akcje. */
                 return (
-                  <Card
+                  <div
                     key={group.id}
-                    className={`flex flex-col justify-between border ${
-                      isArchived ? 'opacity-60 bg-base-200/50 border-line-weak' : 'border-purple-500/30 hover:border-purple-500/50'
+                    role={onSelectGroup ? 'button' : undefined}
+                    tabIndex={onSelectGroup ? 0 : undefined}
+                    onClick={() => onSelectGroup?.(group)}
+                    onKeyDown={(e) => {
+                      if (onSelectGroup && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        onSelectGroup(group);
+                      }
+                    }}
+                    aria-label={onSelectGroup ? `Otwórz kartę grupy ${group.name}` : undefined}
+                    title={memberNames.join(', ') || undefined}
+                    className={`group relative flex items-center gap-3 p-3.5 sm:p-4 rounded-2xl border transition-all duration-200 select-none bg-base-200 ${
+                      onSelectGroup ? 'cursor-pointer' : ''
+                    } ${
+                      isArchived ? 'opacity-60 border-line-strong' : 'border-purple-500/30 hover:border-purple-500/60 hover:shadow-md'
                     }`}
                   >
-                    <div>
-                      <div className="flex justify-between items-start mb-3">
-                        <span className="px-2.5 py-1 text-xs font-semibold rounded-full bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 flex items-center gap-1.5">
-                          <Users size={12} /> Grupa · {group.level}
-                        </span>
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center shrink-0 bg-purple-500/10 border border-purple-500/30 text-purple-700 dark:text-purple-300">
+                      <Users className="w-4 h-4" />
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <h4 className="text-sm sm:text-base font-bold tracking-tight text-text-hi truncate">{group.name}</h4>
                         <span
-                          className={`px-2 py-0.5 text-xs font-medium rounded-md ${
-                            isArchived ? 'bg-zinc-800 text-zinc-400' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                          className={`shrink-0 px-1.5 py-0.5 text-[10px] font-semibold rounded-md border ${
+                            isArchived
+                              ? 'bg-line-soft text-content-muted border-line-strong'
+                              : 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20'
                           }`}
                         >
                           {isArchived ? 'Zarchiwizowana' : 'Aktywna'}
                         </span>
                       </div>
-                      <h3 className="text-base font-bold text-text-hi mb-1">{group.name}</h3>
-                      {group.company && (
-                        <p className="text-xs text-content-muted mb-2 font-medium">Firma: {group.company}</p>
-                      )}
-                      <div className="mt-3 pt-3 border-t border-line-weak/50 space-y-1">
-                        <p className="text-xs text-content-muted mb-1">
-                          {(group.memberProfileIds || []).length} kursantów:
-                        </p>
-                        {(group.memberProfileIds || []).map((memberId) => {
-                          const member = studentsById.get(memberId);
-                          const name = member
-                            ? (`${member.firstName || ''} ${member.lastName || ''}`.trim() || member.displayName || member.username || 'Kursant')
-                            : 'Nieznany kursant';
-                          return (
-                            <div key={memberId} className="text-xs text-text-mute truncate flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-purple-400/60 shrink-0" />
-                              <span className="truncate">{name}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
+                      <p className="text-xs font-semibold text-content-muted mt-0.5 truncate">
+                        {metaParts.join(' • ')}
+                        {memberNames.length > 0 ? ` — ${memberNames.join(', ')}` : ''}
+                      </p>
                     </div>
-                    <div className="mt-4 pt-3 border-t border-line-weak flex items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => {
-                          setEditingGroup(null);
-                          setIsGroupModalOpen(true);
-                        }}
-                        className="flex items-center gap-1.5"
-                      >
-                        <Edit2 className="w-3.5 h-3.5" />
-                        Edytuj
-                      </Button>
+
+                    <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
                       {!isArchived && (
-                        <Button
-                          variant="secondary"
-                          size="sm"
+                        <button
+                          type="button"
                           onClick={() => handleOpenGroupNotebook(group)}
                           disabled={scratchpadLoadingGroupId === group.id}
-                          className="flex items-center gap-1.5"
                           title="Otwórz wspólny notatnik A4"
+                          aria-label="Notatnik grupy"
+                          className="p-1.5 sm:p-2 rounded-lg border border-line-strong bg-line-soft text-content-muted hover:text-text-hi transition-colors cursor-pointer disabled:opacity-50"
                         >
                           {scratchpadLoadingGroupId === group.id ? (
                             <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           ) : (
-                            <BookOpen className="w-3.5 h-3.5 text-accent" />
+                            <BookOpen className="w-3.5 h-3.5" />
                           )}
-                          Notatnik
-                        </Button>
+                        </button>
                       )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingGroup(null);
+                          setIsGroupModalOpen(true);
+                        }}
+                        title="Edytuj grupy (skład, poziom, archiwizacja)"
+                        aria-label="Edytuj grupy"
+                        className="p-1.5 sm:p-2 rounded-lg border border-line-strong bg-line-soft text-content-muted hover:text-text-hi transition-colors cursor-pointer"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </button>
                     </div>
-                  </Card>
+                  </div>
                 );
               })}
             </div>

@@ -582,6 +582,13 @@ const Dashboard: React.FC = () => {
             setAdminActiveTab(targetTab || 'profile');
             handleNavigate('dashboard');
           }}
+          onSelectGroup={(group) => {
+            // Karta grupy żyje w AdminPanel (formularz lekcji, notatnik, prace domowe).
+            (window as any)._pendingGroupDetail = group;
+            setAdminSelectedUserId(null);
+            setAdminActiveTab('group-detail');
+            handleNavigate('dashboard');
+          }}
           onOpenMailing={() => handleNavigate('mailing')}
           onBack={() => handleNavigate('dashboard')}
         />

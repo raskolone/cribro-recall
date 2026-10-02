@@ -60,6 +60,8 @@ import { sortChronologically } from '../../utils/lessonDuplicates';
 import { confirmAsync } from '../../utils/appAlert';
 import AdminMailingScreen from './AdminMailingScreen';
 import { GroupsManager } from './GroupsManager';
+import GroupDetailView from './GroupDetailView';
+import { buildGroupLessonFormPreset, pickActiveGroupMemberIds, resolveGroupLessonIdForSave, resolveStudentsForAiSummary } from '../../utils/groupLessonHistory';
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import GroupManagementModal from './GroupManagementModal';
 import { fetchGroupsForCaller, ensureCanonicalGroupScratchpad } from '../../services/groupService';
@@ -153,6 +155,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
   useEffect(() => {
     fetchGroupsForCaller().then(setTeacherGroups).catch(() => {});
   }, []);
+  // Karta grupy (activeTab === 'group-detail'). Trzymamy cały obiekt, bo CRM
+  // może znać grupę, której `teacherGroups` jeszcze nie ma (świeżo utworzona).
+  const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+  const [groupHistoryRefreshKey, setGroupHistoryRefreshKey] = useState(0);
+  const [groupNotebookLoading, setGroupNotebookLoading] = useState(false);
   const [notebookDrafts, setNotebookDrafts] = useState<NoteDraft[]>([]);
 
   useEffect(() => {
@@ -542,8 +549,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
       ? data.studentIds
       : (data.studentId ? [data.studentId] : (selectedUser?.id ? [selectedUser.id] : []));
 
-    setLessonFormStudentIds(ids);
-    setLessonFormStudentId(ids[0] || '');
+    /* Grupa wybrana PRZED uruchomieniem AI (wejście z karty grupy) wygrywa
+       z kursantem, którego AI zgadło z treści — dla lekcji grupowej to zawsze
+       jeden `studentId`. Wynik AI zmienia wtedy tylko pola treści. */
+    const students = resolveStudentsForAiSummary({
+      formGroupId: lessonFormGroupId,
+      currentStudentIds: lessonFormStudentIds,
+      currentPrimaryStudentId: lessonFormStudentId,
+      aiStudentIds: ids,
+    });
+    setLessonFormStudentIds(students.studentIds);
+    setLessonFormStudentId(students.primaryStudentId);
     if (data.lessonTopic) setLessonFormTopic(data.lessonTopic);
     if (data.revisionNotes) setLessonFormSummary(data.revisionNotes);
     if (data.vocabularyText) setLessonFormWords(data.vocabularyText);
@@ -898,9 +914,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
        zapisu (po jednej na kursanta), żeby dało się je później złączyć w jeden
        wpis na karcie grupy. Bez wybranej grupy (ad-hoc) — bez zmian względem
        dotychczasowego zachowania. */
-    const groupLessonId = lessonFormGroupId
-      ? `grouplesson-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-      : undefined;
+    const groupLessonId = resolveGroupLessonIdForSave(
+      lessonFormGroupId,
+      editingRecordId ? viewingRecord : null,
+      () => `grouplesson-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+    );
 
     setIsSavingLessonRecord(true);
     let primaryLessonRecordId: string | undefined = editingRecordId || undefined;
@@ -1056,6 +1074,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initi
         fetchUserLogsAndStats(selectedUser.id);
       }
       fetchAllLessons(users);
+      setGroupHistoryRefreshKey((k) => k + 1);
 
       /* Pytanie o wysyłkę maila z podsumowaniem zostaje wyłącznie dla lekcji
          jednego kursanta — przy zajęciach grupowych nie ma jednego adresata,
@@ -1786,6 +1805,73 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setLessonFormGroupName('');
   };
 
+  /* ── Karta grupy ──
+     Wejścia z karty grupy do formularza lekcji, notatnika i prac domowych.
+     Formularz jest ten sam co dla kursanta — różni się tylko stanem
+     początkowym (wybrana grupa + aktywni członkowie), jak przy
+     `homeworkInitialGroupId` dla prac domowych. */
+  const openGroupDetail = (group: Group) => {
+    setSelectedUser(null);
+    if (onUserSelect) onUserSelect(null);
+    setSelectedGroup(group);
+    // Dropdown grupy w formularzu lekcji czyta `teacherGroups` — grupa
+    // utworzona po wejściu do panelu musi się tam znaleźć od razu.
+    setTeacherGroups((prev) => (prev.some((g) => g.id === group.id) ? prev : [...prev, group]));
+    fetchGroupsForCaller()
+      .then((fresh) => {
+        setTeacherGroups(fresh);
+        const updated = fresh.find((g) => g.id === group.id);
+        if (updated) setSelectedGroup(updated);
+      })
+      .catch(() => {});
+    setActiveTab('group-detail');
+  };
+
+  const openGroupLessonModal = (group: Group) => {
+    openLessonRecordModal('edit');
+    const preset = buildGroupLessonFormPreset(group, users);
+    setLessonFormGroupId(preset.groupId);
+    setLessonFormGroupName(preset.groupName);
+    setLessonFormStudentIds(preset.studentIds);
+    setLessonFormStudentId(preset.primaryStudentId);
+  };
+
+  /* „Z transkrypcji (AI)" z karty grupy: grupa i jej aktywni członkowie są
+     ustawiani PRZED oknem wklejania — `applySingleSummary` ich nie nadpisze. */
+  const openGroupAiModal = (group: Group) => {
+    const preset = buildGroupLessonFormPreset(group, users);
+    setLessonFormGroupId(preset.groupId);
+    setLessonFormGroupName(preset.groupName);
+    setLessonFormStudentIds(preset.studentIds);
+    setLessonFormStudentId(preset.primaryStudentId);
+    setShowAIModal(true);
+  };
+
+  const openGroupNotebook = async (group: Group) => {
+    if (group.activeScratchpadId) {
+      openScratchpadTab(group.activeScratchpadId, group.name);
+      return;
+    }
+    if (!currentUser?.id) return;
+    setGroupNotebookLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      const scratchpadId = await ensureCanonicalGroupScratchpad(
+        group,
+        { uid: currentUser.id, name: currentUser.name || currentUser.displayName || 'Lektor' },
+        token
+      );
+      setTeacherGroups((prev) => prev.map((g) => (g.id === group.id ? { ...g, activeScratchpadId: scratchpadId } : g)));
+      setSelectedGroup((prev) => (prev && prev.id === group.id ? { ...prev, activeScratchpadId: scratchpadId } : prev));
+      openScratchpadTab(scratchpadId, group.name);
+    } catch (err) {
+      console.error('[AdminPanel] Błąd otwierania notatnika grupy:', err);
+      showToast('Nie udało się otworzyć notatnika grupy.');
+    } finally {
+      setGroupNotebookLoading(false);
+    }
+  };
+
   const handleLinkScenarioToRecord = async (scenario: GeneratedLessonScenario) => {
     if (!viewingRecord || !selectedUser) return;
     try {
@@ -1876,6 +1962,20 @@ const [users, setUsers] = useState<UserWithId[]>([]);
       return next;
     });
   };
+
+  /* Wejście do karty grupy z CRM stojącego jako osobny ekran (Dashboard →
+     `_pendingGroupDetail`, ten sam wzorzec co `_pendingLessonFromScratchpad`).
+     Zakładka `group-detail` bez wybranej grupy (np. odtworzona po
+     przeładowaniu) renderuje bazę kursantów — patrz łańcuch zakładek niżej;
+     celowo bez `setActiveTab` tutaj, bo ścigałoby się z efektem `initialTab`. */
+  useEffect(() => {
+    if (activeTab !== 'group-detail' || selectedGroup) return;
+    const pending = (window as any)._pendingGroupDetail as Group | undefined;
+    if (!pending) return;
+    delete (window as any)._pendingGroupDetail;
+    openGroupDetail(pending);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedGroup]);
 
   const [unreadMailingCount, setUnreadMailingCount] = useState<number>(0);
 
@@ -2061,6 +2161,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
   useEscapeModal(showMessageModal, () => setShowMessageModal(false));
   useEscapeModal(showDriveModal, () => setShowDriveModal(false), 5);
   useEscapeModal(showAIModal, () => setShowAIModal(false));
+
+  /* Preset grupy z `openGroupAiModal` żyje tylko do zamknięcia okna AI. Gdy
+     okno AI zamknięto bez wyniku (Anuluj/Esc) albo wynik poszedł do podglądu
+     importu zbiorczego (który nie zna grupy), żaden formularz nie jest
+     otwarty — grupa nie ma wisieć w stanie i wyciec do następnego wpisu. */
+  useEffect(() => {
+    if (!showAIModal && !showLessonRecordModal && lessonFormGroupId) {
+      setLessonFormGroupId('');
+      setLessonFormGroupName('');
+    }
+  }, [showAIModal, showLessonRecordModal, lessonFormGroupId]);
   useEscapeModal(showBulkModal, () => setShowBulkModal(false));
   useEscapeModal(showBulkPreviewModal, () => setShowBulkPreviewModal(false));
   useEscapeModal(showInviteModal, () => setShowInviteModal(false));
@@ -2557,7 +2668,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                 })}
               </div>
             </div>
-          ) : activeTab === 'students' ? (
+          ) : activeTab === 'students' || (activeTab === 'group-detail' && !selectedGroup) ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-2">
           <StandaloneStudentDatabaseScreen
             initialUsers={users}
@@ -2567,8 +2678,35 @@ const [users, setUsers] = useState<UserWithId[]>([]);
               const u = users.find((x) => x.id === uId);
               if (u) handleSelectUser(u as UserWithId, targetTab || 'profile');
             }}
+            onSelectGroup={openGroupDetail}
             onOpenMailing={() => setActiveTab('mailing')}
             onBack={() => setActiveTab(null)}
+          />
+        </div>
+      ) : activeTab === 'group-detail' && selectedGroup ? (
+        <div className="space-y-4 animate-in fade-in duration-200 mt-2">
+          <GroupDetailView
+            group={selectedGroup}
+            students={users}
+            refreshKey={groupHistoryRefreshKey}
+            isNotebookLoading={groupNotebookLoading}
+            onBack={() => {
+              setSelectedGroup(null);
+              setActiveTab('students');
+            }}
+            onOpenMember={(studentId) => {
+              const u = users.find((x) => x.id === studentId);
+              if (u) handleSelectUser(u as UserWithId, 'profile');
+            }}
+            onAddLesson={openGroupLessonModal}
+            onAddLessonFromTranscript={openGroupAiModal}
+            onViewLesson={(record) => openLessonRecordModal('view', record)}
+            onEditLesson={(record) => openLessonRecordModal('edit', record)}
+            onOpenNotebook={openGroupNotebook}
+            onAssignHomework={(group) => {
+              setHomeworkInitialGroupId(group.id);
+              setActiveTab('homework');
+            }}
           />
         </div>
       ) : activeTab === 'lesson-history' || activeTab === 'history' ? (
@@ -5271,10 +5409,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                             // Auto-zaznaczenie aktywnych członków — ten sam warunek
                             // co lista kursantów do wyboru w GroupsManager.tsx
                             // (pomija zarchiwizowanych/zawieszonych/nieaktywnych).
-                            const activeMemberIds = (group.memberProfileIds || []).filter((id) => {
-                              const member = users.find((u) => u.id === id);
-                              return member && !member.isArchived && !member.isSuspended && member.statusWspolpracy !== 'Nieaktywny';
-                            });
+                            const activeMemberIds = pickActiveGroupMemberIds(group.memberProfileIds, users);
                             setLessonFormStudentIds(activeMemberIds);
                             setLessonFormStudentId(activeMemberIds[0] || '');
                           }}
