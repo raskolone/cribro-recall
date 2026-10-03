@@ -5836,17 +5836,17 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                     <div className="font-mono text-sm text-primary mt-1">{viewingRecord?.date}</div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" onClick={() => openLessonRecordModal('edit', viewingRecord!)}>
+                    <Button variant="ghost" className="lesson-modal-btn" onClick={() => openLessonRecordModal('edit', viewingRecord!)}>
                       {i18n.t("Edytuj")}
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      className="text-danger hover:opacity-80 hover:bg-danger/10"
+                    <Button
+                      variant="ghost"
+                      className="lesson-modal-btn lesson-modal-btn--danger text-danger hover:opacity-80 hover:bg-danger/10"
                       onClick={() => handleDeleteLessonRecord(viewingRecord!)}
                     >
                       {i18n.t("Usuń")}
                     </Button>
-                    <button onClick={() => setShowLessonRecordModal(false)} className="p-2 hover:bg-line-soft rounded-lg transition-colors cursor-pointer">
+                    <button onClick={() => setShowLessonRecordModal(false)} className="lesson-modal-close p-2 hover:bg-line-soft rounded-lg transition-colors cursor-pointer">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-content-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>

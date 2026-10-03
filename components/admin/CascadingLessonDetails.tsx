@@ -188,31 +188,31 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
       )}
 
       {/* 1. BLOK 1: LEKCJA W SKRÓCIE (Blue Accordion / Badge) */}
-      <div className="rounded-2xl border border-sky-500/20 bg-sky-950/15 overflow-hidden shadow-sm transition-all">
+      <div data-tone="sky" className="lesson-block rounded-2xl border border-sky-500/20 bg-sky-950/15 overflow-hidden shadow-sm transition-all">
         <div 
           onClick={() => toggleSection('block1')}
-          className="p-3.5 bg-gradient-to-r from-sky-900/40 via-sky-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-sky-900/50 transition-colors select-none border-b border-sky-500/15"
+          className="lesson-block__head p-3.5 bg-gradient-to-r from-sky-900/40 via-sky-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-sky-900/50 transition-colors select-none border-b border-sky-500/15"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0">
+            <div className="lesson-block__icon w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0">
               <BookOpen size={16} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                <span className="lesson-block__badge px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
                   BLOK 1
                 </span>
-                <h4 className="font-extrabold text-sm text-white">Lekcja w skrócie</h4>
+                <h4 className="lesson-block__title font-extrabold text-sm text-white">Lekcja w skrócie</h4>
               </div>
-              <p className="text-[11px] text-sky-200/70">Podsumowanie, kontekst i przebieg lekcji</p>
+              <p className="lesson-block__desc text-[11px] text-sky-200/70">Podsumowanie, kontekst i przebieg lekcji</p>
             </div>
           </div>
-          <div className="text-sky-300">
+          <div className="lesson-block__chevron text-sky-300">
             {expandedSections.block1 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </div>
         {expandedSections.block1 && (
-          <div className="p-4 bg-sky-950/10 space-y-2">
+          <div className="lesson-block__body p-4 bg-sky-950/10 space-y-2">
             {blocks.summary ? (
               <div className="text-sm text-content whitespace-pre-wrap leading-relaxed">
                 <Markdown>{blocks.summary}</Markdown>
@@ -225,35 +225,35 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
       </div>
 
       {/* 2. BLOK 2: KEY LANGUAGE & CORRECTIONS (Emerald Accordion / Badge) */}
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/15 overflow-hidden shadow-sm transition-all">
+      <div data-tone="emerald" className="lesson-block rounded-2xl border border-emerald-500/20 bg-emerald-950/15 overflow-hidden shadow-sm transition-all">
         <div 
           onClick={() => toggleSection('block2')}
-          className="p-3.5 bg-gradient-to-r from-emerald-900/40 via-emerald-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-900/50 transition-colors select-none border-b border-emerald-500/15"
+          className="lesson-block__head p-3.5 bg-gradient-to-r from-emerald-900/40 via-emerald-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-900/50 transition-colors select-none border-b border-emerald-500/15"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <div className="lesson-block__icon w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
               <Sparkles size={16} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="lesson-block__badge px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   BLOK 2
                 </span>
-                <h4 className="font-extrabold text-sm text-white">Key Language & Corrections</h4>
-                <span className="text-[11px] text-emerald-400/80 font-bold">
+                <h4 className="lesson-block__title font-extrabold text-sm text-white">Key Language & Corrections</h4>
+                <span className="lesson-block__meta text-[11px] text-emerald-400/80 font-bold">
                   ({parsedVocabList.length} słówek{blocks.corrections ? ' + korekty' : ''})
                 </span>
               </div>
-              <p className="text-[11px] text-emerald-200/70">Kluczowe słownictwo, gramatyka i korekta błędów</p>
+              <p className="lesson-block__desc text-[11px] text-emerald-200/70">Kluczowe słownictwo, gramatyka i korekta błędów</p>
             </div>
           </div>
-          <div className="text-emerald-300">
+          <div className="lesson-block__chevron text-emerald-300">
             {expandedSections.block2 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </div>
 
         {expandedSections.block2 && (
-          <div className="p-4 bg-emerald-950/10 space-y-4">
+          <div className="lesson-block__body p-4 bg-emerald-950/10 space-y-4">
             {/* Pod-obszar 2a: Słownictwo i Wymowa */}
             <div>
               <div className="text-xs font-bold uppercase tracking-wider text-emerald-400 mb-2 flex items-center gap-1.5">
@@ -264,11 +264,11 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
                   {parsedVocabList.map(v => (
                     <div 
                       key={v.id}
-                      className="p-2.5 rounded-xl bg-base-300/70 border border-emerald-500/20 flex items-center justify-between gap-2 hover:border-emerald-500/40 transition-colors"
+                      className="lesson-block__card p-2.5 rounded-xl bg-base-300/70 border border-emerald-500/20 flex items-center justify-between gap-2 hover:border-emerald-500/40 transition-colors"
                     >
                       <div className="min-w-0">
-                        <div className="font-bold text-white text-xs">{v.term}</div>
-                        {v.def && <div className="text-[11px] text-emerald-200/80 truncate">{v.def}</div>}
+                        <div className="lesson-block__card-term font-bold text-white text-xs">{v.term}</div>
+                        {v.def && <div className="lesson-block__card-def text-[11px] text-emerald-200/80 truncate">{v.def}</div>}
                       </div>
                       <TTSButtons text={v.term} />
                     </div>
@@ -286,7 +286,7 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
                   <AlertTriangle size={14} className="text-amber-400" />
                   <span>Korekty językowe & Wymowa (Corrections):</span>
                 </div>
-                <div className="p-3.5 rounded-xl bg-base-300/60 border border-emerald-500/20 text-xs text-content leading-relaxed whitespace-pre-wrap">
+                <div className="lesson-block__card p-3.5 rounded-xl bg-base-300/60 border border-emerald-500/20 text-xs text-content leading-relaxed whitespace-pre-wrap">
                   <Markdown>{blocks.corrections}</Markdown>
                 </div>
               </div>
@@ -296,32 +296,32 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
       </div>
 
       {/* 4. BLOK 4: NEXT LESSON (Olive/Yellow Accordion / Badge) */}
-      <div className="rounded-2xl border border-yellow-500/20 bg-yellow-950/15 overflow-hidden shadow-sm transition-all">
+      <div data-tone="yellow" className="lesson-block rounded-2xl border border-yellow-500/20 bg-yellow-950/15 overflow-hidden shadow-sm transition-all">
         <div 
           onClick={() => toggleSection('block4')}
-          className="p-3.5 bg-gradient-to-r from-yellow-900/40 via-yellow-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-yellow-900/50 transition-colors select-none border-b border-yellow-500/15"
+          className="lesson-block__head p-3.5 bg-gradient-to-r from-yellow-900/40 via-yellow-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-yellow-900/50 transition-colors select-none border-b border-yellow-500/15"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center justify-center shrink-0">
+            <div className="lesson-block__icon w-8 h-8 rounded-xl bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 flex items-center justify-center shrink-0">
               <Target size={16} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                <span className="lesson-block__badge px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
                   BLOK 4
                 </span>
-                <h4 className="font-extrabold text-sm text-white">Next Lesson</h4>
+                <h4 className="lesson-block__title font-extrabold text-sm text-white">Next Lesson</h4>
               </div>
-              <p className="text-[11px] text-yellow-200/70">Plany, tematyka i cele na kolejne spotkanie</p>
+              <p className="lesson-block__desc text-[11px] text-yellow-200/70">Plany, tematyka i cele na kolejne spotkanie</p>
             </div>
           </div>
-          <div className="text-yellow-300">
+          <div className="lesson-block__chevron text-yellow-300">
             {expandedSections.block4 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </div>
 
         {expandedSections.block4 && (
-          <div className="p-4 bg-yellow-950/10">
+          <div className="lesson-block__body p-4 bg-yellow-950/10">
             {blocks.nextLesson ? (
               <div className="text-xs text-content whitespace-pre-wrap leading-relaxed">
                 <Markdown>{blocks.nextLesson}</Markdown>
@@ -334,32 +334,32 @@ export const CascadingLessonDetails: React.FC<CascadingLessonDetailsProps> = ({
       </div>
 
       {/* 5. LEARNING CURVE / UWAGI O KURŚCIE (Purple Accordion / Badge) */}
-      <div className="rounded-2xl border border-purple-500/20 bg-purple-950/15 overflow-hidden shadow-sm transition-all">
+      <div data-tone="purple" className="lesson-block rounded-2xl border border-purple-500/20 bg-purple-950/15 overflow-hidden shadow-sm transition-all">
         <div 
           onClick={() => toggleSection('learningCurve')}
-          className="p-3.5 bg-gradient-to-r from-purple-900/40 via-purple-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-purple-900/50 transition-colors select-none border-b border-purple-500/15"
+          className="lesson-block__head p-3.5 bg-gradient-to-r from-purple-900/40 via-purple-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-purple-900/50 transition-colors select-none border-b border-purple-500/15"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0">
+            <div className="lesson-block__icon w-8 h-8 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 flex items-center justify-center shrink-0">
               <Activity size={16} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                <span className="lesson-block__badge px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   LEARNING CURVE
                 </span>
-                <h4 className="font-extrabold text-sm text-white">Wypowiedzi i dynamika kursanta</h4>
+                <h4 className="lesson-block__title font-extrabold text-sm text-white">Wypowiedzi i dynamika kursanta</h4>
               </div>
-              <p className="text-[11px] text-purple-200/70">O czym mówił kursant, obserwacje dotyczące płynności i postępów</p>
+              <p className="lesson-block__desc text-[11px] text-purple-200/70">O czym mówił kursant, obserwacje dotyczące płynności i postępów</p>
             </div>
           </div>
-          <div className="text-purple-300">
+          <div className="lesson-block__chevron text-purple-300">
             {expandedSections.learningCurve ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </div>
 
         {expandedSections.learningCurve && (
-          <div className="p-4 bg-purple-950/10">
+          <div className="lesson-block__body p-4 bg-purple-950/10">
             {blocks.learningCurve ? (
               <div className="text-xs text-content whitespace-pre-wrap leading-relaxed">
                 <Markdown>{blocks.learningCurve}</Markdown>

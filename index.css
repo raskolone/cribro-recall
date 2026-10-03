@@ -171,6 +171,90 @@
   color: #9f1239 !important;
 }
 
+/* ── PODGLĄD LEKCJI W TRYBIE JASNYM: BLOKI 1/2/4 I LEARNING CURVE ──
+   CascadingLessonDetails kolorował całe bloki półprzezroczystymi odcieniami
+   -950/15 i -900/40, pisanymi pod ciemne tło. Na jasnej karcie dawało to
+   zamulone, szaroniebieskie, szarozielone, brązowawe i fioletowe plamy, a
+   opisy pod tytułami (`text-*-200/70`, których reguły kontrastu wyżej nie
+   łapią, bo mają ułamek w nazwie klasy) znikały.
+   Tu: kremowa karta (ocieplony --bg-lift), delikatny obrys i kolor wyłącznie
+   jako akcent — lewy pasek, plakietka, ikona. Wszystko pod selektorem trybu
+   jasnego, więc tryb ciemny zostaje bez zmian. */
+:root:is(.light, [data-theme="light"]) .lesson-block {
+  --lb-cream: color-mix(in srgb, var(--bg-lift) 75%, #f2e6c9);
+  --lb-tone: var(--info);
+  --lb-ink: var(--info);
+  background: var(--lb-cream);
+  border-color: var(--line-strong);
+  border-left: 4px solid var(--lb-tone);
+  box-shadow: var(--shadow-sm);
+}
+:root:is(.light, [data-theme="light"]) .lesson-block[data-tone="emerald"] { --lb-tone: var(--accent); --lb-ink: var(--accent-soft); }
+:root:is(.light, [data-theme="light"]) .lesson-block[data-tone="yellow"]  { --lb-tone: #b7791f; --lb-ink: #7a4d0b; }
+:root:is(.light, [data-theme="light"]) .lesson-block[data-tone="purple"]  { --lb-tone: #7c5cbf; --lb-ink: #4f3a96; }
+
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__head {
+  background: transparent;
+  border-bottom-color: var(--line);
+}
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__head:hover {
+  background: color-mix(in srgb, var(--lb-tone) 8%, transparent);
+}
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__body { background: transparent; }
+
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__icon {
+  background: color-mix(in srgb, var(--lb-tone) 12%, var(--lb-cream));
+  border-color: color-mix(in srgb, var(--lb-tone) 40%, transparent);
+  color: var(--lb-ink);
+}
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__badge {
+  background: color-mix(in srgb, var(--lb-tone) 12%, var(--lb-cream));
+  border-color: color-mix(in srgb, var(--lb-tone) 45%, transparent);
+  color: var(--lb-ink) !important;
+}
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__title { color: var(--text-hi) !important; }
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__desc { color: var(--text-2) !important; }
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__meta { color: var(--lb-ink) !important; }
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__chevron { color: var(--text-2) !important; }
+
+/* Kafelki słówek i ramka korekt wewnątrz Bloku 2: biała karta na kremie. */
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__card {
+  background: var(--bg-lift);
+  border-color: var(--line);
+}
+:root:is(.light, [data-theme="light"]) .lesson-block .lesson-block__card-def { color: var(--text-2) !important; }
+
+/* Przyciski Edytuj / Usuń / X w nagłówku podglądu lekcji (AdminPanel):
+   wygląd wariantu `secondary` z innych modali trybu jasnego — obrys akcentu
+   na białym — zamiast szarej pigułki `ghost`. Usuń zostaje w barwie stanu. */
+:root:is(.light, [data-theme="light"]) .lesson-modal-btn {
+  background: linear-gradient(135deg, var(--accent-15), var(--accent-04));
+  border-color: var(--accent-25);
+  color: var(--accent);
+  font-family: var(--font-sans);
+  letter-spacing: normal;
+}
+:root:is(.light, [data-theme="light"]) .lesson-modal-btn:hover {
+  background: linear-gradient(135deg, var(--accent-15), var(--accent-04));
+  border-color: var(--accent-55);
+  color: var(--accent-soft);
+}
+:root:is(.light, [data-theme="light"]) .lesson-modal-btn--danger {
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+  color: var(--danger);
+}
+:root:is(.light, [data-theme="light"]) .lesson-modal-btn--danger:hover {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+  color: var(--danger);
+}
+:root:is(.light, [data-theme="light"]) .lesson-modal-close {
+  background: var(--line-soft);
+  border-radius: 0.75rem;
+}
+:root:is(.light, [data-theme="light"]) .lesson-modal-close:hover { background: var(--line-strong); }
+
 /* Rozbłysk przełącznika motywu.
    Domyślnie View Transitions przenika stary obraz w nowy — przenikanie
    walczyłoby z przycinaniem okręgiem i dawało brudną, szarą klatkę pośrodku.
