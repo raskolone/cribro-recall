@@ -57,6 +57,15 @@ import StudentHomeworkGradedModal from './StudentHomeworkGradedModal';
 import PasswordChangeSuggestion from './PasswordChangeSuggestion';
 import { createPresentationFromScenario, savePresentationToStorage } from '../../services/presentationService';
 import GSAPModuleTransition from '../ui/GSAPModuleTransition';
+import {
+  PanelPlace,
+  SETTLE_AFTER_POP_MS,
+  decideHistoryAction,
+  goBackOr,
+  readHistoryState,
+  samePlace,
+  toHistoryState,
+} from '../../utils/panelHistory';
 
 /**
  * Podstrona przeżywa F5. `sessionStorage` (nie `localStorage`) celowo — stan
@@ -71,6 +80,7 @@ interface PersistedPanelState {
   activeSetId: string | null;
   adminSelectedUserId: string | null;
   adminActiveTab: string | null;
+  adminSelectedGroupId: string | null;
   activeTaskId: string | null;
   activeTestId: string | null;
   homeworkFilterStatus: string | null;
@@ -83,6 +93,21 @@ const readPersistedPanelState = (): Partial<PersistedPanelState> => {
   } catch {
     return {};
   }
+};
+
+/**
+ * Stan na starcie: wpis historii, na którym stoi przeglądarka (przeżywa F5 i
+ * jest dokładniejszy, bo należy do TEGO wpisu), a gdy go nie ma — zapis w
+ * sessionStorage jak dotąd.
+ */
+const readInitialPanelState = (): Partial<PersistedPanelState> => {
+  try {
+    const entry = readHistoryState(window.history.state);
+    if (entry) return entry.place as Partial<PersistedPanelState>;
+  } catch {
+    // history niedostępne — zostaje sessionStorage
+  }
+  return readPersistedPanelState();
 };
 
 const persistPanelState = (state: PersistedPanelState): void => {
@@ -158,7 +183,7 @@ const Dashboard: React.FC = () => {
   // przy starcie, zamiast zawsze zaczynać od 'dashboard'. `pushState`/
   // `popstate` (obsługa przycisku "Wstecz") zostają nietknięte — to osobny
   // mechanizm, obsługujący nawigację w obrębie tej samej sesji SPA, nie F5.
-  const restoredPanelState = readPersistedPanelState();
+  const [restoredPanelState] = useState(readInitialPanelState);
   const [view, setView] = useState<View>(restoredPanelState.view || 'dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
@@ -174,6 +199,9 @@ const Dashboard: React.FC = () => {
   // tego przełączenie się między kafelkami zerowałoby wybór za każdym razem.
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
   const [adminActiveTab, setAdminActiveTab] = useState<string | null>(restoredPanelState.adminActiveTab ?? null);
+  // Karta grupy żyje w AdminPanel; tu tylko jej identyfikator, żeby „miejsce"
+  // w historii przeglądarki wiedziało, której grupy dotyczy.
+  const [adminSelectedGroupId, setAdminSelectedGroupId] = useState<string | null>(restoredPanelState.adminSelectedGroupId ?? null);
   const handleTabChange = useCallback((tab: string | null) => {
     setAdminActiveTab((prev) => (prev === tab ? prev : tab));
   }, []);
@@ -238,26 +266,92 @@ const Dashboard: React.FC = () => {
       activeSetId,
       adminSelectedUserId,
       adminActiveTab,
+      adminSelectedGroupId,
       activeTaskId,
       activeTestId,
       homeworkFilterStatus,
     });
-  }, [view, activeSetId, adminSelectedUserId, adminActiveTab, activeTaskId, activeTestId, homeworkFilterStatus]);
+  }, [view, activeSetId, adminSelectedUserId, adminActiveTab, adminSelectedGroupId, activeTaskId, activeTestId, homeworkFilterStatus]);
 
-  // Handle browser back button
+  /*
+   * Historia przeglądarki: „wstecz"/„do przodu" (przycisk, gest, Cmd+[ / Cmd+])
+   * i przyciski „Wróć" w aplikacji przenoszą między ostatnio odwiedzonymi
+   * MIEJSCAMI panelu (widok + zakładka + kursant + grupa ...), a nie na stronę
+   * główną. Warstwa leży nad istniejącym stanem — niczego nie przechowuje
+   * inaczej, tylko odkłada „miejsce" jako wpis `history.state` i wpisuje je
+   * z powrotem przy `popstate`. Logika: utils/panelHistory.ts.
+   */
+  const place: PanelPlace = {
+    view,
+    activeSetId,
+    adminSelectedUserId,
+    adminActiveTab,
+    adminSelectedGroupId,
+    activeTaskId,
+    activeTestId,
+    homeworkFilterStatus,
+  };
+  const placeRef = useRef(place);
+  placeRef.current = place;
+  const historyRef = useRef<{ idx: number; committed: PanelPlace; settleUntil: number }>({
+    idx: 0,
+    committed: place,
+    settleUntil: 0,
+  });
+
   useEffect(() => {
-    window.history.replaceState({ view, activeSetId }, '');
+    const h = historyRef.current;
+    const existing = readHistoryState(window.history.state);
+    h.idx = existing?.idx ?? 0;
+    h.committed = placeRef.current;
+    window.history.replaceState(toHistoryState(placeRef.current, h.idx), '');
 
     const handlePopState = (e: PopStateEvent) => {
-      if (e.state) {
-        if (e.state.view) setView(e.state.view);
-        if (e.state.activeSetId !== undefined) setActiveSetId(e.state.activeSetId);
-      }
+      const entry = readHistoryState(e.state);
+      if (!entry) return;
+      const target = entry.place;
+      h.committed = target;
+      if (entry.idx !== null) h.idx = entry.idx;
+      h.settleUntil = Date.now() + SETTLE_AFTER_POP_MS;
+      setView(target.view as View);
+      setActiveSetId(target.activeSetId);
+      setAdminSelectedUserId(target.adminSelectedUserId);
+      setAdminActiveTab(target.adminActiveTab);
+      setAdminSelectedGroupId(target.adminSelectedGroupId);
+      setActiveTaskId(target.activeTaskId);
+      setActiveTestId(target.activeTestId);
+      setHomeworkFilterStatus(target.homeworkFilterStatus);
     };
 
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // Zatwierdzenie miejsca po zmianie. Odroczone o jeden takt i z anulowaniem
+  // poprzedniego, bo jedna akcja użytkownika potrafi zmienić kilka zmiennych
+  // w dwóch–trzech kolejnych renderach (np. wybór kursanta = kursant + zakładka)
+  // — ma z tego powstać jeden wpis historii, nie trzy.
+  useEffect(() => {
+    const h = historyRef.current;
+    if (samePlace(place, h.committed)) return;
+    const timer = setTimeout(() => {
+      const current = placeRef.current;
+      const action = decideHistoryAction(current, h.committed, Date.now() < h.settleUntil);
+      if (action === 'none') return;
+      if (action === 'push') {
+        h.idx += 1;
+        window.history.pushState(toHistoryState(current, h.idx), '');
+      } else {
+        window.history.replaceState(toHistoryState(current, h.idx), '');
+      }
+      h.committed = current;
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [view, activeSetId, adminSelectedUserId, adminActiveTab, adminSelectedGroupId, activeTaskId, activeTestId, homeworkFilterStatus]);
+
+  // „Wróć" w ekranach lektora: jak „wstecz" przeglądarki, a bez historii
+  // (świeże wejście) — dotychczasowy powrót na pulpit.
+  const handleBackToDashboard = () => goBackOr(() => handleNavigate('dashboard'));
 
   const handleNavigate = (newView: View, extra?: any) => {
     let newSetId = activeSetId;
@@ -305,7 +399,6 @@ const Dashboard: React.FC = () => {
     }
     
     if (newView !== view || newSetId !== activeSetId) {
-      window.history.pushState({ view: newView, activeSetId: newSetId, activeTaskId: extra?.taskId || null }, '');
       setView(newView);
       setActiveSetId(newSetId);
     }
@@ -447,7 +540,7 @@ const Dashboard: React.FC = () => {
         return (
           <TeacherWorkScreen
             initialSection="tests"
-            onBack={() => handleNavigate('dashboard')}
+            onBack={handleBackToDashboard}
           />
         );
       }
@@ -541,7 +634,7 @@ const Dashboard: React.FC = () => {
             initialSection="homework"
             initialTaskId={activeTaskId}
             initialFilterStatus={homeworkFilterStatus}
-            onBack={() => handleNavigate('dashboard')}
+            onBack={handleBackToDashboard}
           />
         );
       }
@@ -569,10 +662,10 @@ const Dashboard: React.FC = () => {
       return <TopicDatabaseScreen />;
     }
     if (view === 'admin-debugging') {
-      return <AdminDebuggingScreen onBack={() => handleNavigate('dashboard')} />;
+      return <AdminDebuggingScreen onBack={handleBackToDashboard} />;
     }
     if (view === 'mailing' || (view as any) === 'admin-mailing') {
-      return <AdminMailingScreen onBack={() => handleNavigate('dashboard')} />;
+      return <AdminMailingScreen onBack={handleBackToDashboard} />;
     }
     if (view === 'students-database' || view === 'students' || (view as any) === 'admin-students-database') {
       return (
@@ -586,18 +679,19 @@ const Dashboard: React.FC = () => {
             // Karta grupy żyje w AdminPanel (formularz lekcji, notatnik, prace domowe).
             (window as any)._pendingGroupDetail = group;
             setAdminSelectedUserId(null);
+            setAdminSelectedGroupId(group.id);
             setAdminActiveTab('group-detail');
             handleNavigate('dashboard');
           }}
           onOpenMailing={() => handleNavigate('mailing')}
-          onBack={() => handleNavigate('dashboard')}
+          onBack={handleBackToDashboard}
         />
       );
     }
     if (view === 'lesson-scenarios' || (view as any) === 'admin-scenarios') {
       return (
         <StandaloneLessonScenariosScreen
-          onBack={() => handleNavigate('dashboard')}
+          onBack={handleBackToDashboard}
           onAdaptWithAI={(scenario) => {
             setAdminActiveTab('lesson-planner');
             handleNavigate('dashboard');
@@ -633,6 +727,8 @@ const Dashboard: React.FC = () => {
             setAdminSelectedUserId(id);
           }}
           onTabChange={handleTabChange}
+          initialGroupId={adminSelectedGroupId}
+          onGroupChange={setAdminSelectedGroupId}
           onViewChange={handleNavigate}
         />
       );
@@ -666,6 +762,8 @@ const Dashboard: React.FC = () => {
               setAdminSelectedUserId(id);
             }}
             onTabChange={handleTabChange}
+            initialGroupId={adminSelectedGroupId}
+            onGroupChange={setAdminSelectedGroupId}
             onViewChange={handleNavigate}
           />
         );

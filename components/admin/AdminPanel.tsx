@@ -65,6 +65,7 @@ import { buildGroupLessonFormPreset, pickActiveGroupMemberIds, resolveGroupLesso
 import ScratchpadStudentPicker from '../scratchpad/ScratchpadStudentPicker';
 import GroupManagementModal from './GroupManagementModal';
 import { fetchGroupsForCaller, ensureCanonicalGroupScratchpad } from '../../services/groupService';
+import { goBackOr } from '../../utils/panelHistory';
 import LessonSummaryEmailModal from './LessonSummaryEmailModal';
 import { openScratchpadTab } from '../../services/scratchpadService';
 import { subscribeDrafts, createDraft, renameDraft, deleteDraft } from '../../services/draftsService';
@@ -106,6 +107,9 @@ interface AdminPanelProps {
   initialScenario?: GeneratedLessonScenario | null;
   onUserSelect?: (userId: string | null) => void; 
   onTabChange?: (tab: string | null) => void;
+  /** Identyfikator grupy z karty grupy — żeby historia przeglądarki wiedziała, której. */
+  initialGroupId?: string | null;
+  onGroupChange?: (groupId: string | null) => void;
 }
 
 /**
@@ -131,7 +135,7 @@ const SHOW_LEGACY_PANEL_TOOLS = false;
  */
 const SHOW_LEGACY_STUDENT_TABS = false;
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, initialLessonDraft, initialScenario, onUserSelect, onTabChange }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ initialTab, onViewChange, initialSelectedUserId, initialLessonDraft, initialScenario, onUserSelect, onTabChange, initialGroupId, onGroupChange }) => {
   const { sets: adminSets, getFlashcards } = useFlashcards();
   const { language } = useLanguage();
   const { connectGoogleDrive, connectGoogleWorkspace } = useAuth();
@@ -1814,6 +1818,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     setSelectedUser(null);
     if (onUserSelect) onUserSelect(null);
     setSelectedGroup(group);
+    onGroupChange?.(group.id);
     // Dropdown grupy w formularzu lekcji czyta `teacherGroups` — grupa
     // utworzona po wejściu do panelu musi się tam znaleźć od razu.
     setTeacherGroups((prev) => (prev.some((g) => g.id === group.id) ? prev : [...prev, group]));
@@ -1976,6 +1981,34 @@ const [users, setUsers] = useState<UserWithId[]>([]);
     openGroupDetail(pending);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedGroup]);
+
+  /* Karta grupy odtwarzana z historii przeglądarki (wstecz/do przodu, F5):
+     znamy tylko `groupId`, więc obiekt grupy bierzemy z listy lektora. Nie
+     woła `onGroupChange` — to odtworzenie, nie nowa nawigacja, a zgłoszenie
+     w górę dopisałoby wpis do historii. Do czasu znalezienia grupy łańcuch
+     zakładek renderuje bazę kursantów (jak dotąd), więc ekran nie bywa pusty. */
+  useEffect(() => {
+    if (activeTab !== 'group-detail' || !initialGroupId) return;
+    if (selectedGroup?.id === initialGroupId) return;
+    const known = teacherGroups.find((g) => g.id === initialGroupId);
+    if (known) {
+      setSelectedGroup(known);
+      return;
+    }
+    let cancelled = false;
+    fetchGroupsForCaller()
+      .then((fresh) => {
+        if (cancelled) return;
+        setTeacherGroups(fresh);
+        const found = fresh.find((g) => g.id === initialGroupId);
+        if (found) setSelectedGroup(found);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, initialGroupId, selectedGroup?.id, teacherGroups.length]);
 
   const [unreadMailingCount, setUnreadMailingCount] = useState<number>(0);
 
@@ -2680,7 +2713,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             }}
             onSelectGroup={openGroupDetail}
             onOpenMailing={() => setActiveTab('mailing')}
-            onBack={() => setActiveTab(null)}
+            onBack={() => goBackOr(() => setActiveTab(null))}
           />
         </div>
       ) : activeTab === 'group-detail' && selectedGroup ? (
@@ -2690,10 +2723,11 @@ const [users, setUsers] = useState<UserWithId[]>([]);
             students={users}
             refreshKey={groupHistoryRefreshKey}
             isNotebookLoading={groupNotebookLoading}
-            onBack={() => {
+            onBack={() => goBackOr(() => {
               setSelectedGroup(null);
+              onGroupChange?.(null);
               setActiveTab('students');
-            }}
+            })}
             onOpenMember={(studentId) => {
               const u = users.find((x) => x.id === studentId);
               if (u) handleSelectUser(u as UserWithId, 'profile');
@@ -2770,7 +2804,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
         </div>
       ) : activeTab === 'mailing' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
-          <AdminMailingScreen onBack={() => setActiveTab(null)} />
+          <AdminMailingScreen onBack={() => goBackOr(() => setActiveTab(null))} />
         </div>
       ) : activeTab === 'groups' ? (
         <div className="space-y-4 animate-in fade-in duration-200 mt-4">
@@ -2864,7 +2898,7 @@ const [users, setUsers] = useState<UserWithId[]>([]);
           <AdminStatsScreen />
         </div>
       ) : activeTab === 'lesson-planner' && !isDesktopUI ? (
-        <DesktopOnlyNotice moduleName="Planer lekcji" onBack={() => setActiveTab(null)} />
+        <DesktopOnlyNotice moduleName="Planer lekcji" onBack={() => goBackOr(() => setActiveTab(null))} />
       ) : activeTab && ['lesson-planner', 'presentation'].includes(activeTab) ? (
         <div className="p-4 sm:p-5 rounded-2xl bg-base-200/60 border border-primary/40 shadow-[0_0_30px_rgba(114,240,180,0.1)] space-y-4 mt-4">
           <div className="flex items-center justify-between pb-3 border-b border-line-strong">
@@ -3140,14 +3174,14 @@ const [users, setUsers] = useState<UserWithId[]>([]);
                   <div className="pt-2 border-t border-line-strong/60">
                     <button
                       type="button"
-                      onClick={() => {
+                      onClick={() => goBackOr(() => {
                         setSelectedUser(null);
                         setActiveTab(null);
                         if (onUserSelect) onUserSelect(null);
                         if (onViewChange) onViewChange('admin');
                         setPracticeLogs([]);
                         setLessonRecords([]);
-                      }}
+                      })}
                       className="w-full py-2 px-3 rounded-xl border border-line-strong bg-base-100/60 hover:bg-base-100 text-content-muted hover:text-text-hi hover:border-primary/40 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <ArrowLeft size={14} />
