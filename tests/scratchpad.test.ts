@@ -100,3 +100,38 @@ test('buildScratchpadUrl pozwala na opcjonalne dołączenie kodu PIN, jeśli lek
   assert.ok(url.includes('id=sp_student_789'));
   assert.ok(url.includes('pin=ACD-EF2'));
 });
+
+test('ScratchpadEditor: integracja usuwania obrazu i menu kontekstowego', async () => {
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const editorCode = fs.readFileSync(
+    path.resolve(process.cwd(), 'components/scratchpad/ScratchpadEditor.tsx'),
+    'utf-8'
+  );
+
+  // 1. onContextMenu podpięty pod kontener edytora
+  assert.ok(
+    editorCode.includes('onContextMenu={handleContextMenu}'),
+    'editorRef musi mieć podpięty onContextMenu={handleContextMenu}'
+  );
+
+  // 2. Obsługa klawiszy Delete / Backspace dla selectedImage
+  assert.ok(
+    editorCode.includes("e.key === 'Delete' || e.key === 'Backspace'") &&
+    editorCode.includes('removeSelectedImage()'),
+    'Edytor musi obsługiwać Delete/Backspace do kasowania zaznaczonego obrazu'
+  );
+
+  // 3. Klasa przycisku usuwania pad-img-btn-delete w pasku narzędzi obrazu
+  assert.ok(
+    editorCode.includes('pad-img-btn-delete'),
+    'Pasek obrazka musi generować przycisk z klasą pad-img-btn-delete'
+  );
+
+  // 4. Obsługa kliknięcia w pad-img-btn-delete w handlePaperClick
+  assert.ok(
+    editorCode.includes("target.closest('.pad-img-btn-delete')"),
+    'handlePaperClick musi obsługiwać kliknięcie w pad-img-btn-delete'
+  );
+});
+

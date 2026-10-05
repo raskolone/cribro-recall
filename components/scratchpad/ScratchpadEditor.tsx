@@ -827,6 +827,22 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       return;
     }
 
+    // Przycisk Usuń obraz / Załącznik graficzny w pasku narzędzi obrazu
+    const deleteBtn = target.closest('.pad-img-btn-delete') as HTMLElement | null;
+    if (deleteBtn) {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isReadOnly) return;
+      const wrapper = deleteBtn.closest('.pad-img-wrapper') || deleteBtn.parentElement?.parentElement;
+      if (wrapper) {
+        wrapper.remove();
+        setSelectedImage(null);
+        handleInput();
+        measurePages();
+      }
+      return;
+    }
+
     // Kliknięcie w kartę załącznika (Display as attachment) -> otwiera Zoom modal
     const attCard = target.closest('.pad-img-attachment') as HTMLElement | null;
     if (attCard && !target.closest('button')) {
@@ -951,6 +967,7 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
 
   /** Custom context menu dla grafik na prawy przycisk myszy */
   const handleContextMenu = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (isReadOnly) return;
     const target = e.target as HTMLElement;
     const wrapper = target.closest('.pad-img-wrapper') as HTMLElement | null;
     if (wrapper) {
@@ -1228,6 +1245,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           `<button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">` +
             `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>` +
           `</button>` +
+          `<button type="button" class="pad-img-btn-delete p-1 rounded hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Usuń obraz" aria-label="Usuń obraz">` +
+            `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>` +
+          `</button>` +
         `</div>` +
         `<div class="pad-img-attachment ${isAtt ? 'flex' : 'hidden'} items-center gap-3 p-3 px-4 my-1 rounded-2xl bg-base-200/90 hover:bg-base-300/90 border border-white/15 cursor-pointer select-none max-w-md transition-all shadow-sm group/att" contenteditable="false">` +
           `<div class="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0">` +
@@ -1243,6 +1263,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             `</button>` +
             `<button type="button" class="pad-img-btn-fullscreen p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">` +
               `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>` +
+            `</button>` +
+            `<button type="button" class="pad-img-btn-delete p-1.5 rounded-lg hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Usuń załącznik" aria-label="Usuń załącznik">` +
+              `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>` +
             `</button>` +
           `</div>` +
         `</div>` +
@@ -1273,6 +1296,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
           <button type="button" class="pad-img-btn-fullscreen p-1 rounded hover:bg-white/20 text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
           </button>
+          <button type="button" class="pad-img-btn-delete p-1 rounded hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Usuń obraz" aria-label="Usuń obraz">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+          </button>
         `;
 
         const attachmentEl = window.document.createElement('div');
@@ -1294,6 +1320,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
             <button type="button" class="pad-img-btn-fullscreen p-1.5 rounded-lg hover:bg-white/10 text-content-muted hover:text-white transition-colors cursor-pointer" title="Present" aria-label="Tryb prezentacji">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
             </button>
+            <button type="button" class="pad-img-btn-delete p-1.5 rounded-lg hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer" title="Usuń załącznik" aria-label="Usuń załącznik">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+            </button>
           </div>
         `;
 
@@ -1307,6 +1336,29 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
       const isAtt = wrapper.getAttribute('data-display-mode') === 'attachment';
       const attEl = wrapper.querySelector('.pad-img-attachment') as HTMLElement | null;
       const toolbarEl = wrapper.querySelector('.pad-img-toolbar') as HTMLElement | null;
+
+      // Zapewnienie przycisku usuwania dla starszych dokumentów zapisanych bez ikony kosza
+      if (toolbarEl && !toolbarEl.querySelector('.pad-img-btn-delete')) {
+        const delBtn = window.document.createElement('button');
+        delBtn.type = 'button';
+        delBtn.className = 'pad-img-btn-delete p-1 rounded hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer';
+        delBtn.title = 'Usuń obraz';
+        delBtn.setAttribute('aria-label', 'Usuń obraz');
+        delBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+        toolbarEl.appendChild(delBtn);
+      }
+      if (attEl) {
+        const attGroup = attEl.querySelector('.flex.items-center.gap-1');
+        if (attGroup && !attGroup.querySelector('.pad-img-btn-delete')) {
+          const delBtnAtt = window.document.createElement('button');
+          delBtnAtt.type = 'button';
+          delBtnAtt.className = 'pad-img-btn-delete p-1.5 rounded-lg hover:bg-rose-500/25 text-rose-400 hover:text-rose-300 transition-colors cursor-pointer';
+          delBtnAtt.title = 'Usuń załącznik';
+          delBtnAtt.setAttribute('aria-label', 'Usuń załącznik');
+          delBtnAtt.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+          attGroup.appendChild(delBtnAtt);
+        }
+      }
       if (isAtt) {
         img.style.display = 'none';
         if (attEl) {
@@ -1485,7 +1537,11 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
     setSelectedImage(null);
     handleInput();
     measurePages();
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
   };
+
 
   /** Synchronizowany wskaźnik laserowy na żywo */
   const handleLaserMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
@@ -3386,8 +3442,16 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
                 contentEditable={!isReadOnly}
                 onInput={handleInput}
                 onClick={handlePaperClick}
+                onContextMenu={handleContextMenu}
                 onPaste={handlePaste}
                 onKeyDown={(e) => {
+                  // Kasowanie zaznaczonego obrazu klawiszami Delete lub Backspace
+                  if ((e.key === 'Delete' || e.key === 'Backspace') && !isReadOnly && selectedImage) {
+                    e.preventDefault();
+                    removeSelectedImage();
+                    return;
+                  }
+
                   // Alt+H (Option+H na Macu) — natychmiastowe żółte wyróżnienie zaznaczenia,
                   // bez celowania kursorem w pasek narzędzi zakreślaczy.
                   if (e.altKey && e.code === 'KeyH') {
@@ -4350,6 +4414,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               onClick={() => {
                 if (imageContextMenu.targetImg?.src) {
                   setImageModalError(false);
+                  setZoomModalBaseWidth(measureImageBaseWidth(imageContextMenu.targetImg));
                   setZoomModalImageSrc(imageContextMenu.targetImg.src);
                 }
                 setImageContextMenu(null);
@@ -4461,6 +4526,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               type="button"
               onClick={() => {
                 imageContextMenu.targetWrapper.remove();
+                setSelectedImage(null);
                 handleInput();
                 measurePages();
                 setImageContextMenu(null);
