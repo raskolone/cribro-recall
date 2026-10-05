@@ -23,6 +23,7 @@ import { Group } from '../../types/group';
 import { getDueRecallItems, logReviewSession, recordRetrievalAttempt } from '../../services/recallItems';
 import { getGroupsForStudent } from '../../services/groupService';
 import { openScratchpadTab } from '../../services/scratchpadService';
+import { resolveStudentNotebookEntries } from '../../utils/studentNotebookEntries';
 import { recordExerciseResults } from '../../services/learningProfile';
 import { normalizeLevel } from '../../utils/learningCurve';
 import PuzzleExercise from './PuzzleExercise';
@@ -566,9 +567,51 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
    * Kafelki listwy kursanta:
    * 1. Moje zasoby (Zadania, testy, słownictwo)
    * 2. Historia (Wcześniejsze lekcje i historia ćwiczeń)
-   * 3. Mój notatnik (Wspólny brudnopis z lektorem)
-   * 4. Wspólny notatnik grupy (jeśli kursant należy do grupy)
+   * 3. Notatnik: „Notatnik grupy" (po jednym na aktywną grupę z notatnikiem)
+   *    albo „Mój notatnik" (wspólny brudnopis z lektorem), gdy kursant nie ma
+   *    takiej grupy. Notatnik indywidualny kursanta z grupą żyje wtedy w „Moich
+   *    zasobach" — patrz `notebookEntries.individualNotebookInResources`.
    */
+  const notebookEntries = resolveStudentNotebookEntries(
+    studentGroups.map((group) => ({
+      id: group.id,
+      name: group.name,
+      status: group.status,
+      hasNotebook: Boolean(group.activeScratchpadId),
+    }))
+  );
+
+  const notebookTools: StudentTool[] = notebookEntries.tiles.flatMap((tile, tileIndex): StudentTool[] => {
+    if (tile.kind === 'individual') {
+      return onOpenScratchpad
+        ? [
+            {
+              id: 'scratchpad',
+              domId: 'tour-scratchpad',
+              label: L.tools.scratchpad,
+              meta: L.tools.scratchpadDesc,
+              icon: <FileEdit size={20} />,
+              onNavigate: onOpenScratchpad,
+            },
+          ]
+        : [];
+    }
+    const group = studentGroups.find((g) => g.id === tile.groupId);
+    if (!group?.activeScratchpadId) return [];
+    const scratchpadId = group.activeScratchpadId;
+    return [
+      {
+        id: `group_scratchpad_${group.id}`,
+        // Samouczek wskazuje „tour-scratchpad" — pierwszy kafelek notatnika, który tu zastępuje „Mój notatnik".
+        domId: tileIndex === 0 ? 'tour-scratchpad' : undefined,
+        label: tile.name,
+        meta: language === 'pl' ? 'Notatnik grupy' : 'Group notebook',
+        icon: <Users size={20} />,
+        onNavigate: () => openScratchpadTab(scratchpadId, tile.name),
+      },
+    ];
+  });
+
   const tools: StudentTool[] = [
     {
       id: 'resources',
@@ -587,31 +630,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
       icon: <History size={20} />,
       highlight: !studentId && Boolean(user?.hasNewLesson),
     },
-    ...(onOpenScratchpad
-      ? [
-          {
-            id: 'scratchpad',
-            domId: 'tour-scratchpad',
-            label: L.tools.scratchpad,
-            meta: L.tools.scratchpadDesc,
-            icon: <FileEdit size={20} />,
-            onNavigate: onOpenScratchpad,
-          } satisfies StudentTool,
-        ]
-      : []),
-    ...studentGroups.map(
-      (group) =>
-        ({
-          id: `group_scratchpad_${group.id}`,
-          label: `${group.name}`,
-          meta: language === 'pl' ? 'Notatnik grupy' : 'Group notebook',
-          icon: <Users size={20} />,
-          onNavigate: () => {
-            const scratchpadId = group.activeScratchpadId || `sp_group_${group.id}`;
-            openScratchpadTab(scratchpadId, group.name);
-          },
-        } satisfies StudentTool)
-    ),
+    ...notebookTools,
   ];
 
   /*
@@ -632,41 +651,6 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
         streakHidden={user?.streakHidden}
       />
       </div>
-
-      {/* Wyróżniony kafelek wspólnego notatnika grupy kursanta */}
-      {studentGroups.length > 0 && (
-        <div className="space-y-2.5">
-          {studentGroups.map((group) => {
-            const scratchpadId = group.activeScratchpadId || `sp_group_${group.id}`;
-            return (
-              <div
-                key={group.id}
-                onClick={() => openScratchpadTab(scratchpadId, group.name)}
-                className="glass-tile p-4 rounded-2xl cursor-pointer flex items-center justify-between gap-3 border border-primary/30 bg-primary/5 hover:bg-primary/10 hover:border-primary/50 transition-all group"
-              >
-                <div className="flex items-center gap-3.5 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-primary/15 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                    <Users size={22} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-[11px] font-bold uppercase tracking-wider text-primary truncate">
-                      {language === 'pl' ? 'Wspólny notatnik grupy' : 'Group shared notebook'}
-                    </div>
-                    <div className="text-base font-bold text-text-hi truncate group-hover:text-primary transition-colors">
-                      {group.name}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 text-primary text-xs font-bold border border-primary/20 group-hover:bg-primary group-hover:text-black transition-all">
-                  <span>{language === 'pl' ? 'Otwórz notatnik' : 'Open notebook'}</span>
-                  <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
 
       {/* Ta sama szerokość, co nagłówek wyżej. Wcześniej nagłówek miał 768 px,
           a listwa kafelków pod nim 672 px — krawędzie nie schodziły się w pionie
@@ -743,6 +727,20 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                         }`}
                       >
                         {L.tools.vocabulary}
+                      </button>
+                    )}
+                    {/* Kursant z aktywną grupą: kafelek „Mój notatnik" ustąpił
+                        miejsca notatnikowi grupy — indywidualny jest tu, mniej
+                        wyeksponowany. */}
+                    {notebookEntries.individualNotebookInResources && onOpenScratchpad && (
+                      <button
+                        type="button"
+                        onClick={onOpenScratchpad}
+                        title={L.tools.scratchpadDesc}
+                        className="ml-auto px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-text-mute hover:text-content hover:bg-white/[0.05] transition-colors cursor-pointer flex items-center gap-1.5"
+                      >
+                        <FileEdit size={12} />
+                        {L.tools.scratchpad}
                       </button>
                     )}
                   </div>
