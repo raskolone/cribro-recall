@@ -198,6 +198,12 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🐛 Notatnik: zoom i pełny ekran obrazka w widoku kursanta — createPortal do document.body (2026-10-05)
+- **Problem:** `ZoomModal` i `PresentModal` w `components/scratchpad/ScratchpadEditor.tsx` były renderowane bezpośrednio wewnątrz `.pad-shell`. Z powodu `isolation: isolate` oraz `backdrop-filter: blur(...)` w `index.css` (L1976-1988), `.pad-shell` tworzył containing block dla elementów `position: fixed`. W widoku kursanta (`PublicScratchpadScreen.tsx` L295 oraz `StudentScratchpadScreen.tsx` L146) nadrzędne kontenery posiadają `overflow-hidden`, co powodowało obcinanie modali lub brak ich widoczności na pełnym ekranie.
+- **Rozwiązanie:** Wzorem poprawki `FloatingToolPalette` (z 2026-10-01), oba modale (`zoomModalImageSrc` oraz `presentModalImageSrc`) zostały opakowane w `createPortal(..., document.body)`. Dodano atrybut `data-pad-theme={paperTheme}` na głównych kontenerach modali, gwarantujący zachowanie zmiennych motywu kartki po przeniesieniu do `<body>`.
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów, `npm test` — 752/752 zielone, `npm run build` — sukces. Przetestowano w headless Chromium z Playwright na uruchomionej aplikacji (`http://localhost:3001/scratchpad?id=sp_...`): potwierdzono montowanie do `document.body` (`isDirectBodyChild: true`), pełny obszar 1280x800 bez przycinania oraz poprawne zamykanie (kliknięcie tła, przycisk X). Zrzuty zapisano w `brain/.../`.
+- Bez zmian: `utils/imageZoom.ts` (logika zoomu 150%), `firestore.rules`, `storage.rules`, obsługa klawiszy i zaznaczanie obrazów.
+
 ### 🎨 Notatnik: spójne style znaczników Błąd/Poprawnie/Słówko/Korekta + czytelny toolbar (2026-09-30)
 - `index.css`: cztery `.pad-mark-*` mają jeden kształt (kolorowa czcionka + tło + ramka 1px + pogrubienie), kolory ze zmiennych `--mark-*`. Wcześniej różniły się dekoracją (falista linia, kursywa, ramka tylko przy Słówku). Kolory: Błąd czerwony, Poprawnie zielony, Słówko cyan (bez zmian), Korekta bursztynowy.
 - Motyw znaczników bierze się teraz z papieru (`data-pad-theme`), nie z motywu aplikacji — przy jasnym papierze w ciemnej aplikacji pastelowe kolory były nieczytelne.
