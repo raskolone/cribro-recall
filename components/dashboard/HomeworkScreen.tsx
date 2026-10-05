@@ -1974,6 +1974,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         ) : (
           <HomeworkComposer
             initialStudentId={initialStudentId || undefined}
+            initialGroupId={initialGroupId || undefined}
             onAssigned={() => setActiveTab('list')}
           />
         )

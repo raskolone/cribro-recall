@@ -6,6 +6,7 @@ import {
   buildGroupLessonFormPreset,
   resolveGroupLessonIdForSave,
   resolveStudentsForAiSummary,
+  buildGroupSourceLessons,
   GROUP_COPIES_DIFFER_TOLERANCE_MS,
 } from '../utils/groupLessonHistory';
 import type { LessonRecord } from '../types';
@@ -225,4 +226,41 @@ test('AI PRZED grupą: wynik AI, potem wybór grupy w dropdownie → członkowie
   const afterGroup = buildGroupLessonFormPreset(jacobs, users);
   assert.deepEqual(afterGroup.studentIds, ['usr_a', 'usr_e']);
   assert.equal(afterGroup.groupId, 'grp_jacobs');
+});
+
+/**
+ * Źródło „Z historii lekcji" w kreatorze prac domowych, tryb „Grupa".
+ */
+
+test('buildGroupSourceLessons: grupa z dwiema lekcjami grupowymi — po jednej pozycji na lekcję, od najnowszej', () => {
+  const records = [
+    copy('usr_a', { id: 'a1', groupLessonId: 'gl-old', date: '2026-09-25', topic: 'Old topic' }),
+    copy('usr_b', { id: 'b1', groupLessonId: 'gl-old', date: '2026-09-25', topic: 'Old topic' }),
+    copy('usr_a', { id: 'a2', groupLessonId: 'gl-new', date: '2026-10-02' }),
+    copy('usr_b', { id: 'b2', groupLessonId: 'gl-new', date: '2026-10-02' }),
+  ];
+  const lessons = buildGroupSourceLessons(records, 'grp_jacobs');
+  assert.deepEqual(lessons.map((l) => l.id), ['gl-new', 'gl-old']);
+  assert.equal(lessons[0].topic, 'To Be and Present Simple: My Workday');
+});
+
+test('buildGroupSourceLessons: grupa bez lekcji z groupId — pusta lista (lekcje innej grupy i bez tagu nie wchodzą)', () => {
+  const records = [
+    copy('usr_a', { groupId: 'grp_other', groupName: 'Inna' }),
+    copy('usr_a', { id: 'untagged', groupId: undefined, groupLessonId: undefined }),
+    copy('usr_b', { id: 'no_glid', groupLessonId: undefined }),
+  ];
+  assert.deepEqual(buildGroupSourceLessons(records, 'grp_jacobs'), []);
+  assert.deepEqual(buildGroupSourceLessons([], 'grp_jacobs'), []);
+});
+
+test('buildGroupSourceLessons: rozjechane kopie — treść z kopii o najnowszym updatedAt', () => {
+  const records = [
+    copy('usr_a', { id: 'a1', vocabularyText: 'stara wersja', updatedAt: '2026-10-02T15:20:00.000Z' } as any),
+    copy('usr_b', { id: 'b1', vocabularyText: 'poprawiona wersja', updatedAt: '2026-10-03T09:00:00.000Z' } as any),
+  ];
+  const lessons = buildGroupSourceLessons(records, 'grp_jacobs');
+  assert.equal(lessons.length, 1);
+  assert.equal(lessons[0].id, GLID);
+  assert.equal(lessons[0].vocabularyText, 'poprawiona wersja');
 });

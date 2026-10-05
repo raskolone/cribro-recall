@@ -4,6 +4,7 @@ import { AlertTriangle, Check, ChevronDown, ChevronUp, Loader2, Send, Sparkles, 
 import { db } from '../../firebase';
 import { HomeworkType, LessonRecord, User, Group, GroupHomeworkFanOutResult } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
+import { buildGroupSourceLessons } from '../../utils/groupLessonHistory';
 import { getAllUsers } from '../../services/userService';
 import { auth } from '../../firebase';
 import {
@@ -29,6 +30,8 @@ import {
 interface HomeworkComposerProps {
   /** Kursant wskazany z zewnątrz (np. z profilu w panelu lektora). */
   initialStudentId?: string;
+  /** Grupa wskazana z zewnątrz (karta grupy) — kreator otwiera się w trybie „Grupa". */
+  initialGroupId?: string;
   /** Wywoływane po przypisaniu — np. żeby wrócić do listy zadań. */
   onAssigned?: () => void;
 }
@@ -58,13 +61,16 @@ const exerciseNoun = (n: number): string => {
   return 'ćwiczeń';
 };
 
-const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, onAssigned }) => {
-  const [recipientMode, setRecipientMode] = useState<RecipientMode>('student');
+const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, initialGroupId, onAssigned }) => {
+  const [recipientMode, setRecipientMode] = useState<RecipientMode>(initialGroupId ? 'group' : 'student');
   const [students, setStudents] = useState<User[]>([]);
   const [studentId, setStudentId] = useState(initialStudentId || '');
   const [groups, setGroups] = useState<Group[]>([]);
-  const [groupId, setGroupId] = useState('');
+  const [groupId, setGroupId] = useState(initialGroupId || '');
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
+  // Lekcje wybranej grupy (tryb „Grupa"): jedna pozycja na lekcję grupową.
+  const [groupLessons, setGroupLessons] = useState<LessonRecord[]>([]);
+  const [isLoadingGroupLessons, setIsLoadingGroupLessons] = useState(false);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<SourceMode>('lessons');
   const [pastedText, setPastedText] = useState('');
@@ -126,7 +132,8 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
     setSections([]);
     setAssignedCount(0);
     setSelectedLessonIds([]);
-    if (!studentId) {
+    // W trybie „Grupa" lekcje ładuje osobny efekt niżej — nie ma tu `studentId`.
+    if (!studentId || recipientMode === 'group') {
       setLessons([]);
       return;
     }
@@ -142,15 +149,61 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
     return () => {
       active = false;
     };
-  }, [studentId]);
+  }, [studentId, recipientMode === 'group']);
+
+  // Tryb „Grupa": historia lekcji grupy z kopii członków (cache
+  // `getLessonRecordsForStudent`, filtr po `groupId`, sklejenie po
+  // `groupLessonId`) — ta sama logika co karta grupy, bez nowych zapytań.
+  useEffect(() => {
+    if (recipientMode !== 'group') return;
+    setSections([]);
+    setAssignedCount(0);
+    setSelectedLessonIds([]);
+    setGroupLessons([]);
+    const memberIds = group?.memberProfileIds || [];
+    if (!groupId || memberIds.length === 0) {
+      setIsLoadingGroupLessons(false);
+      return;
+    }
+    let active = true;
+    setIsLoadingGroupLessons(true);
+    Promise.all(
+      memberIds.map((id) =>
+        getLessonRecordsForStudent(id)
+          // Starsze kopie mogą nie mieć `studentId` — kursanta znamy z miejsca odczytu.
+          .then((records) => records.map((r) => ({ ...r, studentId: r.studentId || id })))
+          .catch((e) => {
+            console.warn(`Nie udało się wczytać lekcji członka grupy ${id}:`, e);
+            return [] as LessonRecord[];
+          })
+      )
+    ).then((perMember) => {
+      if (!active) return;
+      const merged = buildGroupSourceLessons(perMember.flat(), groupId);
+      setGroupLessons(merged);
+      setSelectedLessonIds(merged[0] ? [merged[0].id] : []);
+      setIsLoadingGroupLessons(false);
+    });
+    return () => {
+      active = false;
+    };
+    // Skład grupy jako klucz tekstowy — ta sama lista nie czyta od nowa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recipientMode, groupId, (group?.memberProfileIds || []).join('|')]);
+
+  // Źródło „Z historii lekcji": lekcje kursanta albo lekcje wybranej grupy.
+  const sourceLessons = recipientMode === 'group' ? groupLessons : lessons;
 
   const selectedLessons = useMemo(
-    () => lessons.filter((l) => selectedLessonIds.includes(l.id)),
-    [lessons, selectedLessonIds]
+    () => sourceLessons.filter((l) => selectedLessonIds.includes(l.id)),
+    [sourceLessons, selectedLessonIds]
   );
 
+  // Odbiorca w trybie „Grupa" to grupa, nie kursant — bez `studentId`.
+  const hasRecipientSource = recipientMode === 'group' ? Boolean(groupId) : Boolean(studentId);
+
   const canGenerate =
-    Boolean(studentId) &&
+    hasRecipientSource &&
     types.length > 0 &&
     (sourceMode === 'lessons' ? selectedLessons.length > 0 : pastedText.trim().length > 20);
 
@@ -170,11 +223,12 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
             : { pastedText },
         types,
         perType,
-        level: student?.level || 'B1',
+        level: (recipientMode === 'group' ? group?.level : student?.level) || 'B1',
         instruction: instruction.trim() || undefined,
         // Z `studentId` generator sięga po krzywą uczenia kursanta: poziom
         // wyliczony z jego wyników i ostatnie błędy trafiają do promptu.
-        studentId,
+        // Dla grupy nie ma jednego kursanta — zostaje poziom grupy.
+        studentId: recipientMode === 'group' ? undefined : studentId,
       });
       setSections(result.sections);
       setModelUsed(result.modelUsed || '');
@@ -238,7 +292,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
     setError('');
     try {
       const nowIso = new Date().toISOString();
-      const selectedLessons = lessons.filter((l) => selectedLessonIds.includes(l.id));
+      const selectedLessons = sourceLessons.filter((l) => selectedLessonIds.includes(l.id));
       const sourceLabel =
         sourceMode === 'lessons' && selectedLessons[0]
           ? cleanVocabularyTopic(selectedLessons[0].topic) || selectedLessons[0].topic
@@ -463,7 +517,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
             onClick={() => {
               setRecipientMode('group');
               setSections([]);
-              setSourceMode('text'); // dla grupy domyślnie własny tekst/słownictwo
+              setSourceMode('lessons'); // lekcje grupy są dostępne; brak lekcji → komunikat i „Własny tekst"
             }}
             className={`flex-1 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
               recipientMode === 'group'
@@ -633,13 +687,21 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, o
         </div>
 
         {sourceMode === 'lessons' ? (
-          !studentId ? (
+          recipientMode === 'group' && !groupId ? (
+            <p className="text-sm text-content-muted">Najpierw wybierz grupę.</p>
+          ) : recipientMode !== 'group' && !studentId ? (
             <p className="text-sm text-content-muted">Najpierw wybierz kursanta.</p>
-          ) : lessons.length === 0 ? (
-            <p className="text-sm text-content-muted">Ten kursant nie ma jeszcze zapisanych lekcji.</p>
+          ) : recipientMode === 'group' && isLoadingGroupLessons ? (
+            <p className="text-sm text-content-muted">Wczytuję lekcje grupy…</p>
+          ) : sourceLessons.length === 0 ? (
+            <p className="text-sm text-content-muted">
+              {recipientMode === 'group'
+                ? 'Ta grupa nie ma jeszcze lekcji grupowych (zapisanych z wybraną grupą). Starsze lekcje bez oznaczenia grupy nie są tu widoczne — użyj „Własny tekst”.'
+                : 'Ten kursant nie ma jeszcze zapisanych lekcji.'}
+            </p>
           ) : (
             <ul className="space-y-1.5 max-h-64 overflow-y-auto">
-              {lessons.slice(0, 12).map((lesson) => {
+              {sourceLessons.slice(0, 12).map((lesson) => {
                 const checked = selectedLessonIds.includes(lesson.id);
                 return (
                   <li key={lesson.id}>

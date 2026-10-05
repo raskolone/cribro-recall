@@ -102,6 +102,23 @@ export function mergeGroupLessonCopies(records: LessonRecord[], groupId: string)
   });
 }
 
+/**
+ * Lekcje grupy jako źródło zadań domowych („Z historii lekcji" w trybie
+ * „Grupa"): jedna pozycja na lekcję grupową, z treścią reprezentatywnej kopii
+ * (najnowszy `updatedAt`, jak w karcie grupy), od najnowszej.
+ *
+ * `id` pozycji to `groupLessonId`, nie id dokumentu kopii — kopie leżą w
+ * podkolekcjach różnych kursantów, więc tylko `groupLessonId` jest unikalny
+ * dla lekcji i nadaje się na klucz wyboru. Lekcje grupy bez `groupLessonId`
+ * (starsze, bez tagu) są pomijane, jak w historii grupy.
+ */
+export function buildGroupSourceLessons(records: LessonRecord[], groupId: string): LessonRecord[] {
+  return mergeGroupLessonCopies(records, groupId).map((entry) => ({
+    ...entry.representative,
+    id: entry.groupLessonId,
+  }));
+}
+
 type MemberLike = Pick<User, 'id' | 'isArchived' | 'isSuspended' | 'statusWspolpracy'>;
 
 /**
