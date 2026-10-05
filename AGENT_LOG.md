@@ -6744,10 +6744,28 @@ Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe, not
 
 ---
 
-2026-10-05 — Gemini 3.8 Flash (High)
+2026-10-05 (2) — Gemini 3.8 Flash (High)
 
-Zadanie: Naprawa zoomu i pełnego ekranu obrazka w widoku kursanta (ZoomModal i PresentModal).
-Zrobione: `components/scratchpad/ScratchpadEditor.tsx` (ZoomModal oraz PresentModal opakowane w `createPortal(..., document.body)` z propem `data-pad-theme={paperTheme}`), `CHANGELOG.md`, `AGENT_LOG.md`.
-Nie dokończone / do sprawdzenia: NIEZACOMMITOWANE — czeka na ręczny test i zgodę użytkownika. Sprawdzone w działającej aplikacji (dev, port 3001) przez headless Chromium/Playwright: Z2 (`/scratchpad?id=sp_1791015571072`) — potwierdzono montowanie do `document.body` (`isDirectBodyChild: true`), pełny obszar 1280x800 bez ucinania przez `overflow-hidden` oraz prawidłowe zamykanie (klik w tło, Esc, X). Z1 (zalogowany lektor) i Z3 (zalogowany kursant w panelu `StudentScratchpadScreen`) nie były otwierane z realnymi sesjami logowania Firebase z powodu braku poświadczeń do kont testowych w bezgłowej przeglądarce (oba widoki współdzielą ten sam komponent `ScratchpadEditor`, w którym portal uniezależnia modale od kontenera nadrzędnego).
-Decyzje architektoniczne: (1) `createPortal(..., document.body)` zastosowany dokładnie jak przy `FloatingToolPalette` i wskaźniku laserowym (`.pad-laser`); (2) dodano `data-pad-theme={paperTheme}` na korzeniach modali, co zachowuje spójność zmiennych motywu po wyjściu z `.pad-shell`; (3) logika zoomu (`utils/imageZoom.ts`) oraz obsługa klawiszy / zaznaczania obrazów pozostawione bez jakichkolwiek modyfikacji.
-Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe, baza danych Firestore — NIETKNIĘTE. tsc 0; npm test 752/752 zielone; npm run build OK.
+Zadanie: Obsługa kasowania obrazu w notatniku (Delete/Backspace, podpięcie menu kontekstowego onContextMenu, ikona kosza w .pad-img-toolbar).
+Zrobione:
+- `components/scratchpad/ScratchpadEditor.tsx`:
+  1. Obsługa klawiszy `Delete` i `Backspace` w `onKeyDown` na edytorze oraz w globalnym `useEffect` przy aktywnym `selectedImage` (wraz z odznaczaniem `Escape`).
+  2. Podpięcie `onContextMenu={handleContextMenu}` do kontenera `editorRef` (z warunkiem `if (isReadOnly) return;` oraz brakiem blokady natywnego menu dla zwykłego tekstu). Poprawiono resetowanie `selectedImage` przy usuwaniu z menu oraz skalowanie bazowe lupy.
+  3. Dodano przycisk usuwania `.pad-img-btn-delete` do `.pad-img-toolbar` (oraz kart załączników) w `buildWrappedImageHtml` i `wrapUnwrappedImages` (wraz z dynamicznym uzupełnianiem starszych dokumentów). Dodano obsługę kliknięcia w `handlePaperClick`.
+- `tests/scratchpad.test.ts`: test integracyjny sprawdzający obecność bindingów, obsługi klawiszy i klas przycisków.
+- `CHANGELOG.md`, `AGENT_LOG.md`.
+Nie dokończone / do sprawdzenia: czeka na test lektora/kursanta.
+Decyzje architektoniczne: (1) usunięcie obrazu focusuje z powrotem `editorRef`, by zachować ciągłość pisania; (2) menu kontekstowe jest w pełni transparentne dla kliknięć poza `.pad-img-wrapper`, więc nie ingeruje w systemowy spellcheck i schowek przeglądarki; (3) dynamiczne uzupełnianie przycisku w `wrapUnwrappedImages` rozwiązuje problem starszych dokumentów bez potrzeby migracji w bazie.
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, model danych — NIETKNIĘTE. tsc 0; npm test 753/753; npm run build OK.
+
+2026-10-05 (3) — Antigravity (Gemini)
+
+Zadanie: Usunięcie globalnego `useEffect` z listenerem `window.addEventListener('keydown')` dla `selectedImage` (ScratchpadEditor.tsx ok. L1545-1563). Listener był nadmiarowy — Delete/Backspace obsługiwane są już w `onKeyDown` edytora (dodanym w 2026-10-05 (2)). Escape poza edytorem traci obsługę — świadoma decyzja zaakceptowana przez użytkownika.
+Zrobione:
+- `components/scratchpad/ScratchpadEditor.tsx`: usunięto cały blok `useEffect` (komentarz + 19 linii) z globalnym nasłuchiwaczem `keydown`. Obsługa Delete/Backspace pozostaje w `onKeyDown` na `editorRef` (tylko gdy fokus w edytorze).
+- `CHANGELOG.md`: zaktualizowano wpis „🗑️ Notatnik: usuwanie obrazów\" — usunięto wzmiankę o globalnym `window.addEventListener`, dodano notę o świadomym braku obsługi Escape poza edytorem.
+- `AGENT_LOG.md`: ten wpis.
+Nie dokończone / do sprawdzenia: brak — etap zamknięty.
+Decyzje architektoniczne: Escape bez globalnego listenera nie odznacza obrazu po kliknięciu poza edytorem. Akceptowalne — fokus i tak wraca do edytora przy normalnym użyciu.
+Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, model danych — NIETKNIĘTE. tsc 0; npm test 753/753.
+

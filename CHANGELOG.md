@@ -198,6 +198,15 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🗑️ Notatnik: usuwanie obrazów klawiszami Delete/Backspace, menu kontekstowe i ikona kosza (2026-10-05)
+- **Problem:** Wklejonego zdjęcia nie dało się skasować z klawiatury (klawisze `Delete` i `Backspace` po zaznaczeniu obrazu były ignorowane, a przeglądarka blokowała edycję w elemencie `contenteditable="false"`). Dodatkowo zdefiniowane menu kontekstowe `handleContextMenu` w `ScratchpadEditor.tsx` (L953) nie było podpięte pod kontener edytora przez `onContextMenu`, więc opcja „8. Remove image” była niedostępna. Pasek grafiki `.pad-img-toolbar` nie posiadał również ikony kosza.
+- **Rozwiązanie:**
+  1. **Delete/Backspace:** Dodano obsługę klawiszy `Delete` i `Backspace` w `onKeyDown` edytora przy aktywnym `selectedImage` — usuwa zaznaczony obraz i czyści stan selekcji. Obsługa działa wyłącznie gdy fokus jest w edytorze (bez globalnego `window.addEventListener`). Klawisz `Escape` poza edytorem nie odznacza obrazu — świadoma decyzja (brak use-case poza edytorem).
+  2. **Menu kontekstowe:** Podpięto `onContextMenu={handleContextMenu}` pod `<div ref={editorRef} ...>`. Menu własne Cribro otwiera się wyłącznie po kliknięciu w obręb `.pad-img-wrapper`, zachowując natywne menu kontekstowe przeglądarki dla zwykłego tekstu.
+  3. **Ikona kosza w pasku `.pad-img-toolbar`:** Dodano przycisk usuwania `.pad-img-btn-delete` w `buildWrappedImageHtml` i `wrapUnwrappedImages` (zarówno dla trybu obrazka, jak i załącznika). `wrapUnwrappedImages` dynamicznie dołącza przycisk kosza również do starszych dokumentów wczytanych z Firestore. Obsłużono kliknięcie w `handlePaperClick`.
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów, `npm test` — 753/753 testów zaliczonych (dodano testy kontraktowe w `tests/scratchpad.test.ts`), `npm run build` — sukces.
+- Bez zmian: `firestore.rules`, `storage.rules`, prawa dostępu.
+
 ### 🐛 Notatnik: zoom i pełny ekran obrazka w widoku kursanta — createPortal do document.body (2026-10-05)
 - **Problem:** `ZoomModal` i `PresentModal` w `components/scratchpad/ScratchpadEditor.tsx` były renderowane bezpośrednio wewnątrz `.pad-shell`. Z powodu `isolation: isolate` oraz `backdrop-filter: blur(...)` w `index.css` (L1976-1988), `.pad-shell` tworzył containing block dla elementów `position: fixed`. W widoku kursanta (`PublicScratchpadScreen.tsx` L295 oraz `StudentScratchpadScreen.tsx` L146) nadrzędne kontenery posiadają `overflow-hidden`, co powodowało obcinanie modali lub brak ich widoczności na pełnym ekranie.
 - **Rozwiązanie:** Wzorem poprawki `FloatingToolPalette` (z 2026-10-01), oba modale (`zoomModalImageSrc` oraz `presentModalImageSrc`) zostały opakowane w `createPortal(..., document.body)`. Dodano atrybut `data-pad-theme={paperTheme}` na głównych kontenerach modali, gwarantujący zachowanie zmiennych motywu kartki po przeniesieniu do `<body>`.
