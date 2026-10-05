@@ -4164,8 +4164,9 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
       />
 
       {/* Modal powiększenia grafiki (Zoom 50% / 150% rozmiaru) */}
-      {zoomModalImageSrc && (
+      {zoomModalImageSrc && typeof document !== 'undefined' && createPortal(
         <div
+          data-pad-theme={paperTheme}
           className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => {
             setZoomModalImageSrc(null);
@@ -4239,12 +4240,14 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               )}
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Tryb Prezentacji grafiki na pełnym ekranie (Present mode) */}
-      {presentModalImageSrc && (
+      {presentModalImageSrc && typeof document !== 'undefined' && createPortal(
         <div
+          data-pad-theme={paperTheme}
           className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex items-center justify-center p-4 sm:p-8 animate-in fade-in duration-200"
           onClick={() => {
             setPresentModalImageSrc(null);
@@ -4293,7 +4296,8 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
               onClick={(e) => e.stopPropagation()}
             />
           )}
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Custom Context Menu dla grafik w notatniku */}
