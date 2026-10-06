@@ -13,7 +13,7 @@ import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
 import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
-import { isV1Task, studentTasksQuery } from '../../utils/homework';
+import { isStudentTodoStatus, isV1Task, studentTasksQuery } from '../../utils/homework';
 import { getApprovedVocabularyText } from '../../utils/vocabulary';
 import { recordExerciseResults, getStudentAiContext } from '../../services/learningProfile';
 import { normalizeLevel } from '../../utils/learningCurve';
@@ -1081,7 +1081,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         return 0;
       };
       tasks.sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
-      setSpecialTasks(tasks.filter(t => t.status === 'pending' || !t.status));
+      setSpecialTasks(tasks.filter(t => isStudentTodoStatus(t.status)));
     }, (err) => {
       console.error("Error loading specialTasks in real-time for student:", err);
     });

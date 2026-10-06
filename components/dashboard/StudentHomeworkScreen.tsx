@@ -24,7 +24,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { HomeworkType, SpecialTask, StudentTest } from '../../types';
-import { homeworkBlocks, homeworkItemType, isV1Task, studentTasksQuery } from '../../utils/homework';
+import { homeworkBlocks, homeworkItemType, isStudentTodoStatus, isV1Task, studentTasksQuery } from '../../utils/homework';
 import { shuffleArray } from '../../utils/exerciseShuffle';
 import { formatTaskDateTime } from './HomeworkScreen';
 import { evaluateTranslations } from '../../services/geminiService';
@@ -354,7 +354,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   useEffect(() => {
     if (!initialTaskId || activeTask || isPreview) return;
     const found = tasks.find((t) => t.id === initialTaskId);
-    if (found && (found.status === 'pending' || !found.status)) {
+    if (found && isStudentTodoStatus(found.status)) {
       startTask(found);
     } else if (found && (found.status === 'graded' || found.status === 'submitted')) {
       setViewingGradedTask(found);
@@ -521,7 +521,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   }, [activeTask?.id]);
 
   const pending = useMemo(
-    () => tasks.filter((t) => t.status === 'pending' || !t.status),
+    () => tasks.filter((t) => isStudentTodoStatus(t.status)),
     [tasks]
   );
   const submittedTasks = useMemo(
@@ -533,7 +533,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
     [tasks]
   );
   const finished = useMemo(
-    () => tasks.filter((t) => t.status && t.status !== 'pending'),
+    () => tasks.filter((t) => !isStudentTodoStatus(t.status)),
     [tasks]
   );
 
@@ -570,7 +570,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   };
 
   const isTaskNewForStudent = (task: SpecialTask): boolean => {
-    if (!task.id || (task.status && task.status !== 'pending')) return false;
+    if (!task.id || !isStudentTodoStatus(task.status)) return false;
     if (task.studentViewedAt) return false;
     return !studentSeenTaskIds.has(task.id);
   };

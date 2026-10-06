@@ -4,7 +4,7 @@ import { ChevronRight, ClipboardList, Clock, FlaskConical } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { SpecialTask } from '../../types';
-import { studentTasksQuery } from '../../utils/homework';
+import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
 
 /**
  * Ćwiczenia przypisane przez lektora — szczyt panelu kursanta.
@@ -60,7 +60,7 @@ const AssignedExercises: React.FC<AssignedExercisesProps> = ({
       (snapshot) => {
         const tasks = snapshot.docs
           .map((d) => ({ id: d.id, ...d.data() } as SpecialTask))
-          .filter((t) => t.status === 'pending' || !t.status)
+          .filter((t) => isStudentTodoStatus(t.status))
           .sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
         setPending(tasks);
         setIsLoading(false);

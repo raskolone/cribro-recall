@@ -7,7 +7,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { collection, query, orderBy, where, getDocs, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { StudentTest, SpecialTask } from '../../types';
-import { studentTasksQuery } from '../../utils/homework';
+import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface StudentNotificationsProps {
@@ -68,7 +68,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
   // Filter pending homework tasks not dismissed
   const assignedHomework = homeworkTasks.filter(t => {
     const taskId = t.id || '';
-    const isPending = t.status === 'pending' || !t.status;
+    const isPending = isStudentTodoStatus(t.status);
     const isDismissed = dismissed.includes(taskId) || dismissed.includes('hw_' + taskId);
     return isPending && !isDismissed;
   });

@@ -67,6 +67,12 @@ export const isV1Task = (task: unknown): boolean => !isV2Task(task);
 export const isPendingStatus = (status?: string | null): boolean =>
   status === 'pending' || status === 'assigned';
 
+/**
+ * To samo co `isPendingStatus`, ale po stronie KURSANTA: tam dokument bez
+ * statusu (stare prace) od zawsze liczył się jako „do zrobienia".
+ */
+export const isStudentTodoStatus = (status?: string | null): boolean =>
+  !status || isPendingStatus(status);
 
 /**
  * Typ pojedynczego ćwiczenia w pracy domowej.

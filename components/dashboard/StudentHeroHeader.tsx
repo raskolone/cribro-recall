@@ -17,7 +17,7 @@ import { db } from '../../firebase';
 import { useLanguage } from '../../context/LanguageContext';
 import { useAuth } from '../../context/AuthContext';
 import { SpecialTask, PracticeLog, User, StudentTest } from '../../types';
-import { studentTasksQuery } from '../../utils/homework';
+import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
 import { formatPolishGreeting } from '../../utils/polishVocative';
 
 interface StudentHeroHeaderProps {
@@ -167,7 +167,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
   // Derived calculations
   const pendingTasks = useMemo(() => {
     return tasks
-      .filter((t) => t.status === 'pending' || !t.status)
+      .filter((t) => isStudentTodoStatus(t.status))
       .sort((a, b) => getMillis(b.createdAt) - getMillis(a.createdAt));
   }, [tasks]);
 

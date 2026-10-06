@@ -4,7 +4,7 @@ import { BookOpen, ChevronRight, Clock, Award, CheckCircle2, ArrowRight } from '
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { SpecialTask } from '../../types';
-import { studentTasksQuery } from '../../utils/homework';
+import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
 import PanelSection from './PanelSection';
 
 interface StudentHomeworkPanelSectionProps {
@@ -60,7 +60,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
 
   if (isLoading) return null;
 
-  const pendingTasks = tasks.filter((t) => t.status === 'pending' || !t.status);
+  const pendingTasks = tasks.filter((t) => isStudentTodoStatus(t.status));
   const submittedTasks = tasks.filter((t) => t.status === 'submitted');
   const gradedTasks = tasks.filter(
     (t) => t.status === 'graded' || Boolean(t.reviewedAt) || Boolean(t.teacherFeedback)

@@ -19,3 +19,15 @@ test('brak statusu nie jest pending (lista lektora nigdy takich nie pokazywała)
   assert.equal(isPendingStatus(null), false);
   assert.equal(isPendingStatus(''), false);
 });
+
+import { isStudentTodoStatus } from '../utils/homework';
+
+test('kursant: assigned, pending i brak statusu trafiają do „do zrobienia"; submitted/graded/completed nie', () => {
+  assert.equal(isStudentTodoStatus('assigned'), true);
+  assert.equal(isStudentTodoStatus('pending'), true);
+  assert.equal(isStudentTodoStatus(undefined), true);
+  assert.equal(isStudentTodoStatus(null), true);
+  assert.equal(isStudentTodoStatus('submitted'), false);
+  assert.equal(isStudentTodoStatus('graded'), false);
+  assert.equal(isStudentTodoStatus('completed'), false);
+});
