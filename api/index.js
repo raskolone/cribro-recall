@@ -2800,6 +2800,112 @@ function buildNewGroupPayload(teacherUid, groupId, input, nowIso) {
   return payload;
 }
 
+// utils/directHomeworkEvaluation.ts
+var stripUndefinedDeep = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((v) => v === void 0 ? null : stripUndefinedDeep(v));
+  }
+  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+    const out = {};
+    for (const [k, v] of Object.entries(value)) {
+      if (v === void 0) continue;
+      out[k] = stripUndefinedDeep(v);
+    }
+    return out;
+  }
+  return value;
+};
+var normalizeSimple = (str) => String(str || "").toLowerCase().replace(/[.,!?;:"„”]/g, "").replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+var evaluateDirectHomework = (items, answers, taskType) => {
+  const rows = [];
+  const storedAnswers = {};
+  items.forEach((item, i) => {
+    const itemType = item.type || taskType || "translation";
+    const rawAns = answers[i];
+    storedAnswers[i] = rawAns;
+    let isCorrect = false;
+    let score = 0;
+    let expectedStr = item.englishTranslation || item.correctSentence || "";
+    let studentStr = "";
+    if (itemType === "word_order") {
+      if (Array.isArray(rawAns)) {
+        studentStr = rawAns.map((idx) => item.chunks?.[idx]).filter(Boolean).join(" ");
+      } else {
+        studentStr = String(rawAns || "");
+      }
+      if (normalizeSimple(studentStr) === normalizeSimple(expectedStr)) {
+        isCorrect = true;
+        score = 100;
+      }
+    } else if (itemType === "multiple_choice") {
+      studentStr = typeof rawAns === "number" ? item.options?.[rawAns] || "" : String(rawAns || "");
+      const expectedOption = typeof item.correctOptionIndex === "number" ? item.options?.[item.correctOptionIndex] : item.options?.[0] || "";
+      expectedStr = expectedOption;
+      if (rawAns === item.correctOptionIndex || normalizeSimple(studentStr) === normalizeSimple(expectedOption)) {
+        isCorrect = true;
+        score = 100;
+      }
+    } else if (itemType === "fill_in_the_blank") {
+      const blanksObj = typeof rawAns === "object" && rawAns !== null ? rawAns : {};
+      studentStr = Object.keys(blanksObj).sort().map((k) => `${k}: ${blanksObj[k]}`).join(", ");
+      const totalBlanks = item.blanks?.length || 1;
+      let correctBlanks = 0;
+      if (item.blanks && Array.isArray(item.blanks)) {
+        item.blanks.forEach((b) => {
+          const expectedVal = normalizeSimple(b.correctAnswer || b.word || b.answer || "");
+          const userVal = normalizeSimple(blanksObj[b.id] || blanksObj[`BLANK_${b.id}`] || "");
+          if (expectedVal && userVal && (expectedVal === userVal || userVal.includes(expectedVal))) {
+            correctBlanks++;
+          }
+        });
+      }
+      score = Math.round(correctBlanks / totalBlanks * 100);
+      isCorrect = score >= 80;
+    } else if (itemType === "find_errors") {
+      studentStr = String(rawAns || "").trim();
+      expectedStr = item.correctSentence || "";
+      if (normalizeSimple(studentStr) === normalizeSimple(expectedStr)) {
+        isCorrect = true;
+        score = 100;
+      } else if (normalizeSimple(studentStr).length > 5) {
+        score = 70;
+        isCorrect = true;
+      }
+    } else if (itemType === "matching") {
+      const matched = Array.isArray(rawAns) ? rawAns : [];
+      const pairs = Array.isArray(item.pairs) ? item.pairs : [];
+      studentStr = matched.map((id) => pairs.find((p) => p.id === id)).filter(Boolean).map((p) => `${p.left} = ${p.right}`).join(", ");
+      expectedStr = pairs.map((p) => `${p.left} = ${p.right}`).join(", ");
+      score = pairs.length > 0 ? Math.round(matched.length / pairs.length * 100) : 0;
+      isCorrect = score === 100;
+    } else {
+      studentStr = String(rawAns || "").trim();
+      expectedStr = item.englishTranslation || "";
+      if (normalizeSimple(studentStr) === normalizeSimple(expectedStr)) {
+        isCorrect = true;
+        score = 100;
+      } else if (normalizeSimple(studentStr).length > 3) {
+        score = 75;
+        isCorrect = true;
+      }
+    }
+    rows.push({
+      polishSentence: item.polishSentence || item.prompt || "",
+      correctTranslation: expectedStr,
+      studentAnswer: studentStr || rawAns,
+      isCorrect,
+      score,
+      ...item.explanation ? { explanation: item.explanation } : {}
+    });
+  });
+  const averageScore = rows.length > 0 ? Math.round(rows.reduce((sum, r) => sum + r.score, 0) / rows.length) : 0;
+  return {
+    rows: stripUndefinedDeep(rows),
+    storedAnswers: stripUndefinedDeep(storedAnswers),
+    averageScore
+  };
+};
+
 // server.ts
 import crypto from "crypto";
 function mapToActualOpenAIModel(modelName) {
@@ -3983,6 +4089,8 @@ function createApp() {
         textWithBlanks: s.textWithBlanks || "",
         blanks: s.blanks || [],
         availableWords: s.availableWords || (s.blanks && typeof s.blanks === "object" && !Array.isArray(s.blanks) ? Object.values(s.blanks).sort(() => Math.random() - 0.5) : []),
+        // Dla matching (dopasuj pary) — pary w całości, to praca domowa, nie test:
+        ...Array.isArray(s.pairs) ? { pairs: s.pairs.map((p) => ({ id: p.id, left: p.left, right: p.right })) } : {},
         // Dla find_errors:
         incorrectSentence: s.incorrectSentence || "",
         hint: s.hint || "",
@@ -4060,7 +4168,7 @@ function createApp() {
         }
       }
       const items = taskData.sentences || [];
-      const normalizeSimple = (str) => String(str || "").toLowerCase().replace(/[.,!?;:"„”]/g, "").replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
+      const normalizeSimple2 = (str) => String(str || "").toLowerCase().replace(/[.,!?;:"„”]/g, "").replace(/[’']/g, "'").replace(/\s+/g, " ").trim();
       const isAnswerBlank = (val) => {
         if (val === void 0 || val === null) return true;
         if (typeof val === "string") return val.trim().length === 0;
@@ -4075,88 +4183,7 @@ function createApp() {
           message: "Nie udzielono \u017Cadnej odpowiedzi \u2014 uzupe\u0142nij przynajmniej jedno \u0107wiczenie przed wys\u0142aniem."
         });
       }
-      const rows = [];
-      const storedAnswers = {};
-      items.forEach((item, i) => {
-        const itemType = item.type || taskData.type || "translation";
-        const rawAns = answers[i];
-        storedAnswers[i] = rawAns;
-        let isCorrect = false;
-        let score = 0;
-        let expectedStr = item.englishTranslation || item.correctSentence || "";
-        let studentStr = "";
-        if (itemType === "word_order") {
-          if (Array.isArray(rawAns)) {
-            studentStr = rawAns.map((idx) => item.chunks?.[idx]).filter(Boolean).join(" ");
-          } else {
-            studentStr = String(rawAns || "");
-          }
-          if (normalizeSimple(studentStr) === normalizeSimple(expectedStr)) {
-            isCorrect = true;
-            score = 100;
-          }
-        } else if (itemType === "multiple_choice") {
-          studentStr = typeof rawAns === "number" ? item.options?.[rawAns] || "" : String(rawAns || "");
-          const expectedOption = typeof item.correctOptionIndex === "number" ? item.options?.[item.correctOptionIndex] : item.options?.[0] || "";
-          expectedStr = expectedOption;
-          if (rawAns === item.correctOptionIndex || normalizeSimple(studentStr) === normalizeSimple(expectedOption)) {
-            isCorrect = true;
-            score = 100;
-          }
-        } else if (itemType === "fill_in_the_blank") {
-          const blanksObj = typeof rawAns === "object" && rawAns !== null ? rawAns : {};
-          studentStr = Object.keys(blanksObj).sort().map((k) => `${k}: ${blanksObj[k]}`).join(", ");
-          let totalBlanks = item.blanks?.length || 1;
-          let correctBlanks = 0;
-          if (item.blanks && Array.isArray(item.blanks)) {
-            item.blanks.forEach((b) => {
-              const expectedVal = normalizeSimple(b.correctAnswer || b.word || b.answer || "");
-              const userVal = normalizeSimple(blanksObj[b.id] || blanksObj[`BLANK_${b.id}`] || "");
-              if (expectedVal && userVal && (expectedVal === userVal || userVal.includes(expectedVal))) {
-                correctBlanks++;
-              }
-            });
-          }
-          score = Math.round(correctBlanks / totalBlanks * 100);
-          isCorrect = score >= 80;
-        } else if (itemType === "find_errors") {
-          studentStr = String(rawAns || "").trim();
-          expectedStr = item.correctSentence || "";
-          if (normalizeSimple(studentStr) === normalizeSimple(expectedStr)) {
-            isCorrect = true;
-            score = 100;
-          } else if (normalizeSimple(studentStr).length > 5) {
-            score = 70;
-            isCorrect = true;
-          }
-        } else if (itemType === "matching") {
-          const matched = Array.isArray(rawAns) ? rawAns : [];
-          const pairs = Array.isArray(item.pairs) ? item.pairs : [];
-          studentStr = matched.map((id) => pairs.find((p) => p.id === id)).filter(Boolean).map((p) => `${p.left} = ${p.right}`).join(", ");
-          expectedStr = pairs.map((p) => `${p.left} = ${p.right}`).join(", ");
-          score = pairs.length > 0 ? Math.round(matched.length / pairs.length * 100) : 0;
-          isCorrect = score === 100;
-        } else {
-          studentStr = String(rawAns || "").trim();
-          expectedStr = item.englishTranslation || "";
-          if (normalizeSimple(studentStr) === normalizeSimple(expectedStr)) {
-            isCorrect = true;
-            score = 100;
-          } else if (normalizeSimple(studentStr).length > 3) {
-            score = 75;
-            isCorrect = true;
-          }
-        }
-        rows.push({
-          polishSentence: item.polishSentence || item.prompt || "",
-          correctTranslation: expectedStr,
-          studentAnswer: studentStr || rawAns,
-          isCorrect,
-          score,
-          explanation: item.explanation || void 0
-        });
-      });
-      const averageScore = rows.length > 0 ? Math.round(rows.reduce((sum, r) => sum + r.score, 0) / rows.length) : 0;
+      const { rows, storedAnswers, averageScore } = evaluateDirectHomework(items, answers, taskData.type);
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
       await taskDoc.ref.update({
         status: "submitted",
