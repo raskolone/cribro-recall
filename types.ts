@@ -831,6 +831,10 @@ export interface SpecialTask {
   instructions?: string;
   createdAt: string;
   dueDate?: string;
+  /** Wspólny identyfikator pracy przypisanej wielu kursantom naraz (`hwset_grp_…` grupa, `hwset_multi_…` kilku kursantów) — N dokumentów, po jednym na kursanta. */
+  homeworkSetId?: string;
+  groupId?: string | null;
+  groupName?: string | null;
   /** `assigned` ustawia wyłącznie fan-out do grupy (`server.ts`, assign-homework) — dla lektora to to samo co `pending` (patrz `isPendingStatus`). */
   status: 'pending' | 'assigned' | 'submitted' | 'completed' | 'graded';
   sentences: any[];
