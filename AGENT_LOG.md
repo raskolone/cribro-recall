@@ -6769,3 +6769,26 @@ Nie dokończone / do sprawdzenia: brak — etap zamknięty.
 Decyzje architektoniczne: Escape bez globalnego listenera nie odznacza obrazu po kliknięciu poza edytorem. Akceptowalne — fokus i tak wraca do edytora przy normalnym użyciu.
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, model danych — NIETKNIĘTE. tsc 0; npm test 753/753.
 
+
+2026-10-06 — Claude Code / Sonnet 5.5
+
+Zadanie: naprawa P0 na ścieżce linku `/hw?token=`: brak „dopasowania" w GET i błąd 500 w `direct-submit`.
+Zrobione: `server.ts` (wyłącznie handlery `GET /api/homework/direct/:token` — dodane `pairs` — i `POST /api/homework/direct-submit` — ocena przez `evaluateDirectHomework`), nowe `utils/directHomeworkEvaluation.ts` (`evaluateDirectHomework`, `stripUndefinedDeep`) + `tests/directHomeworkEvaluation.test.ts` (6), CHANGELOG. `api/index.js` zregenerowany przez `npm run build` (plik śledzony w git).
+Nie dokończone / do sprawdzenia: wszystko NIEZACOMMITOWANE — czeka na test użytkownika. Nienaprawione, opisane w CHANGELOG: `correctOptionIndex` vs `correctIndex` (multiple_choice na linku), `blanks` obiekt vs tablica (luki na linku, zawsze 0%), widok „już oddane" dla dopasowania, `blanks` z odpowiedziami w GET. Zadanie grupowe (`status: 'assigned'`) nie pojawia się na liście prac lektora na karcie kursanta (Marek Zieliński: 8 dokumentów, na liście 1+5) i nie wchodzi do list `pending`/`submitted`/`graded` w `StudentHomeworkScreen` — NIE ruszane, tylko odczyt.
+Decyzje architektoniczne: (1) ocena wydzielona do utils bez zmiany zachowania typów, które działały; (2) `undefined` usuwany deep (w tablicach → `null`, żeby nie przesuwać indeksów); (3) `ignoreUndefinedProperties` pominięte celowo; (4) `pairs` w GET w całości (id/left/right) za zgodą użytkownika.
+Ryzyka: DOTKNIĘTA ścieżka tokenowa bez logowania (`server.ts`, dwa handlery) — za wyraźną zgodą. `firestore.rules`, `storage.rules`, weryfikacja tokenu/`accessExpiresAt`, autoryzacja, `assign-homework` — NIETKNIĘTE. tsc 0; npm test 759/759; npm run build OK. Dane testowe zmienione: `HGCLfJyrGjP3LiHJXwVg` (Monika, submitted) i `wyX3wE85X7UxlFQCrPqx` (Marek, submitted).
+
+2026-10-06 (2) — Claude Code / Sonnet 5.5
+
+Zadanie: lektor nie widział zadań grupowych (status `assigned`) na liście prac domowych.
+Zrobione: `types.ts` (`assigned` w `SpecialTask.status`), `utils/homework.ts` (`isPendingStatus`), `HomeworkScreen.tsx` (4 miejsca), `TeacherOverview.tsx` (liczniki), `HomeworkTaskList.tsx` (rzutowanie klucza STATUS), `tests/isPendingStatus.test.ts` (3), CHANGELOG.
+Nie dokończone / do sprawdzenia: wszystko NIEZACOMMITOWANE (razem z poprzednim wpisem z 2026-10-06). Ekran KURSANTA nie obsługuje `assigned` (zadanie grupowe nie pojawia się w `StudentHomeworkScreen` — sprawdzone zamontowaniem prawdziwego komponentu z `studentId` Marka na 3001) — celowo nie ruszane, czeka na decyzję. Zwijanie po `homeworkSetId` / filtr `groupId` — poza zakresem.
+Decyzje architektoniczne: (1) jedna funkcja `isPendingStatus` zamiast powielania warunków; (2) brak statusu nie jest pending po stronie lektora (nie pokazujemy starej historii); (3) kursant nietknięty.
+Ryzyka: `firestore.rules`, `storage.rules`, `server.ts`, tokeny, `assign-homework` — NIETKNIĘTE. tsc 0; npm test 762/762; npm run build OK. Dane: brak zapisów w tym kroku (tylko odczyty; zamontowanie ekranu kursanta w stronie to odczyt).
+
+2026-10-06 (3) — Claude Code / Sonnet 5.5
+
+Zadanie: (A) zwijanie prac grupowych po `homeworkSetId` w liście lektora; (B) kursant nie widział zadań `assigned`.
+Zrobione: B — `utils/homework.ts` (`isStudentTodoStatus`), 6 ekranów kursanta, test w `tests/isPendingStatus.test.ts`, CHANGELOG. A — TYLKO część czysta: `utils/groupHomeworkRows.ts` + `tests/groupHomeworkRows.test.ts` (10) + pola `homeworkSetId`/`groupId`/`groupName` w `SpecialTask`.
+Nie dokończone / do sprawdzenia: A — UI NIE podpięty (HomeworkScreen/HomeworkTaskList nadal pokazują N wierszy); funkcja `buildHomeworkRows`/`isActiveRow`/`isArchivedRow` nieużywana. B — oddanie pracy z konta kursanta nie przetestowane. Wszystko NIEZACOMMITOWANE.
+Ryzyka: `server.ts` (poprzedni wpis), reguły — NIETKNIĘTE w tych krokach. tsc 0; npm test 773/773; build OK.

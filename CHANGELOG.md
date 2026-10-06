@@ -370,6 +370,27 @@ we dwoje na żywo.
    - `npx tsc --noEmit` — 0 błędów.
    - `npm test` — 573/573 testów jednostkowych zaliczonych.
 
+### 🐛 Link bez logowania (/hw?token=): „dopasowanie" nie otwierało się, a zapis odpowiedzi kończył się błędem 500 (2026-10-06)
+- **Problem 1:** `GET /api/homework/direct/:token` budował `safeSentences` z listy pól bez `pairs`, więc ćwiczenie „Dopasuj pary" na linku pokazywało „Nie udało się wczytać treści tego zadania".
+- **Problem 2:** `POST /api/homework/direct-submit` zapisywał w wierszu wyniku `explanation: item.explanation || undefined` (oraz `studentAnswer`/odpowiedzi bez wartości). Admin SDK odrzuca `undefined` w `update()` → HTTP 500, zadanie zostawało `pending`. Dotyczyło każdego elementu bez `explanation` (dopasowanie, tłumaczenie, układanie) i prac wysyłanych z pominięciem części ćwiczeń.
+- **Rozwiązanie:** GET dodaje `pairs` (`id`, `left`, `right`) dla elementów, które je mają — odpowiedź zawiera więc też poprawne dopasowanie (świadoma decyzja: to praca domowa, nie test). Ocena i budowa wierszy wydzielone bez zmiany zachowania do `utils/directHomeworkEvaluation.ts` (`evaluateDirectHomework`), a wynik przechodzi przez `stripUndefinedDeep` (klucze z `undefined` pomijane, w tablicach `undefined` → `null`). `server.ts` wywołuje tę funkcję w jednym miejscu. `ignoreUndefinedProperties` NIE zostało włączone (maskowałoby błędy).
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów, `npm test` — 759/759 (6 nowych w `tests/directHomeworkEvaluation.test.ts`), `npm run build` — sukces. Test na `http://localhost:3001`: GET zwraca 6 par; ekran „Dopasuj pary" działa; wysyłka → status `submitted`, wynik 100%; zadanie tłumaczenie+układanie z 2 z 6 odpowiedzi → HTTP 200.
+- **Znane, nienaprawione (do osobnych kroków):** ocena `multiple_choice` na linku czyta `correctOptionIndex`, a generator zapisuje `correctIndex`; ocena `fill_in_the_blank` na linku zakłada `blanks` jako tablicę, a generator zapisuje obiekt `BLANK_n → słowo` (wynik zawsze 0%); widok „już oddane" na linku pokazuje dla dopasowania surową tablicę id par i pusty tytuł ćwiczenia; GET nadal przekazuje `blanks` z poprawnymi odpowiedziami do luk.
+- Dotknięte: ścieżka tokenowa bez logowania (`server.ts`, dwa handlery). Bez zmian: `firestore.rules`, `storage.rules`, weryfikacja tokenu, autoryzacja, `assign-homework`.
+
+### 🐛 Lista prac lektora nie pokazywała zadań grupowych (status `assigned`) (2026-10-06)
+- **Problem:** `POST /api/groups/:id/assign-homework` zapisuje `status: 'assigned'`, a lista lektora (`HomeworkScreen.tsx`) brała tylko `pending` i `submitted` (archiwum: `graded`/`completed`/`teacherRead`). Zadanie grupowe nie było w żadnej zakładce ani liczniku, dopóki kursant go nie oddał. Typ `SpecialTask.status` w ogóle nie znał `assigned`.
+- **Rozwiązanie:** `types.ts` — `assigned` w typie. `utils/homework.ts` — `isPendingStatus(status)` (`pending` lub `assigned`; brak statusu NIE jest pending). Użyte w `HomeworkScreen.tsx` (lista „wszystkie", filtr „Oczekujące", licznik zakładki, przycisk na kafelku) i `TeacherOverview.tsx` (liczniki oczekujących/po terminie). `HomeworkTaskList.tsx` — tylko rzutowanie klucza `STATUS` (typ), zachowanie bez zmian.
+- **Weryfikacja:** `npx tsc --noEmit` 0 błędów, `npm test` 762/762 (3 nowe w `tests/isPendingStatus.test.ts`), `npm run build` OK. Na `http://localhost:3001` karta Marka Zielińskiego i „Zadania i testy" → „Prace domowe": 2 zadania grupowe z plakietką „W trakcie", licznik zakładki 3, „Sprawdzone" 5 (razem 8 dokumentów w bazie); filtr „Oczekujące" pokazuje oba.
+- **NIE naprawione (osobna decyzja):** ekran kursanta (`StudentHomeworkScreen.tsx` ok. L524-536, `StudentHomeworkPanelSection.tsx` L63, `AssignedExercises.tsx` L63, `StudentHeroHeader.tsx` L170, `StudentNotifications.tsx` L71) też nie traktuje `assigned` jak `pending` — prawdziwy `StudentHomeworkScreen` zamontowany dla Marka nie pokazał żadnego zadania grupowego. Zadanie otwiera się tylko z linku `/hw?token=`. Wiersze grupowe są N osobnymi dokumentami = N wierszami (zwijanie po `homeworkSetId` i filtr `groupId` to osobny krok).
+- Bez zmian: `server.ts`, `firestore.rules`, `storage.rules`, tokeny, `assign-homework`, `HOMEWORK_ENGINE_V2`.
+
+### 🐛 Kursant nie widział zadań grupowych (`assigned`) na swojej liście (2026-10-06)
+- **Problem:** ekrany kursanta filtrowały `status === 'pending' || !status`, więc dokument `assigned` (fan-out do grupy) nie trafiał do „Do zrobienia", powiadomień ani liczników.
+- **Rozwiązanie:** `utils/homework.ts` — `isStudentTodoStatus` (`assigned`, `pending` i brak statusu). Użyte w `StudentHomeworkScreen.tsx` (lista „Do zrobienia", otwarcie z `initialTaskId`, znacznik „Nowa", `finished`), `StudentHomeworkPanelSection.tsx`, `AssignedExercises.tsx`, `StudentHeroHeader.tsx`, `StudentNotifications.tsx`, `AIExerciseGeneratorScreen.tsx`. Ścieżka oddania bez zmian: `startTask`, autozapis (`useDraftAnswers`) i `handleSubmit` nie sprawdzają statusu; reguły Firestore (`specialTasks` update) nie zależą od poprzedniego statusu, tylko od zbioru zmienianych pól.
+- **Nie ruszone:** `StudentAssignedHomework.tsx` (komponent nieużywany — brak importów), testy kursanta (`pendingTests`/`overdueTests` — dotyczą `tests`, nie prac domowych).
+- **Weryfikacja:** tsc 0, `npm test` 773/773, build OK. Na 3001 prawdziwy `StudentHomeworkScreen` z `studentId` Marka pokazuje „Do zrobienia" z 3 zadaniami grupowymi. Oddanie z konta kursanta NIE przetestowane (wymaga jego sesji).
+
 ---
 
 ### 🚀 Wersje robocze (szkice) notatnika lektora — zakładka obok listy kursantów (2026-09-25, runda 57)
