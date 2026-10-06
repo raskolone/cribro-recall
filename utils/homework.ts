@@ -56,6 +56,19 @@ export const studentTasksQuery = (uid: string) =>
 export const isV1Task = (task: unknown): boolean => !isV2Task(task);
 
 /**
+ * Zadanie przypisane, a jeszcze nierozwiązane.
+ *
+ * Dwa statusy znaczą to samo: `pending` (przypisanie pojedyncze i „kilku
+ * kursantów", zapisywane z przeglądarki) oraz `assigned` (fan-out do grupy,
+ * zapisywany przez `server.ts`). Dokument bez statusu NIE jest tu pending —
+ * lista lektora nigdy takich nie pokazywała, a zmiana tego pokazałaby starą
+ * historię.
+ */
+export const isPendingStatus = (status?: string | null): boolean =>
+  status === 'pending' || status === 'assigned';
+
+
+/**
  * Typ pojedynczego ćwiczenia w pracy domowej.
  *
  * Jedna praca domowa mieści kilka rodzajów zadań naraz, więc rodzaj trzyma

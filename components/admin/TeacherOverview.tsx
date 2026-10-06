@@ -5,6 +5,7 @@ import { db } from '../../firebase';
 import { User } from '../../types';
 import Badge from '../ui/Badge';
 import { backfillTaskOwners } from '../../utils/backfillTaskOwners';
+import { isPendingStatus } from '../../utils/homework';
 
 /**
  * Przegląd całego panelu nauczyciela.
@@ -142,10 +143,11 @@ const TeacherOverview: React.FC<TeacherOverviewProps> = ({ students, language })
   const taskStats = useMemo(() => {
     if (!tasks) return null;
     const now = Date.now();
-    const by = (s: string) => tasks.filter(x => (x.status || 'pending') === s).length;
+    const statusOf = (x: any) => (isPendingStatus(x.status) ? 'pending' : x.status || 'pending');
+    const by = (s: string) => tasks.filter(x => statusOf(x) === s).length;
     const overdue = tasks.filter(x => {
       const due = parseDate(x.dueDate);
-      const open = (x.status || 'pending') === 'pending';
+      const open = statusOf(x) === 'pending';
       return open && due !== null && due < now;
     }).length;
     const last7 = tasks.filter(x => {

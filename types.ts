@@ -831,7 +831,8 @@ export interface SpecialTask {
   instructions?: string;
   createdAt: string;
   dueDate?: string;
-  status: 'pending' | 'submitted' | 'completed' | 'graded';
+  /** `assigned` ustawia wyłącznie fan-out do grupy (`server.ts`, assign-homework) — dla lektora to to samo co `pending` (patrz `isPendingStatus`). */
+  status: 'pending' | 'assigned' | 'submitted' | 'completed' | 'graded';
   sentences: any[];
   studentAnswers?: Record<number, string> | Record<string, string>;
   evaluationResults?: any[];

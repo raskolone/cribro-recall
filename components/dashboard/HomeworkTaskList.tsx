@@ -85,7 +85,7 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
 
     <ul className="divide-y divide-line">
       {tasks.map((task) => {
-        const status = (task.id && needsReviewTaskIds?.has(task.id)) ? STATUS.submitted : STATUS[task.status] ?? STATUS.pending;
+        const status = (task.id && needsReviewTaskIds?.has(task.id)) ? STATUS.submitted : STATUS[task.status as keyof typeof STATUS] ?? STATUS.pending;
         const StatusIcon = status.icon;
         const fresh = isNew?.(task);
 

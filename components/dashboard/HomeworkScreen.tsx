@@ -7,7 +7,7 @@ import { auth, db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
 import { generateFindErrors } from '../../services/homeworkGenerator';
-import { isTaskForStudent, studentTasksQuery, taskOwnerFields, homeworkItemType } from '../../utils/homework';
+import { isTaskForStudent, isPendingStatus, studentTasksQuery, taskOwnerFields, homeworkItemType } from '../../utils/homework';
 import { isV2Task } from '../../services/homeworkV2/contracts';
 import {
   subscribeHomeworkAiSettings,
@@ -1561,13 +1561,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         return t.status === 'submitted' && t.teacherRead !== true;
       }
       if (filterStatus === 'pending') {
-        return t.status === 'pending';
+        return isPendingStatus(t.status);
       }
       if (filterStatus === 'graded') {
         return false;
       }
       // 'all'
-      return t.status === 'pending' || (t.status === 'submitted' && t.teacherRead !== true);
+      return isPendingStatus(t.status) || (t.status === 'submitted' && t.teacherRead !== true);
     });
   }, [teacherStudentTasks, filterStatus]);
 
@@ -1590,7 +1590,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   // wybrano w dropdownie "Status".
   const activeHomeworkCount = React.useMemo(() => {
     return teacherStudentTasks.filter(
-      t => t.status === 'pending' || (t.status === 'submitted' && t.teacherRead !== true)
+      t => isPendingStatus(t.status) || (t.status === 'submitted' && t.teacherRead !== true)
     ).length;
   }, [teacherStudentTasks]);
 
@@ -2777,7 +2777,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {(isTeacher ? filteredTasks : tasks).map((task) => {
                 const needsV2Review = Boolean(task.id && v2NeedsReviewTaskIds.has(task.id));
-                const isPending = task.status === 'pending' && !needsV2Review;
+                const isPending = isPendingStatus(task.status) && !needsV2Review;
                 const isSubmitted = task.status === 'submitted' || needsV2Review;
                 const isGraded = task.status === 'graded';
 
