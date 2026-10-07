@@ -198,6 +198,16 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🚀 Generowanie rozgrzewki do pracy domowej (2026-10-07)
+- **Funkcjonalność:** Wprowadzono wsparcie dla generowania rozgrzewki (krótka układanka wyrazów z zadania z luki) z użyciem Gemini LLM przy tworzeniu nowej pracy domowej z wykorzystaniem AI.
+- **Implementacja:** 
+  1. `HomeworkComposer.tsx` zyskało nowe opcje do przełączania trybu rozgrzewki. 
+  2. `homeworkGenerator.ts` wykonuje dodatkowe wezwanie AI do wygenerowania elementu rozgrzewki.
+  3. `warmupRounds.ts` wspiera odczytanie nowej rozgrzewki opierającej się na blokach `chunks`.
+  4. `HomeworkWarmupScrambler.tsx` otrzymał logikę podświetlania się na czerwono po wybraniu złej kolejności klocków (wsparcie w `classifyUnscrambleAttempt`).
+- **Pominięcia:** `AssignHomeworkModal.tsx` aktualnie nie wykorzystuje LLM do generacji zadań (korzysta z predefiniowanych wzorców), stąd zadania z niego otrzymują pustą rozgrzewkę (`warmup: []`). Błąd generacji w `homeworkGenerator.ts` zwraca cichy błąd i również ustawia pustą rozgrzewkę bez wywracania tworzenia pracy domowej.
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów, dodane nowe testy dla `warmupRounds.ts` i `homeworkWarmupScrambler.test.tsx` (łącznie zaliczonych >750 testów).
+
 ### 🗑️ Notatnik: usuwanie obrazów klawiszami Delete/Backspace, menu kontekstowe i ikona kosza (2026-10-05)
 - **Problem:** Wklejonego zdjęcia nie dało się skasować z klawiatury (klawisze `Delete` i `Backspace` po zaznaczeniu obrazu były ignorowane, a przeglądarka blokowała edycję w elemencie `contenteditable="false"`). Dodatkowo zdefiniowane menu kontekstowe `handleContextMenu` w `ScratchpadEditor.tsx` (L953) nie było podpięte pod kontener edytora przez `onContextMenu`, więc opcja „8. Remove image” była niedostępna. Pasek grafiki `.pad-img-toolbar` nie posiadał również ikony kosza.
 - **Rozwiązanie:**
@@ -390,6 +400,18 @@ we dwoje na żywo.
 - **Rozwiązanie:** `utils/homework.ts` — `isStudentTodoStatus` (`assigned`, `pending` i brak statusu). Użyte w `StudentHomeworkScreen.tsx` (lista „Do zrobienia", otwarcie z `initialTaskId`, znacznik „Nowa", `finished`), `StudentHomeworkPanelSection.tsx`, `AssignedExercises.tsx`, `StudentHeroHeader.tsx`, `StudentNotifications.tsx`, `AIExerciseGeneratorScreen.tsx`. Ścieżka oddania bez zmian: `startTask`, autozapis (`useDraftAnswers`) i `handleSubmit` nie sprawdzają statusu; reguły Firestore (`specialTasks` update) nie zależą od poprzedniego statusu, tylko od zbioru zmienianych pól.
 - **Nie ruszone:** `StudentAssignedHomework.tsx` (komponent nieużywany — brak importów), testy kursanta (`pendingTests`/`overdueTests` — dotyczą `tests`, nie prac domowych).
 - **Weryfikacja:** tsc 0, `npm test` 773/773, build OK. Na 3001 prawdziwy `StudentHomeworkScreen` z `studentId` Marka pokazuje „Do zrobienia" z 3 zadaniami grupowymi. Oddanie z konta kursanta NIE przetestowane (wymaga jego sesji).
+
+### 🚀 Kursant: pop-up po przypisaniu pracy domowej (2026-10-07)
+- **Problem:** Kursant po przypisaniu pracy domowej (w tym grupowej) widział jedynie małą plakietkę/informację gzymsową. Brakowało wyraźnego pop-upu pozwalającego od razu przejść do konkretnego zadania lub go zamknąć.
+- **Rozwiązanie:**
+  - W `StudentNotifications.tsx` dodano pop-up modal z płynną animacją i wsparciem klawisza Escape (`useEscapeModal`).
+  - Przy jednym zadaniu modal wyświetla tytuł, instrukcje oraz akcje „Przejdź do zadania” (otwiera dokładnie to zadanie z parametrem `taskId`) i „Zamknij”.
+  - Przy wielu nowych zadaniach modal wyświetla listę zadań (tytuł, liczba zdań) z bezpośrednim przyciskiem „Rozwiąż” dla każdego oraz akcjami „Wszystkie zadania” i „Zamknij”.
+  - Decyzja, które zadania zakwalifikować do pop-upu, została wydzielona do czystej funkcji `getHomeworkTasksForPopup` w `utils/homeworkPopups.ts`.
+  - Zapamiętywanie wyświetlenia oparto o identyfikatory zadań w `localStorage` pod kluczem `shown_homework_popup_ids` (zbiór ID), co zapobiega ponownemu wyskakiwaniu okna po odświeżeniu i nie koliduje z flagą `hasNewHomework`.
+  - Zachowanie przy pierwszym logowaniu: jeśli klucz `shown_homework_popup_ids` jest pusty w `localStorage`, pop-up pokazuje wszystkie obecne zadania kursanta w stanie do zrobienia (`isStudentTodoStatus`: `pending`, `assigned`).
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów, `npm test` — 778/778 zaliczonych (5 testów jednostkowych w `tests/homeworkPopups.test.ts`), `npm run build` — sukces.
+- Bez zmian: `server.ts`, `firestore.rules`, `storage.rules`, `HOMEWORK_ENGINE_V2`, mailing, statusy zadań, zerowanie flag.
 
 ---
 
@@ -3991,6 +4013,14 @@ Poprzedni etap dołożył cały motyw jasny, ale aplikacja po starcie pokazywał
 - **Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 601/601 (594 + 7 nowych). `npm run build` — przechodzi, `api/index.js` przebudowany. Ręczna weryfikacja logowania w przeglądarce dla zmigrowanych kont NIEODHACZONA w tej sesji.
 - **Ryzyka:** `firestore.rules` i `storage.rules` — nietknięte. Żadne hasła nie były zmieniane, żadne maile nie zostały wysłane podczas diagnozy/migracji. Operacje na produkcyjnym Firebase Auth wykonane wyłącznie po jawnym zatwierdzeniu przez lektora uid po uid, z backupem przed każdym zapisem i odczytem-weryfikacją po. Diff kodu ograniczony do plików wymienionych wyżej — żaden endpoint `server.ts` nie był modyfikowany.
 
+### BJ. Prace domowe: rozgrzewka z polskim poleceniem, warmup w pracach grupowych i na linku, zwijanie prac grupowych + wyszukiwarka (2026-10-07)
+- **A. Rozgrzewka:** polecenie rundy to zawsze polskie zdanie, kafelki to angielskie słowa/fragmenty poprawnej wersji; etykieta „Ułóż zdanie", instrukcja „Ułóż zdanie po angielsku z kafelków." (koniec z „Popraw zdanie"/„Znajdź błąd" w rozgrzewce i z angielskim zdaniem z błędem jako poleceniem). Stara rozgrzewka (`warmup === undefined`) tworzy rundę tylko dla elementu z polskim odpowiednikiem (translation: `polishSentence`, word_order: `polishHint`, find_errors: `polishHint`/`meaning`), reszta pomijana; fill_in_the_blank/matching/multiple_choice nie mają polskiego odpowiednika zdania — brak rundy. `WarmupExercise.polishHint?` zastąpione WYMAGANYM `polishTranslation` (pełne tłumaczenie); generator (`generateWarmupExercises`) i `checkWarmupExerciseItem` odrzucają element bez niego; runda z warmup bez tego pola jest pomijana. Pliki: `utils/warmupRounds.ts`, `types.ts`, `utils/exerciseSentenceChecks.ts`, `services/homeworkGenerator.ts`, `components/admin/HomeworkComposer.tsx`.
+- **B. warmup w grupie i na linku:** nowa czysta `utils/warmupSanitize.ts` (`sanitizeWarmup`: do 5 elementów, 3–5 fragmentów, limity długości, niepoprawne odrzucane; brak/nie-tablica/same błędne → `undefined`; `[]` → `[]`). `server.ts` (jawna zgoda w poleceniu, tylko dwa miejsca): `POST /api/groups/:id/assign-homework` zapisuje zwalidowane `warmup` do każdego dokumentu (`stripUndefinedDeep`), `GET /api/homework/direct/:token` zwraca `warmup` w tym samym kształcie (`[]` jako `[]`, brak pola jako brak). `HomeworkComposer.tsx` w trybie „Grupa" wysyła `warmup` (przy wyłączonym przełączniku `[]`). `DirectHomeworkScreen.tsx`: typ `DirectTaskData.warmup`.
+- **C. Lista prac lektora:** `buildHomeworkRows` podpięte w `HomeworkScreen.tsx` dla zakładek „Prace domowe" i „Sprawdzone przez nauczyciela" (Lista, Kafelki, archiwum). Nowy `components/dashboard/HomeworkGroupRow.tsx` (rozwijany wiersz: grupa, tytuł, data, „X/N oddało", status zbiorczy; per kursant Podgląd / Sprawdź-Oceń na pojedynczym dokumencie). Wybrany kursant = bez zwijania; zadania v2 nie są zwijane. Liczniki zakładek liczą wiersze (grupa = 1); baner „Wymaga uwagi" i TeacherOverview nadal liczą dokumenty (nie zmieniane). Wyszukiwarka (`utils/homeworkSearch.ts`): bez wielkości liter i diakrytyków (z ręcznym „ł"), po kursancie, nazwie grupy i tytule, wiersz grupowy przez członka; przycisk czyszczenia; komunikat o pustym wyniku. Brak edycji/usuwania całego zestawu.
+- **Testy:** `tests/warmupRounds.test.ts` (przepisany), `tests/warmupSanitize.test.ts`, `tests/homeworkSearch.test.ts`, `tests/homeworkGroupRow.test.tsx`; poprawione fixtures w `tests/homeworkWarmupScrambler.test.tsx`.
+- **Weryfikacja:** `npx tsc --noEmit` — 0 błędów. `npm test` — 808/808 (778 przed + 30). `npm run build` — przechodzi (`api/index.js` przebudowany). UI nieoglądany w przeglądarce (zakaz w poleceniu).
+- **Ryzyka:** `firestore.rules`, `storage.rules`, tokeny, autoryzacja, statusy, punktacja, HOMEWORK_ENGINE_V2 — nietknięte. `server.ts` — tylko dwa dozwolone miejsca. Niezacommitowane.
+
 ---
 
 
@@ -4029,3 +4059,18 @@ npm run build
 2. **Format lekcji**: Wszelkie operacje na lekcjach powinny zachowywać i respektować format 4 bloków Notion (`Words & Phrases`, `Grammar & Accuracy`, `Pronunciation`, `Homework`).
 3. **Powiadomienia e-mail**: Wysyłka e-maili do kursantów powinna odbywać się z potwierdzeniem lektora, z poprawnym wołaczem imienia oraz nadawcą `wyrozumski@maciej.pro` lub `maciej@learnwithmaciej.com`.
 4. **Testy jednostkowe**: Przed zatwierdzeniem zmian upewnij się, że `npx tsc --noEmit` oraz `npm test` wykonują się bezbłędnie.
+
+### BK. Rozgrzewka nie znika po cichu: trzy stany pola `warmup`, walidacja złożenia, ponowne generowanie (2026-10-07)
+- `warmup: []` zapisujemy tylko, gdy lektor wyłączył przełącznik „Dołącz rozgrzewkę". Gdy generowanie zawiodło albo żaden element nie przeszedł walidacji, pole jest pomijane (klucz nie trafia do dokumentu) i działa stara rozgrzewka. Czysta funkcja: `utils/warmupField.ts` (`resolveWarmupField`, `warmupFieldEntry`); `buildAdHocHomeworkPayloads` też pomija klucz przy `undefined`.
+- `buildWarmupRounds`: niepusty `warmup` bez żadnego elementu z `polishTranslation` (stary kształt z `polishHint`) = brak pola; mieszany = tylko poprawne; `[]` = 0 rund. Nic nie migrowano.
+- `checkWarmupExerciseItem`: złożenie porównywane bez wielkości liter, końcowej interpunkcji i nadmiarowych spacji; zaakceptowany element dostaje `correctSentence = chunks.join(' ')`. `generateWarmupExercises` zwraca `{items, rejected, reasons}` (powody: liczba fragmentów, słowa we fragmencie, duplikat, złożenie, brak tłumaczenia, powtórzenie zdania z pracy, brak elementów, błąd modelu). Prompt uzupełniony o wymagania z polecenia.
+- Kreator, krok „Sprawdź i przypisz": przełącznik widoczny zawsze; gdy włączony, a rozgrzewki brak — komunikat z powodem i przycisk „Spróbuj ponownie" (tylko `generateWarmupExercises` na tym samym materiale i zdaniach pracy).
+- Testy: `tests/warmupFallback.test.ts` (14). Nie zweryfikowane w przeglądarce.
+
+### BL. Rozgrzewka: naturalne zdania z osobą jako podmiotem, kontrola jakości i usuwanie w podglądzie (2026-10-07)
+- Przyczyna zdania „My ideal home would like to have roomy spaces.": `generateWarmupExercises` dostaje `sourceText` z `buildSourceText` (tytuł `LEKCJA (data): temat`, podsumowanie, słownictwo). Gdy lekcja nie ma zatwierdzonego słownictwa, model widział tylko tytuł tematu i ułożył z niego podmiot. Prompt rozgrzewki nie dostawał też `QUALITY_RULES`/`CRIBRO_SENTENCE_NATURALNESS` (tylko `SYSTEM_INSTRUCTION`).
+- Prompt: sztywne ramy (podmiot = osoba, realna sytuacja, fraza nie jako podmiot, zakaz tytułu tematu jako podmiotu, bez „chcących" rzeczy), wyprowadzenie 4–6 fraz z samego tematu, przykład dobry i zły, kolejność: angielskie zdanie → `polishTranslation` w naturalnej polszczyźnie.
+- `judgeWarmupSentences` (`services/homeworkGenerator.ts`): jedno wywołanie Gemini 2.5 Flash (przez `askForJson`) na cały zestaw; `ok=false` → odrzucenie z powodem „nienaturalne zdanie". Błąd wywołania lub brak wyroku → element zostaje z `unverified: true`. Parsowanie i filtrowanie: `utils/warmupJudge.ts`.
+- `checkWarmupExerciseItem(raw, topics)`: odrzuca element, gdy pierwszy fragment zaczyna się od tytułu lub frazy tytułu (≥2 słowa, bez wielkości liter i bez wiodącego zaimka/przedimka) — powód `topic_as_subject`. Tematy z `extractLessonTopics(sourceText)`.
+- Kreator: podgląd pokazuje polskie zdanie i angielskie złożone z fragmentów, plakietkę „niezweryfikowane" i przycisk „Usuń" (`removeWarmupItem`). Usunięcie wszystkich = brak elementów (komunikat + „Spróbuj ponownie"). `resolveWarmupField` zdejmuje `unverified` przed zapisem (`WarmupDraftItem` ≠ `WarmupExercise`).
+- Testy: `tests/warmupJudge.test.ts` (12). Jakość zdań od modelu i UI nie zweryfikowane w przeglądarce.

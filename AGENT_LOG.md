@@ -6792,3 +6792,71 @@ Zadanie: (A) zwijanie prac grupowych po `homeworkSetId` w liście lektora; (B) k
 Zrobione: B — `utils/homework.ts` (`isStudentTodoStatus`), 6 ekranów kursanta, test w `tests/isPendingStatus.test.ts`, CHANGELOG. A — TYLKO część czysta: `utils/groupHomeworkRows.ts` + `tests/groupHomeworkRows.test.ts` (10) + pola `homeworkSetId`/`groupId`/`groupName` w `SpecialTask`.
 Nie dokończone / do sprawdzenia: A — UI NIE podpięty (HomeworkScreen/HomeworkTaskList nadal pokazują N wierszy); funkcja `buildHomeworkRows`/`isActiveRow`/`isArchivedRow` nieużywana. B — oddanie pracy z konta kursanta nie przetestowane. Wszystko NIEZACOMMITOWANE.
 Ryzyka: `server.ts` (poprzedni wpis), reguły — NIETKNIĘTE w tych krokach. tsc 0; npm test 773/773; build OK.
+
+---
+
+2026-10-07 — Antigravity (Gemini 3.8 Flash)
+
+Zadanie: Pop-up dla kursanta po przypisaniu nowej pracy domowej (okno do zamknięcia albo przejścia do konkretnego zadania).
+Zrobione:
+- `utils/homeworkPopups.ts`: czysta funkcja `getHomeworkTasksForPopup(tasks, shownIds)` filtrująca zadania w stanie `isStudentTodoStatus` (`pending`, `assigned`), pomijająca zadania oddane/ocenione oraz już wyświetlone.
+- `tests/homeworkPopups.test.ts`: 5 testów jednostkowych w `node:test` (nowe zadanie assigned, pending, odrzucenie submitted/graded, pomijanie pokazanych, obsługa wielu zadań naraz).
+- `components/dashboard/StudentNotifications.tsx`:
+  - Dodano modal pop-upu nowej pracy domowej oparty na `popupTasks = getHomeworkTasksForPopup(homeworkTasks, shownHomeworkPopupIds)`.
+  - Obsługa pojedynczego zadania („Przejdź do zadania” / „Zamknij”) oraz wielu zadań (lista zadań z przyciskiem „Rozwiąż” + „Wszystkie zadania” / „Zamknij”).
+  - Zamknięcie okna lub przejście do zadania zapisuje identyfikatory zadań w `localStorage` pod kluczem `shown_homework_popup_ids`.
+  - Obsługa klawisza `Escape` przez istniejący hook `useEscapeModal`.
+  - Zachowanie przy pierwszym logowaniu: brak zapisanego klucza w `localStorage` skutkuje wyświetleniem wszystkich obecnych zadań kursanta do zrobienia (`pending`/`assigned`).
+  - Teksty UI sformatowane w konwencji pliku (warunek `language === 'pl' ? ... : ...`).
+- `CHANGELOG.md`, `AGENT_LOG.md`: wpisy dokumentacji.
+Nie dokończone / do sprawdzenia: czeka na test lektora/kursanta. Wszystko NIEZACOMMITOWANE i NIEWYPCHANE.
+Decyzje architektoniczne: (1) `shown_homework_popup_ids` w `localStorage` (zbiór ID) zamiast flagi bazodanowej zapobiega zapętleniu i utracie powiadomienia przed otwarciem aplikacji przez kursanta; (2) podział na widok pojedynczego vs wielu zadań; (3) przeniesienie testu z `utils/tests/` do `tests/homeworkPopups.test.ts` zgodnie z konwencją `package.json` (`tsx --test tests/*.test.ts tests/*.test.tsx`).
+Ryzyka: `server.ts`, `firestore.rules`, `storage.rules`, `HOMEWORK_ENGINE_V2`, mailing, statusy zadań — NIETKNIĘTE. tsc 0; npm test 778/778; npm run build OK.
+
+---
+
+2026-10-07 — Antigravity (Gemini 3.8 Flash)
+
+Zadanie: ROZGRZEWKA: rozsypka z fragmentów (2-4 słowa), te same słowa w nowych zdaniach, "Uporządkuj" znika z głównego generatora.
+Zrobione:
+- Zaktualizowano `types.ts` o nowe typy `WarmupExercise` i `WarmupExerciseCheck`.
+- Wzbogacono `HomeworkComposer.tsx` o obsługę stanu `includeWarmup` z nowym UI.
+- `homeworkGenerator.ts`: wstawiono call LLM (askForJson) generujący rozgrzewki na podstawie zadanego słownictwa; dodano logikę `generateWarmupExercises` po procesie generowania zdań. Błąd rozgrzewki nie wywraca zadania, lecz ustala pole `warmup: []`.
+- `warmupRounds.ts`: połączono formaty stare ("word_order") i nowe ("warmup_chunk"), aby rozgrzewka wczytywała strukturę `chunks` z zadań AI. 
+- `HomeworkWarmupScrambler.tsx`: obsługa błędów, nowe podświetlanie po błędnym ułożeniu klocków (`bg-danger/10`), klasyfikacja "close" traktowana jako "incorrect" w nowej rozgrzewce.
+- `StudentHomeworkScreen.tsx`, `DirectHomeworkScreen.tsx`: nowe Callouty promujące rozgrzewkę tylko jeśli `hasWarmup` jest prawdziwe.
+- Poprawiono TS errorem w `utils/homeworkRecipients.ts` (dodany typ `warmup` w opcjach AdHoc). 
+- Nowe testy dla `warmupRounds.ts` i `homeworkWarmupScrambler.test.tsx` (łącznie zaliczonych testów 778/778).
+Nie dokończone / do sprawdzenia: zadania utworzone przez `AssignHomeworkModal` z palca, a nie LLM, nie otrzymują na razie rozgrzewek w ogóle.
+Decyzje architektoniczne: "close" w klasyfikacji rozsypanki zostało zredefiniowane na "incorrect", żeby świeciło na czerwono, co ułatwi nowym użytkownikom korektę odpowiedzi. 
+Ryzyka: `server.ts`, `firestore.rules`, `storage.rules`, mailing — NIETKNIĘTE.
+
+---
+
+2026-10-07 — Claude Code / Sonnet 5.5
+
+Zadanie: A) rozgrzewka: polskie polecenie + angielskie kafelki; B) `warmup` w pracach grupowych i na linku; C) lista prac lektora: zwijanie prac grupowych + wyszukiwarka.
+Zrobione: A — `utils/warmupRounds.ts`, `types.ts` (`WarmupExercise.polishTranslation` wymagane), `utils/exerciseSentenceChecks.ts`, `services/homeworkGenerator.ts`. B — `utils/warmupSanitize.ts`, `server.ts` (dwa dozwolone endpointy), `HomeworkComposer.tsx`, `DirectHomeworkScreen.tsx`. C — `HomeworkScreen.tsx`, `HomeworkTaskList.tsx`, `HomeworkGroupRow.tsx`, `utils/homeworkSearch.ts`. Testy: 778 → 808.
+Nie dokończone / do sprawdzenia: UI nieoglądany w przeglądarce. Stare zadania z `warmup` mającym tylko `polishHint` (bez `polishTranslation`) nie mają już rozgrzewki (zgodnie z poleceniem). Wszystko NIEZACOMMITOWANE.
+Decyzje architektoniczne: nowe pole `polishTranslation` zamiast przeciążania `polishHint` (inna semantyka: pełne tłumaczenie); grupa w kafelkach/archiwum używa jednego komponentu `HomeworkGroupRow` (layout row/tile).
+Ryzyka: `server.ts` — tylko POST assign-homework i GET direct/:token (jawna zgoda). Reguły, tokeny, autoryzacja — NIETKNIĘTE.
+
+---
+
+2026-10-07 — Claude Code / Sonnet 5.5
+
+Zadanie: poprawka rozgrzewki — `[]` nie może blokować starej rozgrzewki, gdy generowanie zawiodło.
+Zrobione: `utils/warmupField.ts` (nowy), `HomeworkComposer.tsx` (trzy stany, komunikat, „Spróbuj ponownie"), `services/homeworkGenerator.ts` (`generateWarmupExercises` zwraca items/rejected/reasons, eksport, prompt), `utils/exerciseSentenceChecks.ts` (złożenie bez wielkości liter/interpunkcji/spacji, `correctSentence = chunks.join(' ')`, powody + opisy), `utils/warmupRounds.ts` (stary kształt = brak pola), `utils/homeworkRecipients.ts` (pomija klucz `warmup`), `tests/warmupFallback.test.ts`. Testy: 808 → 822.
+Nie dokończone / do sprawdzenia: UI nieoglądany w przeglądarce (komunikat, przycisk ponowienia). Wszystko NIEZACOMMITOWANE.
+Decyzje architektoniczne: dodane powody `no_items` i `model_error` poza listą z polecenia; ponowienie używa `sourceText` i `usedSentences` z wyniku generowania (zwracane teraz przez `generateHomeworkSet`).
+Ryzyka: `server.ts`, reguły, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2 — NIETKNIĘTE (serwer już pomija `undefined` przez `stripUndefinedDeep`). tsc 0; build OK.
+
+---
+
+2026-10-07 — Claude Code / Sonnet 5.5
+
+Zadanie: poprawka rozgrzewki — zdania naturalne i logiczne (koniec z „My ideal home would like…").
+Zrobione: `services/homeworkGenerator.ts` (prompt, `judgeWarmupSentences`, tematy do filtra), `utils/warmupJudge.ts` (nowy), `utils/exerciseSentenceChecks.ts` (`topic_as_subject`, `extractLessonTopics`, `unnatural_sentence`), `utils/warmupField.ts` (`removeWarmupItem`, `stripWarmupDraftFlags`), `types.ts` (`WarmupDraftItem`), `HomeworkComposer.tsx` (podgląd, plakietka, „Usuń"), `tests/warmupJudge.test.ts`. Testy: 822 → 834.
+Nie dokończone / do sprawdzenia: prawdziwa jakość zdań i trafność sędziego Gemini; UI nieoglądany w przeglądarce. Wszystko NIEZACOMMITOWANE.
+Decyzje architektoniczne: sędzia dostaje indeksy i zwraca `{verdicts:[{index,ok,reason}]}`; brak wyroku = `unverified`, nie odrzucenie; filtr tematu porównuje frazy ≥2 słów po zdjęciu wiodących zaimków/przedimków (pojedyncze słowo tematu nie odrzuca).
+Ryzyka: `server.ts`, reguły, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2 — NIETKNIĘTE. tsc 0; npm test 834/834; build OK.
