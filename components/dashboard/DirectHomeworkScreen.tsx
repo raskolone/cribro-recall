@@ -22,6 +22,7 @@ import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import ConstellationBackground from '../ui/ConstellationBackground';
 import { toPolishVocative } from '../../utils/polishVocative';
 import { formatStudentDisplayName, isRawId } from '../../utils/studentFormat';
+import { buildHomeworkWelcomeGreeting } from '../../utils/homeworkWelcome';
 import { confirmAsync } from '../../utils/appAlert';
 
 interface DirectTaskSentence {
@@ -511,7 +512,7 @@ export const DirectHomeworkScreen: React.FC = () => {
           </div>
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-              Cześć, {studentVocative}! 👋
+              {buildHomeworkWelcomeGreeting(task?.studentName)}
             </h2>
             <p className="text-sm text-emerald-400/90 font-medium">
               Gratulacje za podjęcie wyzwania! 🎯

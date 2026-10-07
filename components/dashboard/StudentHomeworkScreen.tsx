@@ -36,6 +36,7 @@ import { useDraftAnswers } from '../../hooks/useDraftAnswers';
 import { normalizeLevel } from '../../utils/learningCurve';
 import HomeworkExercise from './HomeworkExercise';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
+import { buildHomeworkWelcomeGreeting } from '../../utils/homeworkWelcome';
 import TakeTestScreen from '../tests/TakeTestScreen';
 import { exportTestToPDF } from '../../utils/pdfExport';
 import Markdown from 'react-markdown';
@@ -1225,7 +1226,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
 
     // 1. Ekran Powitalny (Mobilny, estetyczny panel z gratulacjami i zapytaniem o rozgrzewkę)
     if (warmupPhase === 'welcome' && items.length > 0) {
-      const studentFirstName = user?.name ? user.name.split(' ')[0] : 'Kursancie';
+      const welcomeHeading = buildHomeworkWelcomeGreeting(user?.name || user?.firstName || user?.username);
       const formattedDueDate = activeTask.dueDate ? formatTaskDateTime(activeTask.dueDate) : null;
       return (
         <div className="min-h-[75vh] flex items-center justify-center p-3 sm:p-6 animate-in fade-in zoom-in-95 duration-200">
@@ -1257,7 +1258,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               </div>
               <div className="space-y-1">
                 <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight">
-                  Świetnie, że tu jesteś, {studentFirstName}!
+                  {welcomeHeading}
                 </h2>
                 <p className="text-sm text-emerald-400/90 font-medium">
                   Gratulacje za podjęcie wyzwania językowej powtórki 🎯
