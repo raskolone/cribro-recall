@@ -35,6 +35,15 @@ import { FillInTheBlankTask } from '../practice/FillInTheBlankTask';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { useIsDesktop } from '../../hooks/useMediaQuery';
 import HomeworkTaskList from './HomeworkTaskList';
+import HomeworkGroupRow from './HomeworkGroupRow';
+import { buildHomeworkRows, isActiveRow, isArchivedRow, HomeworkRow } from '../../utils/groupHomeworkRows';
+import {
+  filterHomeworkRows,
+  HOMEWORK_SEARCH_PLACEHOLDER,
+  HOMEWORK_SEARCH_CLEAR_LABEL,
+  HOMEWORK_SEARCH_EMPTY_TITLE,
+  HOMEWORK_SEARCH_EMPTY_HINT,
+} from '../../utils/homeworkSearch';
 import Badge from '../ui/Badge';
 import { 
   BookOpen, 
@@ -68,7 +77,8 @@ import {
   Calendar,
   ChevronUp,
   ShieldCheck,
-  ChevronDown
+  ChevronDown,
+  Search
 } from 'lucide-react';
 
 interface HomeworkScreenProps {
@@ -376,6 +386,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const showTiles = tileView || !isDesktop;
 
   const [filterStatus, setFilterStatus] = useState<string>(initialFilterStatus || 'all');
+  const [homeworkSearch, setHomeworkSearch] = useState('');
   const [studentTests, setStudentTests] = useState<StudentTest[]>([]);
   const [previewTest, setPreviewTest] = useState<StudentTest | null>(null);
 
@@ -1554,45 +1565,88 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     });
   }, [tasks, students, filterStudentId]);
 
-  // Aktywne zadania (czekające na kursanta lub odesłane czekające na sprawdzenie)
-  const activeTasks = React.useMemo(() => {
-    return teacherStudentTasks.filter(t => {
-      if (filterStatus === 'submitted') {
-        return t.status === 'submitted' && t.teacherRead !== true;
-      }
-      if (filterStatus === 'pending') {
-        return isPendingStatus(t.status);
-      }
-      if (filterStatus === 'graded') {
-        return false;
-      }
-      // 'all'
-      return isPendingStatus(t.status) || (t.status === 'submitted' && t.teacherRead !== true);
-    });
-  }, [teacherStudentTasks, filterStatus]);
-
-  // Archiwum zadań sprawdzonych / odznaczonych
-  const archivedTasks = React.useMemo(() => {
-    return teacherStudentTasks.filter(t => {
-      return t.status === 'graded' || t.status === 'completed' || t.teacherRead === true;
-    }).sort((a, b) => {
-      const timeA = getTaskDateMillis(a.reviewedAt || a.submittedAt || a.createdAt);
-      const timeB = getTaskDateMillis(b.reviewedAt || b.submittedAt || b.createdAt);
-      return timeB - timeA;
-    });
-  }, [teacherStudentTasks]);
-
-  const filteredTasks = activeTasks;
+  // Wiersze listy lektora: prace przypisane wielu kursantom naraz (wspólny
+  // `homeworkSetId`, co najmniej 2 dokumenty) zwinięte w jeden wiersz. Przy
+  // wybranym konkretnym kursancie nie zwijamy — dokumenty pojedynczo.
+  // Zadania silnika v2 nie są zwijane (ich status żyje w `attempts`).
+  const rowStudentName = React.useCallback((t: SpecialTask) => resolveStudentName(t), [resolveStudentName]);
+  const allHomeworkRows = React.useMemo(
+    () =>
+      buildHomeworkRows(teacherStudentTasks, {
+        getName: rowStudentName,
+        canGroup: (t) => !isV2Task(t),
+        group: filterStudentId === 'all',
+      }),
+    [teacherStudentTasks, rowStudentName, filterStudentId]
+  );
+  const activeRows = React.useMemo(
+    () => allHomeworkRows.filter((r) => isActiveRow(r, filterStatus)),
+    [allHomeworkRows, filterStatus]
+  );
+  const archivedRows = React.useMemo(
+    () => allHomeworkRows.filter(isArchivedRow).sort((a, b) => b.activityMs - a.activityMs),
+    [allHomeworkRows]
+  );
+  const visibleActiveRows = React.useMemo(
+    () => filterHomeworkRows(activeRows, homeworkSearch, rowStudentName),
+    [activeRows, homeworkSearch, rowStudentName]
+  );
+  const visibleArchivedRows = React.useMemo(
+    () => filterHomeworkRows(archivedRows, homeworkSearch, rowStudentName),
+    [archivedRows, homeworkSearch, rowStudentName]
+  );
+  const isSearching = homeworkSearch.trim().length > 0;
+  // Kursant widzi własne dokumenty, bez zwijania i bez wyszukiwarki.
+  const homeworkRows: HomeworkRow[] = React.useMemo(
+    () =>
+      isTeacher
+        ? visibleActiveRows
+        : tasks.map((task): HomeworkRow => ({ kind: 'single', task, createdMs: 0, activityMs: 0 })),
+    [isTeacher, visibleActiveRows, tasks]
+  );
 
   // Licznik do zakładki "Prace domowe" — niezależny od rozwijanego filtra
   // statusu, żeby badge na zakładce zawsze pokazywał realną liczbę aktywnych
   // zadań (oczekujące + przesłane nieprzeczytane), a nie to, co akurat
   // wybrano w dropdownie "Status".
   const activeHomeworkCount = React.useMemo(() => {
-    return teacherStudentTasks.filter(
-      t => isPendingStatus(t.status) || (t.status === 'submitted' && t.teacherRead !== true)
-    ).length;
-  }, [teacherStudentTasks]);
+    return allHomeworkRows.filter((r) => isActiveRow(r, 'all')).length;
+  }, [allHomeworkRows]);
+
+  // Jedno pole wyszukiwania nad listą (obie zakładki, Lista i Kafelki).
+  const renderSearchBox = () => (
+    <div className="relative flex-1 min-w-[12rem] max-w-sm">
+      <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-content-muted pointer-events-none" />
+      <input
+        type="text"
+        value={homeworkSearch}
+        onChange={(e) => setHomeworkSearch(e.target.value)}
+        placeholder={HOMEWORK_SEARCH_PLACEHOLDER}
+        aria-label={HOMEWORK_SEARCH_PLACEHOLDER}
+        className="w-full pl-8 pr-8 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
+      />
+      {homeworkSearch && (
+        <button
+          type="button"
+          onClick={() => setHomeworkSearch('')}
+          aria-label={HOMEWORK_SEARCH_CLEAR_LABEL}
+          title={HOMEWORK_SEARCH_CLEAR_LABEL}
+          className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md text-content-muted hover:text-text-hi cursor-pointer"
+        >
+          <X size={13} />
+        </button>
+      )}
+    </div>
+  );
+
+  const openGroupMemberPreview = (task: SpecialTask) => {
+    markTaskAsViewedByTeacher(task);
+    isV2Task(task) ? setV2ReviewTask(task) : setPreviewTask(task);
+  };
+  const openGroupMemberReview = (task: SpecialTask) => {
+    markTaskAsViewedByTeacher(task);
+    openTaskReview(task);
+  };
 
   // Human-in-the-loop: przełącznik „Automatyczna ocena AI przy 100% pewności",
   // domyślnie wyłączony. Czytany/zapisywany w `system/homeworkAiSettings`
@@ -2608,7 +2662,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               {([
                 { key: 'homework', label: 'Prace domowe', count: activeHomeworkCount },
                 { key: 'tests', label: 'Moje testy', count: activeStudentTests.length },
-                { key: 'archived', label: 'Sprawdzone przez nauczyciela', count: archivedTasks.length + completedStudentTests.length },
+                { key: 'archived', label: 'Sprawdzone przez nauczyciela', count: archivedRows.length + completedStudentTests.length },
               ] as const).map((tab) => {
                 const isActive = contentTab === tab.key;
                 const highlightCount = tab.key !== 'archived' && tab.count > 0;
@@ -2675,6 +2729,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 </select>
               </div>
 
+              {renderSearchBox()}
+
               {/* PRZEŁĄCZNIK WIDOKU — tylko na dużym ekranie.
 
                   Na telefonie wyboru nie ma, bo lista tam nie działa: pięć
@@ -2726,8 +2782,14 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               <RefreshCw className="animate-spin mx-auto mb-2 text-primary" size={24} />
               Ładowanie prac domowych...
             </div>
-          ) : (isTeacher ? filteredTasks : tasks).length === 0 ? (
-            isTeacher && filterStatus === 'graded' ? null : (
+          ) : homeworkRows.length === 0 ? (
+            isTeacher && isSearching ? (
+              <Card className="text-center py-12">
+                <Search className="mx-auto text-content-muted mb-3 opacity-40" size={40} />
+                <p className="text-base font-bold text-content">{HOMEWORK_SEARCH_EMPTY_TITLE}</p>
+                <p className="text-xs text-content-muted mt-1">{HOMEWORK_SEARCH_EMPTY_HINT}</p>
+              </Card>
+            ) : isTeacher && filterStatus === 'graded' ? null : (
               <Card className="text-center py-12">
                 <BookOpen className="mx-auto text-content-muted mb-3 opacity-40" size={48} />
                 <p className="text-base font-bold text-content">
@@ -2746,7 +2808,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             )
           ) : !showTiles ? (
             <HomeworkTaskList
-              tasks={isTeacher ? filteredTasks : tasks}
+              tasks={tasks}
+              rows={isTeacher ? visibleActiveRows : undefined}
               showStudent={isTeacher}
               getStudentName={resolveStudentName}
               isNew={isTeacher ? isTaskNewForTeacher : undefined}
@@ -2775,7 +2838,21 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(isTeacher ? filteredTasks : tasks).map((task) => {
+              {homeworkRows.map((row) => {
+                if (row.kind === 'group') {
+                  return (
+                    <div key={row.homeworkSetId} className="md:col-span-2">
+                      <HomeworkGroupRow
+                        row={row}
+                        layout="tile"
+                        formatDate={formatTaskDateTime}
+                        onPreview={openGroupMemberPreview}
+                        onReview={openGroupMemberReview}
+                      />
+                    </div>
+                  );
+                }
+                const task = row.task;
                 const needsV2Review = Boolean(task.id && v2NeedsReviewTaskIds.has(task.id));
                 const isPending = isPendingStatus(task.status) && !needsV2Review;
                 const isSubmitted = task.status === 'submitted' || needsV2Review;
@@ -2991,13 +3068,23 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                     <Archive size={15} className="text-primary" />
                     <span>Sprawdzone przez nauczyciela</span>
                     <span className="px-2 py-0.5 bg-white/10 text-white rounded-full text-[11px] font-bold">
-                      {archivedTasks.length}
+                      {visibleArchivedRows.length}
                     </span>
                   </span>
                 </div>
               </div>
 
-              {archivedTasks.length === 0 ? (
+              <div className="flex flex-wrap items-center gap-4 p-4 rounded-xl bg-base-200/60 border border-white/10">
+                {renderSearchBox()}
+              </div>
+
+              {visibleArchivedRows.length === 0 && archivedRows.length > 0 ? (
+                <Card className="text-center py-8 bg-base-200/30 border border-white/5">
+                  <Search className="mx-auto text-content-muted mb-2 opacity-30" size={32} />
+                  <p className="text-xs font-semibold text-content-muted">{HOMEWORK_SEARCH_EMPTY_TITLE}</p>
+                  <p className="text-[11px] text-content-muted/70 mt-0.5">{HOMEWORK_SEARCH_EMPTY_HINT}</p>
+                </Card>
+              ) : archivedRows.length === 0 ? (
                 <Card className="text-center py-8 bg-base-200/30 border border-white/5">
                   <Archive className="mx-auto text-content-muted mb-2 opacity-30" size={32} />
                   <p className="text-xs font-semibold text-content-muted">Archiwum jest puste</p>
@@ -3007,7 +3094,20 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 </Card>
               ) : (
                 <div className="space-y-2.5">
-                  {archivedTasks.map((task) => {
+                  {visibleArchivedRows.map((row) => {
+                    if (row.kind === 'group') {
+                      return (
+                        <div key={row.homeworkSetId} className="rounded-xl bg-base-200/50 border border-white/5 overflow-hidden">
+                          <HomeworkGroupRow
+                            row={row}
+                            formatDate={formatTaskDateTime}
+                            onPreview={(t) => (isV2Task(t) ? setV2ReviewTask(t) : setPreviewTask(t))}
+                            onReview={openTaskReview}
+                          />
+                        </div>
+                      );
+                    }
+                    const task = row.task;
                     const isGradedWithFeedback = Boolean(task.teacherFeedback || task.grade !== undefined);
                     const dateFormatted = formatTaskDateTime(task.reviewedAt || task.submittedAt || task.createdAt);
                     const isMarking = markingTaskId === task.id;

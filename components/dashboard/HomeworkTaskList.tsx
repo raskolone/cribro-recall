@@ -2,6 +2,8 @@ import React from 'react';
 import { Award, CheckCircle2, Clock, Edit3, Eye, FileText } from 'lucide-react';
 import { SpecialTask } from '../../types';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
+import { HomeworkRow } from '../../utils/groupHomeworkRows';
+import HomeworkGroupRow from './HomeworkGroupRow';
 
 /**
  * Prace domowe jako kompaktowa lista.
@@ -31,6 +33,8 @@ import { formatStudentDisplayName } from '../../utils/studentFormat';
 
 interface HomeworkTaskListProps {
   tasks: SpecialTask[];
+  /** Gdy podane (widok lektora), lista pokazuje wiersze — prace grupowe zwinięte w jeden — zamiast `tasks`. */
+  rows?: HomeworkRow[];
   /** Czy pokazywać kolumnę kursanta — u kursanta to zawsze on sam. */
   showStudent?: boolean;
   /** Opcjonalna funkcja pobierająca imię i nazwisko kursanta dla danego zadania */
@@ -64,6 +68,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
   tasks,
+  rows,
   showStudent = true,
   getStudentName,
   isNew,
@@ -84,7 +89,15 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
     </div>
 
     <ul className="divide-y divide-line">
-      {tasks.map((task) => {
+      {(rows ?? tasks.map((task): HomeworkRow => ({ kind: 'single', task, createdMs: 0, activityMs: 0 }))).map((row) => {
+        if (row.kind === 'group') {
+          return (
+            <li key={row.homeworkSetId}>
+              <HomeworkGroupRow row={row} formatDate={formatDate} onPreview={onPreview} onReview={(t) => onReview?.(t)} />
+            </li>
+          );
+        }
+        const task = row.task;
         const status = (task.id && needsReviewTaskIds?.has(task.id)) ? STATUS.submitted : STATUS[task.status as keyof typeof STATUS] ?? STATUS.pending;
         const StatusIcon = status.icon;
         const fresh = isNew?.(task);
