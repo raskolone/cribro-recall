@@ -8,6 +8,7 @@ import { collection, query, orderBy, where, getDocs, doc, updateDoc, onSnapshot 
 import { db } from '../../firebase';
 import { StudentTest, SpecialTask } from '../../types';
 import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
+import { getHomeworkTasksForPopup } from '../../utils/homeworkPopups';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface StudentNotificationsProps {
@@ -25,13 +26,20 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
   const [localDismissed, setLocalDismissed] = useState<string[]>(() => {
     try {
       const setsDismissed = JSON.parse(localStorage.getItem('checked_sets') || '[]');
-      const hwDismissed = JSON.parse(localStorage.getItem('dismissed_homework_ids') || '[]');
-      return Array.from(new Set([...setsDismissed, ...hwDismissed]));
+      return Array.from(new Set([...setsDismissed]));
     } catch {
       return [];
     }
   });
-
+  
+  const [shownHomeworkPopupIds, setShownHomeworkPopupIds] = useState<Set<string>>(() => {
+    try {
+      const shown = JSON.parse(localStorage.getItem('shown_homework_popup_ids') || '[]');
+      return new Set<string>(shown);
+    } catch {
+      return new Set<string>();
+    }
+  });
   useEffect(() => {
     if (!user?.id || user?.role !== 'user') {
       setLoading(false);
@@ -65,17 +73,8 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
 
   const dismissed = Array.from(new Set([...(user?.dismissedNotifications || []), ...localDismissed]));
 
-  // Filter pending homework tasks not dismissed
-  const assignedHomework = homeworkTasks.filter(t => {
-    const taskId = t.id || '';
-    const isPending = isStudentTodoStatus(t.status);
-    const isDismissed = dismissed.includes(taskId) || dismissed.includes('hw_' + taskId);
-    return isPending && !isDismissed;
-  });
-
-  // Fallback if hasNewHomework flag is set on user profile but specific task not listed in query
-  const shouldShowGenericHomework = !!user?.hasNewHomework && assignedHomework.length === 0 && !dismissed.includes('generic_homework_' + user?.id) && !dismissed.includes('hasNewHomework');
-
+  // Nowe zadania domowe do pop-upu
+  const popupTasks = getHomeworkTasksForPopup(homeworkTasks, shownHomeworkPopupIds);
   // Filter out sets assigned by teacher that haven't been dismissed
   const assignedSets = sets.filter(s => s.assignedByTeacher && !dismissed.includes(s.id));
   
@@ -97,7 +96,6 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
     setLocalDismissed(newLocal);
     try {
       localStorage.setItem('checked_sets', JSON.stringify(newLocal));
-      localStorage.setItem('dismissed_homework_ids', JSON.stringify(newLocal));
     } catch(e) {}
 
     if (!user?.id) return;
@@ -117,7 +115,6 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
     setLocalDismissed(newLocal);
     try {
       localStorage.setItem('checked_sets', JSON.stringify(newLocal));
-      localStorage.setItem('dismissed_homework_ids', JSON.stringify(newLocal));
     } catch(e) {}
 
     if (user?.id) {
@@ -131,51 +128,27 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
     onNavigate(view);
   };
 
-  const handleHomeworkAction = async (hwId: string, navigate: boolean) => {
-    const idsToDismiss = Array.from(new Set([
-      ...localDismissed,
-      hwId,
-      'hw_' + hwId,
-      'generic_homework_' + user?.id,
-      'hasNewHomework'
-    ]));
-
-    setLocalDismissed(idsToDismiss);
-
+  const handleHomeworkPopupAction = (specificTaskId: string | null, navigate: boolean) => {
+    const shownNow = popupTasks.map(t => t.id).filter(Boolean) as string[];
+    const newShownIds = new Set([...Array.from(shownHomeworkPopupIds), ...shownNow]);
+    setShownHomeworkPopupIds(newShownIds);
     try {
-      localStorage.setItem('checked_sets', JSON.stringify(idsToDismiss));
-      localStorage.setItem('dismissed_homework_ids', JSON.stringify(idsToDismiss));
+      localStorage.setItem('shown_homework_popup_ids', JSON.stringify(Array.from(newShownIds)));
     } catch (e) {}
 
-    if (user?.id) {
-      const updatedDismissed = Array.from(new Set([
-        ...(user.dismissedNotifications || []),
-        ...idsToDismiss
-      ]));
-      try {
-        await updateDoc(doc(db, 'users', user.id), {
-          dismissedNotifications: updatedDismissed,
-          hasNewHomework: false
-        });
-      } catch (err) {
-        console.error('Failed to update user doc for homework dismissal', err);
-      }
-    }
-
     if (navigate) {
-      onNavigate('homework', currentHomework?.id ? { taskId: currentHomework.id } : undefined);
+      if (specificTaskId) {
+        onNavigate('homework', { taskId: specificTaskId });
+      } else {
+        onNavigate('homework');
+      }
     }
   };
 
-  const currentHomework = assignedHomework[0];
-  const isHomeworkModalOpen =
-    isStudentView &&
-    currentView !== 'homework' &&
-    (assignedHomework.length > 0 || shouldShowGenericHomework);
+  const isHomeworkModalOpen = isStudentView && currentView !== 'homework' && popupTasks.length > 0;
 
   useEscapeModal(isHomeworkModalOpen, () => {
-    const hwId = currentHomework?.id || ('generic_homework_' + (user?.id || ''));
-    handleHomeworkAction(hwId, false);
+    handleHomeworkPopupAction(null, false);
   });
 
   if (!isStudentView) return null;
@@ -208,10 +181,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                   {language === 'pl' ? 'Nowa Praca Domowa' : 'New Homework Assignment'}
                 </span>
                 <button 
-                  onClick={() => {
-                    const hwId = currentHomework?.id || ('generic_homework_' + (user?.id || ''));
-                    handleHomeworkAction(hwId, false);
-                  }}
+                  onClick={() => handleHomeworkPopupAction(null, false)}
                   className="p-1.5 text-content-muted hover:text-text-hi rounded-full hover:bg-line-soft transition-colors cursor-pointer"
                   title={language === 'pl' ? 'Zamknij' : 'Close'}
                 >
@@ -219,51 +189,102 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                 </button>
               </div>
 
-              {/* Main Content */}
-              <div className="flex items-start gap-4 mb-5">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/50 flex items-center justify-center text-primary text-2xl shrink-0 shadow-inner">
-                  <BookOpen size={28} />
-                </div>
-                <div>
-                  <h2 className="text-xl md:text-2xl font-black text-text-hi leading-tight">
-                    {language === 'pl' ? 'Masz nową pracę domową!' : 'You have new homework!'}
-                  </h2>
-                  <p className="text-sm md:text-base font-bold text-primary mt-1">
-                    {currentHomework?.title || (language === 'pl' ? 'Praca domowa od nauczyciela' : 'Homework from teacher')}
-                  </p>
-                </div>
-              </div>
+              {popupTasks.length === 1 ? (
+                <>
+                  {/* Single Task Content */}
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/50 flex items-center justify-center text-primary text-2xl shrink-0 shadow-inner">
+                      <BookOpen size={28} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl md:text-2xl font-black text-text-hi leading-tight">
+                        {language === 'pl' ? 'Masz nową pracę domową!' : 'You have new homework!'}
+                      </h2>
+                      <p className="text-sm md:text-base font-bold text-primary mt-1">
+                        {popupTasks[0].title || (language === 'pl' ? 'Praca domowa od nauczyciela' : 'Homework from teacher')}
+                      </p>
+                    </div>
+                  </div>
 
-              {currentHomework?.instructions && (
-                <div className="p-3.5 bg-base-100/60 rounded-2xl border border-line-strong text-xs md:text-sm text-content-muted mb-6 leading-relaxed">
-                  {currentHomework.instructions}
-                </div>
+                  {popupTasks[0].instructions && (
+                    <div className="p-3.5 bg-base-100/60 rounded-2xl border border-line-strong text-xs md:text-sm text-content-muted mb-6 leading-relaxed">
+                      {popupTasks[0].instructions}
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex flex-col gap-2.5">
+                    <button 
+                      onClick={() => handleHomeworkPopupAction(popupTasks[0].id, true)}
+                      className="w-full py-3.5 px-6 bg-primary hover:bg-primary/90 text-accent-ink font-extrabold rounded-2xl text-sm md:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(114,240,180,0.35)] hover:scale-[1.02] cursor-pointer"
+                    >
+                      <span>{language === 'pl' ? 'Przejdź do zadania' : 'Go to Homework'}</span>
+                      <ChevronRight size={20} />
+                    </button>
+
+                    <button 
+                      onClick={() => handleHomeworkPopupAction(popupTasks[0].id, false)}
+                      className="w-full py-2.5 px-4 bg-ink/72 hover:bg-line-soft text-content-muted hover:text-text-hi rounded-2xl text-xs md:text-sm font-semibold transition-all border border-line-strong flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <X size={16} />
+                      <span>{language === 'pl' ? 'Zamknij' : 'Close'}</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  {/* Multiple Tasks Content */}
+                  <div className="flex items-start gap-4 mb-5">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/50 flex items-center justify-center text-primary text-2xl shrink-0 shadow-inner">
+                      <BookOpen size={28} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl md:text-2xl font-black text-text-hi leading-tight">
+                        {language === 'pl' ? 'Masz nowe prace domowe!' : 'You have new homework!'}
+                      </h2>
+                      <p className="text-sm md:text-base font-bold text-primary mt-1">
+                        {language === 'pl' ? `Liczba nowych zadań: ${popupTasks.length}` : `${popupTasks.length} new tasks assigned`}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-3 mb-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                    {popupTasks.map(t => (
+                      <div key={t.id} className="p-3 bg-base-100/60 rounded-xl border border-line-strong flex items-center justify-between gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-bold text-text-hi truncate">{t.title || (language === 'pl' ? 'Praca domowa' : 'Homework')}</p>
+                          <p className="text-xs text-content-muted">
+                            {t.sentences?.length || 0} {language === 'pl' ? 'zdań' : 'sentences'}
+                          </p>
+                        </div>
+                        <button 
+                          onClick={() => handleHomeworkPopupAction(t.id, true)}
+                          className="px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary font-bold rounded-lg text-xs transition-colors shrink-0 cursor-pointer"
+                        >
+                          {language === 'pl' ? 'Rozwiąż' : 'Solve'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="flex flex-col gap-2.5">
+                    <button 
+                      onClick={() => handleHomeworkPopupAction(null, true)}
+                      className="w-full py-3 px-6 bg-primary hover:bg-primary/90 text-accent-ink font-extrabold rounded-2xl text-sm transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer shadow-[0_0_20px_rgba(114,240,180,0.25)] hover:scale-[1.02]"
+                    >
+                      <span>{language === 'pl' ? 'Wszystkie zadania' : 'All Tasks'}</span>
+                      <ChevronRight size={20} />
+                    </button>
+                    <button 
+                      onClick={() => handleHomeworkPopupAction(null, false)}
+                      className="w-full py-2.5 px-4 bg-ink/72 hover:bg-line-soft text-content-muted hover:text-text-hi rounded-2xl text-xs md:text-sm font-semibold transition-all border border-line-strong flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <X size={16} />
+                      <span>{language === 'pl' ? 'Zamknij' : 'Close'}</span>
+                    </button>
+                  </div>
+                </>
               )}
-
-              {/* Actions */}
-              <div className="flex flex-col gap-2.5">
-                <button 
-                  onClick={() => {
-                    const hwId = currentHomework?.id || ('generic_homework_' + user.id);
-                    handleHomeworkAction(hwId, true);
-                  }}
-                  className="w-full py-3.5 px-6 bg-primary hover:bg-primary/90 text-accent-ink font-extrabold rounded-2xl text-sm md:text-base transition-all duration-200 flex items-center justify-center gap-2 shadow-[0_0_25px_rgba(114,240,180,0.35)] hover:scale-[1.02] cursor-pointer"
-                >
-                  <span>{language === 'pl' ? 'Przejdź do pracy domowej' : 'Go to Homework'}</span>
-                  <ChevronRight size={20} />
-                </button>
-
-                <button 
-                  onClick={() => {
-                    const hwId = currentHomework?.id || ('generic_homework_' + user.id);
-                    handleHomeworkAction(hwId, false);
-                  }}
-                  className="w-full py-2.5 px-4 bg-ink/72 hover:bg-line-soft text-content-muted hover:text-text-hi rounded-2xl text-xs md:text-sm font-semibold transition-all border border-line-strong flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <X size={16} />
-                  <span>{language === 'pl' ? 'Odhacz i zamknij powiadomienie' : 'Dismiss notification'}</span>
-                </button>
-              </div>
             </motion.div>
           </motion.div>
         )}
