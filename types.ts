@@ -770,6 +770,18 @@ export type HomeworkType =
   | 'multiple_choice'
   | 'matching';
 
+export interface WarmupExercise {
+  chunks: string[];
+  correctSentence: string;
+  /** Pełne polskie tłumaczenie zdania — polecenie rundy rozgrzewki. */
+  polishTranslation: string;
+}
+
+/** Element rozgrzewki w kreatorze — `unverified` to znacznik roboczy, nigdy nie trafia do dokumentu pracy. */
+export interface WarmupDraftItem extends WarmupExercise {
+  unverified?: boolean;
+}
+
 /** Ułóż zdanie z rozsypanych fragmentów. */
 export interface WordOrderExercise {
   /** Fragmenty w kolejności do pokazania — już przetasowane. */
@@ -831,6 +843,7 @@ export interface SpecialTask {
   instructions?: string;
   createdAt: string;
   dueDate?: string;
+  warmup?: WarmupExercise[];
   /** Wspólny identyfikator pracy przypisanej wielu kursantom naraz (`hwset_grp_…` grupa, `hwset_multi_…` kilku kursantów) — N dokumentów, po jednym na kursanta. */
   homeworkSetId?: string;
   groupId?: string | null;

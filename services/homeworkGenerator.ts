@@ -5,6 +5,8 @@ import {
   MatchingExercise,
   MultipleChoiceExercise,
   TranslationExercise,
+  WarmupExercise,
+  WarmupDraftItem,
   WordOrderExercise,
 } from '../types';
 import {
@@ -15,6 +17,7 @@ import {
 } from './geminiService';
 import { getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
 import { HOMEWORK_GENERATION_MODELS, PRIMARY_MODEL, assertHomeworkModelAllowed } from './aiModels';
+import { WarmupVerdict, applyWarmupVerdicts, markAllUnverified, parseWarmupVerdicts } from '../utils/warmupJudge';
 import { getStudentAiContext } from './learningProfile';
 import { Type } from '@google/genai';
 import {
@@ -22,6 +25,9 @@ import {
   buildUsedSentencesBlock,
   collectValidFixSentences,
   filterRepeatedSentences,
+  checkWarmupExerciseItem,
+  extractLessonTopics,
+  WarmupFailureReason,
 } from '../utils/exerciseSentenceChecks';
 import { CRIBRO_SENTENCE_NATURALNESS, FIX_SENTENCE_RULES, buildFixSentenceRetryNote } from './cribroSentenceRules';
 
@@ -90,6 +96,12 @@ export interface GeneratedSection {
 
 export interface HomeworkGenerationResult {
   sections: GeneratedSection[];
+  warmup?: WarmupDraftItem[];
+  /** Ile elementów rozgrzewki odrzucono i dlaczego (puste `warmup` + powód = rozgrzewka się nie wygenerowała). */
+  warmupRejected?: number;
+  warmupReasons?: WarmupFailureReason[];
+  /** Zdania z pracy — wykluczenia dla ponownego generowania samej rozgrzewki. */
+  usedSentences?: string[];
   modelUsed?: string;
   /** Materiał, na którym pracował model — do pokazania lektorowi. */
   sourceText: string;
@@ -145,7 +157,6 @@ export const HOMEWORK_TYPE_LABELS: Record<
 export const OFFERED_HOMEWORK_TYPES: HomeworkType[] = [
   'translation',
   'find_errors',
-  'word_order',
   'multiple_choice',
   'fill_in_the_blank',
   'matching',
@@ -436,6 +447,126 @@ Zwróć JSON:
   return { items: freshItems, modelUsed };
 };
 
+export interface WarmupGenerationResult {
+  items: WarmupDraftItem[];
+  /** Liczba elementów odrzuconych przez walidację, filtr powtórek lub kontrolę jakości. */
+  rejected: number;
+  /** Powód każdego odrzucenia; przy błędzie całego wywołania — jeden wpis. */
+  reasons: WarmupFailureReason[];
+}
+
+/**
+ * Kontrola jakości: jedno wywołanie na cały zestaw. Zwraca wyroki w kolejności
+ * wejścia; błąd wywołania leci do góry (wywołujący oznacza elementy `unverified`).
+ */
+export const judgeWarmupSentences = async (
+  items: WarmupExercise[]
+): Promise<Array<WarmupVerdict | null>> => {
+  const list = items
+    .map((item, index) => `${index}. EN: ${item.correctSentence}\n   PL: ${item.polishTranslation}`)
+    .join('\n');
+  const prompt = `${SYSTEM_INSTRUCTION}
+
+ZADANIE: jesteś surowym recenzentem zdań do ćwiczeń. Oceń każdą parę zdań poniżej.
+Dla każdej pary odpowiedz:
+- ok = true tylko wtedy, gdy angielskie zdanie jest naturalne (native speaker mógłby je naprawdę powiedzieć),
+  poprawne gramatycznie, logiczne znaczeniowo (podmiot może wykonać czynność; rzeczy nie "chcą", "lubią" ani "myślą")
+  ORAZ polskie tłumaczenie brzmi po polsku (naturalnie, nie kalka słowo w słowo);
+- ok = false w każdym innym przypadku; w polu reason w kilku słowach po polsku napisz, co jest nie tak.
+
+PARY:
+${list}
+
+Zwróć JSON z jednym wpisem na parę (index = numer pary):
+{"verdicts":[{"index":0,"ok":true,"reason":""},{"index":1,"ok":false,"reason":"rzecz jako podmiot chcący coś robić"}]}`;
+  const { parsed } = await askForJson(prompt);
+  return parseWarmupVerdicts(parsed, items.length);
+};
+
+export const generateWarmupExercises = async (
+  sourceText: string,
+  accumulatedExcluded: string[]
+): Promise<WarmupGenerationResult> => {
+  const topics = extractLessonTopics(sourceText);
+  const prompt = `${SYSTEM_INSTRUCTION}
+
+[MATERIAŁ Z LEKCJI — TYLKO NA NIM PRACUJESZ]:
+${sourceText}
+
+ZADANIE:
+Ułóż do 3 angielskich zdań opartych na podanym materiale (wykorzystaj te same kluczowe słowa i frazy co w materiale).
+Każde zdanie musi przedstawiać NOWY kontekst i sytuację - zakaz powtórzenia i parafrazy zdań z listy wykluczeń.
+
+TWARDE RAMY TREŚCI ZDANIA (ważniejsze niż użycie słownictwa):
+- Podmiotem zdania jest OSOBA: I, we, you, he, she, they, imię albo rzeczownik określający osobę (np. my sister, our neighbour).
+- Zdanie opisuje zwykłą, realną sytuację z życia — coś, co native speaker mógłby naprawdę powiedzieć.
+- Fraza ze słownictwa jest użyta naturalnie, w dalszej części zdania — NIGDY jako podmiot.
+- ZAKAZ używania tytułu tematu lekcji ani jego fragmentu jako podmiotu (np. temat "Describing your ideal home" nie daje zdania "My ideal home…").
+- Unikaj zdań, w których rzecz lub miejsce czegoś chce, lubi, myśli albo robi coś, co potrafi tylko człowiek.
+- Jeśli materiał to tylko temat lub krótki opis BEZ listy słów i fraz, najpierw wyprowadź z niego w głowie 4-6 typowych fraz tego tematu i na nich oprzyj zdania.
+- DOBRY przykład: "My sister would like to have a big kitchen." (osoba jest podmiotem, fraza użyta naturalnie).
+- ZŁY przykład: "My ideal home would like to have roomy spaces." (rzecz jako podmiot, nielogiczne).
+
+Wymagania dla zdania:
+1. Zdania po angielsku.
+2. Długość zdania: 7-12 słów.
+3. Każde zdanie podziel na 3-5 fragmentów po 2-4 słowa. Każdy fragment ma co najmniej 2 słowa.
+4. Fragmenty w jednym zdaniu muszą być unikalne.
+5. Końcowa kropka lub znak zapytania stoi w ostatnim fragmencie.
+6. Fragmenty złożone ze spacjami muszą dać dokładnie correctSentence.
+7. KOLEJNOŚĆ: najpierw ułóż poprawne angielskie zdanie (correctSentence), dopiero potem napisz polishTranslation.
+8. polishTranslation to NATURALNA polszczyzna — oddaj sens zdania, nie tłumacz słowo w słowo. To ono będzie poleceniem dla kursanta, więc musi jednoznacznie wskazywać to zdanie. Element bez polishTranslation zostanie odrzucony.
+
+${buildUsedSentencesBlock(accumulatedExcluded)}
+
+Zwróć JSON w podanym formacie:
+{"items":[{"correctSentence":"I have to meet the deadline by tomorrow morning.","chunks":["I have to","meet the deadline","by tomorrow morning."],"polishTranslation":"Muszę dotrzymać terminu jutro rano."}]}
+`;
+
+  try {
+    const { parsed } = await askForJson(prompt);
+    const raw = Array.isArray(parsed?.items) ? parsed.items : [];
+    if (raw.length === 0) return { items: [], rejected: 0, reasons: ['no_items'] };
+
+    const reasons: WarmupFailureReason[] = [];
+    const items: WarmupExercise[] = [];
+    for (const item of raw) {
+      const check = checkWarmupExerciseItem(item, topics);
+      if ('item' in check) {
+        items.push(check.item);
+      } else {
+        reasons.push(check.reason);
+        console.warn('[generateWarmupExercises] Odrzucono element rozgrzewki:', check.reason, item);
+      }
+    }
+
+    const freshItems = filterRepeatedSentences(items, accumulatedExcluded, (item) => [
+      item.correctSentence,
+      item.polishTranslation,
+    ]);
+    for (let i = freshItems.length; i < items.length; i++) reasons.push('sentence_repeated');
+
+    const candidates = freshItems.slice(0, 3);
+    let finalItems: WarmupDraftItem[] = [];
+    if (candidates.length > 0) {
+      try {
+        const verdicts = await judgeWarmupSentences(candidates);
+        const judged = applyWarmupVerdicts(candidates, verdicts);
+        finalItems = judged.items;
+        reasons.push(...judged.reasons);
+      } catch (judgeErr) {
+        console.warn('[generateWarmupExercises] Kontrola jakości nie powiodła się — elementy oznaczone jako niezweryfikowane.', judgeErr);
+        finalItems = markAllUnverified(candidates);
+      }
+    }
+
+    return { items: finalItems, rejected: reasons.length, reasons };
+  } catch (err) {
+    console.error('[generateWarmupExercises] Błąd modelu lub brak wyników:', err);
+    return { items: [], rejected: 0, reasons: ['model_error'] };
+  }
+};
+
 /** Wybór formy: pilnujemy, żeby poprawna odpowiedź naprawdę była wśród opcji. */
 const generateMultipleChoice = async (
   req: HomeworkGenerationRequest,
@@ -718,7 +849,6 @@ export const generateHomeworkSet = async (
   const runners: Record<string, (subReq: HomeworkGenerationRequest) => Promise<{ items: any[]; modelUsed: string }>> = {
     translation: (subReq) => generateTranslations(subReq, sourceText, briefing, level),
     find_errors: (subReq) => generateFindErrors(subReq, sourceText, briefing),
-    word_order: (subReq) => generateWordOrder(subReq, sourceText, briefing),
     multiple_choice: (subReq) => generateMultipleChoice(subReq, sourceText, briefing),
     fill_in_the_blank: (subReq) => generateGaps(subReq, sourceText, briefing, level),
     matching: (subReq) => generateMatching(subReq, sourceText, briefing),
@@ -748,5 +878,15 @@ export const generateHomeworkSet = async (
     }
   }
 
-  return { sections, modelUsed, sourceText };
+  const warmupResult = await generateWarmupExercises(sourceText, accumulatedExcluded);
+
+  return {
+    sections,
+    warmup: warmupResult.items,
+    warmupRejected: warmupResult.rejected,
+    warmupReasons: warmupResult.reasons,
+    modelUsed,
+    sourceText,
+    usedSentences: accumulatedExcluded,
+  };
 };

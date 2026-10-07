@@ -1,5 +1,5 @@
 import { HomeworkType } from '../types';
-import { CanonicalExerciseType, exerciseUiCopy, normalizeExercise } from './normalizeExercise';
+import { CanonicalExerciseType, normalizeExercise } from './normalizeExercise';
 
 /**
  * Adapter kanoniczny dla rozgrzewki (`HomeworkWarmupScrambler.tsx`).
@@ -15,23 +15,63 @@ import { CanonicalExerciseType, exerciseUiCopy, normalizeExercise } from './norm
 export interface WarmupRound {
   /** Indeks oryginalnego elementu w przekazanej tablicy `sentences` — potrzebny do trwałego zapisu próby. */
   itemIndex: number;
-  type: CanonicalExerciseType;
+  type: CanonicalExerciseType | 'warmup_chunk';
   heading: string;
   instruction: string;
-  /** Zdanie źródłowe do pokazania nad rozsypanką (polskie zdanie / zdanie z błędem), gdy istnieje. */
+  /** Polskie zdanie — polecenie rundy (zawsze ustawione). */
   sourceLabel?: string;
   /** Zdanie wzorcowe do ułożenia z tokenów. */
   targetSentence: string;
   hint?: string;
+  /** Zdefiniowane z góry fragmenty (chunks). Jeśli brak, używa się podziału na słowa. */
+  chunks?: string[];
 }
 
 const countWords = (sentence: string): number =>
   sentence.trim().split(/\s+/).filter(Boolean).length;
 
+/** Rozgrzewka zawsze każe ułożyć angielskie zdanie z polskiego polecenia — niezależnie od typu zadania źródłowego. */
+const WARMUP_HEADING = 'Ułóż zdanie';
+const WARMUP_INSTRUCTION = 'Ułóż zdanie po angielsku z kafelków.';
+
 export function buildWarmupRounds(
   sentences: any[],
-  task?: { type?: HomeworkType } | null
+  task?: any | null
 ): WarmupRound[] {
+  // 1. Nowy format: jeśli jest zdefiniowane pole warmup w SpecialTask (tablica)
+  // Niepusta tablica bez ani jednego elementu z polishTranslation (stary kształt
+  // z polishHint) to brak pola — wraca stara rozgrzewka, nic nie migrujemy.
+  const hasPolishItem =
+    task &&
+    Array.isArray(task.warmup) &&
+    task.warmup.some((ex: any) => typeof ex?.polishTranslation === 'string' && ex.polishTranslation.trim());
+  if (task && Array.isArray(task.warmup) && (task.warmup.length === 0 || hasPolishItem)) {
+    if (task.warmup.length === 0) {
+      return []; // pusta rozgrzewka = brak rozgrzewki (świadoma decyzja lektora)
+    }
+    const warmupRounds: WarmupRound[] = [];
+    task.warmup.forEach((ex: any, idx: number) => {
+      const polish = typeof ex?.polishTranslation === 'string' ? ex.polishTranslation.trim() : '';
+      // Bez polskiego tłumaczenia nie ma polecenia — pomijamy rundę (indeks
+      // `idx` zostaje oryginalny, żeby zapisane próby się nie rozjechały).
+      if (!polish) return;
+      if (!Array.isArray(ex?.chunks) || ex.chunks.length === 0) return;
+      if (typeof ex?.correctSentence !== 'string' || !ex.correctSentence.trim()) return;
+      warmupRounds.push({
+        itemIndex: idx, // Rozgrzewki mają osobną indeksację
+        type: 'warmup_chunk',
+        heading: WARMUP_HEADING,
+        instruction: WARMUP_INSTRUCTION,
+        sourceLabel: polish,
+        targetSentence: ex.correctSentence,
+        chunks: ex.chunks,
+        hint: '',
+      });
+    });
+    return warmupRounds;
+  }
+
+  // 2. Stary format (warmup === undefined): budujemy z zadań (sentences)
   if (!Array.isArray(sentences) || sentences.length === 0) return [];
 
   const rounds: WarmupRound[] = [];
@@ -40,6 +80,9 @@ export function buildWarmupRounds(
     const exercise = normalizeExercise(raw, task);
     if (exercise.state !== 'ready') return;
 
+    // Polecenie rundy to ZAWSZE polskie zdanie. Element bez polskiego
+    // odpowiednika jest pomijany — nigdy nie pokazujemy angielskiego zdania
+    // (zwłaszcza z błędem) jako polecenia, bo kafelki ujawniłyby odpowiedź.
     let targetSentence: string | undefined;
     let sourceLabel: string | undefined;
 
@@ -47,45 +90,37 @@ export function buildWarmupRounds(
       targetSentence =
         exercise.correctSentence ||
         (exercise.tokens && exercise.tokens.length > 0 ? exercise.tokens.join(' ') : undefined);
-      sourceLabel = exercise.sourceSentence;
+      sourceLabel = exercise.sourceSentence; // polishHint
     } else if (exercise.type === 'translation') {
       targetSentence = exercise.correctSentence;
-      sourceLabel = exercise.sourceSentence;
+      sourceLabel = exercise.sourceSentence; // polishSentence
     } else if (exercise.type === 'find_errors') {
       targetSentence = exercise.correctSentence;
-      sourceLabel = exercise.incorrectSentence;
-    } else {
-      // fill_in_the_blank: bez niezawodnego sposobu odtworzenia pełnego
-      // zdania z samych segmentów luk (bank słów nie gwarantuje kolejności)
-      // — używamy WYŁĄCZNIE jawnego zdania wzorcowego, jeśli generator je
-      // dołączył, zamiast zgadywać złożenie luk (CLAUDE.md: zero zgadywania).
-      targetSentence =
-        typeof exercise.raw?.correctSentence === 'string' ? exercise.raw.correctSentence :
-        typeof exercise.raw?.fullSentence === 'string' ? exercise.raw.fullSentence :
-        undefined;
-      sourceLabel = undefined;
+      sourceLabel = typeof exercise.meaning === 'string' ? exercise.meaning : undefined; // polishHint / meaning
     }
+    // fill_in_the_blank (i matching / multiple_choice, które normalizeExercise
+    // odrzuca) nie mają polskiego odpowiednika całego zdania — brak rundy.
+
+    if (!sourceLabel || !sourceLabel.trim()) return;
+    sourceLabel = sourceLabel.trim();
 
     if (!targetSentence || typeof targetSentence !== 'string' || !targetSentence.trim()) return;
 
     const trimmed = targetSentence.trim();
     const wordCount = countWords(trimmed);
-    // Ten sam próg co dotychczas: 3–20 słów, żeby rozgrzewka nie przeciążała kursanta.
+    // Ten sam próg co dotychczas: 3–20 słów
     if (wordCount < 3 || wordCount > 20) return;
-
-    const { heading, instruction } = exerciseUiCopy(exercise.type);
 
     rounds.push({
       itemIndex,
       type: exercise.type,
-      heading,
-      instruction,
+      heading: WARMUP_HEADING,
+      instruction: WARMUP_INSTRUCTION,
       sourceLabel,
       targetSentence: trimmed,
       hint: exercise.hint,
     });
   });
 
-  // Maksymalnie 3 zdania na rozgrzewkę — jak dotychczas.
   return rounds.slice(0, 3);
 }

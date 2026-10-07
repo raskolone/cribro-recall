@@ -25,7 +25,7 @@ export interface WarmupAttemptResult {
 
 interface HomeworkWarmupScramblerProps {
   sentences: any[];
-  task?: { type?: HomeworkType } | null;
+  task?: any | null;
   onComplete: () => void;
   onSkip: () => void;
   /** Wywoływany raz na każdą ukończoną (w pełni ułożoną) próbę — wywołujący decyduje, jak i czy zapisać próbę trwale. */
@@ -85,9 +85,12 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
     transitionLockRef.current = false;
   }, [currentIndex]);
 
-  // Słowa wzorcowe
+  // Słowa lub fragmenty wzorcowe
   const targetWords = useMemo(() => {
     if (!currentItem) return [];
+    if (currentItem.chunks && currentItem.chunks.length > 0) {
+      return currentItem.chunks;
+    }
     return extractWords(currentItem.targetSentence);
   }, [currentItem]);
 

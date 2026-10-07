@@ -40,6 +40,7 @@ export interface AdHocHomeworkBase {
   types: string[];
   instructions: string;
   sentences: unknown[];
+  warmup?: any[];
   dueDate: string;
   createdAt: string;
   origin: string;
@@ -78,6 +79,7 @@ export const buildAdHocHomeworkPayloads = (
       dueDate: base.dueDate,
       status: 'pending',
       sentences: base.sentences,
+      ...(base.warmup !== undefined ? { warmup: base.warmup } : {}),
       manualEmailConfirmationRequired: true,
       skipAutoEmail: true,
       emailNotificationSent: false,

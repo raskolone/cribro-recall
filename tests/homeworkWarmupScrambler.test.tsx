@@ -33,10 +33,12 @@ const sentences = [
   {
     chunks: ROUND_1_WORDS,
     correctSentence: ROUND_1_WORDS.join(' '),
+    polishHint: 'Pierwsze zdanie.',
   },
   {
     chunks: ROUND_2_WORDS,
     correctSentence: ROUND_2_WORDS.join(' '),
+    polishHint: 'Drugie zdanie.',
   },
 ];
 
@@ -109,3 +111,5 @@ test('HomeworkWarmupScrambler: przycisk "Dalej" jest aktywny również przy wyni
 
   cleanup();
 });
+
+

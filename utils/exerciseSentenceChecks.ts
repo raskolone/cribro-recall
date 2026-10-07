@@ -205,3 +205,154 @@ export const collectValidFixSentences = async (
     retried: true,
   };
 };
+
+// ---------------------------------------------------------------------------
+// Rozgrzewka (WarmupExercise)
+// ---------------------------------------------------------------------------
+
+export type WarmupExerciseRejection =
+  | 'missing_fields'
+  | 'missing_polish_translation'
+  | 'invalid_chunk_count'
+  | 'invalid_word_count_in_chunk'
+  | 'duplicate_chunks'
+  | 'chunks_dont_match_sentence'
+  | 'topic_as_subject';
+
+/** Powód, dla którego rozgrzewka (cała lub jej element) nie trafiła do pracy. */
+export type WarmupFailureReason =
+  | WarmupExerciseRejection
+  | 'sentence_repeated'
+  | 'unnatural_sentence'
+  | 'no_items'
+  | 'model_error';
+
+export const WARMUP_FAILURE_LABELS: Record<WarmupFailureReason, string> = {
+  missing_fields: 'brak fragmentów lub zdania',
+  missing_polish_translation: 'brak polskiego tłumaczenia',
+  invalid_chunk_count: 'zła liczba fragmentów (potrzeba 3–5)',
+  invalid_word_count_in_chunk: 'fragment ma mniej niż 2 lub więcej niż 4 słowa',
+  duplicate_chunks: 'powtórzony fragment w jednym zdaniu',
+  chunks_dont_match_sentence: 'fragmenty nie składają się na zdanie',
+  topic_as_subject: 'tytuł tematu użyty jako podmiot zdania',
+  sentence_repeated: 'zdanie powtarza zdanie z pracy',
+  unnatural_sentence: 'nienaturalne zdanie',
+  no_items: 'model nie zwrócił żadnych zdań',
+  model_error: 'błąd modelu',
+};
+
+/** Czytelny powód (powody) niepowodzenia rozgrzewki do pokazania lektorowi. */
+export const describeWarmupFailure = (reasons: WarmupFailureReason[]): string => {
+  const unique = Array.from(new Set(reasons));
+  if (unique.length === 0) return 'brak poprawnych zdań';
+  return unique.map((r) => WARMUP_FAILURE_LABELS[r]).join('; ');
+};
+
+export type WarmupExerciseCheck =
+  | { ok: true; item: { chunks: string[]; correctSentence: string; polishTranslation: string } }
+  | { ok: false; reason: WarmupExerciseRejection };
+
+const countWords = (text: string): number => text.trim().split(/\s+/).length;
+
+/** Porównanie złożenia: bez wielkości liter, końcowej interpunkcji i nadmiarowych spacji. */
+const normalizeAssembly = (text: string): string =>
+  text
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/[\s.!?…]+$/, '')
+    .toLowerCase();
+
+const SUBJECT_DETERMINERS = new Set(['my', 'your', 'our', 'his', 'her', 'their', 'its', 'the', 'a', 'an', 'this', 'that']);
+
+const topicWords = (text: string): string[] => {
+  const words = normalizeSentence(text).split(' ').filter(Boolean);
+  while (words.length > 0 && SUBJECT_DETERMINERS.has(words[0])) words.shift();
+  return words;
+};
+
+/** Tytuły tematów z materiału zbudowanego przez `buildSourceText` (linie „LEKCJA (data): temat"). */
+export const extractLessonTopics = (sourceText: string): string[] => {
+  const topics: string[] = [];
+  for (const match of sourceText.matchAll(/^LEKCJA \([^)]*\):[ \t]*(.+)$/gm)) {
+    const topic = match[1].trim();
+    if (topic) topics.push(topic);
+  }
+  return topics;
+};
+
+/**
+ * Czy zdanie zaczyna się od tytułu tematu (lub jego frazy z co najmniej dwóch
+ * słów) użytego jako podmiot — np. „My ideal home would like…" przy temacie
+ * „Describing your ideal home". Porównanie bez wielkości liter i bez
+ * wiodącego zaimka dzierżawczego/przedimka po obu stronach.
+ */
+export const startsWithTopicAsSubject = (firstChunk: string, topics: string[]): boolean => {
+  const head = topicWords(firstChunk);
+  if (head.length === 0) return false;
+  for (const topic of topics) {
+    const words = topicWords(topic);
+    for (let start = 0; start < words.length; start++) {
+      const phrase = words.slice(start);
+      if (phrase.length < 2) break;
+      // Cały tytuł (od `start`) albo jego początek z co najmniej dwóch słów.
+      for (let end = phrase.length; end >= 2; end--) {
+        const candidate = phrase.slice(0, end);
+        if (candidate.length <= head.length && candidate.every((w, i) => head[i] === w)) return true;
+      }
+    }
+  }
+  return false;
+};
+
+export const checkWarmupExerciseItem = (raw: unknown, topics: string[] = []): WarmupExerciseCheck => {
+  if (!raw || typeof raw !== 'object') return { ok: false, reason: 'missing_fields' };
+  const source = raw as Record<string, unknown>;
+
+  const chunks = Array.isArray(source.chunks)
+    ? source.chunks.map((c) => String(c).replace(/\s+/g, ' ').trim()).filter(Boolean)
+    : [];
+  const correctSentence = pickString(source, 'correct_sentence', 'correctSentence');
+  const polishTranslation = pickString(source, 'polish_translation', 'polishTranslation');
+
+  if (chunks.length === 0 || !correctSentence) {
+    return { ok: false, reason: 'missing_fields' };
+  }
+
+  if (!polishTranslation) {
+    return { ok: false, reason: 'missing_polish_translation' };
+  }
+
+  if (chunks.length < 3 || chunks.length > 5) {
+    return { ok: false, reason: 'invalid_chunk_count' };
+  }
+
+  for (const chunk of chunks) {
+    const words = countWords(chunk);
+    if (words < 2 || words > 4) {
+      return { ok: false, reason: 'invalid_word_count_in_chunk' };
+    }
+  }
+
+  if (new Set(chunks).size !== chunks.length) {
+    return { ok: false, reason: 'duplicate_chunks' };
+  }
+
+  const assembled = chunks.join(' ');
+  if (normalizeAssembly(assembled) !== normalizeAssembly(correctSentence)) {
+    return { ok: false, reason: 'chunks_dont_match_sentence' };
+  }
+
+  if (startsWithTopicAsSubject(chunks[0], topics)) {
+    return { ok: false, reason: 'topic_as_subject' };
+  }
+
+  return {
+    ok: true,
+    item: {
+      chunks,
+      // Dokładnie złożone fragmenty — tak ocenia classifyUnscrambleAttempt.
+      correctSentence: assembled,
+      polishTranslation,
+    },
+  };
+};

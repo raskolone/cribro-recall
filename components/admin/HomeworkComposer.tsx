@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, doc, getDocs, updateDoc } from 'firebase/firestore';
 import { AlertTriangle, Check, ChevronDown, ChevronUp, Loader2, Send, Sparkles, Trash2 } from 'lucide-react';
 import { db } from '../../firebase';
-import { HomeworkType, LessonRecord, User, Group, GroupHomeworkFanOutResult } from '../../types';
+import { HomeworkType, LessonRecord, User, Group, GroupHomeworkFanOutResult, WarmupDraftItem } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
 import { buildGroupSourceLessons } from '../../utils/groupLessonHistory';
 import { getAllUsers } from '../../services/userService';
@@ -12,7 +12,10 @@ import {
   HOMEWORK_TYPE_LABELS,
   OFFERED_HOMEWORK_TYPES,
   generateHomeworkSet,
+  generateWarmupExercises,
 } from '../../services/homeworkGenerator';
+import { WarmupFailureReason, describeWarmupFailure } from '../../utils/exerciseSentenceChecks';
+import { removeWarmupItem, resolveWarmupField, warmupFieldEntry } from '../../utils/warmupField';
 import { taskOwnerFields } from '../../utils/homework';
 import { cleanVocabularyTopic, splitVocabularyLines } from '../../utils/vocabulary';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
@@ -74,7 +77,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
   const [sourceMode, setSourceMode] = useState<SourceMode>('lessons');
   const [pastedText, setPastedText] = useState('');
-  const [types, setTypes] = useState<HomeworkType[]>(['translation', 'word_order']);
+  const [types, setTypes] = useState<HomeworkType[]>(['translation']);
   const [perType, setPerType] = useState(5);
   const [instruction, setInstruction] = useState('');
   const [dueDate, setDueDate] = useState(() => todayPlusDays(7));
@@ -83,6 +86,11 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
   const [isAssigning, setIsAssigning] = useState(false);
   const [error, setError] = useState('');
   const [sections, setSections] = useState<GeneratedSection[]>([]);
+  const [warmup, setWarmup] = useState<WarmupDraftItem[]>([]);
+  const [includeWarmup, setIncludeWarmup] = useState(true);
+  const [warmupReasons, setWarmupReasons] = useState<WarmupFailureReason[]>([]);
+  const [warmupContext, setWarmupContext] = useState<{ sourceText: string; used: string[] } | null>(null);
+  const [isRetryingWarmup, setIsRetryingWarmup] = useState(false);
   const [modelUsed, setModelUsed] = useState<string>('');
   const [assignedCount, setAssignedCount] = useState(0);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -214,6 +222,9 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     setIsGenerating(true);
     setError('');
     setSections([]);
+    setWarmup([]);
+    setWarmupReasons([]);
+    setWarmupContext(null);
     setAssignedCount(0);
     try {
       const result = await generateHomeworkSet({
@@ -231,6 +242,10 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         studentId: recipientMode === 'group' ? undefined : studentId,
       });
       setSections(result.sections);
+      setWarmup(result.warmup || []);
+      setIncludeWarmup(true);
+      setWarmupReasons(result.warmupReasons || []);
+      setWarmupContext({ sourceText: result.sourceText, used: result.usedSentences || [] });
       setModelUsed(result.modelUsed || '');
       if (result.sections.every((s) => s.items.length === 0)) {
         setError('Model nie zwrócił żadnych zadań. Spróbuj ponownie albo zmień materiał.');
@@ -239,6 +254,18 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
       setError(e?.message || 'Nie udało się ułożyć zadań.');
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleRetryWarmup = async () => {
+    if (!warmupContext || isRetryingWarmup) return;
+    setIsRetryingWarmup(true);
+    try {
+      const result = await generateWarmupExercises(warmupContext.sourceText, warmupContext.used);
+      setWarmup(result.items);
+      setWarmupReasons(result.reasons);
+    } finally {
+      setIsRetryingWarmup(false);
     }
   };
 
@@ -318,6 +345,8 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         ? `Praca domowa: ${sourceLabel}`
         : 'Praca domowa';
 
+      const finalWarmup = resolveWarmupField(includeWarmup, warmup);
+
       if (recipientMode === 'group' && groupId) {
         // Obsługa Fan-outu dla całej grupy
         const token = await auth.currentUser?.getIdToken();
@@ -336,6 +365,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
             sentences: items,
             dueDate,
             origin,
+            ...warmupFieldEntry(finalWarmup),
           }),
         });
 
@@ -371,6 +401,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
             instructions: usable.map((section) => HOMEWORK_TYPE_LABELS[section.type].hint.pl).join(' '),
             sentences: items,
             dueDate,
+            ...warmupFieldEntry(finalWarmup),
             createdAt: nowIso,
             origin: originUrl,
           },
@@ -437,6 +468,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         dueDate,
         status: 'pending' as const,
         sentences: items,
+        ...warmupFieldEntry(finalWarmup),
         manualEmailConfirmationRequired: true,
         skipAutoEmail: true,
         emailNotificationSent: false,
@@ -844,6 +876,79 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
       {sections.length > 0 && (
         <section className="rounded-2xl border border-white/10 bg-base-200/40 p-4 sm:p-5 space-y-4">
           {stepLabel(4, 'Sprawdź i przypisz')}
+
+          {(
+            <div className="space-y-2 p-3.5 rounded-xl bg-base-100/30 border border-white/10">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-5 h-5 rounded bg-primary/20 text-primary text-[11px] font-mono font-bold flex items-center justify-center">
+                    R
+                  </span>
+                  <h4 className="text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-white">
+                    Rozgrzewka{warmup.length > 0 ? ` · ${warmup.length} zdań` : ''}
+                  </h4>
+                </div>
+                <label className="flex items-center gap-2 text-[12px] font-bold cursor-pointer text-content hover:text-white">
+                  Dołącz rozgrzewkę
+                  <input
+                    type="checkbox"
+                    checked={includeWarmup}
+                    onChange={(e) => setIncludeWarmup(e.target.checked)}
+                    className="toggle toggle-primary toggle-sm"
+                  />
+                </label>
+              </div>
+
+              {includeWarmup && warmup.length === 0 && (
+                <div className="flex flex-wrap items-center gap-2 text-[13px] text-content">
+                  <span className="flex-1 min-w-0">
+                    Rozgrzewka nie została wygenerowana: {describeWarmupFailure(warmupReasons)}. Praca zostanie wysłana ze zwykłą rozgrzewką.
+                  </span>
+                  {warmupContext && (
+                    <button
+                      type="button"
+                      onClick={handleRetryWarmup}
+                      disabled={isRetryingWarmup}
+                      className="px-3 py-1.5 rounded-lg border border-white/15 text-[12px] font-bold hover:bg-white/10 disabled:opacity-50 transition-colors"
+                    >
+                      {isRetryingWarmup ? 'Generuję…' : 'Spróbuj ponownie'}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {includeWarmup && warmup.length > 0 && (
+                <ul className="space-y-1.5">
+                  {warmup.map((item, index) => (
+                    <li
+                      key={index}
+                      className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100/60 border border-white/[0.07]"
+                    >
+                      <span className="w-6 h-6 rounded-md bg-base-300/80 text-content-muted text-xs font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {index + 1}
+                      </span>
+                      <span className="flex-1 min-w-0 text-sm text-content leading-snug">
+                        <span className="block text-content-muted text-[13px]">{item.polishTranslation}</span>
+                        <span className="block text-white font-semibold">{item.chunks.join(' ')}</span>
+                        {item.unverified && (
+                          <span className="inline-block mt-1 px-1.5 py-0.5 rounded border border-white/15 text-content-muted text-[11px] font-bold">
+                            niezweryfikowane
+                          </span>
+                        )}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setWarmup((prev) => removeWarmupItem(prev, index))}
+                        className="px-2 py-1 rounded-lg border border-white/15 text-[12px] font-bold hover:bg-white/10 transition-colors shrink-0"
+                      >
+                        Usuń
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
 
           {sections.map((section, sIdx) => (
             <div key={section.type} className="space-y-2 p-3.5 rounded-xl bg-base-100/30 border border-white/10">

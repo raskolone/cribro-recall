@@ -16,9 +16,10 @@ import {
   Sparkles,
   GraduationCap
 } from 'lucide-react';
-import { HomeworkType } from '../../types';
+import { HomeworkType, WarmupExercise } from '../../types';
 import HomeworkExercise from './HomeworkExercise';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
+import { buildWarmupRounds } from '../../utils/warmupRounds';
 import ConstellationBackground from '../ui/ConstellationBackground';
 import { toPolishVocative } from '../../utils/polishVocative';
 import { formatStudentDisplayName, isRawId } from '../../utils/studentFormat';
@@ -48,6 +49,8 @@ interface DirectTaskData {
   instructions?: string;
   studentName: string;
   sentences: DirectTaskSentence[];
+  /** Brak pola = stara rozgrzewka ze `sentences`; `[]` = bez rozgrzewki. */
+  warmup?: WarmupExercise[];
   evaluationResults?: any[];
   studentAnswers?: any[];
   submittedAt?: string | null;
@@ -63,6 +66,7 @@ export const DirectHomeworkScreen: React.FC = () => {
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [errorType, setErrorType] = useState<'expired' | 'not_found' | 'server_error' | null>(null);
   const [task, setTask] = useState<DirectTaskData | null>(null);
+  const hasWarmup = useMemo(() => buildWarmupRounds(task?.sentences || [], task).length > 0, [task]);
   const [token, setToken] = useState<string>('');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -536,27 +540,31 @@ export const DirectHomeworkScreen: React.FC = () => {
           )}
         </div>
 
-        <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/25 rounded-2xl p-4 sm:p-5 space-y-2.5 relative z-10">
-          <div className="flex items-center gap-2">
-            <span className="text-lg">🧩</span>
-            <h4 className="text-sm font-bold text-emerald-300">
-              Czy chcesz zacząć od rozgrzewki?
-            </h4>
+        {hasWarmup && (
+          <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/25 rounded-2xl p-4 sm:p-5 space-y-2.5 relative z-10">
+            <div className="flex items-center gap-2">
+              <span className="text-lg">🧩</span>
+              <h4 className="text-sm font-bold text-emerald-300">
+                Czy chcesz zacząć od rozgrzewki?
+              </h4>
+            </div>
+            <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
+              Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb angielskiego i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.
+            </p>
           </div>
-          <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
-            Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb angielskiego i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.
-          </p>
-        </div>
+        )}
 
         <div className="space-y-2.5 pt-1 relative z-10">
-          <button
-            type="button"
-            onClick={() => setWarmupPhase('scrambler')}
-            className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-          >
-            <span>🚀 Zacznij od rozgrzewki (Zalecane)</span>
-            <ArrowRight size={16} />
-          </button>
+          {hasWarmup && (
+            <button
+              type="button"
+              onClick={() => setWarmupPhase('scrambler')}
+              className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+            >
+              <span>🚀 Zacznij od rozgrzewki (Zalecane)</span>
+              <ArrowRight size={16} />
+            </button>
+          )}
 
           <button
             type="button"

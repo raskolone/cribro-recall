@@ -212,7 +212,8 @@ import { fetchNotionBlocksText } from "./utils/notionBlocksFetcher";
 import { isJunkIsoTopic, formatLessonDateDDMMYYYY } from "./utils/lessonDisplay";
 import { Group, GroupWithMembers, GroupMemberPreview, GroupHomeworkFanOutResult, GroupHomeworkAssignmentItem } from "./types/group";
 import { buildNewGroupPayload, MissingTeacherProfileError } from "./utils/groupPayload";
-import { evaluateDirectHomework } from "./utils/directHomeworkEvaluation";
+import { evaluateDirectHomework, stripUndefinedDeep } from "./utils/directHomeworkEvaluation";
+import { sanitizeWarmup } from "./utils/warmupSanitize";
 import crypto from 'crypto';
 let pdfParse: any;
 try {
@@ -900,6 +901,8 @@ export function createApp() {
       const groupId = req.params.id as string;
       const callerUid = (req as any).adminUid as string;
       const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
+      // undefined = pole pominięte (stara rozgrzewka), [] = brak rozgrzewki.
+      const warmup = sanitizeWarmup(req.body?.warmup);
 
       if (!callerUid) {
         return res.status(401).json({ error: 'missing_teacher_profile', message: 'Nie udało się zidentyfikować profilu lektora. Zaloguj się ponownie.' });
@@ -978,7 +981,7 @@ export function createApp() {
         const taskDocRef = adminDb.collection('specialTasks').doc(taskId);
         const directTokenRef = adminDb.collection('directHomeworkTokens').doc(tokenHash);
 
-        const taskPayload = {
+        const taskPayload = stripUndefinedDeep({
           id: taskId,
           homeworkSetId,
           groupId,
@@ -992,6 +995,7 @@ export function createApp() {
           types: Array.isArray(types) ? types : [type || 'mixed'],
           instructions: instructions || '',
           sentences,
+          warmup,
           accessToken: rawToken, // Dla kompatybilności wstecznej z /hw?token=
           accessTokenHash: tokenHash,
           accessExpiresAt: expiresAt,
@@ -999,7 +1003,7 @@ export function createApp() {
           assignedBy: callerUid,
           createdAt: nowIso,
           updatedAt: nowIso,
-        };
+        });
 
         // 1. Zapis zadania w specialTasks
         batch.set(taskDocRef, taskPayload);
@@ -1606,6 +1610,7 @@ export function createApp() {
       }));
 
       const isAlreadySubmitted = taskData.status === 'submitted' || taskData.status === 'graded' || taskData.status === 'completed';
+      const safeWarmup = sanitizeWarmup(taskData.warmup);
 
       return res.json({
         ok: true,
@@ -1620,6 +1625,7 @@ export function createApp() {
           studentName: studentDisplayName,
           studentId: studentUid,
           sentences: safeSentences,
+          ...(safeWarmup !== undefined ? { warmup: safeWarmup } : {}),
           studentAnswers: isAlreadySubmitted ? taskData.studentAnswers : undefined,
           evaluationResults: isAlreadySubmitted ? taskData.evaluationResults : undefined,
           submittedAt: taskData.submittedAt || null,

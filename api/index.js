@@ -668,8 +668,8 @@ ${didacticText}`;
     [SCENARIO_FORMATTING_MODEL, ...geminiModelCascade]
   );
   if (!response.text) throw new Error("Brak odpowiedzi z modelu formatuj\u0105cego AI.");
-  const cleanText = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-  const parsed = JSON.parse(cleanText);
+  const cleanText2 = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText2);
   validateScenarioModelOutput(parsed);
   return buildLessonScenario(
     parsed,
@@ -810,8 +810,8 @@ WYMAGANIA DOTYCZ\u0104CE WYGENEROWANYCH TRE\u015ACI:
   if (!text) {
     throw new Error("Brak odpowiedzi z modelu Gemini podczas personalizacji lekcji.");
   }
-  const cleanText = String(text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-  const parsed = JSON.parse(cleanText);
+  const cleanText2 = String(text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText2);
   return parsed;
 }
 
@@ -1205,8 +1205,8 @@ ${reviewableItems.map((it) => `- itemId="${it.itemId}" [${it.blockId}/${it.kind}
     [CANVAS_AUDITOR_MODEL, ...opts.geminiModelCascade]
   );
   if (!auditorResponse.text) return canvas;
-  const cleanText = String(auditorResponse.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-  const parsed = JSON.parse(cleanText);
+  const cleanText2 = String(auditorResponse.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText2);
   validateCanvasAuditorOutput(parsed, canvas);
   return applyCanvasAuditorPatch(canvas, parsed.patches);
 }
@@ -1252,8 +1252,8 @@ Zwr\xF3\u0107 ka\u017Cdy nowy punkt z tym samym "kind" co orygina\u0142, chyba \
     [CANVAS_REFRESH_MODEL, ...geminiModelCascade]
   );
   if (!response.text) throw new Error("Brak odpowiedzi z modelu Lesson Refresh AI.");
-  const cleanText = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-  const parsed = JSON.parse(cleanText);
+  const cleanText2 = String(response.text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const parsed = JSON.parse(cleanText2);
   validateCanvasRefreshOutput(parsed, rejectedItemIds);
   return applyLessonRefresh(canvas, parsed, mutationId, (/* @__PURE__ */ new Date()).toISOString());
 }
@@ -2906,6 +2906,47 @@ var evaluateDirectHomework = (items, answers, taskType) => {
   };
 };
 
+// utils/warmupSanitize.ts
+var WARMUP_MAX_ITEMS = 5;
+var WARMUP_MIN_CHUNKS = 3;
+var WARMUP_MAX_CHUNKS = 5;
+var WARMUP_MAX_CHUNK_LENGTH = 80;
+var WARMUP_MAX_SENTENCE_LENGTH = 250;
+var WARMUP_MAX_TRANSLATION_LENGTH = 300;
+var cleanText = (value, maxLength) => {
+  if (typeof value !== "string") return null;
+  const text = value.trim().replace(/\s+/g, " ");
+  if (!text || text.length > maxLength) return null;
+  return text;
+};
+var sanitizeWarmupItem = (raw) => {
+  if (!raw || typeof raw !== "object") return null;
+  const source = raw;
+  if (!Array.isArray(source.chunks)) return null;
+  if (source.chunks.length < WARMUP_MIN_CHUNKS || source.chunks.length > WARMUP_MAX_CHUNKS) return null;
+  const chunks = [];
+  for (const chunk of source.chunks) {
+    const text = cleanText(chunk, WARMUP_MAX_CHUNK_LENGTH);
+    if (!text) return null;
+    chunks.push(text);
+  }
+  const correctSentence = cleanText(source.correctSentence, WARMUP_MAX_SENTENCE_LENGTH);
+  const polishTranslation = cleanText(source.polishTranslation, WARMUP_MAX_TRANSLATION_LENGTH);
+  if (!correctSentence || !polishTranslation) return null;
+  return { chunks, correctSentence, polishTranslation };
+};
+var sanitizeWarmup = (input) => {
+  if (!Array.isArray(input)) return void 0;
+  if (input.length === 0) return [];
+  const valid = [];
+  for (const item of input) {
+    const clean = sanitizeWarmupItem(item);
+    if (clean) valid.push(clean);
+    if (valid.length >= WARMUP_MAX_ITEMS) break;
+  }
+  return valid.length > 0 ? stripUndefinedDeep(valid) : void 0;
+};
+
 // server.ts
 import crypto from "crypto";
 function mapToActualOpenAIModel(modelName) {
@@ -3568,6 +3609,7 @@ function createApp() {
       const groupId = req.params.id;
       const callerUid = req.adminUid;
       const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
+      const warmup = sanitizeWarmup(req.body?.warmup);
       if (!callerUid) {
         return res.status(401).json({ error: "missing_teacher_profile", message: "Nie uda\u0142o si\u0119 zidentyfikowa\u0107 profilu lektora. Zaloguj si\u0119 ponownie." });
       }
@@ -3628,7 +3670,7 @@ function createApp() {
         const taskId = `task_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
         const taskDocRef = adminDb.collection("specialTasks").doc(taskId);
         const directTokenRef = adminDb.collection("directHomeworkTokens").doc(tokenHash);
-        const taskPayload = {
+        const taskPayload = stripUndefinedDeep({
           id: taskId,
           homeworkSetId,
           groupId,
@@ -3642,6 +3684,7 @@ function createApp() {
           types: Array.isArray(types) ? types : [type || "mixed"],
           instructions: instructions || "",
           sentences,
+          warmup,
           accessToken: rawToken,
           // Dla kompatybilności wstecznej z /hw?token=
           accessTokenHash: tokenHash,
@@ -3650,7 +3693,7 @@ function createApp() {
           assignedBy: callerUid,
           createdAt: nowIso,
           updatedAt: nowIso
-        };
+        });
         batch.set(taskDocRef, taskPayload);
         batch.set(directTokenRef, {
           taskId,
@@ -4097,6 +4140,7 @@ function createApp() {
         explanation: s.explanation || ""
       }));
       const isAlreadySubmitted = taskData.status === "submitted" || taskData.status === "graded" || taskData.status === "completed";
+      const safeWarmup = sanitizeWarmup(taskData.warmup);
       return res.json({
         ok: true,
         task: {
@@ -4110,6 +4154,7 @@ function createApp() {
           studentName: studentDisplayName,
           studentId: studentUid,
           sentences: safeSentences,
+          ...safeWarmup !== void 0 ? { warmup: safeWarmup } : {},
           studentAnswers: isAlreadySubmitted ? taskData.studentAnswers : void 0,
           evaluationResults: isAlreadySubmitted ? taskData.evaluationResults : void 0,
           submittedAt: taskData.submittedAt || null,
@@ -6881,9 +6926,9 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
         }
       }, AI_MODEL_CASCADE);
       if (!response.text) throw new Error("No response from AI");
-      let cleanText = response.text;
-      cleanText = cleanText.replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
-      res.json(JSON.parse(cleanText));
+      let cleanText2 = response.text;
+      cleanText2 = cleanText2.replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+      res.json(JSON.parse(cleanText2));
     } catch (err) {
       console.error("Error in student-stats-summary endpoint:", err);
       res.status(500).json({ error: formatErrorString(err) });

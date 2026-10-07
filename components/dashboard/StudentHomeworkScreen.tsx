@@ -36,6 +36,7 @@ import { useDraftAnswers } from '../../hooks/useDraftAnswers';
 import { normalizeLevel } from '../../utils/learningCurve';
 import HomeworkExercise from './HomeworkExercise';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
+import { buildWarmupRounds } from '../../utils/warmupRounds';
 import { buildHomeworkWelcomeGreeting } from '../../utils/homeworkWelcome';
 import TakeTestScreen from '../tests/TakeTestScreen';
 import { exportTestToPDF } from '../../utils/pdfExport';
@@ -235,6 +236,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<SpecialTask | null>(null);
   const [warmupPhase, setWarmupPhase] = useState<'welcome' | 'scrambler' | 'exercises'>('welcome');
+  const hasWarmup = useMemo(() => buildWarmupRounds(activeTask?.sentences || [], activeTask).length > 0, [activeTask]);
   const [index, setIndex] = useState(0);
   // Odpowiedzi przeżywają zamknięcie karty: zadanie robi się między innymi
   // sprawami, a przerwanie nie może kasować dziesięciu rozwiązanych zdań.
@@ -1284,28 +1286,32 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             </div>
 
             {/* Warm-up Callout */}
-            <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/25 rounded-2xl p-4 sm:p-5 space-y-2.5 relative z-10">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">🧩</span>
-                <h4 className="text-sm font-bold text-emerald-300">
-                  Czy chcesz zacząć od rozgrzewki?
-                </h4>
+            {hasWarmup && (
+              <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border border-emerald-500/25 rounded-2xl p-4 sm:p-5 space-y-2.5 relative z-10">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">🧩</span>
+                  <h4 className="text-sm font-bold text-emerald-300">
+                    Czy chcesz zacząć od rozgrzewki?
+                  </h4>
+                </div>
+                <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
+                  Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb myślenia po angielsku i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.
+                </p>
               </div>
-              <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
-                Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb myślenia po angielsku i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.
-              </p>
-            </div>
+            )}
 
             {/* Action Buttons (Mobile-first large targets) */}
             <div className="space-y-2.5 pt-1 relative z-10">
-              <button
-                type="button"
-                onClick={() => setWarmupPhase('scrambler')}
-                className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
-              >
-                <span>🚀 Zacznij od rozgrzewki (Zalecane)</span>
-                <ArrowRight size={16} />
-              </button>
+              {hasWarmup && (
+                <button
+                  type="button"
+                  onClick={() => setWarmupPhase('scrambler')}
+                  className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
+                >
+                  <span>🚀 Zacznij od rozgrzewki (Zalecane)</span>
+                  <ArrowRight size={16} />
+                </button>
+              )}
 
               <button
                 type="button"
