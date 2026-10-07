@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, doc, getDocs, updateDoc } from 'firebase/firestore';
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Loader2, Send, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronUp, Loader2, Pencil, RefreshCw, Send, Sparkles, Trash2 } from 'lucide-react';
+import i18n from 'i18next';
 import { db } from '../../firebase';
 import { HomeworkType, LessonRecord, User, Group, GroupHomeworkFanOutResult, WarmupDraftItem } from '../../types';
 import { getLessonRecordsForStudent } from '../../services/lessonRecord';
@@ -13,10 +14,28 @@ import {
   OFFERED_HOMEWORK_TYPES,
   generateHomeworkSet,
   generateWarmupExercises,
+  regenerateItems,
 } from '../../services/homeworkGenerator';
 import { WarmupFailureReason, describeWarmupFailure } from '../../utils/exerciseSentenceChecks';
 import { removeWarmupItem, resolveWarmupField, warmupFieldEntry } from '../../utils/warmupField';
 import { taskOwnerFields } from '../../utils/homework';
+import {
+  EDIT_FIELDS,
+  EDIT_FIELD_MAX_LENGTH,
+  EDIT_NOTE_MAX_LENGTH,
+  EditError,
+  SUGGESTION_MAX_LENGTH,
+  applyRegenerationResults,
+  assignUids,
+  buildRegenerationExclusions,
+  flattenSectionsForSave,
+  isEditableType,
+  moveItemByUid,
+  removeItemByUid,
+  sanitizeSuggestion,
+  updateItemByUid,
+  validateItemEdit,
+} from '../../utils/homeworkItems';
 import { cleanVocabularyTopic, splitVocabularyLines } from '../../utils/vocabulary';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
 import { generateSecureHomeworkToken, generateSecureToken } from '../../utils/token';
@@ -91,6 +110,23 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
   const [warmupReasons, setWarmupReasons] = useState<WarmupFailureReason[]>([]);
   const [warmupContext, setWarmupContext] = useState<{ sourceText: string; used: string[] } | null>(null);
   const [isRetryingWarmup, setIsRetryingWarmup] = useState(false);
+  // Zaznaczanie, edycja i regeneracja pojedynczych elementów (po `uid`, nie po indeksie).
+  const [selectedUids, setSelectedUids] = useState<string[]>([]);
+  const [suggestion, setSuggestion] = useState('');
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [regenNotices, setRegenNotices] = useState<string[]>([]);
+  const [editingUid, setEditingUid] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<Record<string, string>>({});
+  const [editErrors, setEditErrors] = useState<EditError[]>([]);
+  // Plakietka „edytowany" — tylko w kreatorze, nie trafia do dokumentu.
+  const [editedUids, setEditedUids] = useState<string[]>([]);
+  // Dane pierwszego generowania potrzebne do regeneracji (te same wytyczne i poziom).
+  const [generationParams, setGenerationParams] = useState<{
+    instruction?: string;
+    level: string;
+    studentId?: string;
+    perType: number;
+  } | null>(null);
   const [modelUsed, setModelUsed] = useState<string>('');
   const [assignedCount, setAssignedCount] = useState(0);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
@@ -226,6 +262,10 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     setWarmupReasons([]);
     setWarmupContext(null);
     setAssignedCount(0);
+    setSelectedUids([]);
+    setRegenNotices([]);
+    setEditingUid(null);
+    setEditedUids([]);
     try {
       const result = await generateHomeworkSet({
         source:
@@ -241,7 +281,13 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         // Dla grupy nie ma jednego kursanta — zostaje poziom grupy.
         studentId: recipientMode === 'group' ? undefined : studentId,
       });
-      setSections(result.sections);
+      setSections(assignUids(result.sections));
+      setGenerationParams({
+        instruction: instruction.trim() || undefined,
+        level: (recipientMode === 'group' ? group?.level : student?.level) || 'B1',
+        studentId: recipientMode === 'group' ? undefined : studentId,
+        perType,
+      });
       setWarmup(result.warmup || []);
       setIncludeWarmup(true);
       setWarmupReasons(result.warmupReasons || []);
@@ -269,14 +315,10 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     }
   };
 
-  const removeItem = (type: HomeworkType, index: number) => {
-    setSections((prev) =>
-      prev.map((section) =>
-        section.type === type
-          ? { ...section, items: section.items.filter((_, i) => i !== index) }
-          : section
-      )
-    );
+  const removeItem = (type: HomeworkType, uid: string) => {
+    setSections((prev) => removeItemByUid(prev, type, uid));
+    setSelectedUids((prev) => prev.filter((id) => id !== uid));
+    if (editingUid === uid) setEditingUid(null);
   };
 
   const moveSection = (index: number, direction: 'up' | 'down') => {
@@ -291,19 +333,91 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     });
   };
 
-  const moveItem = (type: HomeworkType, index: number, direction: 'up' | 'down') => {
-    setSections((prev) =>
-      prev.map((section) => {
-        if (section.type !== type) return section;
-        const target = direction === 'up' ? index - 1 : index + 1;
-        if (target < 0 || target >= section.items.length) return section;
-        const nextItems = [...section.items];
-        const temp = nextItems[index];
-        nextItems[index] = nextItems[target];
-        nextItems[target] = temp;
-        return { ...section, items: nextItems };
-      })
+  const moveItem = (type: HomeworkType, uid: string, direction: 'up' | 'down') => {
+    setSections((prev) => moveItemByUid(prev, type, uid, direction));
+  };
+
+  const toggleSelected = (uid: string) =>
+    setSelectedUids((prev) => (prev.includes(uid) ? prev.filter((id) => id !== uid) : [...prev, uid]));
+
+  const toggleSelectedAllInType = (type: HomeworkType) => {
+    const uids: string[] = (sections.find((section) => section.type === type)?.items || []).map((item) => item.uid);
+    setSelectedUids((prev) =>
+      uids.every((uid) => prev.includes(uid))
+        ? prev.filter((uid) => !uids.includes(uid))
+        : [...prev, ...uids.filter((uid) => !prev.includes(uid))]
     );
+  };
+
+  const startEdit = (type: HomeworkType, item: any) => {
+    if (isRegenerating || !isEditableType(type)) return;
+    const draft: Record<string, string> = {};
+    (EDIT_FIELDS[type] || []).forEach(({ field }) => {
+      draft[field] = String(item[field] ?? '');
+    });
+    setEditingUid(item.uid);
+    setEditDraft(draft);
+    setEditErrors([]);
+  };
+
+  const saveEdit = (type: HomeworkType, uid: string) => {
+    const result = validateItemEdit(type, editDraft);
+    if (result.ok === false) {
+      setEditErrors(result.errors);
+      return;
+    }
+    setSections((prev) => updateItemByUid(prev, type, uid, result.item));
+    setEditedUids((prev) => (prev.includes(uid) ? prev : [...prev, uid]));
+    setEditingUid(null);
+    setEditErrors([]);
+  };
+
+  const selectedInSections = useMemo(
+    () => sections.flatMap((section) => section.items.map((item) => item.uid)).filter((uid) => selectedUids.includes(uid)),
+    [sections, selectedUids]
+  );
+
+  const handleRegenerateSelected = async () => {
+    if (!warmupContext || !generationParams || selectedInSections.length === 0 || isRegenerating || editingUid) return;
+    setIsRegenerating(true);
+    setRegenNotices([]);
+    const requested = selectedInSections;
+    try {
+      const results = await regenerateItems({
+        sourceText: warmupContext.sourceText,
+        sections,
+        selectedUids: requested,
+        suggestion: sanitizeSuggestion(suggestion),
+        excludeSentences: buildRegenerationExclusions(sections, requested),
+        ...generationParams,
+      });
+      // Funkcyjnie, na aktualnych sekcjach: podmiana po `uid` trafia w ten sam element także po
+      // usunięciu lub przesunięciu innych w trakcie wywołania.
+      setSections((prev) => applyRegenerationResults(prev, results));
+      const replaced = results.flatMap((r) => (r.error ? [] : r.replacements.map((x) => x.uid)));
+      setEditedUids((prev) => prev.filter((uid) => !replaced.includes(uid)));
+      setRegenNotices(
+        results.flatMap((r) => {
+          const label = HOMEWORK_TYPE_LABELS[r.type].pl;
+          if (r.error) return [i18n.t('Nie udało się ponownie wygenerować „{{label}}" — {{reason}}', { label, reason: r.error })];
+          if (r.partial) {
+            return [
+              i18n.t('{{label}} — wymieniono {{got}} z {{wanted}} zaznaczonych, reszta bez zmian', {
+                label,
+                got: r.partial.got,
+                wanted: r.partial.wanted,
+              }),
+            ];
+          }
+          return [];
+        })
+      );
+      setSelectedUids([]);
+    } catch (e: any) {
+      setRegenNotices([i18n.t('Nie udało się ponownie wygenerować zaznaczonych elementów — {{reason}}', { reason: e?.message || '' })]);
+    } finally {
+      setIsRegenerating(false);
+    }
   };
 
   const handleAssign = async () => {
@@ -332,9 +446,8 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
       // od początku do końca, a nie trzy osobne pozycje na liście. Ma to też
       // drugi skutek: powiadomienie e-mail wychodzi raz, bo wyzwala je
       // utworzenie dokumentu (functions/src/index.ts).
-      const items = usable.flatMap((section) =>
-        section.items.map((item: any) => ({ ...item, type: section.type }))
-      );
+      // `uid` jest tylko roboczy — flattenSectionsForSave zdejmuje go przed zapisem.
+      const items = flattenSectionsForSave(usable);
       const labels = usable.map((section) => HOMEWORK_TYPE_LABELS[section.type].pl);
       const singleType = usable.length === 1 ? usable[0].type : undefined;
       const title = singleType
@@ -960,6 +1073,20 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
                   <h4 className="text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-white">
                     {HOMEWORK_TYPE_LABELS[section.type].pl} · {section.items.length} {exerciseNoun(section.items.length)}
                   </h4>
+                  {section.items.length > 0 && (
+                    <label className="flex items-center gap-1.5 ml-2 text-[11px] font-bold text-content-muted cursor-pointer hover:text-text-hi">
+                      <input
+                        type="checkbox"
+                        checked={section.items.every((item) => selectedUids.includes(item.uid))}
+                        disabled={isRegenerating}
+                        onChange={() => toggleSelectedAllInType(section.type)}
+                        className="checkbox checkbox-xs"
+                      />
+                      {i18n.t('Zaznacz wszystko w typie')}
+                      {section.items.some((item) => selectedUids.includes(item.uid)) &&
+                        ` (${section.items.filter((item) => selectedUids.includes(item.uid)).length})`}
+                    </label>
+                  )}
                 </div>
                 {sections.length > 1 && (
                   <div className="flex items-center gap-1">
@@ -990,50 +1117,148 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
               )}
 
               <ul className="space-y-1.5">
-                {section.items.map((item, index) => (
-                  <li
-                    key={index}
-                    className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100/60 border border-white/[0.07] hover:border-white/15 transition-all"
-                  >
-                    <span className="w-6 h-6 rounded-md bg-base-300/80 text-content-muted text-xs font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
-                      {index + 1}
-                    </span>
-                    <span className="flex-1 min-w-0 text-sm text-content leading-snug">
-                      <ItemPreview type={section.type} item={item} />
-                    </span>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => moveItem(section.type, index, 'up')}
-                        disabled={index === 0}
-                        title="Przesuń zadanie wyżej"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
-                      >
-                        <ChevronUp size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveItem(section.type, index, 'down')}
-                        disabled={index === section.items.length - 1}
-                        title="Przesuń zadanie niżej"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
-                      >
-                        <ChevronDown size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeItem(section.type, index)}
-                        title="Usuń zadanie"
-                        className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-danger hover:bg-danger/10 transition-colors"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </li>
-                ))}
+                {section.items.map((item, index) => {
+                  const isSelected = selectedUids.includes(item.uid);
+                  const isEditing = editingUid === item.uid;
+                  const locked = isRegenerating && isSelected;
+                  const editable = isEditableType(section.type);
+                  return (
+                    <li
+                      key={item.uid}
+                      className={`flex items-start gap-2.5 p-3 rounded-xl bg-base-100/60 border transition-all ${
+                        isSelected ? 'border-primary/50' : 'border-white/[0.07] hover:border-white/15'
+                      } ${locked ? 'opacity-60' : ''}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={isRegenerating}
+                        onChange={() => toggleSelected(item.uid)}
+                        title={i18n.t('Zaznacz do ponownego wygenerowania')}
+                        className="checkbox checkbox-sm mt-1 shrink-0"
+                      />
+                      <span className="w-6 h-6 rounded-md bg-base-300/80 text-content-muted text-xs font-mono font-bold flex items-center justify-center shrink-0 mt-0.5">
+                        {index + 1}
+                      </span>
+                      <div className="flex-1 min-w-0 text-sm text-content leading-snug">
+                        {isEditing ? (
+                          <ItemEditForm
+                            type={section.type}
+                            draft={editDraft}
+                            errors={editErrors}
+                            onChange={(field, value) => setEditDraft((prev) => ({ ...prev, [field]: value }))}
+                            onSave={() => saveEdit(section.type, item.uid)}
+                            onCancel={() => {
+                              setEditingUid(null);
+                              setEditErrors([]);
+                            }}
+                          />
+                        ) : (
+                          <>
+                            <div
+                              role={editable && !isRegenerating ? 'button' : undefined}
+                              tabIndex={editable && !isRegenerating ? 0 : undefined}
+                              title={editable && !isRegenerating ? i18n.t('Kliknij, aby edytować') : undefined}
+                              onClick={() => startEdit(section.type, item)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') startEdit(section.type, item);
+                              }}
+                              className={editable && !isRegenerating ? 'cursor-text' : undefined}
+                            >
+                              <ItemPreview type={section.type} item={item} />
+                            </div>
+                            {editedUids.includes(item.uid) && (
+                              <span className="inline-block mt-1 px-1.5 py-0.5 rounded border border-white/15 text-content-muted text-[11px] font-bold">
+                                {i18n.t('edytowany')}
+                              </span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        {editable && !isEditing && (
+                          <button
+                            type="button"
+                            onClick={() => startEdit(section.type, item)}
+                            disabled={isRegenerating}
+                            title={i18n.t('Edytuj zadanie')}
+                            className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => moveItem(section.type, item.uid, 'up')}
+                          disabled={index === 0 || locked}
+                          title="Przesuń zadanie wyżej"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
+                        >
+                          <ChevronUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveItem(section.type, item.uid, 'down')}
+                          disabled={index === section.items.length - 1 || locked}
+                          title="Przesuń zadanie niżej"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-text-hi hover:bg-white/10 disabled:opacity-20 transition-colors"
+                        >
+                          <ChevronDown size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeItem(section.type, item.uid)}
+                          disabled={locked}
+                          title="Usuń zadanie"
+                          className="w-8 h-8 flex items-center justify-center rounded-lg text-content-muted hover:text-danger hover:bg-danger/10 disabled:opacity-20 transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           ))}
+
+          <div className="space-y-2 p-3.5 rounded-xl bg-base-100/30 border border-white/10">
+            <label className="block text-[12px] font-bold text-content-muted" htmlFor="regen-suggestion">
+              {i18n.t('Sugestia dla AI')}
+            </label>
+            <input
+              id="regen-suggestion"
+              type="text"
+              value={suggestion}
+              maxLength={SUGGESTION_MAX_LENGTH}
+              disabled={isRegenerating}
+              onChange={(e) => setSuggestion(e.target.value)}
+              className="w-full min-h-[2.75rem] px-3 bg-base-100 text-white border border-white/15 rounded-xl text-sm focus:border-primary focus:outline-none"
+            />
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleRegenerateSelected}
+                disabled={selectedInSections.length === 0 || isRegenerating || !warmupContext || !generationParams || Boolean(editingUid)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/15 text-[12px] font-bold hover:bg-white/10 disabled:opacity-40 transition-colors"
+              >
+                {isRegenerating ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw size={14} />}
+                {isRegenerating ? i18n.t('Generuję…') : i18n.t('Wygeneruj ponownie zaznaczone')}
+              </button>
+              <span className="text-[12px] text-content-muted">
+                {i18n.t('Zaznaczone ({{count}})', { count: selectedInSections.length })}
+                {editingUid ? ` · ${i18n.t('Zapisz lub anuluj edycję, aby wygenerować ponownie')}` : ''}
+              </span>
+              <span className="text-[11px] text-content-muted ml-auto">
+                {suggestion.length}/{SUGGESTION_MAX_LENGTH}
+              </span>
+            </div>
+            {regenNotices.map((notice, i) => (
+              <p key={i} className="text-[13px] text-warn">
+                {notice}
+              </p>
+            ))}
+          </div>
 
           <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-white/[0.07]">
             <label className="text-xs font-bold text-content-muted">Termin:</label>
@@ -1176,6 +1401,76 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     </div>
   );
 };
+
+const EDIT_FIELD_LABELS: Record<string, string> = {
+  polishSentence: 'Zdanie po polsku',
+  englishTranslation: 'Wersja angielska',
+  hint: 'Wskazówka',
+  incorrectSentence: 'Zdanie z błędem',
+  correctSentence: 'Poprawne zdanie',
+  polishHint: 'Znaczenie po polsku',
+  explanation: 'Wyjaśnienie',
+};
+
+const describeEditError = (error: EditError): string => {
+  const field = i18n.t(EDIT_FIELD_LABELS[error.field] || error.field);
+  if (error.code === 'required') return i18n.t('Pole „{{field}}" nie może być puste', { field });
+  if (error.code === 'too_long') {
+    return i18n.t('Pole „{{field}}" jest za długie (maksymalnie {{max}} znaków)', {
+      field,
+      max: error.field === 'hint' || error.field === 'explanation' ? EDIT_NOTE_MAX_LENGTH : EDIT_FIELD_MAX_LENGTH,
+    });
+  }
+  return i18n.t('Zdanie z błędem musi różnić się od poprawnego');
+};
+
+/** Edycja pól tekstowych jednego elementu; niepoprawna edycja nie zapisuje się, tylko pokazuje powód. */
+const ItemEditForm: React.FC<{
+  type: HomeworkType;
+  draft: Record<string, string>;
+  errors: EditError[];
+  onChange: (field: string, value: string) => void;
+  onSave: () => void;
+  onCancel: () => void;
+}> = ({ type, draft, errors, onChange, onSave, onCancel }) => (
+  <div className="space-y-2">
+    {(EDIT_FIELDS[type] || []).map(({ field, required }) => (
+      <label key={field} className="block">
+        <span className="block text-[11px] font-bold text-content-muted mb-0.5">
+          {i18n.t(EDIT_FIELD_LABELS[field] || field)}
+          {required ? ' *' : ''}
+        </span>
+        <input
+          type="text"
+          value={draft[field] ?? ''}
+          onChange={(e) => onChange(field, e.target.value)}
+          className="w-full min-h-[2.5rem] px-3 bg-base-100 text-white border border-white/15 rounded-lg text-sm focus:border-primary focus:outline-none"
+        />
+      </label>
+    ))}
+    {errors.map((error, i) => (
+      <p key={i} className="text-[12px] text-danger">
+        {describeEditError(error)}
+      </p>
+    ))}
+    <div className="flex gap-2">
+      <button
+        type="button"
+        onClick={onSave}
+        className="px-3 py-1.5 rounded-lg bg-primary text-accent-ink text-[12px] font-bold"
+      >
+        {i18n.t('Zapisz')}
+      </button>
+      <button
+        type="button"
+        onClick={onCancel}
+        className="px-3 py-1.5 rounded-lg border border-white/15 text-[12px] font-bold hover:bg-white/10"
+      >
+        {i18n.t('Anuluj')}
+      </button>
+    </div>
+  </div>
+);
 
 /** Jednolinijkowy podgląd zadania w kreatorze — lektor sprawdza treść, nie układ. */
 const ItemPreview: React.FC<{ type: HomeworkType; item: any }> = ({ type, item }) => {

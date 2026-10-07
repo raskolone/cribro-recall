@@ -30,6 +30,13 @@ import {
   WarmupFailureReason,
 } from '../utils/exerciseSentenceChecks';
 import { CRIBRO_SENTENCE_NATURALNESS, FIX_SENTENCE_RULES, buildFixSentenceRetryNote } from './cribroSentenceRules';
+import {
+  RegenerationTypeResult,
+  buildRegenerationInstruction,
+  collectItemSentences,
+  groupSelectedByType,
+  isRegeneratedItemValid,
+} from '../utils/homeworkItems';
 
 /**
  * Układanie pracy domowej z materiału lektora.
@@ -85,6 +92,8 @@ export interface HomeworkGenerationRequest {
    * zdania"). Wchodzą do promptu jako zakaz i odsiewają wynik.
    */
   excludeSentences?: string[];
+  /** Liczba par w jednym zestawie dopasowania; domyślnie wynika z `perType`. Używane przy regeneracji zestawu. */
+  pairCount?: number;
 }
 
 export interface GeneratedSection {
@@ -629,7 +638,7 @@ const generateMatching = async (
   sourceText: string,
   briefing?: string
 ): Promise<{ items: MatchingExercise[]; modelUsed: string }> => {
-  const pairCount = Math.max(4, Math.min(6, req.perType * 4));
+  const pairCount = req.pairCount ?? Math.max(4, Math.min(6, req.perType * 4));
   const prompt = `${baseContext(req, sourceText, briefing)}
 
 ZADANIE:
@@ -799,6 +808,30 @@ const generateGaps = async (
   return { items: result ? [result] : [], modelUsed: HOMEWORK_MODEL };
 };
 
+/** Profil kursanta z krzywej uczenia (briefing + poziom) albo sam poziom od lektora, gdy kursanta brak. */
+const resolveStudentContext = async (
+  req: HomeworkGenerationRequest
+): Promise<{ briefing?: string; level: string }> => {
+  const context = req.studentId ? await getStudentAiContext(req.studentId, req.level) : null;
+  return { briefing: context?.briefing, level: context?.level || req.level };
+};
+
+/**
+ * Runnery typów — te same funkcje, te same prompty, reguły jakości i walidacja przy pierwszym
+ * generowaniu i przy regeneracji. Dostają już policzony kontekst kursanta.
+ */
+const buildRunners = (
+  sourceText: string,
+  briefing: string | undefined,
+  level: string
+): Record<string, (subReq: HomeworkGenerationRequest) => Promise<{ items: any[]; modelUsed: string }>> => ({
+  translation: (subReq) => generateTranslations(subReq, sourceText, briefing, level),
+  find_errors: (subReq) => generateFindErrors(subReq, sourceText, briefing),
+  multiple_choice: (subReq) => generateMultipleChoice(subReq, sourceText, briefing),
+  fill_in_the_blank: (subReq) => generateGaps(subReq, sourceText, briefing, level),
+  matching: (subReq) => generateMatching(subReq, sourceText, briefing),
+});
+
 /**
  * Generuje wszystkie wybrane typy równolegle.
  *
@@ -815,44 +848,13 @@ export const generateHomeworkSet = async (
 
   // Profil kursanta rozstrzyga o trudności. Bez `studentId` (np. przy pracy na
   // wklejonym tekście bez wybranego kursanta) zostaje sam poziom od lektora.
-  const context = req.studentId
-    ? await getStudentAiContext(req.studentId, req.level)
-    : null;
-  const briefing = context?.briefing;
-  const level = context?.level || req.level;
-
-  const extractSentencesFromSectionItems = (type: HomeworkType, items: any[]): string[] => {
-    const extracted: string[] = [];
-    if (!Array.isArray(items)) return extracted;
-    for (const item of items) {
-      if (type === 'translation') {
-        if (item.englishTranslation) extracted.push(item.englishTranslation);
-        if (item.polishSentence) extracted.push(item.polishSentence);
-      } else if (type === 'find_errors') {
-        if (item.correctSentence) extracted.push(item.correctSentence);
-        if (item.incorrectSentence) extracted.push(item.incorrectSentence);
-        if (item.polishHint) extracted.push(item.polishHint);
-      } else if (type === 'word_order') {
-        if (item.correctSentence) extracted.push(item.correctSentence);
-        if (item.polishHint) extracted.push(item.polishHint);
-      } else if (type === 'multiple_choice') {
-        if (item.question) extracted.push(item.question);
-      }
-    }
-    return extracted;
-  };
+  const { briefing, level } = await resolveStudentContext(req);
 
   const accumulatedExcluded = [...(req.excludeSentences || [])];
   let modelUsed: string | undefined;
   const sections: GeneratedSection[] = [];
 
-  const runners: Record<string, (subReq: HomeworkGenerationRequest) => Promise<{ items: any[]; modelUsed: string }>> = {
-    translation: (subReq) => generateTranslations(subReq, sourceText, briefing, level),
-    find_errors: (subReq) => generateFindErrors(subReq, sourceText, briefing),
-    multiple_choice: (subReq) => generateMultipleChoice(subReq, sourceText, briefing),
-    fill_in_the_blank: (subReq) => generateGaps(subReq, sourceText, briefing, level),
-    matching: (subReq) => generateMatching(subReq, sourceText, briefing),
-  };
+  const runners = buildRunners(sourceText, briefing, level);
 
   const selected = req.types.filter((type) => runners[type]);
 
@@ -866,7 +868,7 @@ export const generateHomeworkSet = async (
       modelUsed = modelUsed || runnerResult.modelUsed;
       sections.push({ type, items: runnerResult.items });
 
-      const newSentences = extractSentencesFromSectionItems(type, runnerResult.items);
+      const newSentences = collectItemSentences(type, runnerResult.items);
       accumulatedExcluded.push(...newSentences);
     } catch (err: any) {
       console.error(`Nie udało się ułożyć zadań typu ${type}:`, err);
@@ -889,4 +891,108 @@ export const generateHomeworkSet = async (
     sourceText,
     usedSentences: accumulatedExcluded,
   };
+};
+
+export interface RegenerateItemsRequest {
+  /** Ten sam materiał, na którym powstała praca (`HomeworkGenerationResult.sourceText`). */
+  sourceText: string;
+  sections: GeneratedSection[];
+  /** `uid` zaznaczonych elementów. */
+  selectedUids: string[];
+  /** Sugestia lektora — dane do promptu, nie polecenie. Bez treści = zwykła regeneracja. */
+  suggestion?: string;
+  /** Zdania zakazane: pozostałe elementy + zaznaczone sprzed regeneracji (`buildRegenerationExclusions`). */
+  excludeSentences: string[];
+  level: string;
+  studentId?: string;
+  /** Wytyczne lektora z pierwszego generowania. */
+  instruction?: string;
+  /** „Ile zadań na typ" z pierwszego generowania — dla luk to liczba pustych miejsc w tekście. */
+  perType: number;
+}
+
+/**
+ * Regeneruje zaznaczone elementy: jedno wywołanie na typ, w prompcie tyle nowych elementów, ile
+ * zaznaczono w typie (dopasowanie: jeden nowy zestaw par o tej samej liczbie par; luki: jeden nowy tekst).
+ * Prompty, reguły jakości i walidacja są te same co przy pierwszym generowaniu (`buildRunners`).
+ *
+ * Błąd jednego typu nie psuje pozostałych: ten typ wraca z `error` i pustą listą podmian.
+ * Wynik, który nie przeszedł walidacji albo powtarza zakazane zdanie, jest odrzucany.
+ */
+export const regenerateItems = async (req: RegenerateItemsRequest): Promise<RegenerationTypeResult[]> => {
+  const groups = groupSelectedByType(req.sections, req.selectedUids);
+  if (groups.length === 0) return [];
+
+  const { briefing, level } = await resolveStudentContext({
+    source: {},
+    types: [],
+    perType: req.perType,
+    level: req.level,
+    studentId: req.studentId,
+  });
+  const runners = buildRunners(req.sourceText, briefing, level);
+  const excluded = [...req.excludeSentences];
+  const results: RegenerationTypeResult[] = [];
+
+  for (const group of groups) {
+    const run = runners[group.type];
+    if (!run) {
+      results.push({ type: group.type, replacements: [], error: 'Ten typ zadań nie obsługuje ponownego generowania.' });
+      continue;
+    }
+
+    try {
+      const isSetType = group.type === 'matching' || group.type === 'fill_in_the_blank';
+      // Zestaw par i tekst z lukami to jeden element; liczność liczą pary / luki.
+      const wanted = isSetType ? 1 : group.items.length;
+      const subReq: HomeworkGenerationRequest = {
+        source: {},
+        types: [group.type],
+        perType: group.type === 'fill_in_the_blank' ? req.perType : wanted,
+        pairCount: group.type === 'matching' ? group.items[0]?.pairs?.length || undefined : undefined,
+        level: req.level,
+        studentId: req.studentId,
+        instruction:
+          buildRegenerationInstruction({
+            baseInstruction: req.instruction,
+            suggestion: req.suggestion,
+            type: group.type,
+            replacedItems: group.items,
+          }) || undefined,
+        excludeSentences: [...excluded],
+      };
+
+      const { items } = await run(subReq);
+      const fresh = filterRepeatedSentences(
+        items.filter((item) => isRegeneratedItemValid(group.type, item)),
+        excluded,
+        (item) => collectItemSentences(group.type, [item])
+      ).slice(0, wanted);
+
+      if (fresh.length === 0) {
+        results.push({
+          type: group.type,
+          replacements: [],
+          error: 'Model nie zwrócił poprawnych zadań tego typu.',
+        });
+        continue;
+      }
+
+      results.push({
+        type: group.type,
+        replacements: fresh.map((item, i) => ({ uid: group.uids[i], item })),
+        ...(fresh.length < wanted ? { partial: { got: fresh.length, wanted } } : {}),
+      });
+      excluded.push(...collectItemSentences(group.type, fresh));
+    } catch (err: any) {
+      console.error(`Nie udało się ponownie ułożyć zadań typu ${group.type}:`, err);
+      results.push({
+        type: group.type,
+        replacements: [],
+        error: err?.message || 'Model nie zwrócił poprawnych zadań.',
+      });
+    }
+  }
+
+  return results;
 };
