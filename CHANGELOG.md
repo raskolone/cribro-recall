@@ -198,6 +198,13 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🚀 Kreator V1: edycja, zaznaczanie i ponowne generowanie pojedynczych elementów (2026-10-07)
+- **Problem:** w kroku „Sprawdź i przypisz" lektor mógł tylko usuwać i przesuwać elementy; elementy były adresowane indeksem (`key={index}`).
+- **Rozwiązanie:** każdy element dostaje stabilne `uid` przy generowaniu (`utils/homeworkItems.ts`, `assignUids`); usuwanie, przesuwanie, edycja i podmiana działają po `uid`. `uid` jest zdejmowany przed zapisem (`flattenSectionsForSave`) — format `sentences` w `specialTasks` bez zmian.
+- **Edycja ręczna:** tłumaczenie (`polishSentence`, `englishTranslation`, `hint`) i „znajdź błędy" (`incorrectSentence`, `correctSentence`, `polishHint`, `hint`, `explanation`); walidacja (wymagane, długości, zdanie z błędem ≠ poprawne). Plakietka „edytowany" tylko w kreatorze. Luki, wybór formy i dopasowanie bez edycji ręcznej.
+- **Regeneracja:** `regenerateItems` w `services/homeworkGenerator.ts` — jedno wywołanie na typ, te same runnery/prompty/walidacja co pierwsze generowanie; sugestia lektora (maks. 300 znaków) w oznaczonym bloku; błąd typu nie psuje innych, niepoprawny wynik jest odrzucany.
+- **Weryfikacja:** tsc 0, `npm test` 834 → 853, build OK. UI nieoglądany w przeglądarce.
+
 ### 🚀 Generowanie rozgrzewki do pracy domowej (2026-10-07)
 - **Funkcjonalność:** Wprowadzono wsparcie dla generowania rozgrzewki (krótka układanka wyrazów z zadania z luki) z użyciem Gemini LLM przy tworzeniu nowej pracy domowej z wykorzystaniem AI.
 - **Implementacja:** 

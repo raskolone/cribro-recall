@@ -6860,3 +6860,13 @@ Zrobione: `services/homeworkGenerator.ts` (prompt, `judgeWarmupSentences`, temat
 Nie dokończone / do sprawdzenia: prawdziwa jakość zdań i trafność sędziego Gemini; UI nieoglądany w przeglądarce. Wszystko NIEZACOMMITOWANE.
 Decyzje architektoniczne: sędzia dostaje indeksy i zwraca `{verdicts:[{index,ok,reason}]}`; brak wyroku = `unverified`, nie odrzucenie; filtr tematu porównuje frazy ≥2 słów po zdjęciu wiodących zaimków/przedimków (pojedyncze słowo tematu nie odrzuca).
 Ryzyka: `server.ts`, reguły, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2 — NIETKNIĘTE. tsc 0; npm test 834/834; build OK.
+
+---
+
+2026-10-07 — Claude Code / Sonnet 5.5
+
+Zadanie: kreator V1 — edycja elementów, zaznaczanie, sugestia dla AI i regeneracja zaznaczonych.
+Zrobione: `utils/homeworkItems.ts` (nowy: uid, operacje po uid, grupowanie, wykluczenia, walidacja edycji, sanityzacja sugestii, podmiana wyników), `services/homeworkGenerator.ts` (`regenerateItems`, `buildRunners`/`resolveStudentContext` wspólne z `generateHomeworkSet`, `pairCount`, `collectItemSentences` przeniesione do utils), `HomeworkComposer.tsx` (zaznaczanie, edycja, pasek regeneracji, uid), `pl.json`/`en.json`, `tests/homeworkItems.test.ts`. Testy: 834 → 853.
+Nie dokończone / do sprawdzenia: UI nieoglądany w przeglądarce; jakość regenerowanych zdań; `regenerateItems` bez testu z mockiem modelu (sama logika podmiany/wykluczeń/walidacji testowana). Nic nie zacommitowane.
+Decyzje architektoniczne: ręczna edycja tylko dla tłumaczenia i „znajdź błędy" (luki/wybór/dopasowanie wymagałyby spójności kluczy, indeksów i par); regeneracja podmienia element pod tym samym `uid`; wykluczenia = zdania pozostałych + zaznaczonych sprzed regeneracji (zgodnie z DECYZJAMI); wynik regeneracji dodatkowo odsiewany po powtórkach, także dla wyboru formy, który przy pierwszym generowaniu nie miał filtra.
+Ryzyka: `server.ts`, reguły, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2 — NIETKNIĘTE. tsc 0; build OK.
