@@ -19,6 +19,15 @@ import { getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabu
 import { HOMEWORK_GENERATION_MODELS, PRIMARY_MODEL, assertHomeworkModelAllowed } from './aiModels';
 import { WarmupVerdict, applyWarmupVerdicts, markAllUnverified, parseWarmupVerdicts } from '../utils/warmupJudge';
 import { getStudentAiContext } from './learningProfile';
+import { fetchLessonFlashcards } from './lessonRecord';
+import {
+  WarmupCardDraft,
+  WarmupCardRejection,
+  WARMUP_CARDS_MAX,
+  collectLessonCards,
+  parseGeneratedWarmupCards,
+  planWarmupCardSource,
+} from '../utils/warmupCards';
 import { Type } from '@google/genai';
 import {
   FIX_SENTENCE_ERROR_TYPES,
@@ -109,6 +118,10 @@ export interface HomeworkGenerationResult {
   /** Ile elementów rozgrzewki odrzucono i dlaczego (puste `warmup` + powód = rozgrzewka się nie wygenerowała). */
   warmupRejected?: number;
   warmupReasons?: WarmupFailureReason[];
+  /** Fiszki rozgrzewki (osobno od `warmup`): z zestawu fiszek lekcji, z tekstu słownictwa albo z modelu. */
+  warmupCards?: WarmupCardDraft[];
+  warmupCardsRejected?: number;
+  warmupCardsReasons?: WarmupCardRejection[];
   /** Zdania z pracy — wykluczenia dla ponownego generowania samej rozgrzewki. */
   usedSentences?: string[];
   modelUsed?: string;
@@ -576,6 +589,120 @@ Zwróć JSON w podanym formacie:
   }
 };
 
+export interface WarmupCardsGenerationResult {
+  cards: WarmupCardDraft[];
+  /** Liczba kart odrzuconych przez walidację. */
+  rejected: number;
+  /** Powód każdego odrzucenia; przy błędzie modelu lub braku kart — jeden wpis. */
+  reasons: WarmupCardRejection[];
+}
+
+const WARMUP_CARDS_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    cards: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          term: { type: Type.STRING, description: 'Angielska FRAZA lub słowo (1-5 słów), nie zdanie.' },
+          definition: { type: Type.STRING, description: 'Krótkie polskie znaczenie, do 60 znaków.' },
+          contextSentence: { type: Type.STRING, description: 'Opcjonalne krótkie angielskie zdanie z przykładem użycia frazy.' },
+        },
+        required: ['term', 'definition'],
+        propertyOrdering: ['term', 'definition', 'contextSentence'],
+      },
+    },
+  },
+  required: ['cards'],
+};
+
+type JsonAsker = (prompt: string, responseSchema?: object) => Promise<{ parsed: any; modelUsed: string }>;
+
+/**
+ * Fiszki z samego tekstu / tematu: jedno wywołanie modelu (Gemini 2.5 Flash, bez sędziego).
+ * Błąd modelu lub brak kart daje `cards: []` z powodem — nigdy wyjątek.
+ */
+export const generateWarmupCards = async (
+  sourceText: string,
+  taskSentences: string[] = [],
+  ask: JsonAsker = askForJson
+): Promise<WarmupCardsGenerationResult> => {
+  const prompt = `${SYSTEM_INSTRUCTION}
+
+[MATERIAŁ — TYLKO NA NIM PRACUJESZ]:
+${sourceText}
+
+ZADANIE:
+Przygotuj 3-${WARMUP_CARDS_MAX} fiszek z najważniejszymi słowami i frazami z materiału.
+Fiszka: strona 1 = angielska fraza (term), strona 2 = polskie znaczenie (definition).
+
+ZASADY:
+- KARTA TO FRAZA, NIE ZDANIE. term ma 1-5 słów (np. "arrive late", "have breakfast", "take off"). Pełne zdania jako term są zabronione.
+- definition to krótkie, naturalne polskie znaczenie, najwyżej 60 znaków. Nie powtarzaj w nim angielskiej frazy.
+- contextSentence (opcjonalnie) to jedno krótkie, naturalne angielskie zdanie pokazujące użycie frazy.
+- Frazy się nie powtarzają. Używaj wyłącznie słownictwa z materiału; jeśli materiał to sam temat lub krótki opis bez listy słów, wyprowadź z niego typowe frazy tego tematu.
+
+Zwróć JSON:
+{"cards":[{"term":"arrive late","definition":"spóźnić się","contextSentence":"I arrived late to the meeting."}]}
+`;
+
+  try {
+    const { parsed } = await ask(prompt, WARMUP_CARDS_SCHEMA);
+    const result = parseGeneratedWarmupCards(parsed, taskSentences);
+    for (const r of result.rejected) console.warn('[generateWarmupCards] Odrzucono kartę:', r.reason, r.raw);
+    return {
+      cards: result.cards.map((card) => ({ ...card, origin: 'ai' as const })),
+      rejected: result.rejected.length,
+      reasons: result.reasons,
+    };
+  } catch (err) {
+    console.error('[generateWarmupCards] Błąd modelu:', err);
+    return { cards: [], rejected: 0, reasons: ['model_error'] };
+  }
+};
+
+/**
+ * Fiszki dla wybranego materiału (tryb kreatora): lekcje → zestaw fiszek lekcji (zero AI),
+ * zapasowo tekst słownictwa; wklejony tekst albo sam temat (lub lekcje bez żadnych kart) → model.
+ * Nie rzuca.
+ */
+export const generateWarmupCardsForSource = async (
+  source: HomeworkSource,
+  sourceText: string,
+  taskSentences: string[] = [],
+  deps: { fetchFlashcards?: typeof fetchLessonFlashcards; ask?: JsonAsker } = {}
+): Promise<WarmupCardsGenerationResult> => {
+  const fetchFlashcards = deps.fetchFlashcards ?? fetchLessonFlashcards;
+  const lessons = (source.lessons || []).map((l) => ({ id: l.id, topic: l.topic, vocabularyText: l.vocabularyText }));
+  const plan = planWarmupCardSource(lessons.length > 0 ? 'lessons' : 'text', lessons, sourceText);
+
+  if (plan.kind === 'ai') return generateWarmupCards(plan.sourceText, taskSentences, deps.ask);
+
+  try {
+    const perLesson = await Promise.all(
+      plan.lessons.map(async (lesson) => ({
+        flashcards: await fetchFlashcards(lesson.id).catch(() => []),
+        vocabularyText: lesson.vocabularyText,
+      }))
+    );
+    const fromLessons = collectLessonCards(perLesson, taskSentences);
+    if (fromLessons.cards.length > 0) {
+      return {
+        cards: fromLessons.cards.map((card) => ({ ...card, origin: 'lesson' as const })),
+        rejected: fromLessons.rejected.length,
+        reasons: fromLessons.reasons,
+      };
+    }
+    // Lekcje bez żadnych poprawnych kart (np. tylko temat) — model wyprowadza frazy z tematu.
+    const generated = await generateWarmupCards(plan.aiFallbackText, taskSentences, deps.ask);
+    return { ...generated, reasons: [...fromLessons.reasons, ...generated.reasons] };
+  } catch (err) {
+    console.error('[generateWarmupCardsForSource] Błąd:', err);
+    return { cards: [], rejected: 0, reasons: ['model_error'] };
+  }
+};
+
 /** Wybór formy: pilnujemy, żeby poprawna odpowiedź naprawdę była wśród opcji. */
 const generateMultipleChoice = async (
   req: HomeworkGenerationRequest,
@@ -880,13 +1007,20 @@ export const generateHomeworkSet = async (
     }
   }
 
-  const warmupResult = await generateWarmupExercises(sourceText, accumulatedExcluded);
+  // Rozsypka i fiszki są niezależne — lecą równolegle; żadna nie rzuca wyjątku.
+  const [warmupResult, cardsResult] = await Promise.all([
+    generateWarmupExercises(sourceText, accumulatedExcluded),
+    generateWarmupCardsForSource(req.source, sourceText, accumulatedExcluded),
+  ]);
 
   return {
     sections,
     warmup: warmupResult.items,
     warmupRejected: warmupResult.rejected,
     warmupReasons: warmupResult.reasons,
+    warmupCards: cardsResult.cards,
+    warmupCardsRejected: cardsResult.rejected,
+    warmupCardsReasons: cardsResult.reasons,
     modelUsed,
     sourceText,
     usedSentences: accumulatedExcluded,

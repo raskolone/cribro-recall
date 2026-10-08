@@ -98,3 +98,17 @@ test('V1 ad-hoc: 3 kursantów → 3 dokumenty, wspólny homeworkSetId, bez group
     assert.deepEqual(d.studentIds, [d.studentUid]);
   });
 });
+
+test('ad-hoc: warmupCards trafia do każdego dokumentu w trzech stanach (pole pomijane przy undefined)', () => {
+  const base = {
+    title: 't', type: 'translation', types: ['translation'], instructions: '', sentences: [],
+    dueDate: '2026-10-15', createdAt: '2026-10-08T10:00:00.000Z', origin: 'https://x',
+  };
+  const recipients = [{ id: 'a', name: 'Anna' }, { id: 'b', name: 'Bartek' }];
+  const build = (extra: object) => buildAdHocHomeworkPayloads(recipients, { ...base, ...extra } as any, 'hwset_multi_1', () => 'tok');
+
+  const cards = [{ term: 'take off', definition: 'zdjąć' }];
+  build({ warmupCards: cards }).forEach((d) => assert.deepEqual(d.warmupCards, cards));
+  build({ warmupCards: [] }).forEach((d) => assert.deepEqual(d.warmupCards, []));
+  build({}).forEach((d) => assert.equal('warmupCards' in d, false));
+});

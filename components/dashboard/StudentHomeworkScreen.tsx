@@ -36,7 +36,10 @@ import { useDraftAnswers } from '../../hooks/useDraftAnswers';
 import { normalizeLevel } from '../../utils/learningCurve';
 import HomeworkExercise from './HomeworkExercise';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
+import i18n from 'i18next';
+import HomeworkWarmupCards from './HomeworkWarmupCards';
 import { buildWarmupRounds } from '../../utils/warmupRounds';
+import { sanitizeWarmupCards } from '../../utils/warmupCards';
 import { buildHomeworkWelcomeGreeting } from '../../utils/homeworkWelcome';
 import TakeTestScreen from '../tests/TakeTestScreen';
 import { exportTestToPDF } from '../../utils/pdfExport';
@@ -235,8 +238,11 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
   const [tasks, setTasks] = useState<SpecialTask[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTask, setActiveTask] = useState<SpecialTask | null>(null);
-  const [warmupPhase, setWarmupPhase] = useState<'welcome' | 'scrambler' | 'exercises'>('welcome');
-  const hasWarmup = useMemo(() => buildWarmupRounds(activeTask?.sentences || [], activeTask).length > 0, [activeTask]);
+  const [warmupPhase, setWarmupPhase] = useState<'welcome' | 'cards' | 'scrambler' | 'exercises'>('welcome');
+  const hasScrambler = useMemo(() => buildWarmupRounds(activeTask?.sentences || [], activeTask).length > 0, [activeTask]);
+  const warmupCards = useMemo(() => sanitizeWarmupCards(activeTask?.warmupCards) ?? [], [activeTask]);
+  const hasCards = warmupCards.length > 0;
+  const hasWarmup = hasScrambler || hasCards;
   const [index, setIndex] = useState(0);
   // Odpowiedzi przeżywają zamknięcie karty: zadanie robi się między innymi
   // sprawami, a przerwanie nie może kasować dziesięciu rozwiązanych zdań.
@@ -1295,7 +1301,11 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   </h4>
                 </div>
                 <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
-                  Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb myślenia po angielsku i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.
+                  {hasCards && hasScrambler
+                    ? i18n.t('Krótkie fiszki z kluczowymi frazami oraz układanka klockowa (1–2 min) pomogą Ci płynnie wejść w tryb angielskiego przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.')
+                    : hasCards
+                    ? i18n.t('Kilka fiszek z kluczowymi frazami (1–2 min) pomoże Ci płynnie wejść w tryb angielskiego przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.')
+                    : 'Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb myślenia po angielsku i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.'}
                 </p>
               </div>
             )}
@@ -1305,7 +1315,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               {hasWarmup && (
                 <button
                   type="button"
-                  onClick={() => setWarmupPhase('scrambler')}
+                  onClick={() => setWarmupPhase(hasCards ? 'cards' : 'scrambler')}
                   className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                 >
                   <span>🚀 Zacznij od rozgrzewki (Zalecane)</span>
@@ -1323,6 +1333,18 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             </div>
           </div>
         </div>
+      );
+    }
+
+    // 2a. Opcjonalna rozgrzewka: fiszki (niepunktowane, nic nie zapisują) → rozsypka (jeśli jest) → zadania
+    if (warmupPhase === 'cards' && items.length > 0) {
+      const afterCards = () => setWarmupPhase(hasScrambler ? 'scrambler' : 'exercises');
+      return (
+        <HomeworkWarmupCards
+          cards={warmupCards}
+          onDone={afterCards}
+          onSkip={() => setWarmupPhase('exercises')}
+        />
       );
     }
 

@@ -12,12 +12,22 @@ import {
   GeneratedSection,
   HOMEWORK_TYPE_LABELS,
   OFFERED_HOMEWORK_TYPES,
+  HomeworkSource,
   generateHomeworkSet,
+  generateWarmupCardsForSource,
   generateWarmupExercises,
   regenerateItems,
 } from '../../services/homeworkGenerator';
 import { WarmupFailureReason, describeWarmupFailure } from '../../utils/exerciseSentenceChecks';
 import { removeWarmupItem, resolveWarmupField, warmupFieldEntry } from '../../utils/warmupField';
+import {
+  WarmupCardDraft,
+  WarmupCardRejection,
+  describeWarmupCardRejection,
+  resolveWarmupCardsField,
+  stripWarmupCardDraftFlags,
+  warmupCardsFieldEntry,
+} from '../../utils/warmupCards';
 import { taskOwnerFields } from '../../utils/homework';
 import {
   EDIT_FIELDS,
@@ -108,8 +118,13 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
   const [warmup, setWarmup] = useState<WarmupDraftItem[]>([]);
   const [includeWarmup, setIncludeWarmup] = useState(true);
   const [warmupReasons, setWarmupReasons] = useState<WarmupFailureReason[]>([]);
-  const [warmupContext, setWarmupContext] = useState<{ sourceText: string; used: string[] } | null>(null);
+  const [warmupContext, setWarmupContext] = useState<{ sourceText: string; used: string[]; source: HomeworkSource } | null>(null);
   const [isRetryingWarmup, setIsRetryingWarmup] = useState(false);
+  const [warmupCards, setWarmupCards] = useState<WarmupCardDraft[]>([]);
+  const [includeCards, setIncludeCards] = useState(true);
+  const [cardsReasons, setCardsReasons] = useState<WarmupCardRejection[]>([]);
+  const [cardsOpen, setCardsOpen] = useState(false);
+  const [isRetryingCards, setIsRetryingCards] = useState(false);
   // Zaznaczanie, edycja i regeneracja pojedynczych elementów (po `uid`, nie po indeksie).
   const [selectedUids, setSelectedUids] = useState<string[]>([]);
   const [suggestion, setSuggestion] = useState('');
@@ -261,17 +276,18 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     setWarmup([]);
     setWarmupReasons([]);
     setWarmupContext(null);
+    setWarmupCards([]);
+    setCardsReasons([]);
+    setCardsOpen(false);
     setAssignedCount(0);
     setSelectedUids([]);
     setRegenNotices([]);
     setEditingUid(null);
     setEditedUids([]);
     try {
+      const source: HomeworkSource = sourceMode === 'lessons' ? { lessons: selectedLessons } : { pastedText };
       const result = await generateHomeworkSet({
-        source:
-          sourceMode === 'lessons'
-            ? { lessons: selectedLessons }
-            : { pastedText },
+        source,
         types,
         perType,
         level: (recipientMode === 'group' ? group?.level : student?.level) || 'B1',
@@ -291,7 +307,10 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
       setWarmup(result.warmup || []);
       setIncludeWarmup(true);
       setWarmupReasons(result.warmupReasons || []);
-      setWarmupContext({ sourceText: result.sourceText, used: result.usedSentences || [] });
+      setWarmupContext({ sourceText: result.sourceText, used: result.usedSentences || [], source });
+      setWarmupCards(result.warmupCards || []);
+      setIncludeCards(true);
+      setCardsReasons(result.warmupCardsReasons || []);
       setModelUsed(result.modelUsed || '');
       if (result.sections.every((s) => s.items.length === 0)) {
         setError('Model nie zwrócił żadnych zadań. Spróbuj ponownie albo zmień materiał.');
@@ -312,6 +331,19 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
       setWarmupReasons(result.reasons);
     } finally {
       setIsRetryingWarmup(false);
+    }
+  };
+
+  /** Ponowienie tylko fiszek — na tym samym materiale; rozsypki i zadań nie rusza. */
+  const handleRetryCards = async () => {
+    if (!warmupContext || isRetryingCards) return;
+    setIsRetryingCards(true);
+    try {
+      const result = await generateWarmupCardsForSource(warmupContext.source, warmupContext.sourceText, warmupContext.used);
+      setWarmupCards(result.cards);
+      setCardsReasons(result.reasons);
+    } finally {
+      setIsRetryingCards(false);
     }
   };
 
@@ -459,6 +491,8 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         : 'Praca domowa';
 
       const finalWarmup = resolveWarmupField(includeWarmup, warmup);
+      // Fiszki: wyłączone = [], są karty = karty bez flag roboczych, włączone bez kart = pole pomijane.
+      const finalCards = resolveWarmupCardsField(includeCards, stripWarmupCardDraftFlags(warmupCards));
 
       if (recipientMode === 'group' && groupId) {
         // Obsługa Fan-outu dla całej grupy
@@ -479,6 +513,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
             dueDate,
             origin,
             ...warmupFieldEntry(finalWarmup),
+            ...warmupCardsFieldEntry(finalCards),
           }),
         });
 
@@ -515,6 +550,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
             sentences: items,
             dueDate,
             ...warmupFieldEntry(finalWarmup),
+            ...warmupCardsFieldEntry(finalCards),
             createdAt: nowIso,
             origin: originUrl,
           },
@@ -582,6 +618,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         status: 'pending' as const,
         sentences: items,
         ...warmupFieldEntry(finalWarmup),
+        ...warmupCardsFieldEntry(finalCards),
         manualEmailConfirmationRequired: true,
         skipAutoEmail: true,
         emailNotificationSent: false,
@@ -1060,6 +1097,84 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
                   ))}
                 </ul>
               )}
+
+              {/* Fiszki — osobna część rozgrzewki (niepunktowane); lista zwinięta domyślnie. */}
+              <div className="space-y-2 pt-2 mt-1 border-t border-white/10">
+                <div className="flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setCardsOpen((v) => !v)}
+                    aria-expanded={cardsOpen}
+                    className="flex items-center gap-1.5 text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-white hover:text-primary transition-colors"
+                  >
+                    {cardsOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {i18n.t('Fiszki')} · {warmupCards.length}
+                  </button>
+                  <label className="flex items-center gap-2 text-[12px] font-bold cursor-pointer text-content hover:text-white">
+                    {i18n.t('Dołącz fiszki')}
+                    <input
+                      type="checkbox"
+                      checked={includeCards}
+                      onChange={(e) => setIncludeCards(e.target.checked)}
+                      className="toggle toggle-primary toggle-sm"
+                    />
+                  </label>
+                </div>
+
+                {includeCards && cardsReasons.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2 text-[12px] text-content">
+                    <span
+                      className="inline-block px-1.5 py-0.5 rounded border border-white/15 text-content-muted font-bold"
+                      data-testid="warmup-cards-reasons"
+                    >
+                      {warmupCards.length === 0
+                        ? i18n.t('Fiszki nie zostały przygotowane: {{reason}}. Praca zostanie wysłana bez fiszek.', {
+                            reason: describeWarmupCardRejection(cardsReasons),
+                          })
+                        : i18n.t('Odrzucono {{count}}: {{reason}}', {
+                            count: cardsReasons.length,
+                            reason: describeWarmupCardRejection(cardsReasons),
+                          })}
+                    </span>
+                    {warmupContext && (
+                      <button
+                        type="button"
+                        onClick={handleRetryCards}
+                        disabled={isRetryingCards}
+                        className="px-3 py-1.5 rounded-lg border border-white/15 text-[12px] font-bold hover:bg-white/10 disabled:opacity-50 transition-colors"
+                      >
+                        {isRetryingCards ? i18n.t('Generuję…') : i18n.t('Spróbuj ponownie')}
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {includeCards && cardsOpen && warmupCards.length > 0 && (
+                  <ul className="space-y-1.5">
+                    {warmupCards.map((card, index) => (
+                      <li
+                        key={`${card.term}-${index}`}
+                        className="flex items-start gap-2.5 p-3 rounded-xl bg-base-100/60 border border-white/[0.07]"
+                      >
+                        <span className="flex-1 min-w-0 text-sm text-content leading-snug break-words">
+                          <span className="block text-white font-semibold">{card.term}</span>
+                          <span className="block text-content-muted text-[13px]">{card.definition}</span>
+                          {card.contextSentence && (
+                            <span className="block text-content-muted text-[12px] italic">{card.contextSentence}</span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setWarmupCards((prev) => removeWarmupItem(prev, index))}
+                          className="px-2 py-1 rounded-lg border border-white/15 text-[12px] font-bold hover:bg-white/10 transition-colors shrink-0"
+                        >
+                          {i18n.t('Usuń')}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             </div>
           )}
 

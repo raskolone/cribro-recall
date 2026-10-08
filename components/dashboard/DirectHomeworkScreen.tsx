@@ -16,10 +16,13 @@ import {
   Sparkles,
   GraduationCap
 } from 'lucide-react';
-import { HomeworkType, WarmupExercise } from '../../types';
+import { HomeworkType, WarmupCard, WarmupExercise } from '../../types';
 import HomeworkExercise from './HomeworkExercise';
+import i18n from 'i18next';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
+import HomeworkWarmupCards from './HomeworkWarmupCards';
 import { buildWarmupRounds } from '../../utils/warmupRounds';
+import { sanitizeWarmupCards } from '../../utils/warmupCards';
 import ConstellationBackground from '../ui/ConstellationBackground';
 import { toPolishVocative } from '../../utils/polishVocative';
 import { formatStudentDisplayName, isRawId } from '../../utils/studentFormat';
@@ -51,6 +54,8 @@ interface DirectTaskData {
   sentences: DirectTaskSentence[];
   /** Brak pola = stara rozgrzewka ze `sentences`; `[]` = bez rozgrzewki. */
   warmup?: WarmupExercise[];
+  /** Fiszki rozgrzewki — serwer jeszcze ich nie zwraca na linku, więc na razie zawsze `undefined`. */
+  warmupCards?: WarmupCard[];
   evaluationResults?: any[];
   studentAnswers?: any[];
   submittedAt?: string | null;
@@ -62,11 +67,14 @@ type ScreenPhase = 'loading' | 'error' | 'already_submitted' | 'solving' | 'subm
 
 export const DirectHomeworkScreen: React.FC = () => {
   const [phase, setPhase] = useState<ScreenPhase>('loading');
-  const [warmupPhase, setWarmupPhase] = useState<'welcome' | 'scrambler' | 'exercises'>('welcome');
+  const [warmupPhase, setWarmupPhase] = useState<'welcome' | 'cards' | 'scrambler' | 'exercises'>('welcome');
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [errorType, setErrorType] = useState<'expired' | 'not_found' | 'server_error' | null>(null);
   const [task, setTask] = useState<DirectTaskData | null>(null);
-  const hasWarmup = useMemo(() => buildWarmupRounds(task?.sentences || [], task).length > 0, [task]);
+  const hasScrambler = useMemo(() => buildWarmupRounds(task?.sentences || [], task).length > 0, [task]);
+  const warmupCards = useMemo(() => sanitizeWarmupCards(task?.warmupCards) ?? [], [task]);
+  const hasCards = warmupCards.length > 0;
+  const hasWarmup = hasScrambler || hasCards;
   const [token, setToken] = useState<string>('');
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<Record<number, any>>({});
@@ -549,7 +557,11 @@ export const DirectHomeworkScreen: React.FC = () => {
               </h4>
             </div>
             <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
-              Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb angielskiego i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.
+              {hasCards && hasScrambler
+                ? i18n.t('Krótkie fiszki z kluczowymi frazami oraz układanka klockowa (1–2 min) pomogą Ci płynnie wejść w tryb angielskiego przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.')
+                : hasCards
+                ? i18n.t('Kilka fiszek z kluczowymi frazami (1–2 min) pomoże Ci płynnie wejść w tryb angielskiego przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.')
+                : 'Krótka układanka klockowa (1–2 min) pomoże Ci płynnie wejść w tryb angielskiego i rozgrzać pamięć przed głównymi zadaniami. Rozgrzewkę możesz w każdej chwili pominąć.'}
             </p>
           </div>
         )}
@@ -558,7 +570,7 @@ export const DirectHomeworkScreen: React.FC = () => {
           {hasWarmup && (
             <button
               type="button"
-              onClick={() => setWarmupPhase('scrambler')}
+              onClick={() => setWarmupPhase(hasCards ? 'cards' : 'scrambler')}
               className="w-full min-h-[3.25rem] sm:min-h-[3.5rem] rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm sm:text-base shadow-lg shadow-emerald-900/30 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
             >
               <span>🚀 Zacznij od rozgrzewki (Zalecane)</span>
@@ -575,6 +587,17 @@ export const DirectHomeworkScreen: React.FC = () => {
           </button>
         </div>
       </div>
+    );
+  }
+
+  // 6a'. Opcjonalne fiszki rozgrzewki (niepunktowane, nic nie zapisują) → rozsypka (jeśli jest) → zadania
+  if (warmupPhase === 'cards') {
+    return shell(
+      <HomeworkWarmupCards
+        cards={warmupCards}
+        onDone={() => setWarmupPhase(hasScrambler ? 'scrambler' : 'exercises')}
+        onSkip={() => setWarmupPhase('exercises')}
+      />
     );
   }
 
