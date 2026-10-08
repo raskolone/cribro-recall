@@ -19,6 +19,7 @@ import { useAuth } from '../../context/AuthContext';
 import { SpecialTask, PracticeLog, User, StudentTest } from '../../types';
 import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
 import { formatPolishGreeting } from '../../utils/polishVocative';
+import { plZadania } from '../../utils/taskCountLabel';
 
 interface StudentHeroHeaderProps {
   studentId: string;
@@ -56,19 +57,6 @@ function formatTaskDate(dateStr?: string, lang: 'pl' | 'en' = 'pl'): string {
   } catch {
     return dateStr;
   }
-}
-
-function plZadania(n: number, lang: 'pl' | 'en' = 'pl'): string {
-  if (lang === 'en') {
-    return n === 1 ? '1 completed task' : `${n} completed tasks`;
-  }
-  if (n === 1) return '1 wykonane zadanie';
-  const r10 = n % 10;
-  const r100 = n % 100;
-  if (r10 >= 2 && r10 <= 4 && (r100 < 10 || r100 >= 20)) {
-    return `${n} wykonane zadania`;
-  }
-  return `${n} wykonanych zadań`;
 }
 
 function plZdania(n: number, lang: 'pl' | 'en' = 'pl'): string {
@@ -258,7 +246,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
                     {tText('Zadania od lektora', 'Teacher assignments')}
                   </span>
                   <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
-                    {pendingTasks.length} {plZadania(pendingTasks.length, language)}
+                    {plZadania(pendingTasks.length, language)}
                   </span>
                 </div>
                 <h3 className="text-base sm:text-lg font-black text-text-hi truncate group-hover:text-primary transition-colors mt-0.5">

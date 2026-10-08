@@ -341,8 +341,8 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 onClick={handleNext}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{isLast ? 'Rozpocznij pracę domową →' : 'Następne zdanie →'}</span>
-                <ArrowRight size={15} />
+                <span className="whitespace-nowrap">{isLast ? 'Rozpocznij pracę domową' : 'Następne zdanie'}</span>
+                <ArrowRight size={15} className="shrink-0" />
               </button>
             </div>
           )}
@@ -370,8 +370,8 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 onClick={handleNext}
                 className="w-full sm:w-auto self-end px-5 py-2.5 rounded-xl bg-info hover:bg-info/85 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span>{isLast ? 'Rozpocznij pracę domową →' : 'Następne zdanie →'}</span>
-                <ArrowRight size={15} />
+                <span className="whitespace-nowrap">{isLast ? 'Rozpocznij pracę domową' : 'Następne zdanie'}</span>
+                <ArrowRight size={15} className="shrink-0" />
               </button>
             </div>
           )}
