@@ -198,6 +198,27 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🚀 Fiszki w rozgrzewce — krok 6: prace grupowe i link /hw?token= (2026-10-08)
+- **Serwer (`server.ts`, tylko dwa dozwolone miejsca + import):** `POST /api/groups/:id/assign-homework` przepisuje do dokumentów `specialTasks` pole `warmupCards` z `req.body` po `sanitizeWarmupCards` (do 6 kart, niepoprawne odrzucane, `[]` zostaje `[]`, brak/nie-tablica = pole pominięte; zapis przez `stripUndefinedDeep`, obok `warmup`). `GET /api/homework/direct/:token` zwraca `warmupCards` w tym samym zwalidowanym kształcie (`[]` jako `[]`, brak jako brak).
+- **Kreator (`HomeworkComposer.tsx`):** tryb „Grupa" dokłada `warmupCardsFieldEntry(finalCards)` do body; usunięta adnotacja „Fiszki nie są jeszcze wysyłane do grup" (komponent i klucz w `pl.json`/`en.json`).
+- **Link:** `DirectHomeworkScreen` czytał już `task.warmupCards` — faza kart rusza, gdy serwer zwraca niepustą listę; bez pola zachowanie bez zmian.
+- **Reguły Firestore:** tylko odczyt; zapis idzie przez Admin SDK (omija reguły), więc zmiana `firestore.rules` niepotrzebna. Klientowe `create` dla pracy indywidualnej nie ogranicza pól.
+- **Niezweryfikowane:** test na żywo na :3001 nie został wykonany (brak `FIREBASE_SERVICE_ACCOUNT` i tokenu lektora; działający proces :3001 startował przed zmianą). Brak testu HTTP endpointów — testowane są czyste funkcje użyte przez serwer.
+
+### 🚀 Fiszki w rozgrzewce — kroki 4–5: generowanie kart i sekcja w kreatorze (2026-10-08)
+- **Źródło kart:** lekcje → zestaw `sets/set-lesson-{id}/flashcards` (zero AI; `fetchLessonFlashcards` w `services/lessonRecord.ts`), zapasowo `vocabularyText` przez `parseWarmupCardsFromText` (radzi sobie też z JEDNĄ linią ze sklejonymi parami); wklejony tekst, sam temat i lekcje bez żadnych kart → jedno wywołanie modelu `generateWarmupCards` (Gemini 2.5 Flash, `thinkingBudget: 0`, bez sędziego), równolegle z rozsypką (`Promise.all`). Błąd modelu → `[]` z powodem.
+- **Kreator (`HomeworkComposer.tsx`):** podsekcja „Fiszki · N" w panelu rozgrzewki (lista zwinięta, przełącznik „Dołącz fiszki", „Usuń", powód, „Spróbuj ponownie" tylko dla kart). Pole `warmupCards` zapisuje ścieżka indywidualna i kilku kursantów (`buildAdHocHomeworkPayloads`).
+- **Czego NIE ma:** ścieżka grupowa (`POST /api/groups/:id/assign-homework`) nie wysyła `warmupCards` (serwer nietknięty, krok 6), więc grupy i link bez logowania fiszek jeszcze nie dostają; kreator pokazuje o tym adnotację.
+- **Spłaszczenie `vocabularyText`:** kod zapisu (`createLessonRecordWithVocabularySet`, `syncFlashcardSetForLesson`) i parser Notion (`functions/src/notion/parse.ts`, łączenie `\n`) zachowują nowe linie; spłaszczenie, jeśli występuje, pochodzi ze źródła (jeden akapit w Notion lub wklejony tekst) — nie udało się go zlokalizować w kodzie.
+- **Niezweryfikowane w przeglądarce:** sekcja w kreatorze, prawdziwa jakość kart z modelu, odczyt zestawów fiszek na realnych danych i regułach Firestore.
+
+### 🚀 Fiszki w rozgrzewce — kroki 1–3: typ, komponent, ekrany kursanta (2026-10-08)
+- **Co jest podpięte:** `SpecialTask.warmupCards` (`[]` = wyłączone, lista = są karty, brak pola = stare prace) jest czytane na ekranie kursanta (`StudentHomeworkScreen`) i linku (`DirectHomeworkScreen`). Fazy: powitanie → fiszki (jeśli są) → rozsypka (jeśli jest) → zadania; „Pomiń rozgrzewkę" omija obie części. Fiszki niepunktowane, nic nie zapisują.
+- **Czego NIE ma jeszcze:** nic nie *tworzy* `warmupCards` (generator/kreator — kolejne kroki), serwer nie zapisuje ani nie zwraca tego pola na linku (`server.ts` nietknięty), więc na linku bez logowania faza kart na razie się nie pojawi. Dziś karty pojawią się tylko, jeśli pole zostanie wpisane do dokumentu pracy ręcznie.
+- **Pliki:** `utils/warmupCards.ts` (walidacja, dedup, limit 6, odrzucanie fraz ze zdań pracy, `sanitizeWarmupCards`, trzy stany pola, parser tekstu), `components/dashboard/HomeworkWarmupCards.tsx`, `types.ts` (`WarmupCard`), `pl.json`/`en.json`. Parser `parseVocabularyTextToCards` przeniesiony bez zmian z `services/lessonRecord.ts` do `utils/vocabulary.ts` (z re-eksportem), bo moduł serwisu importuje Firebase i nie da się go użyć w czystych funkcjach/testach.
+- **Reguła anty-spoilerowa (zmieniona w krokach 4–5):** karta jest odrzucana tylko, gdy fraza jest CAŁYM zdaniem z pracy (po normalizacji); fraza zawarta w dłuższym zdaniu jest dozwolona.
+- **Niezweryfikowane w przeglądarce:** wygląd (także tryb jasny), obrót karty, wymowa `speechSynthesis` (iOS Safari).
+
 ### 🚀 Kreator V1: edycja, zaznaczanie i ponowne generowanie pojedynczych elementów (2026-10-07)
 - **Problem:** w kroku „Sprawdź i przypisz" lektor mógł tylko usuwać i przesuwać elementy; elementy były adresowane indeksem (`key={index}`).
 - **Rozwiązanie:** każdy element dostaje stabilne `uid` przy generowaniu (`utils/homeworkItems.ts`, `assignUids`); usuwanie, przesuwanie, edycja i podmiana działają po `uid`. `uid` jest zdejmowany przed zapisem (`flattenSectionsForSave`) — format `sentences` w `specialTasks` bez zmian.
@@ -4081,3 +4102,9 @@ npm run build
 - `checkWarmupExerciseItem(raw, topics)`: odrzuca element, gdy pierwszy fragment zaczyna się od tytułu lub frazy tytułu (≥2 słowa, bez wielkości liter i bez wiodącego zaimka/przedimka) — powód `topic_as_subject`. Tematy z `extractLessonTopics(sourceText)`.
 - Kreator: podgląd pokazuje polskie zdanie i angielskie złożone z fragmentów, plakietkę „niezweryfikowane" i przycisk „Usuń" (`removeWarmupItem`). Usunięcie wszystkich = brak elementów (komunikat + „Spróbuj ponownie"). `resolveWarmupField` zdejmuje `unverified` przed zapisem (`WarmupDraftItem` ≠ `WarmupExercise`).
 - Testy: `tests/warmupJudge.test.ts` (12). Jakość zdań od modelu i UI nie zweryfikowane w przeglądarce.
+
+### BM. Diagnoza „fiszki nie pojawiają się" + podwójna strzałka w przycisku + zdublowana liczba w plakietce (2026-10-08)
+- Diagnoza fazy kart: kod ekranów jest poprawny. `StudentHomeworkScreen.tsx` (`hasCards` z `sanitizeWarmupCards(activeTask.warmupCards)`, przycisk „Zacznij od rozgrzewki" → `cards`, po kartach → `scrambler`) i `DirectHomeworkScreen.tsx` działają tak samo; karty bez `contextSentence` przechodzą walidację; pulpitowe „Rozwiąż zadania" idzie przez `Dashboard` → `StudentHomeworkV2Screen` → `fallback` = ten sam `StudentHomeworkScreen`. Najprawdopodobniejsza przyczyna: kroki 1–6 fiszek są niezacommitowane i niewypchnięte, więc wdrożona wersja (Vercel) nie ma fazy `cards` — wymaga commita/pushu, nie zmiany kodu.
+- Przyciski „Rozpocznij pracę domową" / „Następne zdanie" (`HomeworkWarmupScrambler.tsx`): usunięta strzałka z tekstu (zostaje ikona), `whitespace-nowrap`, ikona `shrink-0`.
+- Plakietka na pulpicie (`StudentHeroHeader.tsx`): `plZadania` zwracało już liczbę, a JSX dodawał ją drugi raz („8 8 …"), do tego mówiło „wykonanych" o zadaniach oczekujących. Przeniesione do `utils/taskCountLabel.ts` i zwraca teraz „8 zadań" / „8 tasks".
+- Testy: `tests/warmupScreenFixes.test.ts` (3). Nie zweryfikowane w przeglądarce.

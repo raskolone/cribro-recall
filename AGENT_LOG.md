@@ -6870,3 +6870,43 @@ Zrobione: `utils/homeworkItems.ts` (nowy: uid, operacje po uid, grupowanie, wykl
 Nie dokończone / do sprawdzenia: UI nieoglądany w przeglądarce; jakość regenerowanych zdań; `regenerateItems` bez testu z mockiem modelu (sama logika podmiany/wykluczeń/walidacji testowana). Nic nie zacommitowane.
 Decyzje architektoniczne: ręczna edycja tylko dla tłumaczenia i „znajdź błędy" (luki/wybór/dopasowanie wymagałyby spójności kluczy, indeksów i par); regeneracja podmienia element pod tym samym `uid`; wykluczenia = zdania pozostałych + zaznaczonych sprzed regeneracji (zgodnie z DECYZJAMI); wynik regeneracji dodatkowo odsiewany po powtórkach, także dla wyboru formy, który przy pierwszym generowaniu nie miał filtra.
 Ryzyka: `server.ts`, reguły, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2 — NIETKNIĘTE. tsc 0; build OK.
+
+---
+
+2026-10-08 — Claude Code / Sonnet 5.5
+
+Zadanie: fiszki w rozgrzewce, kroki 1–3 (typ i logika, komponent kart, fazy ekranów kursanta).
+Zrobione: `types.ts` (`WarmupCard`, `SpecialTask.warmupCards`), `utils/warmupCards.ts` (nowy), `utils/vocabulary.ts` + `services/lessonRecord.ts` (przeniesienie `parseVocabularyTextToCards` z re-eksportem), `components/dashboard/HomeworkWarmupCards.tsx` (nowy), `StudentHomeworkScreen.tsx`, `DirectHomeworkScreen.tsx` (faza `cards`, `hasScrambler`/`hasCards`), `pl.json`/`en.json`, `tests/warmupCards.test.ts`, `tests/homeworkWarmupCards.test.tsx`. Testy: 853 → 871.
+Nie dokończone / do sprawdzenia: nic jeszcze nie tworzy `warmupCards` (generator, kreator, serwer — kolejne kroki); wygląd, obrót, tryb jasny i iOS `speechSynthesis` nieoglądane. Nic nie zacommitowane (zgodnie z poleceniem).
+Decyzje architektoniczne: `parseVocabularyTextToCards` przeniesiony do `utils/vocabulary.ts` zamiast kopiowania; zbyt długi `contextSentence` jest pomijany (karta zostaje); znaczenie identyczne z frazą odrzucane (`definition_same_as_term`), bo języka polskiego nie da się wiarygodnie wykryć; ekrany kursanta sanityzują karty bez listy zdań pracy; tekst powitania dla samej rozsypki zostaje bez zmian.
+Ryzyka: `server.ts`, reguły, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2, pole `warmup` — NIETKNIĘTE. tsc 0; npm test 871/871; build OK.
+
+---
+
+2026-10-08 — Claude Code / Sonnet 5.5
+
+Zadanie: fiszki w rozgrzewce, kroki 4–5 (generowanie kart, sekcja w kreatorze).
+Zrobione: `utils/warmupCards.ts` (reguła anty-spoilerowa = tylko równość z całym zdaniem; parser spłaszczonej linii; `planWarmupCardSource`, `collectLessonCards`, `parseGeneratedWarmupCards`, `WarmupCardDraft`/`stripWarmupCardDraftFlags`), `services/homeworkGenerator.ts` (`generateWarmupCards`, `generateWarmupCardsForSource`, równolegle w `generateHomeworkSet`, nowe pola wyniku), `services/lessonRecord.ts` (`fetchLessonFlashcards`), `components/admin/HomeworkComposer.tsx`, `utils/homeworkRecipients.ts` (przepuszcza `warmupCards`), `pl.json`/`en.json`, `tests/warmupCards.test.ts`, `tests/warmupCardsGeneration.test.ts`, `tests/homeworkRecipients.test.ts`. Testy: 871 → 887.
+Nie dokończone / do sprawdzenia: ścieżka grupowa nie wysyła `warmupCards` (krok 6); UI kreatora nieoglądane; brak testu renderu kreatora; odczyt fiszek lekcji na realnych regułach/danych niesprawdzony.
+Decyzje architektoniczne: kolejność źródeł — zestaw fiszek, potem tekst, potem model; zapasowy parser dzieli sklejone pary po ostatnim słowie z polskim śladem (diakrytyk lub polskie słowo funkcyjne), a odcinek bez śladu odrzuca (zamiast zgadywać); wstrzykiwane zależności (`ask`, `fetchFlashcards`) tylko dla testów.
+Ryzyka: `server.ts`, reguły, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2, pole `warmup` — NIETKNIĘTE. Nowe pole zapisywane w `specialTasks` przy przypisaniu (jedyna zmiana w danych). tsc 0; npm test 887/887; build OK.
+
+---
+
+2026-10-08 — Claude Code / Sonnet 5.5
+
+Zadanie: fiszki w rozgrzewce, krok 6 (`warmupCards` w pracach grupowych i na linku /hw?token=).
+Zrobione: `server.ts` (import `sanitizeWarmupCards`; `assign-homework`: `warmupCards` w `taskPayload`; GET direct: `warmupCards` w odpowiedzi), `HomeworkComposer.tsx` (grupa wysyła `warmupCardsFieldEntry(finalCards)`, usunięta adnotacja), `pl.json`/`en.json` (usunięty klucz adnotacji), `tests/warmupCards.test.ts`. Testy: 887 → 892.
+Nie dokończone / do sprawdzenia: test na żywo na :3001 niewykonany (brak konta usługi/tokenu lektora, proces :3001 ze starym kodem); UI niewidziany w przeglądarce; brak testu HTTP samych endpointów. Wszystko NIEZACOMMITOWANE (zgodnie z poleceniem).
+Decyzje architektoniczne: serwer woła `sanitizeWarmupCards` bez listy zdań pracy (reguła anty-spoilerowa działa po stronie kreatora i ekranów kursanta); żadna poprawna karta z niepustej listy = pole pominięte.
+Ryzyka: ruszone WYŁĄCZNIE `assign-homework` i GET `homework/direct/:token` w `server.ts` (za jawną zgodą w poleceniu) — ścieżka tokenowa bez logowania zwraca teraz dodatkowe pole. `firestore.rules`, storage.rules, autoryzacja, tokeny, direct-submit, statusy, punktacja, HOMEWORK_ENGINE_V2, pole `warmup` — NIETKNIĘTE. tsc 0; npm test 892/892; build OK.
+
+---
+
+2026-10-08 — Claude Code / Sonnet 5.5
+
+Zadanie: diagnoza braku fazy kart w rozgrzewce kursanta + podwójna strzałka w przycisku + zdublowana liczba w plakietce.
+Zrobione: diagnoza (bez zmian w kodzie ekranów kursanta — ścieżka `welcome → cards → scrambler` poprawna); `HomeworkWarmupScrambler.tsx` (strzałka tylko ikoną, nowrap); `StudentHeroHeader.tsx` + nowy `utils/taskCountLabel.ts` (jedna liczba, bez „wykonanych"); `tests/warmupScreenFixes.test.ts`; CHANGELOG (BM). Testy: 892 → 895.
+Nie dokończone / do sprawdzenia: przyczyna braku kart u Marka jest tylko prawdopodobna (niewypchnięty kod); wygląd przycisków w wąskim ekranie niesprawdzony w przeglądarce. Nic nie zacommitowane (zgodnie z poleceniem).
+Decyzje architektoniczne: `plZadania` wyniesione do utils, bo komponent z firebase nie nadaje się do testu node:test; zmieniono też słowo „wykonanych" → samo „zadań", bo plakietka liczy zadania oczekujące.
+Ryzyka: `firestore.rules`, `server.ts`, autoryzacja, tokeny, statusy, punktacja, HOMEWORK_ENGINE_V2, pole `warmup` — NIETKNIĘTE. tsc 0; npm test 895/895; build OK.
