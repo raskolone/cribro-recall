@@ -189,11 +189,11 @@ var countPolishSuffixes = (haystack) => haystack.filter(
 var words = (text) => text.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
 var countMatches = (list, haystack) => haystack.filter((w) => list.includes(w)).length;
 var detectLanguage = (text) => {
-  const clean = String(text || "").trim();
-  if (clean.length < 12) return null;
-  const w = words(clean);
+  const clean2 = String(text || "").trim();
+  if (clean2.length < 12) return null;
+  const w = words(clean2);
   if (w.length < 3) return null;
-  const pl = countMatches(POLISH_STOPWORDS, w) + countPolishSuffixes(w) + (POLISH_LETTERS.test(clean) ? 2 : 0);
+  const pl = countMatches(POLISH_STOPWORDS, w) + countPolishSuffixes(w) + (POLISH_LETTERS.test(clean2) ? 2 : 0);
   const en = countMatches(ENGLISH_STOPWORDS, w);
   if (pl === 0 && en === 0) return null;
   return pl > en ? "pl" : "en";
@@ -2013,10 +2013,10 @@ var V2_MODEL_CASCADE = [
   V2_FALLBACK_MODEL
 ];
 var mapToActualGeminiModel = (modelName) => {
-  const clean = String(modelName || "").trim().toLowerCase();
-  if (clean.includes("2.5-flash") || clean === "gemini-2.5-flash") return "gemini-2.5-flash";
-  if (clean.includes("3.8-flash") || clean === "gemini-3.8-flash") return "gemini-2.5-flash";
-  if (clean.includes("1.5-flash")) return "gemini-1.5-flash";
+  const clean2 = String(modelName || "").trim().toLowerCase();
+  if (clean2.includes("2.5-flash") || clean2 === "gemini-2.5-flash") return "gemini-2.5-flash";
+  if (clean2.includes("3.8-flash") || clean2 === "gemini-3.8-flash") return "gemini-2.5-flash";
+  if (clean2.includes("1.5-flash")) return "gemini-1.5-flash";
   return "gemini-2.5-flash";
 };
 var extractJson = (text) => {
@@ -2940,38 +2940,105 @@ var sanitizeWarmup = (input) => {
   if (input.length === 0) return [];
   const valid = [];
   for (const item of input) {
-    const clean = sanitizeWarmupItem(item);
-    if (clean) valid.push(clean);
+    const clean2 = sanitizeWarmupItem(item);
+    if (clean2) valid.push(clean2);
     if (valid.length >= WARMUP_MAX_ITEMS) break;
   }
   return valid.length > 0 ? stripUndefinedDeep(valid) : void 0;
 };
 
+// utils/exerciseSentenceChecks.ts
+var normalizeSentence2 = (value) => String(value ?? "").normalize("NFKC").toLowerCase().replace(/[‘’ʼ`´]/g, "'").replace(/[^\p{L}\p{N}'\s]/gu, " ").replace(/\s+/g, " ").trim();
+
+// utils/warmupCards.ts
+var WARMUP_CARDS_MAX = 6;
+var WARMUP_CARD_TERM_MAX_WORDS = 5;
+var WARMUP_CARD_TERM_MAX_LENGTH = 60;
+var WARMUP_CARD_DEFINITION_MAX_LENGTH = 60;
+var WARMUP_CARD_CONTEXT_MAX_LENGTH = 200;
+var clean = (value) => {
+  if (typeof value !== "string") return null;
+  return value.trim().replace(/\s+/g, " ");
+};
+var countWords = (text) => text.split(" ").filter(Boolean).length;
+var termEqualsTaskSentence = (term, taskSentences) => {
+  const key = normalizeSentence2(term);
+  if (!key) return false;
+  return taskSentences.some((sentence) => normalizeSentence2(sentence) === key);
+};
+var checkWarmupCard = (raw, taskSentences = []) => {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, reason: "invalid_shape" };
+  const source = raw;
+  const term = clean(source.term);
+  if (!term) return { ok: false, reason: "missing_term" };
+  if (countWords(term) > WARMUP_CARD_TERM_MAX_WORDS || term.length > WARMUP_CARD_TERM_MAX_LENGTH) {
+    return { ok: false, reason: "term_too_long" };
+  }
+  const definition = clean(source.definition);
+  if (!definition) return { ok: false, reason: "missing_definition" };
+  if (definition.length > WARMUP_CARD_DEFINITION_MAX_LENGTH) return { ok: false, reason: "definition_too_long" };
+  if (normalizeSentence2(definition) === normalizeSentence2(term)) return { ok: false, reason: "definition_same_as_term" };
+  if (termEqualsTaskSentence(term, taskSentences)) return { ok: false, reason: "term_in_task_sentence" };
+  const context = clean(source.contextSentence);
+  const card = { term, definition };
+  if (context && context.length <= WARMUP_CARD_CONTEXT_MAX_LENGTH) card.contextSentence = context;
+  return { ok: true, card };
+};
+var buildWarmupCards = (rawCards, taskSentences = []) => {
+  const result = { cards: [], rejected: [], reasons: [] };
+  if (!Array.isArray(rawCards)) return result;
+  const seen = /* @__PURE__ */ new Set();
+  for (const raw of rawCards) {
+    const check = checkWarmupCard(raw, taskSentences);
+    let reason = "reason" in check ? check.reason : null;
+    if ("card" in check) {
+      const key = normalizeSentence2(check.card.term);
+      if (seen.has(key)) reason = "duplicate_term";
+      else if (result.cards.length >= WARMUP_CARDS_MAX) reason = "over_limit";
+      else {
+        seen.add(key);
+        result.cards.push(check.card);
+      }
+    }
+    if (reason) {
+      result.rejected.push({ raw, reason });
+      result.reasons.push(reason);
+    }
+  }
+  return result;
+};
+var sanitizeWarmupCards = (input, taskSentences = []) => {
+  if (!Array.isArray(input)) return void 0;
+  if (input.length === 0) return [];
+  const { cards } = buildWarmupCards(input, taskSentences);
+  return cards.length > 0 ? cards : void 0;
+};
+
 // server.ts
 import crypto from "crypto";
 function mapToActualOpenAIModel(modelName) {
-  const clean = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
-  if (clean === "gpt-5.6-luna" || clean === "gpt-5.6" || clean.includes("luna")) {
+  const clean2 = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
+  if (clean2 === "gpt-5.6-luna" || clean2 === "gpt-5.6" || clean2.includes("luna")) {
     return "gpt-4o";
   }
-  if (clean.includes("gpt-4o-mini")) return "gpt-4o-mini";
-  if (clean.includes("gpt-4o")) return "gpt-4o";
-  if (clean.includes("o3-mini")) return "o3-mini";
-  if (clean.includes("gpt-4-turbo")) return "gpt-4-turbo";
-  if (clean.includes("gpt-4")) return "gpt-4";
-  if (clean.includes("gpt-3.5-turbo") || clean.includes("gpt-3.5")) return "gpt-3.5-turbo";
+  if (clean2.includes("gpt-4o-mini")) return "gpt-4o-mini";
+  if (clean2.includes("gpt-4o")) return "gpt-4o";
+  if (clean2.includes("o3-mini")) return "o3-mini";
+  if (clean2.includes("gpt-4-turbo")) return "gpt-4-turbo";
+  if (clean2.includes("gpt-4")) return "gpt-4";
+  if (clean2.includes("gpt-3.5-turbo") || clean2.includes("gpt-3.5")) return "gpt-3.5-turbo";
   return "gpt-4o-mini";
 }
 function mapToActualAnthropicModel(modelName) {
-  const clean = String(modelName || "").replace(/^anthropic\//, "").trim().toLowerCase();
-  if (clean.includes("3-7") || clean.includes("3.7")) return "claude-3-7-sonnet-20250219";
-  if (clean.includes("3-5-haiku") || clean.includes("3.5-haiku") || clean.includes("haiku")) return "claude-3-5-haiku-20241022";
-  if (clean.includes("3-5-sonnet") || clean.includes("3.5-sonnet") || clean.includes("sonnet")) return "claude-3-5-sonnet-20241022";
+  const clean2 = String(modelName || "").replace(/^anthropic\//, "").trim().toLowerCase();
+  if (clean2.includes("3-7") || clean2.includes("3.7")) return "claude-3-7-sonnet-20250219";
+  if (clean2.includes("3-5-haiku") || clean2.includes("3.5-haiku") || clean2.includes("haiku")) return "claude-3-5-haiku-20241022";
+  if (clean2.includes("3-5-sonnet") || clean2.includes("3.5-sonnet") || clean2.includes("sonnet")) return "claude-3-5-sonnet-20241022";
   return "claude-3-7-sonnet-20250219";
 }
 function mapToActualDeepSeekModel(modelName) {
-  const clean = String(modelName || "").replace(/^deepseek\//, "").trim().toLowerCase();
-  if (clean.includes("reasoner") || clean.includes("r1")) return "deepseek-reasoner";
+  const clean2 = String(modelName || "").replace(/^deepseek\//, "").trim().toLowerCase();
+  if (clean2.includes("reasoner") || clean2.includes("r1")) return "deepseek-reasoner";
   return "deepseek-chat";
 }
 function extractJsonFromString(str) {
@@ -3610,6 +3677,7 @@ function createApp() {
       const callerUid = req.adminUid;
       const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
       const warmup = sanitizeWarmup(req.body?.warmup);
+      const warmupCards = sanitizeWarmupCards(req.body?.warmupCards);
       if (!callerUid) {
         return res.status(401).json({ error: "missing_teacher_profile", message: "Nie uda\u0142o si\u0119 zidentyfikowa\u0107 profilu lektora. Zaloguj si\u0119 ponownie." });
       }
@@ -3685,6 +3753,7 @@ function createApp() {
           instructions: instructions || "",
           sentences,
           warmup,
+          warmupCards,
           accessToken: rawToken,
           // Dla kompatybilności wstecznej z /hw?token=
           accessTokenHash: tokenHash,
@@ -4141,6 +4210,7 @@ function createApp() {
       }));
       const isAlreadySubmitted = taskData.status === "submitted" || taskData.status === "graded" || taskData.status === "completed";
       const safeWarmup = sanitizeWarmup(taskData.warmup);
+      const safeWarmupCards = sanitizeWarmupCards(taskData.warmupCards);
       return res.json({
         ok: true,
         task: {
@@ -4155,6 +4225,7 @@ function createApp() {
           studentId: studentUid,
           sentences: safeSentences,
           ...safeWarmup !== void 0 ? { warmup: safeWarmup } : {},
+          ...safeWarmupCards !== void 0 ? { warmupCards: safeWarmupCards } : {},
           studentAnswers: isAlreadySubmitted ? taskData.studentAnswers : void 0,
           evaluationResults: isAlreadySubmitted ? taskData.evaluationResults : void 0,
           submittedAt: taskData.submittedAt || null,
@@ -4519,11 +4590,11 @@ function createApp() {
         "deepseek/deepseek-chat",
         "deepseek/deepseek-reasoner"
       ];
-      const clean = {};
+      const clean2 = {};
       for (const [task, model] of Object.entries(models || {})) {
         if (!allowedTasks.includes(task)) continue;
         if (typeof model !== "string" || !allowedModels.includes(model)) continue;
-        clean[task] = model;
+        clean2[task] = model;
       }
       let cleanCouncil = void 0;
       if (council && typeof council === "object") {
@@ -4552,7 +4623,7 @@ function createApp() {
         }
         const updated = {
           ...currentData,
-          ...models ? { models: clean } : {},
+          ...models ? { models: clean2 } : {},
           ...cleanCouncil ? { council: cleanCouncil } : {},
           ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
           updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -4566,7 +4637,7 @@ function createApp() {
           const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
           await adminDb.collection("system").doc("ai").set(
             {
-              ...models ? { models: clean } : {},
+              ...models ? { models: clean2 } : {},
               ...cleanCouncil ? { council: cleanCouncil } : {},
               ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
               updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -4577,7 +4648,7 @@ function createApp() {
           console.warn("[AI] Nie uda\u0142o si\u0119 zapisa\u0107 konfiguracji do Firestore (brak po\u015Bwiadcze\u0144 Admin):", dbErr);
         }
       }
-      return res.json({ ok: true, models: clean, council: cleanCouncil, chatConfig: cleanChatConfig });
+      return res.json({ ok: true, models: clean2, council: cleanCouncil, chatConfig: cleanChatConfig });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
@@ -5038,8 +5109,8 @@ RESEND_API_KEY=${cleanKey}
     const trimmed = input.trim();
     const match = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-f0-9]{32})/i);
     if (match) {
-      const clean = match[1].replace(/-/g, "").toLowerCase();
-      return `${clean.slice(0, 8)}-${clean.slice(8, 12)}-${clean.slice(12, 16)}-${clean.slice(16, 20)}-${clean.slice(20)}`;
+      const clean2 = match[1].replace(/-/g, "").toLowerCase();
+      return `${clean2.slice(0, 8)}-${clean2.slice(8, 12)}-${clean2.slice(12, 16)}-${clean2.slice(16, 20)}-${clean2.slice(20)}`;
     }
     return trimmed;
   }

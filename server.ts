@@ -214,6 +214,7 @@ import { Group, GroupWithMembers, GroupMemberPreview, GroupHomeworkFanOutResult,
 import { buildNewGroupPayload, MissingTeacherProfileError } from "./utils/groupPayload";
 import { evaluateDirectHomework, stripUndefinedDeep } from "./utils/directHomeworkEvaluation";
 import { sanitizeWarmup } from "./utils/warmupSanitize";
+import { sanitizeWarmupCards } from "./utils/warmupCards";
 import crypto from 'crypto';
 let pdfParse: any;
 try {
@@ -903,6 +904,8 @@ export function createApp() {
       const { title, type, types, instructions, sentences, accessExpiresAt, origin: clientOrigin } = req.body;
       // undefined = pole pominięte (stara rozgrzewka), [] = brak rozgrzewki.
       const warmup = sanitizeWarmup(req.body?.warmup);
+      // Fiszki rozgrzewki: do 6 poprawnych kart, [] zachowane, brak/nie-tablica = pole pominięte.
+      const warmupCards = sanitizeWarmupCards(req.body?.warmupCards);
 
       if (!callerUid) {
         return res.status(401).json({ error: 'missing_teacher_profile', message: 'Nie udało się zidentyfikować profilu lektora. Zaloguj się ponownie.' });
@@ -996,6 +999,7 @@ export function createApp() {
           instructions: instructions || '',
           sentences,
           warmup,
+          warmupCards,
           accessToken: rawToken, // Dla kompatybilności wstecznej z /hw?token=
           accessTokenHash: tokenHash,
           accessExpiresAt: expiresAt,
@@ -1611,6 +1615,7 @@ export function createApp() {
 
       const isAlreadySubmitted = taskData.status === 'submitted' || taskData.status === 'graded' || taskData.status === 'completed';
       const safeWarmup = sanitizeWarmup(taskData.warmup);
+      const safeWarmupCards = sanitizeWarmupCards(taskData.warmupCards);
 
       return res.json({
         ok: true,
@@ -1626,6 +1631,7 @@ export function createApp() {
           studentId: studentUid,
           sentences: safeSentences,
           ...(safeWarmup !== undefined ? { warmup: safeWarmup } : {}),
+          ...(safeWarmupCards !== undefined ? { warmupCards: safeWarmupCards } : {}),
           studentAnswers: isAlreadySubmitted ? taskData.studentAnswers : undefined,
           evaluationResults: isAlreadySubmitted ? taskData.evaluationResults : undefined,
           submittedAt: taskData.submittedAt || null,
