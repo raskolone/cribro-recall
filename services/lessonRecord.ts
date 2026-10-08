@@ -2,47 +2,11 @@ import { auth, db } from '../firebase';
 import { doc, setDoc, collection, getDocs, getDoc, query, orderBy, where, serverTimestamp, updateDoc, writeBatch, deleteDoc } from 'firebase/firestore';
 import { LessonRecord, RejectedNotionItem, VocabularySet } from '../types';
 import { findExistingDuplicate } from '../utils/lessonDuplicates';
-import { buildVocabularySetTitle, countVocabularyItems, getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
+import { buildVocabularySetTitle, countVocabularyItems, getApprovedVocabularyText, parseVocabularyTextToCards, splitVocabularyLines } from '../utils/vocabulary';
 
-export function parseVocabularyTextToCards(vocabularyText: string) {
-  if (!vocabularyText) return [];
-  const lines = vocabularyText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
-  return lines.map((line, idx) => {
-    let term = line;
-    let definition = '';
-    if (line.includes(' - ')) {
-      const parts = line.split(' - ');
-      term = parts[0].trim();
-      definition = parts.slice(1).join(' - ').trim();
-    } else if (line.includes(' – ')) {
-      const parts = line.split(' – ');
-      term = parts[0].trim();
-      definition = parts.slice(1).join(' – ').trim();
-    } else if (line.includes(' — ')) {
-      // Myślnik em: tym separatorem zapisuje słownictwo skill „Meeting Summary”
-      // w Notion, więc bez tej gałęzi każda zaimportowana pozycja trafiałaby
-      // do bazy jako termin bez tłumaczenia.
-      const parts = line.split(' — ');
-      term = parts[0].trim();
-      definition = parts.slice(1).join(' — ').trim();
-    } else if (line.includes(':')) {
-      const parts = line.split(':');
-      term = parts[0].trim();
-      definition = parts.slice(1).join(':').trim();
-    } else if (line.includes('=')) {
-      const parts = line.split('=');
-      term = parts[0].trim();
-      definition = parts.slice(1).join('=').trim();
-    }
-    return {
-      position: idx,
-      term,
-      definition,
-      termLanguage: 'English',
-      definitionLanguage: 'Polish'
-    };
-  });
-}
+// Czysty parser mieszka w utils/vocabulary.ts (bez zależności od Firebase); re-eksport zachowuje dotychczasowy import.
+export { parseVocabularyTextToCards };
+
 
 export async function syncFlashcardSetForLesson(
   lessonRecordId: string,
@@ -95,6 +59,23 @@ export async function syncFlashcardSetForLesson(
     console.log(`Successfully synced flashcard set for lesson ${lessonRecordId}`);
   } catch (e) {
     console.warn("Could not sync flashcard set for lesson:", e);
+  }
+}
+
+/**
+ * Surowe karty zestawu fiszek lekcji (`sets/set-lesson-{id}/flashcards`) — ten sam zestaw,
+ * który zapisuje `syncFlashcardSetForLesson`. Brak zestawu lub brak dostępu = pusta lista
+ * (wywołujący sięga wtedy po tekst słownictwa), nigdy wyjątek.
+ */
+export async function fetchLessonFlashcards(
+  lessonRecordId: string
+): Promise<Array<{ term?: unknown; definition?: unknown; position?: unknown }>> {
+  try {
+    const snap = await getDocs(collection(db, `sets/set-lesson-${lessonRecordId}/flashcards`));
+    return snap.docs.map((d) => d.data() as { term?: unknown; definition?: unknown; position?: unknown });
+  } catch (e) {
+    console.warn('[Lekcje] Nie udało się odczytać fiszek lekcji:', e);
+    return [];
   }
 }
 

@@ -56,3 +56,43 @@ export function splitVocabularyLines(vocabularyText: string): string[] {
     .map(line => line.trim())
     .filter(line => line.length > 0);
 }
+
+export function parseVocabularyTextToCards(vocabularyText: string) {
+  if (!vocabularyText) return [];
+  const lines = vocabularyText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  return lines.map((line, idx) => {
+    let term = line;
+    let definition = '';
+    if (line.includes(' - ')) {
+      const parts = line.split(' - ');
+      term = parts[0].trim();
+      definition = parts.slice(1).join(' - ').trim();
+    } else if (line.includes(' – ')) {
+      const parts = line.split(' – ');
+      term = parts[0].trim();
+      definition = parts.slice(1).join(' – ').trim();
+    } else if (line.includes(' — ')) {
+      // Myślnik em: tym separatorem zapisuje słownictwo skill „Meeting Summary”
+      // w Notion, więc bez tej gałęzi każda zaimportowana pozycja trafiałaby
+      // do bazy jako termin bez tłumaczenia.
+      const parts = line.split(' — ');
+      term = parts[0].trim();
+      definition = parts.slice(1).join(' — ').trim();
+    } else if (line.includes(':')) {
+      const parts = line.split(':');
+      term = parts[0].trim();
+      definition = parts.slice(1).join(':').trim();
+    } else if (line.includes('=')) {
+      const parts = line.split('=');
+      term = parts[0].trim();
+      definition = parts.slice(1).join('=').trim();
+    }
+    return {
+      position: idx,
+      term,
+      definition,
+      termLanguage: 'English',
+      definitionLanguage: 'Polish'
+    };
+  });
+}

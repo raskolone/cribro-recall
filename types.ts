@@ -770,6 +770,13 @@ export type HomeworkType =
   | 'multiple_choice'
   | 'matching';
 
+/** Fiszka rozgrzewki: strona 1 = angielska fraza, strona 2 = polskie znaczenie (+ przykład). */
+export interface WarmupCard {
+  term: string;
+  definition: string;
+  contextSentence?: string;
+}
+
 export interface WarmupExercise {
   chunks: string[];
   correctSentence: string;
@@ -844,6 +851,8 @@ export interface SpecialTask {
   createdAt: string;
   dueDate?: string;
   warmup?: WarmupExercise[];
+  /** Fiszki rozgrzewki (niepunktowane, nic nie zapisują): `[]` = wyłączone, lista = są karty, brak pola = stare prace. Osobne od `warmup` (rozsypka). */
+  warmupCards?: WarmupCard[];
   /** Wspólny identyfikator pracy przypisanej wielu kursantom naraz (`hwset_grp_…` grupa, `hwset_multi_…` kilku kursantów) — N dokumentów, po jednym na kursanta. */
   homeworkSetId?: string;
   groupId?: string | null;
