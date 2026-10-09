@@ -7,6 +7,16 @@
     <!-- Bez maximum-scale/user-scalable: blokowanie powiększania łamie WCAG 1.4.4,
          a paczka motywu wprost wymaga zachowania dostępności. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- Kolor paska przeglądarki. Skrypt niżej i ThemeContext przestawiają go wg motywu;
+         wartości = `--bg` z design/theme/tokens.css (utils/themeColor.ts). -->
+    <meta name="theme-color" content="#09101c" />
+    <!-- PWA z ikony na iPhonie. Pasek stanu `black` = nieprzezroczysty, treść zaczyna się pod nim
+         (nie zależy od safe-area-inset-top na ekranach logowania i /hw). -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="apple-mobile-web-app-title" content="Cribro" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <!-- Podstawowe SEO -->
     <title>Cribro Recall — Your English AI Coach</title>
     <meta name="description" content="Twoja osobista platforma do nauki języka angielskiego z AI." />
@@ -49,6 +59,8 @@
           root.classList.add(theme);
           root.setAttribute('data-theme', theme);
           root.style.colorScheme = theme;
+          var tc = document.querySelector('meta[name="theme-color"]');
+          if (tc) tc.setAttribute('content', theme === 'light' ? '#eaf1f8' : '#09101c');
         } catch (e) {}
       })();
 

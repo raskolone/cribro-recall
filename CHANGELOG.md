@@ -198,6 +198,34 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🐛 PWA: nowa wersja trafia do kursanta bez czyszczenia cache — baner „Dostępna nowa wersja" (2026-10-09)
+**Objaw:** na iPhonie (PWA z ikony) po wdrożeniu dalej wisiał stary interfejs (brak „Ćwiczeń dowolnych", stare gesty).
+**Przyczyna (zmierzona na prawdziwym buildzie, Chromium i WebKit):** `sw.ts` ma `skipWaiting()` + `clientsClaim()`, więc nowa wersja przejmuje kontrolę od razu, ale (1) otwarta strona dalej działa na starym JS, (2) przeglądarka pyta o `sw.js` wyłącznie przy nawigacji — wznowienie apki z tła to 0 żądań, (3) `index.html` jest w precache (cache-first), więc pierwsze uruchomienie po wdrożeniu też pokazuje starą wersję, a nową dopiero drugie, (4) `registerSW.js` tylko rejestrował SW i nikogo nie informował.
+**Zmiana:**
+- `utils/pwaUpdate.ts` (logika bez przeglądarki, wstrzykiwane zależności): `registration.update()` przy powrocie do aplikacji (`visibilitychange`, odstęp min. 60 s), po odzyskaniu sieci i co 30 min przy widocznej karcie; `controllerchange` zapala baner (pierwsza instalacja go nie zapala); przeładowanie tylko na kliknięcie, z **blokadą pętli** (`sessionStorage`, okno 30 s).
+- `services/pwaUpdates.ts` (rejestracja po `load`, jedna instancja), `hooks/usePwaUpdate.ts`, `components/ui/UpdateBanner.tsx` (dolny, nad paskiem gestów, tokeny motywu, przyciski ≥ 44 px), montaż w `App.tsx`, start w `index.tsx` tylko w buildzie produkcyjnym.
+- `vite.config.ts`: `injectRegister: false` (rejestruje aplikacja, nie wtyczka). Manifest: `lang: pl`, `orientation: any` (lektor używa tabletu poziomo), `id`, ikony maskable PNG 192/512 (`public/icon-maskable-*.png`, margines 10%), ikony SVG tylko `any`, `theme_color`/`background_color` = `--bg` motywu.
+- `index.html`: `theme-color` (przestawiany wg motywu przez skrypt startowy i `ThemeContext` → `utils/themeColor.ts`), `apple-mobile-web-app-capable`, `-status-bar-style=black` (nieprzezroczysty pasek stanu — treść zaczyna się pod nim, ekrany logowania i `/hw` nie zależą od `safe-area-inset-top`), `-title`, `apple-touch-icon`.
+**Pomiar (prawdziwy `dist/`, symulacja wdrożenia = zmieniony `sw.js` i rewizja `index.html`):** baner pojawia się ~205 ms po powrocie do aplikacji, strona NIE jest przeładowywana sama; klik „Odśwież" → nowa wersja; zmiana zgłoszona tuż po przeładowaniu → drugie przeładowanie zablokowane, baner schowany; ścieżka interwału 30 min (zegar `page.clock`) działa; testy: `tests/pwaUpdate.test.ts` (15), `tests/pwaConfig.test.ts` (6).
+**Ograniczenia:** (1) klienci ze STARYM kodem nie mają baneru — pierwsza aktualizacja do tej wersji idzie jak dotąd (drugie uruchomienie po wdrożeniu); od niej wszystkie kolejne są szybkie. (2) Offline działa dla `/`; głębokie linki (`/hw?token=`) offline nie — i tak wymagają API. (3) Zachowanie na prawdziwym iPhonie (PWA standalone, wznowienie z tła) nie sprawdzone — tylko WebKit z Playwrighta.
+**Wycofanie:**
+1. *Zwykłe:* `git revert <sha commita „PWA…">` i wdrożenie. Zrewertowany `sw.js` ma inne bajty, więc klienci pobiorą go jako zwykłą aktualizację (`skipWaiting` zostaje), a `registerSW.js` wraca do `index.html`.
+2. *Awaryjne (gdy SW psuje aplikację):* podmienić `sw.ts` na poniższy SW-samobója i wdrożyć — przy następnej kontroli `sw.js` czyści cache, wyrejestrowuje się i przeładowuje karty:
+```ts
+/// <reference lib="webworker" />
+declare const self: ServiceWorkerGlobalScope;
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => {
+  event.waitUntil((async () => {
+    for (const key of await caches.keys()) await caches.delete(key);
+    await self.registration.unregister();
+    for (const client of await self.clients.matchAll({ type: 'window' })) (client as WindowClient).navigate(client.url);
+  })());
+});
+export {};
+```
+   Po tym kroku zostawić ten plik na min. 2 tygodnie (aż wszystkie urządzenia go pobiorą), dopiero potem wracać do SW z precache.
+
 ### 🚀 Kursant: „Ćwiczenia dowolne" na pulpicie — start ćwiczenia poza pracą domową (2026-10-09)
 - **Cel:** z pulpitu kursant jednym wejściem wybiera rodzaj ćwiczenia i materiał i od razu ćwiczy, niezależnie od przypisanej pracy domowej (także gdy nie ma żadnej). Bez nowych typów ćwiczeń, bez nowych generatorów AI, bez zmian w samych ćwiczeniach.
 - **Krok 0 (ustalenia przed kodowaniem):** istnieją (a) moduł fiszek `FlashcardStudyScreen` — tryby intro / fiszki / quiz / pisanie / dopasowanie, na zestawach z `useFlashcards().sets` (własne, z lekcji i ogólne — każdy kursant ma co najmniej ogólne); (b) „Praktyka dodatkowa" `AIExerciseGeneratorScreen` (widoki `extra-practice`/`ai-generator`, zdania generowane przez AI; jej zakładka „inne" i tak oddaje do (a)); (c) ćwiczenia pracy domowej (`HomeworkExercise` + `normalizeExercise`: word_order, fill_in_the_blank, translation, find_errors) — tylko w ekranach pracy domowej i rozgrzewki, zasilane `SpecialTask.items`, bez źródła treści poza zadaniem; (d) martwy kod `components/practice/*` + `PracticeZone` (nigdzie niezamontowany). Moduł fiszek da się uruchomić bez pracy domowej, a `FlashcardContext.saveSession` pisze tylko `sessions/*`, `sessions/*/results/*` i `users/{uid}/practiceLogs` (+ słabe strony, `recordExerciseResults`, streak) i nie dotyka `specialTasks`. Dlatego to najkrótsza droga; `normalizeExercise` nie jest tu potrzebny (fiszki to typowane `Flashcard`, nie surowy JSON zadań).

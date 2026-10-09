@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import './index.css';
 import './i18n';
 import './utils/appAlert';
@@ -7,6 +8,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ThemeProvider } from './context/ThemeContext';
+import { startPwaUpdates } from './services/pwaUpdates';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -23,3 +25,6 @@ root.render(
     </ThemeProvider>
   </React.StrictMode>
 );
+
+// Service worker istnieje tylko w buildzie produkcyjnym (w `vite dev` go nie ma).
+if (import.meta.env.PROD) startPwaUpdates();

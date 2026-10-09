@@ -17,6 +17,7 @@ import PresenterScreen from './components/admin/presentation/PresenterScreen';
 import { AdminAIActivityMonitor } from './components/admin/AdminAIActivityMonitor';
 import { handleGlobalEscape } from './utils/modalStack';
 import AppAlertModal from './components/ui/AppAlertModal';
+import UpdateBanner from './components/ui/UpdateBanner';
 import UnsubscribeScreen from './components/auth/UnsubscribeScreen';
 import DirectHomeworkScreen from './components/dashboard/DirectHomeworkScreen';
 import LiveJoinScreen from './components/presentation/LiveJoinScreen';
@@ -47,6 +48,7 @@ const App: React.FC = () => {
           <AppContent />
           <AdminAIActivityMonitor />
           <AppAlertModal />
+          <UpdateBanner />
         </GlobalErrorBoundary>
       </AuthProvider>
     </LanguageProvider>

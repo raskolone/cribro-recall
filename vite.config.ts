@@ -18,41 +18,64 @@ export default defineConfig(({ mode }) => {
         react(), 
         tailwindcss(),
         VitePWA({
+          // Rejestracja i sprawdzanie aktualizacji żyją w services/pwaUpdates.ts (utils/pwaUpdate.ts):
+          // wtyczka nie wstrzykuje już registerSW.js, bo ten tylko rejestrował SW i nigdy nie
+          // sprawdzał aktualizacji po wznowieniu aplikacji ani nie informował użytkownika.
+          injectRegister: false,
           registerType: 'autoUpdate',
           // injectManifest zamiast generateSW — powód w sw.ts.
           strategies: 'injectManifest',
           srcDir: '.',
           filename: 'sw.ts',
-          includeAssets: ['favicon.svg', 'cribro-logo.svg', 'apple-touch-icon.png', 'cribro-icon.svg'],
+          includeAssets: ['favicon.svg', 'cribro-logo.svg', 'apple-touch-icon.png', 'cribro-icon.svg', 'icon-maskable-192x192.png', 'icon-maskable-512x512.png'],
           manifest: {
             name: 'CRIBRO ENGLISH',
             short_name: 'Cribro',
             description: 'Cribro English',
-            theme_color: '#0a0a0a',
-            background_color: '#0a0a0a',
+            id: '/',
+            lang: 'pl',
+            // = `--bg` z design/theme/tokens.css (ciemny); jasny motyw ustawia meta theme-color w runtime.
+            theme_color: '#09101c',
+            background_color: '#09101c',
             display: 'standalone',
+            // `any`: uczeń używa telefonu, ale lektor tabletu poziomo — blokada pionu by mu przeszkadzała.
+            orientation: 'any',
             icons: [
               {
                 src: 'cribro-icon.svg',
                 sizes: 'any',
                 type: 'image/svg+xml',
-                purpose: 'any maskable'
+                purpose: 'any'
               },
               {
                 src: 'icon-192x192.png',
                 sizes: '192x192',
-                type: 'image/png'
+                type: 'image/png',
+                purpose: 'any'
               },
               {
                 src: 'icon-512x512.png',
                 sizes: '512x512',
-                type: 'image/png'
+                type: 'image/png',
+                purpose: 'any'
+              },
+              {
+                src: 'icon-maskable-192x192.png',
+                sizes: '192x192',
+                type: 'image/png',
+                purpose: 'maskable'
+              },
+              {
+                src: 'icon-maskable-512x512.png',
+                sizes: '512x512',
+                type: 'image/png',
+                purpose: 'maskable'
               },
               {
                 src: 'favicon.svg',
                 sizes: 'any',
                 type: 'image/svg+xml',
-                purpose: 'any maskable'
+                purpose: 'any'
               },
               {
                 src: 'favicon.svg',

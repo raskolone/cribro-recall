@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { applyThemeColor } from '../utils/themeColor';
 
 export type Theme = 'light' | 'dark';
 export type ThemeMode = 'light' | 'dark' | 'adaptive';
@@ -76,6 +77,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.classList.add(theme);
     root.setAttribute('data-theme', theme);
     root.style.colorScheme = theme;
+    applyThemeColor(theme);
 
     try {
       localStorage.setItem('theme', theme);
