@@ -930,7 +930,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
         <div className="space-y-3">
           <button
             onClick={() => setViewingGradedTask(null)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/12 text-content-muted hover:text-text-hi hover:bg-white/5 transition-colors text-xs font-semibold cursor-pointer"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl border border-white/12 pointer-coarse:min-h-11 text-content-muted hover:text-text-hi hover:bg-white/5 transition-colors text-xs font-semibold cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span>Wróć do listy prac</span>
@@ -1083,7 +1083,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             <div className="flex items-center gap-2 p-1 rounded-xl bg-base-200/80 border border-white/10">
               <button
                 onClick={() => setReviewFilter('all')}
-                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold pointer-coarse:min-h-11 transition-colors cursor-pointer ${
                   reviewFilter === 'all'
                     ? 'bg-primary text-accent-ink shadow-sm'
                     : 'text-content-muted hover:text-text-hi'
@@ -1093,7 +1093,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               </button>
               <button
                 onClick={() => setReviewFilter('errors')}
-                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold pointer-coarse:min-h-11 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                   reviewFilter === 'errors'
                     ? 'bg-amber-500 text-[#0f1720] shadow-sm'
                     : 'text-amber-400/80 hover:text-amber-300'
@@ -1104,7 +1104,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               </button>
               <button
                 onClick={() => setReviewFilter('correct')}
-                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`flex-1 min-h-[2.5rem] rounded-lg text-xs font-bold pointer-coarse:min-h-11 transition-colors flex items-center justify-center gap-1.5 cursor-pointer ${
                   reviewFilter === 'correct'
                     ? 'bg-emerald-500 text-[#0f1720] shadow-sm'
                     : 'text-emerald-400/80 hover:text-emerald-300'
@@ -1248,7 +1248,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               <button
                 type="button"
                 onClick={closeTask}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-muted hover:text-white bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-content-muted hover:text-white bg-white/5 pointer-coarse:min-h-11 hover:bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 transition-colors cursor-pointer"
               >
                 <ArrowLeft size={14} />
                 <span>Wróć do listy</span>

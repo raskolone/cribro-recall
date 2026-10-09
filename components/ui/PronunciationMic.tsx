@@ -69,7 +69,7 @@ const PronunciationMic: React.FC<PronunciationMicProps> = ({ targetWord }) => {
     <div className="relative inline-flex flex-col items-end">
       <button
         onClick={isRecording ? stopRecording : startRecording}
-        className={`p-2 rounded-full transition-all flex items-center justify-center
+        className={`p-2 rounded-full transition-all flex items-center justify-center pointer-coarse:min-h-11 pointer-coarse:min-w-11
           ${isRecording 
             ? 'bg-danger/20 text-danger animate-pulse border border-danger/50' 
             : 'bg-primary/10 text-primary hover:bg-primary/20 border border-transparent'}

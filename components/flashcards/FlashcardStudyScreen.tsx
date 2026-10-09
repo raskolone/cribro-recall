@@ -437,14 +437,14 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
             t('flashcards.confirmQuitTitle') || 'Zakończ', 
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
-          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2 pointer-coarse:min-h-11">
           
                             {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsReversed(!isReversed)}
-            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-text-2"
+            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-text-2 pointer-coarse:min-h-11 pointer-coarse:px-3"
           >
             {isReversed ? 'PL -> EN' : 'EN -> PL'}
           </button>
@@ -524,8 +524,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       </div>
 
       <div className="flex justify-between md:hidden px-4">
-         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 ${currentIndex === 0 ? 'opacity-30' : ''}`}>← {language === 'pl' ? 'Poprzednia' : 'Previous'}</button>
-         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>{language === 'pl' ? 'Następna' : 'Next'} →</button>
+         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 pointer-coarse:min-h-11 pointer-coarse:px-3 ${currentIndex === 0 ? 'opacity-30' : ''}`}>← {language === 'pl' ? 'Poprzednia' : 'Previous'}</button>
+         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 pointer-coarse:min-h-11 pointer-coarse:px-3 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>{language === 'pl' ? 'Następna' : 'Next'} →</button>
       </div>
 
       {isFlipped ? (
@@ -652,14 +652,14 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
             t('flashcards.confirmQuitTitle') || 'Zakończ', 
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
-          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2 pointer-coarse:min-h-11">
           
                             {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
         <div className="flex items-center gap-4">
           <button 
             onClick={() => setIsReversed(!isReversed)}
-            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-text-2"
+            className="text-xs px-2 py-1 rounded bg-white/5 hover:bg-white/10 text-text-2 pointer-coarse:min-h-11 pointer-coarse:px-3"
           >
             {isReversed ? 'PL -> EN' : 'EN -> PL'}
           </button>
@@ -833,7 +833,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
             t('flashcards.confirmQuitTitle') || 'Zakończ', 
             t('flashcards.confirmQuit') || 'Czy na pewno chcesz zakończyć sesję?', 
             () => { closeConfirm(); onBack(); }
-          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2 pointer-coarse:min-h-11">
           
                             {i18n.t("&larr;")} {t('flashcards.quit')}
         </button>
@@ -949,7 +949,7 @@ const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm, language }: an
             t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'), 
             t('flashcards.confirmQuit') || (language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję?' : 'Are you sure you want to quit the session?'), 
             () => { closeConfirm(); onBack(); }
-          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
+          ); }} className="text-content-muted hover:text-white flex items-center gap-2 pointer-coarse:min-h-11">
           ← {t('flashcards.quit') || (language === 'pl' ? 'Zakończ' : 'Quit')}
         </button>
         <div className="font-mono text-sm">

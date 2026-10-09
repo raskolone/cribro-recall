@@ -96,7 +96,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
           type="button"
           onClick={onBack}
           data-testid="free-practice-back"
-          className={`inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-line-strong bg-base-100/60 hover:bg-base-100 text-content-muted hover:text-text-hi text-sm font-semibold cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
+          className={`inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl pointer-coarse:min-h-11 border border-line-strong bg-base-100/60 hover:bg-base-100 text-content-muted hover:text-text-hi text-sm font-semibold cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
         >
           <ArrowLeft size={15} aria-hidden="true" />
           {t('Pulpit')}

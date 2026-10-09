@@ -279,14 +279,14 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               🎴 {t('flashcards.study')}
             </Button>
             {onNavigate && (
-              <Button variant="secondary" className="h-9 w-9 !px-0 shrink-0 border-primary/30 text-primary" title={language === 'pl' ? 'Ćwicz w zdaniach AI' : 'Practice with AI'} onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}>
+              <Button variant="secondary" className="h-9 w-9 !px-0 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11 border-primary/30 text-primary" title={language === 'pl' ? 'Ćwicz w zdaniach AI' : 'Practice with AI'} onClick={() => { markSetAsChecked(set.id); onNavigate('ai-generator', { setId: set.id }); }}>
                 ✨
               </Button>
             )}
-            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="h-9 w-9 !px-0 shrink-0" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
+            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="h-9 w-9 !px-0 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
               👀
             </Button>
-            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }} className="h-9 w-9 !px-0 shrink-0" title={language === 'pl' ? 'Statystyki' : 'Stats'}>
+            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); onStatsSet(set.id); }} className="h-9 w-9 !px-0 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11" title={language === 'pl' ? 'Statystyki' : 'Stats'}>
               📊
             </Button>
           </div>
@@ -427,13 +427,13 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             <Button className="flex-1 h-9 text-xs" onClick={() => { markSetAsChecked(set.id); onStudySet(set.id); }} disabled={set.cardCount === 0}>
               🎴 {t('flashcards.study')}
             </Button>
-            <Button variant="secondary" className="h-9 w-9 !px-0 shrink-0" title={language === 'pl' ? 'Edytuj' : 'Edit'} onClick={() => { markSetAsChecked(set.id); onEditSet(set.id); }}>
+            <Button variant="secondary" className="h-9 w-9 !px-0 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11" title={language === 'pl' ? 'Edytuj' : 'Edit'} onClick={() => { markSetAsChecked(set.id); onEditSet(set.id); }}>
               ✏️
             </Button>
-            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="h-9 w-9 !px-0 shrink-0" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
+            <Button variant="secondary" onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }} disabled={set.cardCount === 0} className="h-9 w-9 !px-0 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11" title={language === 'pl' ? 'Podgląd' : 'Preview'}>
               👀
             </Button>
-            <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="h-9 w-9 !px-0 shrink-0 border-danger/30 text-danger hover:opacity-80 hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
+            <Button variant="secondary" onClick={(e) => { e.stopPropagation(); setSetToDelete(set.id); }} className="h-9 w-9 !px-0 shrink-0 pointer-coarse:h-11 pointer-coarse:w-11 border-danger/30 text-danger hover:opacity-80 hover:bg-danger/10" title={language === 'pl' ? 'Usuń zestaw' : 'Delete set'}>
               🗑️
             </Button>
           </div>
@@ -510,13 +510,13 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <div className="flex bg-base-300 p-1 rounded-lg">
             <button 
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium pointer-coarse:min-h-11 pointer-coarse:min-w-11 transition-colors ${viewMode === 'list' ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-white'}`}
             >
               ☰
             </button>
             <button 
               onClick={() => setViewMode('grid')}
-              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-white'}`}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium pointer-coarse:min-h-11 pointer-coarse:min-w-11 transition-colors ${viewMode === 'grid' ? 'bg-primary text-accent-ink shadow-sm' : 'text-content-muted hover:text-white'}`}
             >
               ⊞
             </button>
@@ -578,7 +578,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
           <div className="w-full max-w-3xl lg:max-w-4xl bg-base-200/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1),0_0_60px_rgba(114, 240, 180,0.15)] max-h-[85dvh] flex flex-col relative z-10 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-white">{language === 'pl' ? 'Podgląd słownictwa' : 'Vocabulary Preview'}</h3>
-              <button onClick={() => setPreviewSetId(null)} className="text-content-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">
+              <button onClick={() => setPreviewSetId(null)} className="text-content-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5 inline-flex items-center justify-center pointer-coarse:min-h-11 pointer-coarse:min-w-11">
                 ✕
               </button>
             </div>

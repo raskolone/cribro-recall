@@ -329,7 +329,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
         <button
           type="button"
           onClick={onSkip}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line-strong bg-base-100/60 hover:bg-base-100 text-content-muted hover:text-text-hi text-xs font-semibold transition-all cursor-pointer ${focusRing}`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line-strong pointer-coarse:min-h-11 bg-base-100/60 hover:bg-base-100 text-content-muted hover:text-text-hi text-xs font-semibold transition-all cursor-pointer ${focusRing}`}
         >
           <span>{i18n.t('Pomiń rozgrzewkę')}</span>
           <SkipForward size={13} />

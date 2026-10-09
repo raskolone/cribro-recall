@@ -101,7 +101,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
             setIsOpen(false);
             if (onCloseError) onCloseError();
           }}
-          className="text-content-muted hover:text-white transition-colors"
+          className="text-content-muted hover:text-white transition-colors inline-flex items-center justify-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
         >
           <X size={20} />
         </button>

@@ -682,7 +682,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setOpenTool(null)}
-                  className="shrink-0 h-8 px-2.5 rounded-lg border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] text-[11px] font-semibold transition-colors cursor-pointer"
+                  className="shrink-0 h-8 px-2.5 rounded-lg pointer-coarse:h-11 border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] text-[11px] font-semibold transition-colors cursor-pointer"
                 >
                   {language === 'pl' ? 'Zwiń' : 'Collapse'}
                 </button>
@@ -694,7 +694,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => setResourceSubTab('homework')}
-                      className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold pointer-coarse:min-h-11 transition-all cursor-pointer flex items-center gap-1.5 ${
                         resourceSubTab === 'homework'
                           ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
                           : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
@@ -708,7 +708,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => setResourceSubTab('tests')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold pointer-coarse:min-h-11 transition-all cursor-pointer ${
                         resourceSubTab === 'tests'
                           ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
                           : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
@@ -720,7 +720,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                       <button
                         type="button"
                         onClick={() => setResourceSubTab('vocabulary')}
-                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold pointer-coarse:min-h-11 transition-all cursor-pointer ${
                           resourceSubTab === 'vocabulary'
                             ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
                             : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
@@ -790,7 +790,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => setHistorySubTab('lessons')}
-                      className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                      className={`relative px-3 py-1.5 rounded-lg text-xs font-semibold pointer-coarse:min-h-11 transition-all cursor-pointer flex items-center gap-1.5 ${
                         historySubTab === 'lessons'
                           ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
                           : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'
@@ -804,7 +804,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => setHistorySubTab('practice')}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold pointer-coarse:min-h-11 transition-all cursor-pointer ${
                         historySubTab === 'practice'
                           ? 'bg-primary/15 text-primary border border-primary/30 shadow-sm'
                           : 'text-text-2 hover:text-content hover:bg-white/[0.05] border border-transparent'

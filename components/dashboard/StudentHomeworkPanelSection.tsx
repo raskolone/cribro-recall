@@ -189,7 +189,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
             <div className="pt-2">
               <button
                 onClick={() => onOpenHomework()}
-                className="w-full py-2.5 px-4 rounded-xl bg-base-100 hover:bg-line-soft text-xs font-bold text-primary border border-primary/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
+                className="w-full py-2.5 px-4 rounded-xl bg-base-100 pointer-coarse:min-h-11 hover:bg-line-soft text-xs font-bold text-primary border border-primary/30 flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
                 <span>{language === 'pl' ? 'Przejdź do wszystkich prac domowych' : 'Open full homework view'}</span>
                 <ArrowRight size={14} />

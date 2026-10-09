@@ -191,7 +191,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
         <button
           type="button"
           onClick={onSkip}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line-strong bg-base-100/60 hover:bg-base-100 hover:text-white text-content-muted text-xs font-semibold transition-all cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line-strong pointer-coarse:min-h-11 bg-base-100/60 hover:bg-base-100 hover:text-white text-content-muted text-xs font-semibold transition-all cursor-pointer"
           title="Przejdź od razu do właściwych zadań"
         >
           <span>Pomiń rozgrzewkę</span>
@@ -308,7 +308,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                   data-testid="warmup-bank-tile"
                   disabled={isUsed || isDone}
                   onClick={() => handleSelectTile(bankIndex)}
-                  className={`px-3.5 py-2 rounded-xl border text-[15px] font-bold transition-all duration-150 active:scale-95 cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-xl border text-[15px] font-bold pointer-coarse:min-h-11 pointer-coarse:min-w-11 transition-all duration-150 active:scale-95 cursor-pointer ${
                     isUsed
                       ? 'opacity-20 border-transparent bg-base-100/20 text-content-muted cursor-not-allowed scale-90'
                       : `${colorClass} shadow-sm hover:scale-105`
@@ -383,7 +383,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
         <button
           type="button"
           onClick={onSkip}
-          className="text-xs font-semibold text-content-muted hover:text-white transition-colors cursor-pointer underline underline-offset-4"
+          className="text-xs font-semibold text-content-muted hover:text-white transition-colors cursor-pointer underline underline-offset-4 pointer-coarse:min-h-11 pointer-coarse:inline-flex pointer-coarse:items-center"
         >
           Przejdź od razu do głównych ćwiczeń (bez rozgrzewki)
         </button>

@@ -41,9 +41,10 @@ const Button: React.FC<ButtonProps> = ({
   };
 
   const sizeStyles = {
-    sm: 'px-5 py-2 text-xs',
-    md: 'px-8 py-3 text-sm',
-    lg: 'px-10 py-4 text-base',
+    // `pointer-coarse:min-h-11`: na dotyku przycisk ma min. 44 px (desktop bez zmian).
+    sm: 'px-5 py-2 text-xs pointer-coarse:min-h-11',
+    md: 'px-8 py-3 text-sm pointer-coarse:min-h-11',
+    lg: 'px-10 py-4 text-base pointer-coarse:min-h-11',
   };
 
   return (

@@ -105,7 +105,7 @@ const TopBar: React.FC<TopBarProps> = ({
         <button
           type="button"
           onClick={onHome}
-          className="shrink-0 flex items-center cursor-pointer rounded-xl px-1 -mx-1 transition-opacity hover:opacity-80 active:opacity-70"
+          className="shrink-0 flex items-center cursor-pointer rounded-xl px-1 -mx-1 pointer-coarse:min-h-11 transition-opacity hover:opacity-80 active:opacity-70"
           title={t('Wróć do panelu', 'Back to the panel')}
           aria-label={t('Wróć do panelu', 'Back to the panel')}
         >
@@ -122,7 +122,7 @@ const TopBar: React.FC<TopBarProps> = ({
             <button
               type="button"
               onClick={notices[0].onClick}
-              className={`min-w-0 max-w-full flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12px] font-semibold truncate transition-colors ${
+              className={`min-w-0 max-w-full flex items-center gap-2 px-3 py-1.5 rounded-full border text-[12px] pointer-coarse:min-h-11 font-semibold truncate transition-colors ${
                 notices[0].tone === 'danger'
                   ? 'border-danger/35 bg-danger/10 text-danger hover:bg-danger/15'
                   : 'border-primary/35 bg-primary/10 text-primary hover:bg-primary/15'
@@ -150,7 +150,7 @@ const TopBar: React.FC<TopBarProps> = ({
           onClick={onShowHelp}
           aria-label={t('Przewodnik po aplikacji', 'App guide')}
           title={t('Przewodnik po aplikacji', 'App guide')}
-          className="shrink-0 w-10 h-10 rounded-xl border border-line-strong bg-base-100/60 text-content-muted hover:text-primary hover:border-primary/40 flex items-center justify-center transition-colors cursor-pointer"
+          className="shrink-0 w-10 h-10 rounded-xl border border-line-strong pointer-coarse:w-11 pointer-coarse:h-11 bg-base-100/60 text-content-muted hover:text-primary hover:border-primary/40 flex items-center justify-center transition-colors cursor-pointer"
         >
           <HelpCircle size={18} />
         </button>
@@ -167,7 +167,7 @@ const TopBar: React.FC<TopBarProps> = ({
             aria-expanded={isOpen}
             aria-label={t('Panel zarządzania', 'Management panel')}
             title={t('Ustawienia, język, pomoc, wylogowanie', 'Settings, language, help, logout')}
-            className={`relative w-10 h-10 rounded-xl border flex items-center justify-center transition-colors ${
+            className={`relative w-10 h-10 rounded-xl border flex pointer-coarse:w-11 pointer-coarse:h-11 items-center justify-center transition-colors ${
               isOpen
                 ? 'border-primary/50 bg-primary/12 text-primary'
                 : 'border-line-strong bg-base-100/60 text-content-muted hover:text-text-hi hover:border-primary/40'
@@ -189,7 +189,7 @@ const TopBar: React.FC<TopBarProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="p-1 rounded-lg text-content-muted hover:text-text-hi"
+                  className="p-1 rounded-lg text-content-muted hover:text-text-hi inline-flex items-center justify-center pointer-coarse:min-h-11 pointer-coarse:min-w-11"
                   aria-label={t('Zamknij', 'Close')}
                 >
                   <X size={14} />
@@ -203,7 +203,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     setIsOpen(false);
                     onOpenSettings();
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-text-hi hover:bg-line-soft transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold pointer-coarse:min-h-11 text-text-hi hover:bg-line-soft transition-colors"
                 >
                   <SettingsIcon size={16} className="text-content-muted shrink-0" />
                   {t('Ustawienia', 'Settings')}
@@ -215,7 +215,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     setIsOpen(false);
                     onShowHelp();
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-text-hi hover:bg-line-soft transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold pointer-coarse:min-h-11 text-text-hi hover:bg-line-soft transition-colors"
                 >
                   <HelpCircle size={16} className="text-content-muted shrink-0" />
                   {t('Pomoc', 'Help')}
@@ -231,7 +231,7 @@ const TopBar: React.FC<TopBarProps> = ({
                       setIsOpen(false);
                       requestBugReport();
                     }}
-                    className="md:pointer-fine:hidden w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-text-hi hover:bg-line-soft transition-colors"
+                    className="md:pointer-fine:hidden w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold pointer-coarse:min-h-11 text-text-hi hover:bg-line-soft transition-colors"
                   >
                     <Bug size={16} className="text-content-muted shrink-0" />
                     {t('Zgłoś problem', 'Report a problem')}
@@ -245,7 +245,7 @@ const TopBar: React.FC<TopBarProps> = ({
                       setIsOpen(false);
                       onOpenDiagnostics();
                     }}
-                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors ${
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold pointer-coarse:min-h-11 transition-colors ${
                       alert
                         ? 'text-danger hover:bg-danger/10'
                         : 'text-text-hi hover:bg-line-soft'
@@ -276,7 +276,7 @@ const TopBar: React.FC<TopBarProps> = ({
                       key={code}
                       type="button"
                       onClick={() => setLanguage(code)}
-                      className={`flex-1 min-h-9 rounded-lg font-mono font-bold text-xs tracking-[0.1em] transition-colors ${
+                      className={`flex-1 min-h-9 rounded-lg pointer-coarse:min-h-11 font-mono font-bold text-xs tracking-[0.1em] transition-colors ${
                         language === code
                           ? 'bg-primary/12 border border-primary/30 text-primary'
                           : 'border border-transparent text-content-muted hover:text-text-hi'
@@ -295,7 +295,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     setIsOpen(false);
                     logout();
                   }}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-content-muted hover:text-danger hover:bg-danger/10 transition-colors"
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold pointer-coarse:min-h-11 text-content-muted hover:text-danger hover:bg-danger/10 transition-colors"
                 >
                   <LogOut size={16} className="shrink-0" />
                   {t('Wyloguj się', 'Log out')}
