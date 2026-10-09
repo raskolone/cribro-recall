@@ -384,7 +384,16 @@
 /* Ground, typografia i reset żyją w design/theme/tokens.css. Tutaj tylko to,
    czego tokeny nie obejmują: schemat kolorów i wysokość korzenia Reacta. */
 :root { color-scheme: dark; }
-html, body, #root { min-height: 100vh; }
+/* `100vh` to WYSOKOŚĆ DUŻEGO viewportu (iOS Safari: pasek adresu schowany) — przy widocznym
+   pasku dokument był wyższy od ekranu, a pod `Dashboard` (h-[100dvh]) zostawał pusty pas
+   do przewinięcia. Pierwsza deklaracja to fallback dla przeglądarek bez `dvh`. */
+html, body, #root { min-height: 100vh; min-height: 100dvh; }
+
+/* Jedna klasa na „co najmniej cały ekran" zamiast `min-h-screen` (= 100vh). */
+@utility min-h-app {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
 
 /* Kanwa konstelacji leży fixed na z-index 0, więc powłoka aplikacji musi
    siedzieć nad nią. Gradient strony zostaje na body (reguła paczki). */

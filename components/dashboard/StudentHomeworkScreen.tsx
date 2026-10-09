@@ -1237,7 +1237,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       const welcomeHeading = buildHomeworkWelcomeGreeting(user?.name || user?.firstName || user?.username);
       const formattedDueDate = activeTask.dueDate ? formatTaskDateTime(activeTask.dueDate) : null;
       return (
-        <div className="min-h-[75vh] flex items-center justify-center p-3 sm:p-6 animate-in fade-in zoom-in-95 duration-200">
+        <div className="min-h-[75dvh] flex items-center justify-center p-3 sm:p-6 animate-in fade-in zoom-in-95 duration-200">
           <div className="w-full max-w-lg bg-base-200/90 border border-white/10 rounded-2xl sm:rounded-3xl p-5 sm:p-8 space-y-6 shadow-2xl backdrop-blur-xl relative overflow-hidden">
             {/* Ambient background glow */}
             <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
@@ -1940,7 +1940,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
       {/* Modal z feedbackiem do testu */}
       {feedbackTest && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/75 backdrop-blur-md">
-          <Card className="w-full max-w-2xl max-h-[90vh] flex flex-col bg-base-200 border border-primary/30 shadow-2xl rounded-3xl overflow-hidden">
+          <Card className="w-full max-w-2xl max-h-[90dvh] flex flex-col bg-base-200 border border-primary/30 shadow-2xl rounded-3xl overflow-hidden">
             <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/10 bg-base-100">
               <div>
                 <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[11px] font-bold uppercase tracking-wider mb-1">

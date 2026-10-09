@@ -451,7 +451,7 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
       </section>
 
       {/* Pasek akcji na dole */}
-      <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-base-100/90 p-4 backdrop-blur-md z-20">
+      <div className="fixed inset-x-0 bottom-0 border-t border-white/10 bg-base-100/90 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-md z-20">
         <div className="mx-auto max-w-2xl flex items-center gap-3">
           {canGoNext ? (
             <button

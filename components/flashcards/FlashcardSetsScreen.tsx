@@ -573,9 +573,9 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       {previewSetId && (
         <div className="fixed inset-0 bg-ink/72 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 z-0 pointer-events-none flex items-center justify-center animate-pulse" style={{ animationDuration: '4s' }}>
-            <div className="w-[80vw] max-w-3xl h-[80vh] max-h-[600px] bg-primary/10 rounded-full blur-[120px]"></div>
+            <div className="w-[80vw] max-w-3xl h-[80dvh] max-h-[600px] bg-primary/10 rounded-full blur-[120px]"></div>
           </div>
-          <div className="w-full max-w-3xl lg:max-w-4xl bg-base-200/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1),0_0_60px_rgba(114, 240, 180,0.15)] max-h-[85vh] flex flex-col relative z-10 animate-in fade-in zoom-in-95 duration-300">
+          <div className="w-full max-w-3xl lg:max-w-4xl bg-base-200/40 backdrop-blur-2xl border border-white/10 rounded-2xl p-6 shadow-[0_8px_32px_0_rgba(0,0,0,0.5),inset_0_1px_0_0_rgba(255,255,255,0.1),0_0_60px_rgba(114, 240, 180,0.15)] max-h-[85dvh] flex flex-col relative z-10 animate-in fade-in zoom-in-95 duration-300">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xl font-bold text-white">{language === 'pl' ? 'Podgląd słownictwa' : 'Vocabulary Preview'}</h3>
               <button onClick={() => setPreviewSetId(null)} className="text-content-muted hover:text-white transition-colors p-1.5 rounded-lg hover:bg-white/5">

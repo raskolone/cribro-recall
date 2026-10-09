@@ -909,7 +909,7 @@ const Dashboard: React.FC = () => {
       {/* `flex flex-col` na kontenerze treści: bez tego ekrany, które mają
           wypełnić okno (notatnik), nie miały od czego wziąć wysokości i
           kurczyły się do wysokości własnej treści. */}
-      <main className="flex-1 overflow-y-auto overflow-x-hidden relative min-w-0 flex flex-col">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden relative min-w-0 flex flex-col pb-[env(safe-area-inset-bottom)]">
         <StudentNotifications onNavigate={(newView) => handleNavigate(newView)} currentView={view} />
         {showPasswordSuggestion && (
           <div className="px-4 pt-4 max-w-5xl mx-auto w-full">

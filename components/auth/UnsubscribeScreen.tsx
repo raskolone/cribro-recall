@@ -78,7 +78,7 @@ export const UnsubscribeScreen: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen relative text-content flex flex-col items-center justify-center p-4">
+    <div className="min-h-app relative text-content flex flex-col items-center justify-center p-4">
       <ConstellationBackground />
 
       <div className="relative z-10 w-full max-w-md mx-auto">

@@ -147,7 +147,7 @@ const AppContent: React.FC = () => {
   if (typeof window !== 'undefined' && window.location.pathname.startsWith('/teacher/lesson-studio')) {
     if (!isLessonStudioEnabled()) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-6 text-center">
+        <div className="min-h-app flex items-center justify-center p-6 text-center">
           <p className="text-sm font-bold text-content-muted">Moduł Lesson Studio jest obecnie wyłączony.</p>
         </div>
       );
@@ -155,7 +155,7 @@ const AppContent: React.FC = () => {
 
     if (!isAuthReady) {
       return (
-        <div className="min-h-screen flex items-center justify-center">
+        <div className="min-h-app flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
       );
@@ -164,7 +164,7 @@ const AppContent: React.FC = () => {
     const isTeacher = user?.role === 'teacher' || user?.role === 'admin';
     if (!isTeacher) {
       return (
-        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center space-y-4">
+        <div className="min-h-app flex flex-col items-center justify-center p-6 text-center space-y-4">
           <h2 className="text-lg font-bold text-text-hi">Dostęp ograniczony</h2>
           <p className="text-xs text-content-muted">Moduł Lesson Studio jest dostępny wyłącznie dla lektorów i administratorów.</p>
           <a href="/" className="px-4 py-2 rounded-xl bg-primary text-accent-ink text-xs font-bold">Wróć na stronę główną</a>
@@ -191,7 +191,7 @@ const AppContent: React.FC = () => {
 
 
   if (!isAuthReady) {
-    return <div className="min-h-screen flex items-center justify-center">
+    return <div className="min-h-app flex items-center justify-center">
       <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
     </div>;
   }
@@ -199,9 +199,9 @@ const AppContent: React.FC = () => {
   return (
     // Bez własnego tła: gradient strony żyje na <body> (design/theme/tokens.css),
     // żeby kanwa konstelacji mogła się przez niego przebijać.
-    <div className={`min-h-screen relative text-content transition-colors duration-300`}>
+    <div className={`min-h-app relative flex flex-col text-content transition-colors duration-300`}>
       <ConstellationBackground />
-      <div className="relative z-10 w-full min-h-screen pointer-events-auto flex flex-col">
+      <div className="relative z-10 w-full flex-1 pointer-events-auto flex flex-col">
         
         <ViewSwitcher currentView={user ? ((user.requirePasswordChange && (user.tempPasswordLogins || 0) > 3) ? 'force-password-change' : 'dashboard') : showAuth ? 'auth' : 'landing'}>
           {user ? (

@@ -2393,7 +2393,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
         ) : (
           <div className="max-w-2xl mx-auto sm:mt-4 w-full">
             
-            <Card className="p-0 md:p-8 border-none md:border-solid md:border md:border-white/10 bg-ink md:bg-ink-2 backdrop-blur-2xl relative overflow-visible md:overflow-hidden flex flex-col rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-screen md:min-h-0">
+            <Card className="p-0 md:p-8 border-none md:border-solid md:border md:border-white/10 bg-ink md:bg-ink-2 backdrop-blur-2xl relative overflow-visible md:overflow-hidden flex flex-col rounded-none md:rounded-3xl shadow-none md:shadow-[0_20px_60px_rgba(0,0,0,0.55)] max-w-2xl mx-auto min-h-[calc(100dvh-3.5rem-env(safe-area-inset-top))] md:min-h-0">
 
 
               {/* Single Box Body content */}
@@ -2828,7 +2828,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                           exit={{ y: '100%' }}
                           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
                           onClick={(e) => e.stopPropagation()}
-                          className="bg-ink-2 border border-white/15 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-5 sm:p-6 shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92vh]"
+                          className="bg-ink-2 border border-white/15 w-full max-w-lg rounded-t-[2.5rem] sm:rounded-3xl p-5 sm:p-6 max-sm:pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-[0_20px_60px_rgba(0,0,0,0.8)] overflow-hidden flex flex-col max-h-[92dvh]"
                         >
                           {/* Header */}
                           <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
@@ -3024,7 +3024,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                           animate={{ y: 0 }}
                           exit={{ y: '100%' }}
                           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                          className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-t-[2rem] sm:rounded-3xl p-6 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+                          className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-t-[2rem] sm:rounded-3xl p-6 max-sm:pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl overflow-hidden flex flex-col max-h-[85dvh]"
                         >
                           <div className="flex justify-between items-center mb-5 border-b border-white/10 pb-4">
                             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -3420,7 +3420,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                 initial={{ y: 20, opacity: 0, scale: 0.95 }}
                                 animate={{ y: 0, opacity: 1, scale: 1 }}
                                 exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85dvh]"
                               >
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
                                   <div>
@@ -3545,7 +3545,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                 initial={{ y: 20, opacity: 0, scale: 0.95 }}
                                 animate={{ y: 0, opacity: 1, scale: 1 }}
                                 exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85dvh]"
                               >
                                 {/* Header */}
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
@@ -3771,7 +3771,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                 initial={{ y: 20, opacity: 0, scale: 0.95 }}
                                 animate={{ y: 0, opacity: 1, scale: 1 }}
                                 exit={{ y: 20, opacity: 0, scale: 0.95 }}
-                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85vh]"
+                                className="bg-[var(--ink-2)] border border-white/10 w-full max-w-lg rounded-[2rem] p-6 shadow-2xl flex flex-col max-h-[85dvh]"
                               >
                                 <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
                                   <div className="flex items-center gap-3">
@@ -4550,7 +4550,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
       {/* PUZZLE SUCCESS STEP */}
       
 {step === 'puzzle-success' && (
-        <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[50vh] space-y-6 animate-fade-in-up relative z-10">
+        <div className="max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[50dvh] space-y-6 animate-fade-in-up relative z-10">
           <div className="relative w-48 h-48 flex items-center justify-center mb-6 pointer-events-none">
             {/* Explosion of puzzle pieces */}
             {Array.from({ length: 16 }).map((_, i) => (
@@ -4853,7 +4853,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
       {isTopicModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/60 backdrop-blur-sm" onClick={() => setIsTopicModalOpen(false)}>
           <div 
-            className="bg-[var(--surface-flat)] rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.6)]"
+            className="bg-[var(--surface-flat)] rounded-3xl w-full max-w-4xl max-h-[90dvh] overflow-y-auto border border-white/10 shadow-[0_16px_64px_rgba(0,0,0,0.6)]"
             onClick={e => e.stopPropagation()}
           >
             <div className="sticky top-0 z-20 flex items-center justify-between p-6 bg-[var(--surface-flat)]/95 backdrop-blur-xl border-b border-white/10">

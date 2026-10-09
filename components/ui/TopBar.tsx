@@ -96,7 +96,7 @@ const TopBar: React.FC<TopBarProps> = ({
   const alert = newBugsCount > 0;
 
   return (
-    <header className="sticky top-0 z-40 w-full border-b border-line-strong bg-base-200/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 w-full border-b border-line-strong bg-base-200/90 backdrop-blur-md pt-[env(safe-area-inset-top)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <div className="w-full max-w-7xl mx-auto px-3 sm:px-5 h-14 flex items-center gap-3">
         {/* Logo jest drogą powrotną do panelu — i musi to po sobie pokazać.
             Bez `cursor-pointer` wyglądało dokładnie jak nagłówek do czytania,

@@ -11,7 +11,7 @@ interface DesktopOnlyNoticeProps {
  * (notatnik A4, planer lekcji) — pokazywany tylko pod `md` (768px).
  */
 const DesktopOnlyNotice: React.FC<DesktopOnlyNoticeProps> = ({ moduleName, onBack }) => (
-  <div className="min-h-[50vh] flex flex-col items-center justify-center text-center gap-4 px-6 py-10 max-w-sm mx-auto">
+  <div className="min-h-[50dvh] flex flex-col items-center justify-center text-center gap-4 px-6 py-10 max-w-sm mx-auto">
     <div className="p-3.5 rounded-2xl bg-line-soft border border-line-strong text-primary">
       <Laptop size={28} />
     </div>

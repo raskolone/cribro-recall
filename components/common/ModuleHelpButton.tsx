@@ -64,7 +64,7 @@ export const ModuleHelpButton: React.FC<ModuleHelpButtonProps> = ({ guideId }) =
           />
 
           {/* Panel */}
-          <div className="relative w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-3xl bg-base-200 border border-line-strong shadow-2xl flex flex-col">
+          <div className="relative w-full max-w-lg max-h-[90dvh] overflow-y-auto rounded-3xl bg-base-200 border border-line-strong shadow-2xl flex flex-col">
 
             {/* ── NAGŁÓWEK ── */}
             <div className="flex items-start justify-between gap-4 p-5 pb-4 border-b border-line sticky top-0 bg-base-200 rounded-t-3xl z-10">

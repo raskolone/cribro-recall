@@ -248,7 +248,7 @@ const StudentNotifications: React.FC<StudentNotificationsProps> = ({ onNavigate,
                     </div>
                   </div>
 
-                  <div className="flex flex-col gap-3 mb-6 max-h-[40vh] overflow-y-auto pr-2 custom-scrollbar">
+                  <div className="flex flex-col gap-3 mb-6 max-h-[40dvh] overflow-y-auto pr-2 custom-scrollbar">
                     {popupTasks.map(t => (
                       <div key={t.id} className="p-3 bg-base-100/60 rounded-xl border border-line-strong flex items-center justify-between gap-3">
                         <div className="min-w-0 flex-1">

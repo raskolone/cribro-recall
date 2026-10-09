@@ -888,7 +888,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
       {/* Import Modal */}
       {isImportModalOpen && (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-3xl max-h-[90vh] flex flex-col">
+          <Card className="w-full max-w-3xl max-h-[90dvh] flex flex-col">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <Sparkles className="w-6 h-6 text-warn" />
@@ -988,7 +988,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
             {driveLoading ? (
               <div className="text-center p-8 text-content-muted">{i18n.t("Ładowanie plików...")}</div>
             ) : (
-              <div className="space-y-2 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-2 max-h-[60dvh] overflow-y-auto">
                 {driveFiles.map(file => (
                   <div key={file.id} onClick={() => processDriveFile(file)} className="p-3 bg-base-200/50 hover:bg-base-200 rounded-lg cursor-pointer flex justify-between items-center border border-white/5 transition-colors">
                     <span className="font-medium text-sm text-white truncate max-w-[80%]">{file.name}</span>
