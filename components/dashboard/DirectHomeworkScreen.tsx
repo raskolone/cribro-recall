@@ -214,7 +214,7 @@ export const DirectHomeworkScreen: React.FC = () => {
   };
 
   const shell = (children: React.ReactNode) => (
-    <div className="min-h-[100dvh] relative text-content bg-base-100 flex flex-col items-center justify-start selection:bg-primary/30 overflow-y-auto">
+    <div className="min-h-[100dvh] relative text-content bg-base-100 flex flex-col items-center justify-start selection:bg-primary/30 overflow-y-auto overflow-x-hidden">
       <ConstellationBackground />
       <div className="relative z-10 w-full max-w-3xl px-4 py-8 sm:py-12 pb-36 flex flex-col items-center">
         {/* Subtelny branding CRIBRO ENGLISH */}

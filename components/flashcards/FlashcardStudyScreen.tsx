@@ -11,6 +11,9 @@ import { Flashcard, FlashcardSet } from '../../types';
 import { GENERAL_VOCABULARY_SETS } from '../../data/generalVocabulary';
 import PronunciationMic from '../ui/PronunciationMic';
 import TTSButtons from './TTSButtons';
+import MatchingGame from './MatchingGame';
+import FlashcardFace from './FlashcardFace';
+import { enterFromVars, enterVars, exitVars, snapBackVars } from '../../utils/flashcardCardMotion';
 import ConfirmModal from '../ui/ConfirmModal';
 import i18n from "i18next";
 
@@ -280,10 +283,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
         
         // Reset card position with gsap
         if (cardContainerRef.current) {
-          gsap.fromTo(cardContainerRef.current, 
-            { x: isCorrect ? -200 : 200, opacity: 0, rotation: isCorrect ? -15 : 15 },
-            { x: 0, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(1.5)", clearProps: "all" }
-          );
+          const enter = enterFromVars(isCorrect ? -1 : 1, 15);
+          gsap.fromTo(cardContainerRef.current, enter.from, enter.to);
         }
       } else {
         setIsFinished(true);
@@ -305,6 +306,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
         opacity: 0,
         duration: 0.4,
         ease: "power2.in",
+        overwrite: true,
         onComplete: proceed
       });
     } else {
@@ -319,22 +321,13 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
         setIsFlipped(false);
         
         if (cardContainerRef.current) {
-          gsap.fromTo(cardContainerRef.current, 
-            { x: 200, opacity: 0, rotation: 10 },
-            { x: 0, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(1.5)", clearProps: "all" }
-          );
+          const enter = enterVars('prev');
+          gsap.fromTo(cardContainerRef.current, enter.from, enter.to);
         }
       };
       
       if (cardContainerRef.current) {
-        gsap.to(cardContainerRef.current, {
-          x: -window.innerWidth,
-          rotation: -20,
-          opacity: 0,
-          duration: 0.3,
-          ease: "power2.in",
-          onComplete: proceed
-        });
+        gsap.to(cardContainerRef.current, { ...exitVars('prev', window.innerWidth), onComplete: proceed });
       } else {
         proceed();
       }
@@ -348,22 +341,13 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
         setIsFlipped(false);
         
         if (cardContainerRef.current) {
-          gsap.fromTo(cardContainerRef.current, 
-            { x: -200, opacity: 0, rotation: -10 },
-            { x: 0, opacity: 1, rotation: 0, duration: 0.4, ease: "back.out(1.5)", clearProps: "all" }
-          );
+          const enter = enterVars('next');
+          gsap.fromTo(cardContainerRef.current, enter.from, enter.to);
         }
       };
 
       if (cardContainerRef.current) {
-        gsap.to(cardContainerRef.current, {
-          x: window.innerWidth,
-          rotation: 20,
-          opacity: 0,
-          duration: 0.3,
-          ease: "power2.in",
-          onComplete: proceed
-        });
+        gsap.to(cardContainerRef.current, { ...exitVars('next', window.innerWidth), onComplete: proceed });
       } else {
         proceed();
       }
@@ -385,13 +369,15 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       gsap.to(cardContainerRef.current, {
         x: diff,
         rotation: diff * 0.05,
-        duration: 0.1
+        duration: 0.1,
+        overwrite: true
       });
     } else if (cardContainerRef.current && !isFlipped) {
       gsap.to(cardContainerRef.current, {
         x: diff * 0.5, // resistance when not flipped
         rotation: diff * 0.02,
-        duration: 0.1
+        duration: 0.1,
+        overwrite: true
       });
     }
   }, [isFlipped]);
@@ -408,7 +394,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       } else {
         // snap back
         if (cardContainerRef.current) {
-           gsap.to(cardContainerRef.current, { x: 0, rotation: 0, duration: 0.3, ease: "back.out(1.5)" });
+           gsap.to(cardContainerRef.current, snapBackVars());
         }
       }
     } else {
@@ -419,7 +405,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       } else {
         // snap back
         if (cardContainerRef.current) {
-           gsap.to(cardContainerRef.current, { x: 0, rotation: 0, duration: 0.3, ease: "back.out(1.5)" });
+           gsap.to(cardContainerRef.current, snapBackVars());
         }
       }
     }
@@ -522,46 +508,46 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
 
-        <div className="flex-1 perspective-1000">
-          <div>
-            <div 
-              ref={cardContainerRef}
-              className="relative w-full aspect-[3/2] min-h-[220px] cursor-pointer touch-pan-y"
-              onClick={handleFlip}
-              onTouchStart={handleTouchStart}
-              onTouchMove={handleTouchMove}
-              onTouchEnd={handleTouchEnd}
+        <div className="flex-1 min-w-0">
+          <div
+            ref={cardContainerRef}
+            data-testid="flashcard-stage"
+            className="w-full cursor-pointer touch-pan-y perspective-1000"
+            onClick={handleFlip}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            {/* Obie strony w JEDNEJ komórce siatki (a nie position:absolute): .liquid-glass-card
+                ma `position: relative` poza warstwą Tailwinda i nadpisywał `absolute`, przez co
+                tył karty lądował POD przodem i po obrocie nachodził na przyciski. Wysokość
+                wyznacza wyższa ze stron, więc tekst nigdy nie wychodzi poza kartę. */}
+            <motion.div
+              key={currentIndex}
+              data-testid="flashcard-flip"
+              className="grid w-full preserve-3d"
+              initial={false}
+              animate={{ rotateY: isFlipped ? 180 : 0 }}
+              transition={{ duration: 0.6, type: "spring", stiffness: 200, damping: 20 }}
+              style={{ transformStyle: 'preserve-3d' }}
             >
-              <motion.div 
-                className="w-full h-full relative preserve-3d"
-                initial={false}
-                animate={{ rotateY: isFlipped ? 180 : 0 }}
-                transition={{ duration: 0.6, type: "spring", stiffness: 200, damping: 20 }}
-                style={{ transformStyle: 'preserve-3d' }}
-              >
-                {/* Front Side */}
-                <Card className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-white/10 hover:border-primary/50 transition-colors" style={{ backfaceVisibility: 'hidden' }}>
-                  <div className="absolute top-4 right-4 z-10 flex gap-2">
-                    <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
-                    <TTSButtons text={currentCard.term} />
-                  </div>
-                  <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
-                  <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.term }} />
-                </Card>
-                
-                {/* Back Side */}
-                <Card 
-                  className="absolute w-full h-full backface-hidden flex flex-col items-center justify-center text-center p-8 border border-primary/50 shadow-[0_0_30px_rgba(114,240,180,0.15)]" 
-                  style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-                >
-                  <div className="absolute top-4 right-4 z-10 flex gap-2">
-                    <TTSButtons text={currentCard.definition} />
-                  </div>
-                  <div className="text-sm font-mono text-primary uppercase tracking-widest mb-8">{t('flashcards.definition')}</div>
-                  <div className="text-3xl md:text-4xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard.definition }} />
-                </Card>
-              </motion.div>
-            </div>
+              {/* Strony karty: wspólny komponent z rozgrzewką (FlashcardFace) */}
+              <FlashcardFace
+                side="front"
+                label={t('flashcards.term')}
+                html={currentCard.term}
+                actions={<>
+                  <PronunciationMic targetWord={currentCard.term.replace(/<[^>]+>/g, '')} />
+                  <TTSButtons text={currentCard.term} />
+                </>}
+              />
+              <FlashcardFace
+                side="back"
+                label={t('flashcards.definition')}
+                html={currentCard.definition}
+                actions={<TTSButtons text={currentCard.definition} />}
+              />
+            </motion.div>
           </div>
         </div>
 
@@ -580,7 +566,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       </div>
 
       {isFlipped ? (
-        <div className="grid grid-cols-2 gap-4 mt-8">
+        <div className="grid grid-cols-2 gap-4 mt-2" data-testid="flashcard-actions">
           <Button variant="danger" className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(false)}>
             <span>{i18n.t("Nie umiem")}</span>
             <span className="text-[10px] uppercase opacity-70">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
@@ -591,7 +577,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           </Button>
         </div>
       ) : (
-        <div className="text-center text-content-muted text-sm animate-pulse mt-8 flex flex-col items-center gap-2">
+        <div className="text-center text-content-muted text-sm animate-pulse mt-2 flex flex-col items-center gap-2" data-testid="flashcard-actions">
           <span>{t('flashcards.clickReveal')}</span>
           <span className="bg-base-300 px-2 py-1 rounded text-xs">{i18n.t("Spacja")}</span>
         </div>
@@ -945,164 +931,29 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
 };
 
 // --- Matching Mode Component ---
-const MatchingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
-  const [items, setItems] = useState<{ id: string; text: string; type: 'term' | 'definition'; flashcardId: string; isMatched: boolean }[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [wrongPair, setWrongPair] = useState<[string, string] | null>(null);
-  const [startTime, setStartTime] = useState<number>(0);
-  const [elapsedTime, setElapsedTime] = useState<number>(0);
-  const [mistakes, setMistakes] = useState(0);
-  const [isFinished, setIsFinished] = useState(false);
-
-  useEffect(() => {
-    // Take up to 6 random cards for matching to fit on screen
-    const selectedCards = [...initialCards].sort(() => Math.random() - 0.5).slice(0, 6);
-    
-    const newItems = selectedCards.flatMap(card => [
-      { id: `t_${card.id}`, text: card.term, type: 'term' as const, flashcardId: card.id, isMatched: false },
-      { id: `d_${card.id}`, text: card.definition, type: 'definition' as const, flashcardId: card.id, isMatched: false }
-    ]).sort(() => Math.random() - 0.5);
-    
-    setItems(newItems);
-    setStartTime(Date.now());
-    
-    const timer = setInterval(() => {
-      setElapsedTime(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-    
-    return () => clearInterval(timer);
-  }, [initialCards, startTime]);
-
-  const handleItemClick = async (item: any) => {
-    if (item.isMatched || wrongPair) return;
-    
-    if (!selectedId) {
-      setSelectedId(item.id);
-      return;
-    }
-    
-    if (selectedId === item.id) {
-      setSelectedId(null); // Deselect
-      return;
-    }
-    
-    const selectedItem = items.find(i => i.id === selectedId);
-    if (!selectedItem) return;
-    
-    // Check if same type (can't match term with term)
-    if (selectedItem.type === item.type) {
-      setSelectedId(item.id);
-      return;
-    }
-    
-    // Check match
-    if (selectedItem.flashcardId === item.flashcardId) {
-      // Match!
-      const newItems = items.map(i => 
-        (i.id === selectedId || i.id === item.id) ? { ...i, isMatched: true } : i
-      );
-      setItems(newItems);
-      setSelectedId(null);
-      
-      // Check if finished
-      if (newItems.every(i => i.isMatched)) {
-        setIsFinished(true);
-        const timeScore = Math.max(0, 100 - elapsedTime - (mistakes * 5));
-        await saveSession({
-          setId,
-          mode: 'matching',
-          totalCards: newItems.length / 2,
-          correctCount: newItems.length / 2,
-          scorePercent: timeScore
-        }, []);
-      }
-    } else {
-      // Wrong!
-      setMistakes(m => m + 1);
-      setWrongPair([selectedId, item.id]);
-      setTimeout(() => {
-        setWrongPair(null);
-        setSelectedId(null);
-      }, 1000);
-    }
-  };
-
-  if (items.length === 0) return null;
-
-  if (isFinished) {
-    const timeScore = Math.max(0, 100 - elapsedTime - (mistakes * 5));
-    
-    return (
-      <div className="max-w-2xl mx-auto text-center space-y-8">
-        <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
-        <Card className="py-12">
-          <div className="text-6xl font-black text-primary mb-4">{timeScore}  {i18n.t("pts")}</div>
-          <p className="text-xl text-content-muted mb-2">
-            
-                                {i18n.t("Time:")} {elapsedTime}s
-          </p>
-          <p className="text-xl text-content-muted">
-            
-                                {i18n.t("Mistakes:")} {mistakes}
-          </p>
-        </Card>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
-          <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
-          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
-            {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      <div className="flex items-center justify-between">
-        <button onClick={() => { showConfirm(
-            t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'), 
-            t('flashcards.confirmQuit') || (language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję?' : 'Are you sure you want to quit the session?'), 
-            () => { closeConfirm(); onBack(); }
-          ); }} className="text-content-muted hover:text-white flex items-center gap-2">
-          ← {t('flashcards.quit') || (language === 'pl' ? 'Zakończ' : 'Quit')}
-        </button>
-        <div className="font-mono text-xl font-bold">
-          {elapsedTime}s
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        {items.map((item) => {
-          if (item.isMatched) {
-            return (
-              <div key={item.id} className="h-24 md:h-32 rounded-xl border-2 border-dashed border-primary/30 bg-primary/5 opacity-50 transition-all duration-500" />
-            );
-          }
-          
-          const isSelected = selectedId === item.id;
-          const isWrong = wrongPair?.includes(item.id);
-          
-          return (
-            <Card 
-              key={item.id}
-              className={`relative h-24 md:h-32 p-3 flex items-center justify-center text-center cursor-pointer transition-all duration-200 select-none touch-manipulation ${
-                isSelected ? 'border-primary bg-primary/10 scale-105 shadow-lg shadow-primary/20' : 
-                isWrong ? 'border-danger bg-danger/10 animate-shake' : 
-                'hover:border-base-300 hover:bg-base-200/50'
-              }`}
-              onClick={() => handleItemClick(item)}
-            >
-              <div className="absolute top-1 right-1" onClick={(e) => e.stopPropagation()}>
-                <TTSButtons text={item.text} />
-              </div>
-              <span className="font-medium text-sm md:text-lg leading-tight line-clamp-3 mt-4" dangerouslySetInnerHTML={{ __html: item.text }} />
-            </Card>
-          );
-        })}
-      </div>
-    </div>
-  );
-};
+// Gra żyje w MatchingGame (plansza tasowana raz na rundę, efekty GSAP, gwiazdki);
+// tu zostaje tylko zapis sesji — dokładnie to, co zapisywała dotąd.
+const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => (
+  <MatchingGame
+    cards={cards}
+    onBack={onBack}
+    onQuit={() => showConfirm(
+      t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'),
+      t('flashcards.confirmQuit') || (language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję?' : 'Are you sure you want to quit the session?'),
+      () => { closeConfirm(); onBack(); }
+    )}
+    onFinish={async (r) => {
+      await saveSession({
+        setId,
+        mode: 'matching',
+        totalCards: r.pairs,
+        correctCount: r.pairs,
+        scorePercent: r.score
+      }, []);
+    }}
+    onPracticeSentences={onNavigate ? () => onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }) : undefined}
+  />
+);
 
 // --- Intro Mode Component ---
 const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm, language }: any) => {

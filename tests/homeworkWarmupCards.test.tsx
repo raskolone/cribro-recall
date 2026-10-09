@@ -15,11 +15,13 @@ Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, co
 
 import test, { afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import React from 'react';
 import { render, cleanup, fireEvent, act } from '@testing-library/react';
 import { gsap } from 'gsap';
 import '../i18n';
 import HomeworkWarmupCards from '../components/dashboard/HomeworkWarmupCards';
+import { springEase } from '../utils/flashcardCardMotion';
 
 // --- Atrapa GSAP ---------------------------------------------------------
 // Komponent woła gsap.to/fromTo/set/killTweensOf/getProperty w chwili akcji, więc
@@ -152,17 +154,17 @@ test('HomeworkWarmupCards: „Pomiń rozgrzewkę" wywołuje onSkip, nie onDone',
   assert.equal(calls.done, 0);
 });
 
-test('HomeworkWarmupCards: bez speechSynthesis przycisk wymowy jest ukryty', () => {
-  const { queryByTestId } = setup();
+test('HomeworkWarmupCards: bez speechSynthesis przyciski wymowy są ukryte', () => {
+  const { container } = setup();
   assert.equal('speechSynthesis' in dom.window, false);
-  assert.equal(queryByTestId('warmup-cards-speak'), null);
+  assert.equal(container.querySelectorAll('[data-lang]').length, 0);
 });
 
-test('HomeworkWarmupCards: z speechSynthesis przycisk czyta frazę (cancel + speak, en-GB)', () => {
+const installSpeech = () => {
   const spoken: Array<{ text: string; lang: string }> = [];
-  let cancelled = 0;
+  const state = { cancelled: 0 };
   (dom.window as any).speechSynthesis = {
-    cancel: () => cancelled++,
+    cancel: () => state.cancelled++,
     speak: (u: any) => spoken.push({ text: u.text, lang: u.lang }),
     getVoices: () => [],
   };
@@ -175,12 +177,36 @@ test('HomeworkWarmupCards: z speechSynthesis przycisk czyta frazę (cancel + spe
       this.text = text;
     }
   };
+  return { spoken, state };
+};
+
+test('HomeworkWarmupCards: UK/US w rogu awersu czytają frazę natywnie (en-GB / en-US), bez odwracania karty', () => {
+  const { spoken, state } = installSpeech();
   const { getByTestId, isFlipped } = setup();
-  fireEvent.click(getByTestId('warmup-cards-speak'));
-  assert.equal(cancelled, 1);
-  assert.deepEqual(spoken, [{ text: 'take off', lang: 'en-GB' }]);
-  // Przycisk wymowy leży poza obracanym elementem — kliknięcie nie odwraca karty.
+  const front = getByTestId('warmup-card-front');
+  fireEvent.click(front.querySelector('[data-lang="en-GB"]')!);
+  fireEvent.click(front.querySelector('[data-lang="en-US"]')!);
+  assert.equal(state.cancelled, 2);
+  assert.deepEqual(spoken, [
+    { text: 'take off', lang: 'en-GB' },
+    { text: 'take off', lang: 'en-US' },
+  ]);
+  // Przyciski leżą wewnątrz karty, ale kliknięcie nie bąbelkuje do obrotu.
   assert.equal(isFlipped(), false);
+});
+
+test('HomeworkWarmupCards: ten sam wygląd przycisków wymowy co w module (PronunciationButtons) — UK i US na obu stronach', () => {
+  installSpeech();
+  const { getByTestId } = setup();
+  for (const id of ['warmup-card-front', 'warmup-card-back']) {
+    const face = getByTestId(id);
+    assert.equal(face.querySelectorAll('[data-lang]').length, 2);
+    assert.match(face.textContent!, /UK/);
+    assert.match(face.textContent!, /US/);
+  }
+  // Odwrócona od widza strona jest inert — nie łapie fokusu.
+  assert.equal(getByTestId('warmup-card-back').hasAttribute('inert'), true);
+  assert.equal(getByTestId('warmup-card-front').hasAttribute('inert'), false);
 });
 
 // --- Klawiatura ------------------------------------------------------------
@@ -311,15 +337,18 @@ test('listener klawiatury: dodany raz na dokumencie i sprzątany przy odmontowan
 
 // --- Animacje ----------------------------------------------------------------
 
-test('GSAP: odwrócenie = rotationY 180 przez 0,5 s z power2.inOut; powrót do 0', () => {
+test('GSAP: odwrócenie = rotationY 180 sprężyną z modułu fiszek (0,6 s, krzywa własna); powrót do 0', () => {
   const { getByTestId } = setup();
   const flipEl = getByTestId('warmup-card');
   key(document.body, ' ');
   const flip = animatedCalls().find((c) => c.target === flipEl);
   assert.ok(flip);
   assert.equal(flip!.vars.rotationY, 180);
-  assert.equal(flip!.vars.duration, 0.5);
-  assert.equal(flip!.vars.ease, 'power2.inOut');
+  assert.equal(flip!.vars.duration, 0.6);
+  assert.equal(typeof flip!.vars.ease, 'function', 'sprężyna jako funkcja easingu, nie elastic/back');
+  const ease = flip!.vars.ease as (p: number) => number;
+  const reference = springEase();
+  for (const p of [0, 0.1, 0.25, 0.5, 0.75, 1]) assert.equal(ease(p), reference(p));
   // Poprzedni obrót jest zabijany, zanim ruszy następny.
   assert.ok(gsapCalls.some((c) => c.method === 'killTweensOf' && c.target === flipEl));
 
@@ -328,87 +357,178 @@ test('GSAP: odwrócenie = rotationY 180 przez 0,5 s z power2.inOut; powrót do 0
   assert.equal(animatedCalls().find((c) => c.target === flipEl)!.vars.rotationY, 0);
 });
 
-const isGhost = (c: GsapCall) => (c.target as Element).getAttribute?.('data-testid') === 'warmup-card-ghost';
-
-test('GSAP: zmiana karty = odrzucenie — → w lewo z obrotem i opadnięciem, następna spod spodu; ← lustrzanie', () => {
+test('GSAP: zmiana karty jak w module — → odlot w prawo (x = szerokość okna, +20°), wjazd z lewej; ← lustrzanie; krycie osobnym tweenem', () => {
   const { getByTestId } = setup();
   const flipEl = getByTestId('warmup-card');
   const cardEl = flipEl.parentElement!;
+  const width = window.innerWidth;
   key(document.body, ' ');
   gsapCalls.length = 0;
 
   key(document.body, 'ArrowRight');
-  const exit = animatedCalls().find((c) => c.method === 'to' && isGhost(c))!;
-  assert.ok(exit, 'odlatuje kopia starej karty');
-  assert.ok((exit.target as Element).textContent?.includes('take off'));
+  const exit = animatedCalls().find((c) => c.method === 'to' && c.target === cardEl)!;
   assert.deepEqual(
-    [exit.vars.xPercent, exit.vars.y, exit.vars.rotation, exit.vars.opacity, exit.vars.duration, exit.vars.ease],
-    [-120, 60, -15, 0, 0.3, 'power2.in']
+    [exit.vars.x, exit.vars.rotation, exit.vars.duration, exit.vars.ease],
+    [width, 20, 0.3, 'power2.in']
   );
+  assert.equal('opacity' in exit.vars, false, 'krycie nie jest częścią tweena ruchu');
   const enter = animatedCalls().find((c) => c.method === 'fromTo' && c.target === cardEl)!;
-  assert.deepEqual([enter.fromVars.scale, enter.fromVars.opacity], [0.92, 0.6]);
+  assert.deepEqual([enter.fromVars.x, enter.fromVars.opacity, enter.fromVars.rotation], [-200, 0, -10]);
   assert.deepEqual(
-    [enter.vars.scale, enter.vars.opacity, enter.vars.duration, enter.vars.ease],
-    [1, 1, 0.3, 'power2.out']
+    [enter.vars.x, enter.vars.y, enter.vars.rotation, enter.vars.opacity, enter.vars.scale, enter.vars.duration, enter.vars.ease],
+    [0, 0, 0, 1, 1, 0.4, 'back.out(1.5)']
   );
-  assert.equal(enter.vars.delay, 0.15, 'nowa karta rośnie od połowy wyjścia starej');
-  assert.equal(enter.vars.clearProps, 'transform,opacity', 'inline perspective zostaje');
-  // Nowa karta startuje awersem: obrót ustawiony na 0 bez animacji.
+  assert.equal(enter.vars.clearProps, 'all');
+  // Nowa karta zawsze zaczyna awersem; obrót ustawiony na 0 bez animacji.
   assert.ok(gsapCalls.some((c) => c.method === 'set' && c.target === flipEl && c.vars.rotationY === 0));
-  assert.ok(gsapCalls.some((c) => c.method === 'killTweensOf' && c.target === flipEl));
   assert.ok(gsapCalls.some((c) => c.method === 'killTweensOf' && c.target === cardEl));
   assert.equal(getByTestId('warmup-card').getAttribute('data-flipped'), 'false');
 
   gsapCalls.length = 0;
   key(document.body, 'ArrowLeft');
-  const back = animatedCalls().find((c) => c.method === 'to' && isGhost(c))!;
-  assert.deepEqual([back.vars.xPercent, back.vars.y, back.vars.rotation, back.vars.opacity], [120, 60, 15, 0]);
-  assert.ok((back.target as Element).textContent?.includes('look up'));
+  const back = animatedCalls().find((c) => c.method === 'to' && c.target === cardEl)!;
+  assert.deepEqual([back.vars.x, back.vars.rotation], [-width, -20]);
+  const backFade = animatedCalls().filter((c) => c.method === 'to' && c.target === cardEl)[1];
+  assert.equal(backFade.vars.opacity, 0);
   const backIn = animatedCalls().find((c) => c.method === 'fromTo' && c.target === cardEl)!;
-  assert.deepEqual([backIn.fromVars.scale, backIn.fromVars.opacity], [0.92, 0.6]);
+  assert.deepEqual([backIn.fromVars.x, backIn.fromVars.rotation], [200, 10]);
 });
 
-test('odrzucenie: kopia starej karty nad nową, poza drzewem dostępności, w przycinającej ramce sceny', () => {
-  deferAnimations = true;
-  const { getByTestId, queryByTestId, progress } = setup();
-  const stage = getByTestId('warmup-cards-stage');
-  Object.defineProperty(stage, 'offsetHeight', { configurable: true, value: 312 });
+// --- Odlot bez ucinania ----------------------------------------------------------
 
-  key(document.body, 'ArrowRight');
-  assert.equal(progress(), 'Karta 2 z 2', 'licznik i nowa karta od razu');
-  assert.ok(getByTestId('warmup-card-front').textContent?.includes('look up'));
-  const ghost = getByTestId('warmup-card-ghost');
-  assert.ok(ghost.textContent?.includes('take off'), 'kopia pokazuje starą kartę');
-  assert.equal(ghost.querySelectorAll('[data-testid], button').length, 0, 'bez zdublowanych identyfikatorów i przycisków');
+const OVERFLOW_CLASS = /^(?:overflow(?:-[xy])?-(?:hidden|clip|auto|scroll)|\[overflow[^\]]*\]|\[contain:[^\]]*paint[^\]]*\])$/;
+const CLIPPING_STYLE = /^(?:hidden|clip|auto|scroll)$/;
 
-  const frame = ghost.parentElement!;
-  assert.equal(frame.parentElement, stage, 'ramka należy do sceny karty');
-  assert.equal(stage.lastElementChild, frame, 'kopia leży nad nową kartą');
-  assert.equal(frame.getAttribute('aria-hidden'), 'true');
-  const frameClasses = frame.className.split(/\s+/);
-  for (const cls of ['absolute', 'overflow-hidden', 'pointer-events-none', 'z-20']) {
-    assert.ok(frameClasses.includes(cls), `ramka: ${cls}`);
+/** Przodkowie `el` aż do korzenia sceny (włącznie) — wszystko, co mogłoby przyciąć lecącą kartę. */
+const sceneAncestors = (el: Element, root: Element) => {
+  const chain: Element[] = [];
+  for (let node: Element | null = el.parentElement; node; node = node.parentElement) {
+    chain.push(node);
+    if (node === root) return chain;
   }
-  assert.ok(stage.className.split(/\s+/).includes('isolate'));
-  assert.equal(stage.style.minHeight, '312px', 'scena trzyma wysokość starej karty');
+  throw new Error('karta nie leży w korzeniu sceny');
+};
 
-  finishNextAnimation(); // wyjście
-  assert.equal(queryByTestId('warmup-card-ghost'), null, 'kopia znika po wyjściu');
-  assert.equal(stage.style.minHeight, '312px', 'wysokość trzymana do końca wejścia');
-  finishNextAnimation(); // wejście
-  assert.equal(stage.style.minHeight, '');
-  assert.equal(pending.length, 0);
+test('odlot: w trakcie lotu żaden przodek karty w obrębie sceny nie ma overflow hidden/clip/auto na osi X', () => {
+  deferAnimations = true;
+  const { getByTestId } = setup();
+  const root = getByTestId('warmup-cards-root');
+  const cardEl = getByTestId('warmup-card').parentElement!;
+
+  // Najpierw „Dalej" (karta 1 → 2), potem „Wstecz" (2 → 1): oba kierunki odlotu.
+  for (const k of ['ArrowRight', 'ArrowLeft'] as const) {
+    key(document.body, k);
+    assert.ok(pending.length > 0, `${k}: karta jest w locie`);
+    const ancestors = sceneAncestors(getByTestId('warmup-card').parentElement!, root);
+    assert.ok(ancestors.includes(root) && ancestors.length >= 3);
+    for (const el of ancestors) {
+      for (const cls of Array.from(el.classList)) {
+        assert.doesNotMatch(cls, OVERFLOW_CLASS, `${k}: przodek <${el.tagName.toLowerCase()}> ma klasę ${cls}`);
+      }
+      const st = (el as HTMLElement).style;
+      assert.doesNotMatch(st.overflow || 'visible', CLIPPING_STYLE, `${k}: inline overflow`);
+      assert.doesNotMatch(st.overflowX || 'visible', CLIPPING_STYLE, `${k}: inline overflow-x`);
+      assert.equal(st.clipPath || '', '', `${k}: clip-path`);
+    }
+    while (pending.length) finishNextAnimation();
+  }
+  assert.ok(cardEl.isConnected);
 });
 
-test('odrzucenie: kopia startuje z kątem bieżącej karty — także w połowie odwracania', () => {
+test('odlot: krycie to osobny tween 1→0 (0,25 s, power1.out), krótszy niż ruch (0,3 s), po tweenie ruchu i bez kasowania go', () => {
   const { getByTestId } = setup();
-  const flipEl = getByTestId('warmup-card');
-  rotationYOf = (target) => (target === flipEl ? 72 : 0);
+  const cardEl = getByTestId('warmup-card').parentElement!;
+  gsapCalls.length = 0;
+
   key(document.body, 'ArrowRight');
-  const ghostAngle = gsapCalls.find((c) => c.method === 'set' && c.vars.rotationY === 72);
-  assert.ok(ghostAngle, 'kopia dostała kąt 72°');
-  assert.equal((ghostAngle!.target as Element).parentElement?.getAttribute('data-testid'), 'warmup-card-ghost');
-  assert.ok(gsapCalls.some((c) => c.method === 'set' && c.target === flipEl && c.vars.rotationY === 0));
+  const onCard = animatedCalls().filter((c) => c.method === 'to' && c.target === cardEl);
+  const [move, fade] = onCard;
+  assert.ok(move && fade, 'ruch i krycie');
+  assert.equal(move.vars.x, window.innerWidth);
+  assert.deepEqual(
+    [fade.vars.opacity, fade.vars.duration, fade.vars.ease],
+    [0, 0.25, 'power1.out']
+  );
+  assert.ok(fade.vars.duration < move.vars.duration, 'krycie kończy się przed ruchem');
+  // Tween ruchu ma overwrite:true, więc krycie musi powstać PO nim i nie może nic kasować.
+  assert.equal(move.vars.overwrite, true);
+  assert.equal(fade.vars.overwrite, false);
+  for (const prop of ['x', 'y', 'rotation']) assert.equal(prop in fade.vars, false, `krycie nie rusza ${prop}`);
+  // Podmianę karty zwalnia koniec ruchu, nie krycia.
+  assert.equal(typeof move.vars.onComplete, 'function');
+  assert.equal(fade.vars.onComplete, undefined);
+});
+
+test('odlot (prawdziwy GSAP): opacity dochodzi do 0 przed końcem tweena x, a karta wciąż jest w locie', () => {
+  Object.assign(g, realGsap);
+  (globalThis as any).getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
+  try {
+    const { getByTestId, progress } = setup();
+    const cardEl = getByTestId('warmup-card').parentElement!;
+    key(document.body, 'ArrowRight');
+
+    const tweens = gsap.getTweensOf(cardEl);
+    const move = tweens.find((t) => (t.vars as any).x !== undefined)!;
+    const fade = tweens.find((t) => (t.vars as any).opacity === 0)!;
+    assert.ok(move && fade && move !== fade, 'dwa osobne tweeny');
+    assert.equal(fade.startTime(), move.startTime(), 'startują razem');
+    assert.ok(fade.startTime() + fade.duration() < move.startTime() + move.duration());
+
+    // Przewijamy na moment, w którym krycie już się skończyło, a ruch jeszcze trwa.
+    const t = fade.duration() + 0.01;
+    assert.ok(t < move.duration());
+    fade.pause().time(fade.duration());
+    move.pause().time(t);
+    assert.equal(Number(gsap.getProperty(cardEl, 'opacity')), 0);
+    const x = Number(gsap.getProperty(cardEl, 'x'));
+    assert.ok(x > 0 && x < window.innerWidth, `x=${x}: w locie, nie u celu`);
+    assert.equal(progress(), 'Karta 1 z 2', 'podmiana dopiero po końcu ruchu');
+  } finally {
+    gsap.globalTimeline.clear();
+    Object.assign(g, fakeGsap);
+    delete (globalThis as any).getComputedStyle;
+  }
+});
+
+test('odlot: poziomy scroll strony blokują kontenery strony (main w Dashboard, powłoka DirectHomeworkScreen), nie panel kart', () => {
+  const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
+  const dashboard = read('components/dashboard/Dashboard.tsx');
+  assert.match(dashboard, /<main className="[^"]*\boverflow-x-hidden\b/);
+  const direct = read('components/dashboard/DirectHomeworkScreen.tsx');
+  const shell = direct.match(/const shell = [\s\S]*?className="([^"]*)"/);
+  assert.ok(shell, 'powłoka DirectHomeworkScreen');
+  assert.match(shell![1], /\boverflow-x-hidden\b/);
+});
+
+test('odlot: przyciski Wstecz/Odwróć/Dalej i podpowiedzi leżą nad sceną (z-10), karta przechodzi pod nimi', () => {
+  const { getByTestId, getByLabelText } = setup();
+  const controls = getByTestId('warmup-cards-controls');
+  assert.ok(controls.classList.contains('relative') && controls.classList.contains('z-10'));
+  for (const label of ['Poprzednia karta', 'Odwróć fiszkę']) assert.ok(controls.contains(getByLabelText(label)));
+  assert.ok(controls.contains(getByTestId('warmup-cards-next')));
+  const stage = getByTestId('warmup-cards-stage');
+  assert.equal(stage.contains(controls), false, 'kontrolki poza sceną karty');
+  assert.equal(stage.classList.contains('z-10'), false);
+});
+
+test('zmiana karty jest sekwencją: licznik i treść zmieniają się po odlocie, nie przed; bez kopii karty', () => {
+  deferAnimations = true;
+  const { getByTestId, queryByTestId, progress, isFlipped } = setup();
+  fireEvent.click(getByTestId('warmup-card'));
+  assert.equal(isFlipped(), true);
+
+  key(document.body, 'ArrowRight');
+  assert.equal(progress(), 'Karta 1 z 2', 'stara karta odlatuje, licznik jeszcze stary');
+  assert.ok(getByTestId('warmup-card-front').textContent?.includes('take off'));
+  assert.equal(queryByTestId('warmup-card-ghost'), null, 'jedna karta, bez odlatującej kopii');
+
+  finishNextAnimation(); // odlot
+  assert.equal(progress(), 'Karta 2 z 2');
+  assert.ok(getByTestId('warmup-card-front').textContent?.includes('look up'));
+  assert.equal(isFlipped(), false, 'nowa karta zaczyna awersem');
+  assert.equal(pending.length, 1, 'wjazd nowej karty czeka na koniec');
+  finishNextAnimation(); // wjazd
+  assert.equal(pending.length, 0);
 });
 
 test('GSAP: szybkie naciśnięcia w trakcie przejścia — ostatnie czeka, powtórzenia trzymanego klawisza odpadają', () => {
@@ -416,37 +536,36 @@ test('GSAP: szybkie naciśnięcia w trakcie przejścia — ostatnie czeka, powt�
   const { progress, calls } = setup(threeCards);
 
   key(document.body, 'ArrowRight');
-  assert.equal(progress(), 'Karta 2 z 3', 'nowa karta od razu pod spodem, stara odlatuje jako kopia');
   key(document.body, 'ArrowRight', { repeat: true });
   key(document.body, 'ArrowRight', { repeat: true });
   key(document.body, 'ArrowRight'); // osobne naciśnięcie — zakolejkowane
-  assert.equal(pending.length, 2, 'jedno przejście naraz (wyjście + wejście)');
+  assert.equal(pending.length, 1, 'jedno przejście naraz');
+  assert.equal(progress(), 'Karta 1 z 3');
+
+  finishNextAnimation(); // odlot karty 1
   assert.equal(progress(), 'Karta 2 z 3');
-
-  finishNextAnimation(); // wyjście karty 1
-  assert.equal(progress(), 'Karta 2 z 3', 'koniec samego wyjścia nie zwalnia kolejki');
-  finishNextAnimation(); // wejście karty 2 → rusza zakolejkowane „dalej"
+  assert.equal(pending.length, 1, 'koniec samego odlotu nie zwalnia kolejki');
+  finishNextAnimation(); // wjazd karty 2 → rusza zakolejkowane „dalej"
+  assert.equal(pending.length, 1);
+  assert.equal(progress(), 'Karta 2 z 3');
+  finishNextAnimation(); // odlot karty 2
   assert.equal(progress(), 'Karta 3 z 3');
-  assert.equal(pending.length, 2);
 
-  // Enter w trakcie przejścia na ostatnią kartę czeka i kończy dopiero po jej wejściu.
+  // Enter w trakcie przejścia na ostatnią kartę czeka i kończy dopiero po jej wjeździe.
   key(document.body, 'Enter');
-  finishNextAnimation(); // wyjście karty 2
-  assert.equal(calls.done, 0);
-  finishNextAnimation(); // wejście karty 3
+  finishNextAnimation(); // wjazd karty 3 → rusza zakolejkowany Enter
   assert.equal(calls.done, 1);
   assert.equal(pending.length, 0, 'żadna karta nie zostaje w połowie animacji');
 });
 
-test('GSAP: podwójny klik „Dalej" z przedostatniej karty nie kończy kart, choć etykieta zmienia się od razu', () => {
+test('GSAP: podwójny klik „Dalej" z przedostatniej karty nie kończy kart', () => {
   deferAnimations = true;
-  const { getByTestId, getByText, progress, calls } = setup();
+  const { getByTestId, progress, calls } = setup();
   fireEvent.click(getByTestId('warmup-cards-next'));
-  assert.ok(getByText('Zakończ karty'), 'etykieta ostatniej karty już na starcie przejścia');
-  fireEvent.click(getByTestId('warmup-cards-next')); // drugi klik w trakcie przejścia
-  finishNextAnimation();
+  fireEvent.click(getByTestId('warmup-cards-next')); // drugi klik w trakcie przejścia → „next" w kolejce
   finishNextAnimation();
   assert.equal(progress(), 'Karta 2 z 2');
+  finishNextAnimation();
   assert.equal(pending.length, 0);
   assert.equal(calls.done, 0);
 
@@ -455,7 +574,7 @@ test('GSAP: podwójny klik „Dalej" z przedostatniej karty nie kończy kart, ch
   assert.equal(calls.done, 1);
 });
 
-test('gsap.context: odmontowanie w trakcie przejścia zabija prawdziwe tweeny wyjścia i wejścia', () => {
+test('gsap.context: odmontowanie w trakcie odlotu zabija prawdziwe tweeny', () => {
   Object.assign(g, realGsap);
   // CSSPlugin woła globalne getComputedStyle — jsdom ma je tylko na window.
   (globalThis as any).getComputedStyle = dom.window.getComputedStyle.bind(dom.window);
@@ -463,12 +582,9 @@ test('gsap.context: odmontowanie w trakcie przejścia zabija prawdziwe tweeny wy
     const { getByTestId, unmount, calls } = setup();
     const cardEl = getByTestId('warmup-card').parentElement!;
     key(document.body, 'ArrowRight');
-    const ghost = getByTestId('warmup-card-ghost');
-    assert.ok(gsap.getTweensOf(ghost).length > 0, 'wyjście kopii trwa');
-    assert.ok(gsap.getTweensOf(cardEl).length > 0, 'wejście nowej karty czeka na swój delay');
+    assert.ok(gsap.getTweensOf(cardEl).length > 0, 'odlot karty trwa');
 
     unmount();
-    assert.equal(gsap.getTweensOf(ghost).length, 0);
     assert.equal(gsap.getTweensOf(cardEl).length, 0);
     assert.equal(calls.done, 0);
   } finally {
@@ -477,6 +593,149 @@ test('gsap.context: odmontowanie w trakcie przejścia zabija prawdziwe tweeny wy
     Object.assign(g, fakeGsap);
     delete (globalThis as any).getComputedStyle;
   }
+});
+
+// --- Przeciąganie ------------------------------------------------------------------
+
+const ptr = (el: Element, type: 'pointerdown' | 'pointermove' | 'pointerup' | 'pointercancel', x: number, extra: PointerEventInit = {}) =>
+  act(() => {
+    el.dispatchEvent(
+      new (dom.window as any).PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        clientX: x,
+        pointerId: 1,
+        pointerType: 'touch',
+        button: 0,
+        ...extra,
+      })
+    );
+  });
+
+const drag = (el: Element, from: number, to: number, extra: PointerEventInit = {}) => {
+  ptr(el, 'pointerdown', from, extra);
+  ptr(el, 'pointermove', from + (to - from) / 2, extra);
+  ptr(el, 'pointermove', to, extra);
+  ptr(el, 'pointerup', to, extra);
+};
+
+test('przeciąganie: przy nieodwróconej karcie opór (x = 0,5·dx, obrót 0,02·dx) i krótkie to() 0,1 s', () => {
+  const { getByTestId } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  const cardEl = flipEl.parentElement!;
+  ptr(flipEl, 'pointerdown', 100);
+  ptr(flipEl, 'pointermove', 160);
+  const follow = animatedCalls().filter((c) => c.target === cardEl).pop()!;
+  assert.deepEqual([follow.vars.x, follow.vars.rotation, follow.vars.duration], [30, 1.2, 0.1]);
+  assert.equal(follow.vars.overwrite, true);
+});
+
+test('przeciąganie: przy odwróconej karcie karta podąża za wskaźnikiem (x = dx, obrót 0,05·dx)', () => {
+  const { getByTestId } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  const cardEl = flipEl.parentElement!;
+  key(document.body, ' ');
+  gsapCalls.length = 0;
+  ptr(flipEl, 'pointerdown', 100);
+  ptr(flipEl, 'pointermove', 160);
+  const follow = animatedCalls().filter((c) => c.target === cardEl).pop()!;
+  assert.deepEqual([follow.vars.x, follow.vars.rotation], [60, 3]);
+});
+
+test('przeciąganie: w prawo ≥ 80 px = następna karta, w lewo = poprzednia; kliknięcie po gestcie nie odwraca', () => {
+  const { getByTestId, progress, isFlipped } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  drag(flipEl, 100, 190);
+  assert.equal(progress(), 'Karta 2 z 3');
+  fireEvent.click(flipEl); // click zaraz po puszczeniu palca
+  assert.equal(isFlipped(), false, 'gest nie odwraca karty');
+
+  drag(getByTestId('warmup-card'), 200, 100);
+  assert.equal(progress(), 'Karta 1 z 3');
+});
+
+test('przeciąganie: za krótkie (< 80 px) — sprężysty powrót z clearProps, bez zmiany karty', () => {
+  const { getByTestId, progress } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  const cardEl = flipEl.parentElement!;
+  drag(flipEl, 100, 170); // 70 px
+  assert.equal(progress(), 'Karta 1 z 3');
+  const back = animatedCalls().filter((c) => c.target === cardEl).pop()!;
+  assert.deepEqual([back.vars.x, back.vars.rotation, back.vars.opacity, back.vars.clearProps], [0, 0, 1, 'all']);
+  assert.equal(back.vars.ease, 'back.out(1.5)');
+});
+
+test('przeciąganie: na granicach (w lewo na pierwszej, w prawo na ostatniej) karta wraca na miejsce', () => {
+  const { getByTestId, progress, calls } = setup();
+  const flipEl = getByTestId('warmup-card');
+  const cardEl = flipEl.parentElement!;
+  drag(flipEl, 200, 50); // pierwsza karta → „poprzednia" niemożliwa
+  assert.equal(progress(), 'Karta 1 z 2');
+  assert.equal(animatedCalls().filter((c) => c.target === cardEl).pop()!.vars.clearProps, 'all');
+
+  drag(flipEl, 50, 200); // → karta 2 (ostatnia)
+  assert.equal(progress(), 'Karta 2 z 2');
+  gsapCalls.length = 0;
+  drag(getByTestId('warmup-card'), 50, 200); // „następna" na ostatniej
+  assert.equal(progress(), 'Karta 2 z 2');
+  assert.equal(calls.done, 0, 'przeciągnięcie nie kończy kart');
+  assert.equal(animatedCalls().filter((c) => c.target === cardEl).pop()!.vars.clearProps, 'all');
+});
+
+test('przeciąganie: anulowanie wskaźnika wraca na miejsce; prawy przycisk myszy i przyciski wymowy nie zaczynają gestu', () => {
+  installSpeech();
+  const { getByTestId, progress } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  ptr(flipEl, 'pointerdown', 100);
+  ptr(flipEl, 'pointermove', 250);
+  ptr(flipEl, 'pointercancel', 250);
+  assert.equal(progress(), 'Karta 1 z 3');
+
+  drag(flipEl, 100, 250, { pointerType: 'mouse', button: 2 });
+  assert.equal(progress(), 'Karta 1 z 3');
+
+  const speak = getByTestId('warmup-card-front').querySelector('[data-lang="en-GB"]')!;
+  drag(speak, 100, 250);
+  assert.equal(progress(), 'Karta 1 z 3');
+});
+
+test('przeciąganie myszą działa jak dotyk; zwykłe kliknięcie bez ruchu odwraca kartę', () => {
+  const { getByTestId, progress, isFlipped } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  drag(flipEl, 100, 200, { pointerType: 'mouse' });
+  assert.equal(progress(), 'Karta 2 z 3');
+  const el2 = getByTestId('warmup-card');
+  ptr(el2, 'pointerdown', 100, { pointerType: 'mouse' });
+  ptr(el2, 'pointerup', 100, { pointerType: 'mouse' });
+  fireEvent.click(el2);
+  assert.equal(isFlipped(), true);
+});
+
+test('przeciąganie: w trakcie przejścia nowy gest jest ignorowany (kolejka: ostatnia akcja wygrywa)', () => {
+  deferAnimations = true;
+  const { getByTestId, progress } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  key(document.body, 'ArrowRight');
+  drag(flipEl, 100, 250);
+  assert.equal(pending.length, 1);
+  finishNextAnimation();
+  finishNextAnimation();
+  assert.equal(progress(), 'Karta 2 z 3');
+});
+
+test('przeciąganie przy prefers-reduced-motion: gest przełącza kartę bez żadnych tweenów', () => {
+  (dom.window as any).matchMedia = (query: string) => ({
+    matches: query.includes('prefers-reduced-motion'),
+    media: query,
+    addEventListener() {},
+    removeEventListener() {},
+  });
+  const { getByTestId, progress } = setup(threeCards);
+  const bar = getByTestId('warmup-cards-bar');
+  gsapCalls.length = 0;
+  drag(getByTestId('warmup-card'), 100, 220);
+  assert.equal(progress(), 'Karta 2 z 3');
+  assert.deepEqual(animatedCalls().filter((c) => c.target !== bar), []);
 });
 
 test('pasek postępu: szerokość ustawiona na starcie, potem animowana; role=progressbar i aria-live licznika', () => {
@@ -488,7 +747,7 @@ test('pasek postępu: szerokość ustawiona na starcie, potem animowana; role=pr
   key(document.body, 'ArrowRight');
   const grow = animatedCalls().find((c) => c.target === bar);
   assert.equal(grow?.vars.width, '100%');
-  assert.equal(grow?.vars.duration, 0.35);
+  assert.equal(grow?.vars.duration, 0.3);
 
   const progressbar = getByRole('progressbar');
   assert.equal(progressbar.getAttribute('aria-valuenow'), '2');
@@ -497,6 +756,9 @@ test('pasek postępu: szerokość ustawiona na starcie, potem animowana; role=pr
   const counter = getByTestId('warmup-cards-progress');
   assert.equal(counter.getAttribute('aria-live'), 'polite');
   assert.equal(getByTestId('warmup-cards-root').getAttribute('aria-label'), 'Fiszki rozgrzewki');
+  // Poziomy scroll strony blokuje kontener strony (patrz test strukturalny niżej), nie sam panel —
+  // clip na panelu ścinałby lecącą kartę pionową krawędzią.
+  assert.doesNotMatch(getByTestId('warmup-cards-root').className, /overflow/);
 });
 
 test('prefers-reduced-motion: bez tweenów — natychmiastowa zmiana karty i stron', () => {
@@ -518,7 +780,6 @@ test('prefers-reduced-motion: bez tweenów — natychmiastowa zmiana karty i str
   assert.equal(progress(), 'Karta 2 z 2');
   assert.equal(isFlipped(), false);
   assert.equal(queryByTestId('warmup-card-ghost'), null, 'bez odlatującej kopii');
-  assert.equal(getByTestId('warmup-cards-stage').style.minHeight, '');
   key(document.body, 'ArrowLeft');
   assert.equal(progress(), 'Karta 1 z 2');
 

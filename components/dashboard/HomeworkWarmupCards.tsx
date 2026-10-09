@@ -1,11 +1,12 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { flushSync } from 'react-dom';
 // Nazwany eksport (sam rdzeń, bez wtyczek) — domyślny import w Node (testy)
 // daje obiekt modułu CJS zamiast instancji gsap.
 import { gsap } from 'gsap';
-import { ArrowLeft, ArrowRight, Check, Flame, Keyboard, RotateCw, SkipForward, Volume2, Zap } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Flame, Keyboard, RotateCw, SkipForward, Zap } from 'lucide-react';
 import i18n from 'i18next';
 import type { WarmupCard } from '../../types';
+import FlashcardFace from '../flashcards/FlashcardFace';
+import PronunciationButtons, { type PronunciationLang } from '../flashcards/PronunciationButtons';
 import {
   createWarmupCardsQueue,
   intentToAction,
@@ -14,6 +15,19 @@ import {
   warmupCardsProgressPercent,
   type WarmupCardsIntent,
 } from '../../utils/warmupCardsKeys';
+import {
+  DRAG,
+  FLIP_DEGREES,
+  FLIP_DURATION,
+  dragFollowVars,
+  enterVars,
+  exitFadeVars,
+  exitMoveVars,
+  snapBackVars,
+  springEase,
+  swipeDirection,
+  type CardDirection,
+} from '../../utils/flashcardCardMotion';
 
 interface HomeworkWarmupCardsProps {
   cards: WarmupCard[];
@@ -23,27 +37,11 @@ interface HomeworkWarmupCardsProps {
   onSkip: () => void;
 }
 
-// Czasy w sekundach (GSAP).
-const FLIP_DURATION = 0.5;
-const PROGRESS_DURATION = 0.35;
-
-// Zmiana karty = odrzucenie karty: bieżąca odlatuje w bok („Dalej" w lewo,
-// „Wstecz" w prawo) z obrotem w tę samą stronę i lekkim opadnięciem, a następna
-// wychodzi spod spodu. Czas i ease wyjścia jak w FlashcardsMode
-// (FlashcardStudyScreen); kierunek, obrót, opadnięcie i wejście spod spodu według
-// ustaleń — tam „dalej" leci w prawo z obrotem 20°, a nowa karta wjeżdża z boku.
-const EXIT_DURATION = 0.3;
-const EXIT_EASE = 'power2.in';
-const EXIT_X_PERCENT = 120; // szerokość karty z zapasem na obrót — dalej i tak przycina ramka
-const EXIT_DROP_PX = 60;
-const EXIT_ROTATION_DEG = 15;
-const ENTER_FROM_SCALE = 0.92;
-const ENTER_FROM_OPACITY = 0.6;
-const ENTER_DURATION = 0.3;
-const ENTER_EASE = 'power2.out';
-// Nowa karta rośnie od połowy wyjścia starej — wcześniej całą zasłania odlatująca
-// kopia, więc nie byłoby widać powiększenia. Całe przejście ≈ 0,45 s.
-const ENTER_DELAY = EXIT_DURATION / 2;
+// Ruch karty (obrót sprężyną, odlot/wjazd, przeciąganie) — parametry jak w module fiszek,
+// patrz utils/flashcardCardMotion.ts. Tu zostaje tylko pasek postępu (w module: CSS 300 ms).
+const PROGRESS_DURATION = 0.3;
+// Obrót odwzorowuje sprężynę z modułu (stiffness 200, damping 20) własną funkcją easingu.
+const FLIP_EASE = springEase();
 
 const prefersReducedMotion = (): boolean =>
   typeof window !== 'undefined' &&
@@ -54,93 +52,47 @@ const canSpeak = (): boolean =>
   typeof window !== 'undefined' && 'speechSynthesis' in window && typeof SpeechSynthesisUtterance !== 'undefined';
 
 /** Wymowa natywnym speechSynthesis (bez chmurowego TTS) — wołane wprost z obsługi kliknięcia (wymóg iOS). */
-const speakEnglish = (text: string) => {
+const speakEnglish = (text: string, lang: PronunciationLang, onEnd?: () => void) => {
   if (!canSpeak()) return;
   const synth = window.speechSynthesis;
   synth.cancel();
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-GB';
+  utterance.lang = lang;
   utterance.rate = 0.95;
   const voices = synth.getVoices?.() ?? [];
   const voice =
-    voices.find((v) => v.lang === 'en-GB') ?? voices.find((v) => v.lang?.toLowerCase().startsWith('en'));
+    voices.find((v) => v.lang === lang) ?? voices.find((v) => v.lang?.toLowerCase().startsWith('en'));
   if (voice) utterance.voice = voice;
+  if (onEnd) {
+    utterance.onend = onEnd;
+    utterance.onerror = onEnd;
+  }
   synth.speak(utterance);
 };
 
 const focusRing =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200';
 
-const hiddenBackface: React.CSSProperties = { backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' };
-// Obie strony w tej samej komórce siatki: karta ma wysokość dłuższej strony (nic
-// nie jest ucinane), a min-h trzyma stały rozmiar przy krótkich tekstach.
-const faceBase =
-  '[grid-area:1/1] relative min-h-[15rem] sm:min-h-[17rem] rounded-2xl border px-5 sm:px-8 pt-12 pb-8 flex flex-col items-center justify-center text-center gap-3 min-w-0';
-const faceCaption = 'absolute top-4 left-5 text-[10px] font-mono font-bold uppercase tracking-wider';
-// Wygląd przycisku wymowy — także jego nieklikalnej kopii na odlatującej karcie.
-const speakBadge = 'absolute top-2.5 right-2.5 z-10 p-2 rounded-full bg-base-200/90 border border-line-strong text-content-muted';
-
-interface CardFacesProps {
-  card: WarmupCard;
-  flipped: boolean;
-  /** Bez obrotu 3D (ograniczenie ruchu): strony zamieniają się klasą `invisible`. */
-  flat: boolean;
-  /** Identyfikatory testowe tylko na żywej karcie — odlatująca kopia ich nie dubluje. */
-  live: boolean;
-}
-
-/** Awers i rewers — wspólne dla żywej karty i jej odlatującej kopii. */
-const CardFaces: React.FC<CardFacesProps> = ({ card, flipped, flat, live }) => (
-  <>
-    {/* Awers: angielska fraza. Przy ograniczeniu ruchu strony zamieniają się bez obrotu. */}
-    <div
-      data-testid={live ? 'warmup-card-front' : undefined}
-      aria-hidden={flipped}
-      className={`${faceBase} border-line-strong bg-base-100 ${flat && flipped ? 'invisible' : ''}`}
-      style={flat ? undefined : hiddenBackface}
-    >
-      <span className={`${faceCaption} text-content-muted`}>{i18n.t('Fraza')}</span>
-      <p className="text-2xl sm:text-3xl font-black text-text-hi leading-snug break-words max-w-full">
-        {card.term}
-      </p>
-      <span className="inline-flex items-center gap-1 text-xs text-content-muted">
-        <RotateCw size={13} className="shrink-0" />
-        {i18n.t('Kliknij lub wciśnij spację, aby zobaczyć znaczenie')}
-      </span>
-    </div>
-
-    {/* Rewers: polskie znaczenie + opcjonalny przykład. */}
-    <div
-      data-testid={live ? 'warmup-card-back' : undefined}
-      aria-hidden={!flipped}
-      className={`${faceBase} border-primary/40 bg-base-100 ${flat && !flipped ? 'invisible' : ''}`}
-      style={flat ? undefined : { ...hiddenBackface, transform: 'rotateY(180deg)' }}
-    >
-      <span className={`${faceCaption} text-primary`}>{i18n.t('Znaczenie')}</span>
-      <p className="text-xl sm:text-2xl font-bold text-primary leading-snug break-words max-w-full">
-        {card.definition}
-      </p>
-      {card.contextSentence && (
-        <p className="text-sm text-content italic leading-relaxed max-w-md break-words">
-          &ldquo;{card.contextSentence}&rdquo;
-        </p>
-      )}
-    </div>
-  </>
-);
-
-interface LeavingCard {
-  card: WarmupCard;
-  /** Nowy klucz = nowy element kopii przy każdym przejściu, bez stylów GSAP z poprzedniego. */
-  key: number;
-}
+/** UK/US w rogu karty — wygląd jak w module fiszek (PronunciationButtons), głos natywny. */
+const WarmupSpeechButtons: React.FC<{ text: string }> = ({ text }) => {
+  const [playing, setPlaying] = useState<PronunciationLang | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  const onPlay = (e: React.MouseEvent, lang: PronunciationLang) => {
+    e.stopPropagation();
+    setPlaying(lang);
+    if (timer.current) clearTimeout(timer.current);
+    // Zabezpieczenie: niektóre przeglądarki nie wołają onend po cancel().
+    timer.current = setTimeout(() => setPlaying(null), 8000);
+    speakEnglish(text, lang, () => setPlaying(null));
+  };
+  return <PronunciationButtons playing={playing} onPlay={onPlay} />;
+};
 
 export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards, onDone, onSkip }) => {
   const total = cards.length;
   const [index, setIndex] = useState(0);
   const [flipped, setFlipped] = useState(false);
-  // Kopia karty, która właśnie odlatuje — istnieje tylko w trakcie przejścia.
-  const [leaving, setLeaving] = useState<LeavingCard | null>(null);
   // Odczyt raz przy wejściu w fazę kart (jak dotąd) — zmiana ustawienia systemu w trakcie
   // animacji zostawiałaby obrócony element w trybie bez obrotów.
   const reducedMotion = useMemo(prefersReducedMotion, []);
@@ -155,16 +107,17 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
   const stageRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const flipRef = useRef<HTMLDivElement>(null);
-  const ghostRef = useRef<HTMLDivElement>(null);
-  const ghostFlipRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const ctxRef = useRef<gsap.Context | null>(null);
   const barReadyRef = useRef(false);
   const queueRef = useRef(createWarmupCardsQueue());
-  const ghostKeyRef = useRef(0);
   // Źródło prawdy dla animacji obrotu — stan Reacta jest jego odbiciem dla renderu.
   const flippedRef = useRef(false);
   const doneRef = useRef(false);
+  // Przeciąganie: bieżący gest oraz blokada „kliknięcia po przeciągnięciu".
+  const dragRef = useRef<{ id: number; startX: number; dx: number; active: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+  const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Bieżące wartości dla obsług wołanych z GSAP i z listenera dokumentu.
   const liveRef = useRef({ index: safeIndex, total, card, onDone });
   liveRef.current = { index: safeIndex, total, card, onDone };
@@ -178,6 +131,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
       ctx.revert();
       ctxRef.current = null;
       barReadyRef.current = false;
+      if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
     };
   }, []);
 
@@ -208,9 +162,9 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
       // nigdy nie zostaje w połowie.
       gsap.killTweensOf(el);
       if (animate) {
-        gsap.to(el, { rotationY: value ? 180 : 0, duration: FLIP_DURATION, ease: 'power2.inOut' });
+        gsap.to(el, { rotationY: value ? FLIP_DEGREES : 0, duration: FLIP_DURATION, ease: FLIP_EASE });
       } else {
-        gsap.set(el, { rotationY: value ? 180 : 0 });
+        gsap.set(el, { rotationY: value ? FLIP_DEGREES : 0 });
       }
     });
   };
@@ -220,70 +174,37 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
     if (queued) runIntent(queued);
   };
 
-  const endTransition = () => {
-    // Scena wraca do wysokości nowej karty dopiero wtedy, gdy kopia już zniknęła.
-    if (stageRef.current) stageRef.current.style.minHeight = '';
-    releaseQueue();
-  };
-
-  const navigate = (dir: 1 | -1) => {
-    const stageEl = stageRef.current;
+  // Zmiana karty jak w module fiszek: bieżąca odlatuje (x, obrót, krycie), dopiero
+  // potem podmieniamy treść i nowa wjeżdża z boku (kierunek odwrotny do odlotu).
+  const navigate = (dir: CardDirection) => {
     const cardEl = cardRef.current;
     const flipEl = flipRef.current;
-    if (reducedMotion || !stageEl || !cardEl || !flipEl) {
+    const step = dir === 'next' ? 1 : -1;
+    if (reducedMotion || !cardEl || !flipEl) {
       applyFlip(false, false);
-      setIndex((i) => i + dir);
+      setIndex((i) => i + step);
       return;
     }
     queueRef.current.lock();
-    // Kopia startuje z kątem bieżącej karty — także w połowie odwracania.
-    const angle = Number(gsap.getProperty(flipEl, 'rotationY')) || 0;
-    // Krótsza nowa karta nie może od razu podciągnąć przycisków pod odlatującą kopię.
-    stageEl.style.minHeight = `${stageEl.offsetHeight}px`;
-    ghostKeyRef.current += 1;
-    const outgoing: LeavingCard = { card: liveRef.current.card, key: ghostKeyRef.current };
-    // Nowa karta i kopia starej trafiają do DOM-u razem, zanim ruszą tweeny.
-    flushSync(() => {
+    const swap = () => {
+      // Nowa karta zawsze zaczyna awersem; obrót ustawiany bez animacji.
       flippedRef.current = false;
       setFlipped(false);
-      setLeaving(outgoing);
-      setIndex((i) => i + dir);
-    });
-    const ghostEl = ghostRef.current;
-    const ghostFlipEl = ghostFlipRef.current;
+      setIndex((i) => i + step);
+      withGsap(() => {
+        gsap.killTweensOf(flipEl);
+        gsap.set(flipEl, { rotationY: 0 });
+        const enter = enterVars(dir);
+        // fromTo ustawia stan początkowy od razu, więc nowa treść nie błyska w spoczynku.
+        gsap.fromTo(cardEl, enter.from, { ...enter.to, onComplete: releaseQueue });
+      });
+    };
     withGsap(() => {
       gsap.killTweensOf(cardEl);
-      gsap.killTweensOf(flipEl);
-      // Nowa karta zaczyna awersem.
-      gsap.set(flipEl, { rotationY: 0 });
-      if (ghostEl && ghostFlipEl) {
-        gsap.set(ghostFlipEl, { rotationY: angle });
-        gsap.to(ghostEl, {
-          xPercent: -dir * EXIT_X_PERCENT,
-          y: EXIT_DROP_PX,
-          rotation: -dir * EXIT_ROTATION_DEG,
-          opacity: 0,
-          duration: EXIT_DURATION,
-          ease: EXIT_EASE,
-          onComplete: () => setLeaving(null),
-        });
-      }
-      // fromTo ustawia stan początkowy od razu, więc nowa karta czeka pod kopią
-      // pomniejszona i przygaszona, zanim po ENTER_DELAY zacznie rosnąć.
-      gsap.fromTo(
-        cardEl,
-        { scale: ENTER_FROM_SCALE, opacity: ENTER_FROM_OPACITY },
-        {
-          scale: 1,
-          opacity: 1,
-          duration: ENTER_DURATION,
-          delay: ENTER_DELAY,
-          ease: ENTER_EASE,
-          // Nie „all": inline `perspective` tego elementu musi zostać.
-          clearProps: 'transform,opacity',
-          onComplete: endTransition,
-        }
-      );
+      // Ruch i krycie to dwa tweeny: karta znika (0,25 s), zanim doleci do krawędzi panelu,
+      // a podmiana treści czeka na koniec ruchu (0,3 s), jak dotąd.
+      gsap.to(cardEl, { ...exitMoveVars(dir, window.innerWidth), onComplete: swap });
+      gsap.to(cardEl, exitFadeVars());
     });
   };
 
@@ -292,8 +213,8 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
     const action = intentToAction(intent, current, count);
     if (action === 'finish') finish();
     else if (action === 'flip') applyFlip(!flippedRef.current, true);
-    else if (action === 'next') navigate(1);
-    else if (action === 'prev') navigate(-1);
+    else if (action === 'next') navigate('next');
+    else if (action === 'prev') navigate('prev');
   }
 
   const dispatch = (intent: WarmupCardsIntent, repeat = false) => {
@@ -303,6 +224,82 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
   };
   const dispatchRef = useRef(dispatch);
   dispatchRef.current = dispatch;
+
+  // --- Przeciąganie kartą (dotyk i mysz) -------------------------------------------
+  // Jak w module fiszek: karta podąża za wskaźnikiem (opór, gdy nieodwrócona), po
+  // zwolnieniu powyżej progu zmienia się karta, inaczej wraca na miejsce. W rozgrzewce
+  // nie ma oceny, więc gest zawsze oznacza nawigację: w prawo = następna, w lewo = poprzednia.
+  const armClickSuppression = () => {
+    suppressClickRef.current = true;
+    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
+    suppressTimerRef.current = setTimeout(() => {
+      suppressClickRef.current = false;
+    }, 120);
+  };
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    if (doneRef.current || queueRef.current.busy) return;
+    if ((e.target as Element).closest?.('button')) return;
+    suppressClickRef.current = false;
+    dragRef.current = { id: e.pointerId, startX: e.clientX, dx: 0, active: false };
+  };
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    const drag = dragRef.current;
+    const cardEl = cardRef.current;
+    if (!drag || !cardEl || drag.id !== e.pointerId) return;
+    drag.dx = e.clientX - drag.startX;
+    if (!drag.active) {
+      if (Math.abs(drag.dx) < DRAG.startDistancePx) return;
+      drag.active = true;
+      try {
+        cardEl.setPointerCapture?.(e.pointerId);
+      } catch {
+        /* przechwycenie wskaźnika jest opcjonalne */
+      }
+    }
+    if (reducedMotion) return;
+    const dx = drag.dx;
+    withGsap(() => {
+      gsap.to(cardEl, dragFollowVars(dx, flippedRef.current));
+    });
+  };
+
+  const endDrag = (e: React.PointerEvent, cancelled: boolean) => {
+    const drag = dragRef.current;
+    if (!drag || drag.id !== e.pointerId) return;
+    dragRef.current = null;
+    if (!drag.active) return;
+    armClickSuppression();
+    try {
+      cardRef.current?.releasePointerCapture?.(e.pointerId);
+    } catch {
+      /* jw. */
+    }
+    const dir = cancelled ? null : swipeDirection(drag.dx);
+    const { index: current, total: count } = liveRef.current;
+    if (dir && intentToAction(dir, current, count)) {
+      dispatchRef.current(dir);
+      return;
+    }
+    // Za mało, brak następnej/poprzedniej karty albo anulowanie → sprężysty powrót.
+    const cardEl = cardRef.current;
+    if (cardEl && !reducedMotion) {
+      withGsap(() => {
+        gsap.killTweensOf(cardEl);
+        gsap.to(cardEl, snapBackVars());
+      });
+    }
+  };
+
+  const onCardClick = () => {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    dispatch('flip');
+  };
 
   // Klawiatura bez fokusu na przycisku: listener dokumentu żyje tylko, póki faza
   // kart jest zamontowana. Klawisze z elementów spoza kart (np. okno nad nimi)
@@ -334,7 +331,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
     };
   }, [hasCards]);
 
-  // Cienki pasek postępu: pierwsze ustawienie bez animacji, potem szerokość dociąga GSAP.
+  // Pasek postępu: pierwsze ustawienie bez animacji, potem szerokość dociąga GSAP.
   const percent = warmupCardsProgressPercent(safeIndex, total);
   useLayoutEffect(() => {
     const bar = barRef.current;
@@ -354,13 +351,18 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
   if (!card) return null;
 
   const navButton = `inline-flex items-center justify-center gap-1.5 min-h-11 px-3.5 sm:px-4 rounded-xl border border-line-strong bg-base-100/60 text-content-muted hover:text-text-hi hover:bg-base-100 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed ${focusRing}`;
+  const speech = speechAvailable ? <WarmupSpeechButtons text={card.term} /> : undefined;
 
   return (
+    // Bez overflow na tym panelu ani na żadnym przodku karty w jego obrębie: karta zajmuje całą
+    // szerokość panelu, więc jakikolwiek clip ścinałby ją pionową krawędzią zaraz po starcie
+    // odlotu. Poziomy scroll strony blokuje kontener strony (`main` w Dashboard,
+    // `overflow-x-hidden` w powłoce DirectHomeworkScreen), a karta jest wtedy już przezroczysta.
     <section
       ref={rootRef}
       aria-label={i18n.t('Fiszki rozgrzewki')}
       data-testid="warmup-cards-root"
-      className="max-w-2xl mx-auto px-4 py-5 space-y-5 animate-in fade-in duration-300"
+      className="max-w-3xl mx-auto px-4 py-5 space-y-6 animate-in fade-in duration-300"
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/35 text-primary text-xs font-bold uppercase tracking-wider">
@@ -378,9 +380,10 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
         </button>
       </div>
 
-      <div className="rounded-2xl border border-line-strong bg-base-200/80 p-4 sm:p-6 shadow-lg space-y-4">
-        {/* Nagłówek: rodzaj ćwiczenia, licznik (ogłaszany czytnikom ekranu) i pasek postępu */}
-        <div className="space-y-2">
+      <div className="space-y-6">
+        {/* Nagłówek: rodzaj ćwiczenia, licznik (ogłaszany czytnikom ekranu) i pasek postępu —
+            układ licznika i paska jak w module fiszek */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="text-[11px] font-mono text-primary font-bold uppercase tracking-wider flex items-center gap-1.5">
               <Zap size={13} />
@@ -390,7 +393,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
               data-testid="warmup-cards-progress"
               aria-live="polite"
               aria-atomic="true"
-              className="text-xs font-mono font-semibold text-content-muted tabular-nums"
+              className="font-mono text-sm tabular-nums"
             >
               {i18n.t('Karta {{current}} z {{total}}', { current: safeIndex + 1, total })}
             </span>
@@ -401,118 +404,125 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
             aria-valuemin={1}
             aria-valuemax={total}
             aria-valuenow={safeIndex + 1}
-            className="h-1 w-full rounded-full bg-line-strong overflow-hidden"
+            className="w-full bg-base-300 h-2 rounded-full overflow-hidden"
           >
-            <div ref={barRef} data-testid="warmup-cards-bar" className="h-full rounded-full bg-primary" />
+            <div ref={barRef} data-testid="warmup-cards-bar" className="bg-primary h-full" />
           </div>
         </div>
 
-        {/* Scena karty: przy zmianie bieżąca karta wychodzi spod spodu (GSAP scale/opacity),
-            a nad nią odlatuje kopia poprzedniej; przy odwróceniu karta obraca się (rotationY) */}
-        <div ref={stageRef} data-testid="warmup-cards-stage" className="relative isolate">
-          <div ref={cardRef} className="relative" style={{ perspective: '1200px' }}>
+        {/* Scena karty. Kontener (cardRef) dostaje od GSAP odlot/wjazd i przeciąganie, a
+            element obracany (flipRef) — obrót sprężyną; perspektywa na kontenerze. */}
+        <div ref={stageRef} data-testid="warmup-cards-stage" className="relative">
+          <div
+            ref={cardRef}
+            className="relative perspective-1000 touch-pan-y"
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={(e) => endDrag(e, false)}
+            onPointerCancel={(e) => endDrag(e, true)}
+          >
             <div
               ref={flipRef}
               data-testid="warmup-card"
               data-flipped={flipped ? 'true' : 'false'}
-              onClick={() => dispatch('flip')}
+              onClick={onCardClick}
               className="grid cursor-pointer select-none"
               style={{ transformStyle: reducedMotion ? 'flat' : 'preserve-3d' }}
             >
-              <CardFaces card={card} flipped={flipped} flat={reducedMotion} live />
-            </div>
-
-            {/* Wymowa w rogu — poza obracanym elementem, więc dostępna na obu stronach */}
-            {speechAvailable && (
-              <button
-                type="button"
-                data-testid="warmup-cards-speak"
-                onClick={() => speakEnglish(card.term)}
-                aria-label={i18n.t('Odsłuchaj wymowę')}
-                title={i18n.t('Odsłuchaj wymowę')}
-                className={`${speakBadge} hover:text-text-hi transition-colors cursor-pointer ${focusRing}`}
+              {/* Awers: angielska fraza + UK/US; rewers: znaczenie + przykład. Wspólny markup z
+                  modułem fiszek (FlashcardFace). */}
+              <FlashcardFace
+                side="front"
+                testId="warmup-card-front"
+                label={i18n.t('Pojęcie')}
+                turnedAway={flipped}
+                flat={reducedMotion}
+                actions={speech}
               >
-                <Volume2 size={18} />
-              </button>
+                {card.term}
+              </FlashcardFace>
+              <FlashcardFace
+                side="back"
+                testId="warmup-card-back"
+                label={i18n.t('Definicja')}
+                turnedAway={!flipped}
+                flat={reducedMotion}
+                actions={speech}
+                footer={
+                  card.contextSentence ? (
+                    <p className="mt-4 text-sm text-content italic leading-relaxed max-w-md break-words">
+                      &ldquo;{card.contextSentence}&rdquo;
+                    </p>
+                  ) : undefined
+                }
+              >
+                {card.definition}
+              </FlashcardFace>
+            </div>
+          </div>
+        </div>
+
+        {/* Podpowiedź, przyciski i podpowiedź klawiatury leżą nad sceną (z-10): odlatująca,
+            obracana karta przechodzi pod nimi i nie zasłania ani nie przechwytuje kliknięć. */}
+        <div data-testid="warmup-cards-controls" className="relative z-10 space-y-6">
+          {/* Podpowiedź jak pod kartą w module; stała wysokość, żeby przyciski nie skakały */}
+          <p className="min-h-5 flex items-center justify-center gap-1.5 text-center text-content-muted text-sm">
+            {!flipped && (
+              <>
+                <RotateCw size={13} className="shrink-0" />
+                <span>{i18n.t('Kliknij lub wciśnij spację, aby zobaczyć znaczenie')}</span>
+              </>
             )}
+          </p>
+
+          <div className="flex items-stretch gap-2">
+            <button
+              type="button"
+              onClick={() => dispatch('prev')}
+              disabled={isFirst}
+              aria-label={i18n.t('Poprzednia karta')}
+              className={navButton}
+            >
+              <ArrowLeft size={15} className="shrink-0" />
+              <span className="hidden sm:inline">{i18n.t('Wstecz')}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => dispatch('flip')}
+              aria-label={i18n.t('Odwróć fiszkę')}
+              className={navButton}
+            >
+              <RotateCw size={15} className="shrink-0" />
+              <span className="hidden sm:inline">{i18n.t('Odwróć')}</span>
+            </button>
+
+            {/* W trakcie przejścia drugi klik (np. podwójne „Dalej" z przedostatniej karty)
+                trafia do kolejki jako „next", który na ostatniej karcie nic nie robi. */}
+            <button
+              type="button"
+              data-testid="warmup-cards-next"
+              onClick={() => dispatch(isLast && !queueRef.current.busy ? 'enter' : 'next')}
+              aria-label={isLast ? i18n.t('Zakończ karty') : i18n.t('Następna karta')}
+              className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-xl bg-primary text-accent-ink text-sm font-extrabold shadow-md transition-opacity cursor-pointer hover:opacity-90 ${focusRing}`}
+            >
+              <span className="whitespace-nowrap">{isLast ? i18n.t('Zakończ karty') : i18n.t('Dalej')}</span>
+              {isLast ? <Check size={15} className="shrink-0" /> : <ArrowRight size={15} className="shrink-0" />}
+            </button>
           </div>
 
-          {/* Odlatująca kopia poprzedniej karty. Ramka przycina ją do wnętrza panelu:
-              w poziomie do jego krawędzi (-inset-x = p-4/sm:p-6 panelu), w pionie do
-              odstępów nad kartą i pod nią (-inset-y = space-y-4) — kopia nie wjeżdża
-              na przyciski i nie rozpycha strony w poziomie. */}
-          {leaving && (
-            <div
-              key={leaving.key}
-              aria-hidden="true"
-              className="pointer-events-none absolute -inset-x-4 sm:-inset-x-6 -inset-y-4 z-20 overflow-hidden"
-            >
-              <div
-                ref={ghostRef}
-                data-testid="warmup-card-ghost"
-                className="absolute inset-x-4 sm:inset-x-6 top-4"
-                style={{ perspective: '1200px' }}
-              >
-                <div ref={ghostFlipRef} className="grid" style={{ transformStyle: 'preserve-3d' }}>
-                  <CardFaces card={leaving.card} flipped={false} flat={false} live={false} />
-                </div>
-                {speechAvailable && (
-                  <span className={speakBadge}>
-                    <Volume2 size={18} />
-                  </span>
-                )}
-              </div>
-            </div>
-          )}
+          {/* Podpowiedź klawiatury tylko przy precyzyjnym wskaźniku (mysz/gładzik) */}
+          <p
+            data-testid="warmup-cards-hint"
+            className="hidden pointer-fine:flex items-center justify-center gap-1.5 text-[11px] text-content-muted"
+          >
+            <Keyboard size={12} className="shrink-0" />
+            <span>
+              {i18n.t('← → zmiana karty, spacja odwraca')}
+              {isLast ? ` · ${i18n.t('Enter kończy')}` : ''}
+            </span>
+          </p>
         </div>
-
-        <div className="flex items-stretch gap-2">
-          <button
-            type="button"
-            onClick={() => dispatch('prev')}
-            disabled={isFirst}
-            aria-label={i18n.t('Poprzednia karta')}
-            className={navButton}
-          >
-            <ArrowLeft size={15} className="shrink-0" />
-            <span className="hidden sm:inline">{i18n.t('Wstecz')}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => dispatch('flip')}
-            aria-label={i18n.t('Odwróć fiszkę')}
-            className={navButton}
-          >
-            <RotateCw size={15} className="shrink-0" />
-            <span className="hidden sm:inline">{i18n.t('Odwróć')}</span>
-          </button>
-
-          {/* Etykieta zmienia się już na starcie przejścia, więc klik w jego trakcie
-              (np. drugi klik podwójnego „Dalej" z przedostatniej karty) nie kończy kart. */}
-          <button
-            type="button"
-            data-testid="warmup-cards-next"
-            onClick={() => dispatch(isLast && !queueRef.current.busy ? 'enter' : 'next')}
-            aria-label={isLast ? i18n.t('Zakończ karty') : i18n.t('Następna karta')}
-            className={`flex-1 inline-flex items-center justify-center gap-1.5 min-h-11 px-5 rounded-xl bg-primary text-accent-ink text-sm font-extrabold shadow-md transition-opacity cursor-pointer hover:opacity-90 ${focusRing}`}
-          >
-            <span className="whitespace-nowrap">{isLast ? i18n.t('Zakończ karty') : i18n.t('Dalej')}</span>
-            {isLast ? <Check size={15} className="shrink-0" /> : <ArrowRight size={15} className="shrink-0" />}
-          </button>
-        </div>
-
-        {/* Podpowiedź klawiatury tylko przy precyzyjnym wskaźniku (mysz/gładzik) */}
-        <p
-          data-testid="warmup-cards-hint"
-          className="hidden pointer-fine:flex items-center justify-center gap-1.5 text-[11px] text-content-muted"
-        >
-          <Keyboard size={12} className="shrink-0" />
-          <span>
-            {i18n.t('← → zmiana karty, spacja odwraca')}
-            {isLast ? ` · ${i18n.t('Enter kończy')}` : ''}
-          </span>
-        </p>
       </div>
     </section>
   );
