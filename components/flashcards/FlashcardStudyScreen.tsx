@@ -13,7 +13,9 @@ import PronunciationMic from '../ui/PronunciationMic';
 import TTSButtons from './TTSButtons';
 import MatchingGame from './MatchingGame';
 import FlashcardFace from './FlashcardFace';
-import { enterFromVars, enterVars, exitVars, snapBackVars } from '../../utils/flashcardCardMotion';
+import { dragFollowVars, enterFromVars, enterVars, exitVars, snapBackVars } from '../../utils/flashcardCardMotion';
+import { moduleSwipeAction } from '../../utils/cardSwipe';
+import { SWIPE_TOUCH_ACTION_CLASS, useCardSwipe } from '../../hooks/useCardSwipe';
 import ConfirmModal from '../ui/ConfirmModal';
 import i18n from "i18next";
 
@@ -218,8 +220,6 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   const [startTime, setStartTime] = useState<number>(0);
   const [isFinished, setIsFinished] = useState(false);
   const [isReversed, setIsReversed] = useState(false);
-  const touchStartRef = useRef<number | null>(null);
-  const touchCurrentRef = useRef<number | null>(null);
 
   const { getProgress } = useFlashcards();
   const { soundSettings } = useSettings();
@@ -354,65 +354,27 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
     }
   }, [currentIndex, cards.length]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartRef.current = e.touches[0].clientX;
-    touchCurrentRef.current = e.touches[0].clientX;
-  }, []);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (touchStartRef.current === null) return;
-    touchCurrentRef.current = e.touches[0].clientX;
-    const diff = touchCurrentRef.current - touchStartRef.current;
-    
-    // Add visual feedback for swipe
-    if (cardContainerRef.current && isFlipped) {
-      gsap.to(cardContainerRef.current, {
-        x: diff,
-        rotation: diff * 0.05,
-        duration: 0.1,
-        overwrite: true
-      });
-    } else if (cardContainerRef.current && !isFlipped) {
-      gsap.to(cardContainerRef.current, {
-        x: diff * 0.5, // resistance when not flipped
-        rotation: diff * 0.02,
-        duration: 0.1,
-        overwrite: true
-      });
-    }
-  }, [isFlipped]);
-
-  const handleTouchEnd = useCallback(() => {
-    if (touchStartRef.current === null || touchCurrentRef.current === null) return;
-    const diff = touchCurrentRef.current - touchStartRef.current;
-    
-    if (isFlipped) {
-      if (diff > 80) {
-        handleAnswer(true);
-      } else if (diff < -80) {
-        handleAnswer(false);
-      } else {
-        // snap back
-        if (cardContainerRef.current) {
-           gsap.to(cardContainerRef.current, snapBackVars());
-        }
-      }
-    } else {
-      if (diff > 80) {
-        handlePrev();
-      } else if (diff < -80) {
-        handleNext();
-      } else {
-        // snap back
-        if (cardContainerRef.current) {
-           gsap.to(cardContainerRef.current, snapBackVars());
-        }
-      }
-    }
-    
-    touchStartRef.current = null;
-    touchCurrentRef.current = null;
-  }, [isFlipped, handleAnswer, handlePrev, handleNext]);
+  // Przeciąganie karty: wspólny hook PointerEvents (jak w rozgrzewce). Karta podąża za palcem
+  // i odlatuje w jego stronę. Nieodwrócona: lewo = następna, prawo = poprzednia (na końcach
+  // talii wraca na miejsce). Odwrócona to ocena — prawo „umiem", lewo „nie umiem" (bez zmian).
+  const swipe = useCardSwipe({
+    canStart: (e) => !(e.target as Element).closest?.('button'),
+    onFollow: (dx) => {
+      if (cardContainerRef.current) gsap.to(cardContainerRef.current, dragFollowVars(dx, isFlipped));
+    },
+    onSwipe: ({ dx, cancelled }) => {
+      if (cancelled) return false;
+      const action = moduleSwipeAction(dx, isFlipped, currentIndex, cards.length);
+      if (action === 'know') handleAnswer(true);
+      else if (action === 'dontKnow') handleAnswer(false);
+      else if (action === 'next') handleNext();
+      else if (action === 'prev') handlePrev();
+      return action !== null;
+    },
+    onSnapBack: () => {
+      if (cardContainerRef.current) gsap.to(cardContainerRef.current, snapBackVars());
+    },
+  });
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -512,11 +474,12 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           <div
             ref={cardContainerRef}
             data-testid="flashcard-stage"
-            className="w-full cursor-pointer touch-pan-y perspective-1000"
-            onClick={handleFlip}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
+            className={`w-full cursor-pointer ${SWIPE_TOUCH_ACTION_CLASS} perspective-1000`}
+            onClick={() => {
+              if (swipe.consumeSuppressedClick()) return;
+              handleFlip();
+            }}
+            {...swipe.bind}
           >
             {/* Obie strony w JEDNEJ komórce siatki (a nie position:absolute): .liquid-glass-card
                 ma `position: relative` poza warstwą Tailwinda i nadpisywał `absolute`, przez co

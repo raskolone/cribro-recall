@@ -69,9 +69,12 @@ export const ENTER_EASE = 'back.out(1.5)';
 export const ENTER_OFFSET_PX = 200;
 export const ENTER_TILT_DEG = 10;
 
-/** Odlot bieżącej karty: „next" w prawo z obrotem +20°, „prev" w lewo z −20° (jak w module). */
+/**
+ * Odlot bieżącej karty w stronę ruchu palca: „next" (przeciągnięcie w lewo, przycisk Dalej)
+ * leci w LEWO z obrotem −20°, „prev" (przeciągnięcie w prawo, Wstecz) w prawo z +20°.
+ */
 export function exitVars(dir: CardDirection, viewportWidth: number) {
-  const sign = dir === 'next' ? 1 : -1;
+  const sign = dir === 'next' ? -1 : 1;
   return {
     x: sign * viewportWidth,
     rotation: sign * EXIT_ROTATION_DEG,
@@ -103,9 +106,9 @@ export function exitFadeVars() {
   return { opacity: 0, duration: EXIT_FADE_DURATION, ease: EXIT_FADE_EASE, overwrite: false } as const;
 }
 
-/** Wjazd nowej karty: „next" z lewej (−200 px, −10°), „prev" z prawej (+200 px, +10°). */
+/** Wjazd nowej karty z PRZECIWNEJ strony niż odlot: „next" z prawej (+200 px, +10°), „prev" z lewej (−200 px, −10°). */
 export function enterVars(dir: CardDirection) {
-  const sign = dir === 'next' ? -1 : 1;
+  const sign = dir === 'next' ? 1 : -1;
   return {
     from: { x: sign * ENTER_OFFSET_PX, opacity: 0, rotation: sign * ENTER_TILT_DEG },
     to: { ...CARD_REST, duration: ENTER_DURATION, ease: ENTER_EASE, overwrite: true, clearProps: 'all' },
@@ -147,13 +150,12 @@ export function dragFollowVars(dx: number, flipped: boolean) {
 }
 
 /**
- * Kierunek zatwierdzonego gestu. W rozgrzewce (bez oceny) przeciągnięcie w prawo =
- * następna karta, w lewo = poprzednia — zgodnie z kierunkiem odlotu karty
- * (`exitVars('next')` leci w prawo). Moduł fiszek ma własne mapowanie dotyku
- * (w lewo = następna) i go nie używa.
+ * Kierunek zatwierdzonego gestu — jedno mapowanie dla rozgrzewki i modułu fiszek:
+ * przeciągnięcie w LEWO = następna karta, w PRAWO = poprzednia. Karta odlatuje w stronę
+ * palca (`exitVars`), a nowa wjeżdża z przeciwnej.
  */
 export function swipeDirection(dx: number): CardDirection | null {
-  if (dx >= DRAG.thresholdPx) return 'next';
-  if (dx <= -DRAG.thresholdPx) return 'prev';
+  if (dx <= -DRAG.thresholdPx) return 'next';
+  if (dx >= DRAG.thresholdPx) return 'prev';
   return null;
 }

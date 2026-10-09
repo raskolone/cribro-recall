@@ -68,25 +68,29 @@ test('springEase: wartości rosną od 0, przekraczają 1 (przestrzał) i nie wyb
   assert.ok(Math.min(...samples) >= 0);
 });
 
-test('odlot i wjazd jak w module: next → prawo +20°, wjazd z lewej; prev lustrzanie', () => {
+test('odlot w stronę palca: next → lewo −20°, wjazd z prawej; prev lustrzanie', () => {
   assert.deepEqual(
     exitVars('next', 1000),
-    { x: 1000, rotation: 20, opacity: 0, duration: 0.3, ease: 'power2.in', overwrite: true }
+    { x: -1000, rotation: -20, opacity: 0, duration: 0.3, ease: 'power2.in', overwrite: true }
   );
   assert.deepEqual(
     exitVars('prev', 1000),
-    { x: -1000, rotation: -20, opacity: 0, duration: 0.3, ease: 'power2.in', overwrite: true }
+    { x: 1000, rotation: 20, opacity: 0, duration: 0.3, ease: 'power2.in', overwrite: true }
   );
   assert.equal(EXIT_DURATION, 0.3);
   assert.equal(EXIT_EASE, 'power2.in');
   const next = enterVars('next');
-  assert.deepEqual(next.from, { x: -200, opacity: 0, rotation: -10 });
+  assert.deepEqual(next.from, { x: 200, opacity: 0, rotation: 10 });
   assert.equal(next.to.duration, ENTER_DURATION);
   assert.equal(next.to.ease, ENTER_EASE);
   assert.equal(ENTER_DURATION, 0.4);
   assert.equal(ENTER_EASE, 'back.out(1.5)');
   assert.equal(next.to.clearProps, 'all');
-  assert.deepEqual(enterVars('prev').from, { x: 200, opacity: 0, rotation: 10 });
+  assert.deepEqual(enterVars('prev').from, { x: -200, opacity: 0, rotation: -10 });
+  // wjazd zawsze z PRZECIWNEJ strony niż odlot
+  for (const dir of ['next', 'prev'] as const) {
+    assert.equal(Math.sign(enterVars(dir).from.x), -Math.sign(exitVars(dir, 1000).x));
+  }
   // wjazd po ocenie (moduł fiszek): „umiem" −200 px/−15°
   assert.deepEqual(enterFromVars(-1, 15).from, { x: -200, opacity: 0, rotation: -15 });
   assert.deepEqual(enterFromVars(1, 15).from, { x: 200, opacity: 0, rotation: 15 });
@@ -98,8 +102,8 @@ test('odlot rozgrzewki: ruch = exitVars bez krycia (moduł fiszek bez zmian), kr
     assert.equal(opacity, 0, 'moduł fiszek: exitVars dalej kryje w tym samym tweenie');
     assert.deepEqual(exitMoveVars(dir, 1280), rest);
   }
-  assert.equal(exitMoveVars('next', 1280).x, 1280);
-  assert.equal(exitMoveVars('prev', 1280).rotation, -20);
+  assert.equal(exitMoveVars('next', 1280).x, -1280);
+  assert.equal(exitMoveVars('prev', 1280).rotation, 20);
   assert.equal('opacity' in exitMoveVars('next', 1280), false);
 
   assert.deepEqual(exitFadeVars(), { opacity: 0, duration: 0.25, ease: 'power1.out', overwrite: false });
@@ -127,12 +131,12 @@ test('przeciąganie: próg 80 px, podążanie z oporem / bez oporu, kierunek ges
   assert.deepEqual(dragFollowVars(100, true), { x: 100, rotation: 5, duration: 0.1, overwrite: true });
   assert.deepEqual(dragFollowVars(-40, true), { x: -40, rotation: -2, duration: 0.1, overwrite: true });
 
-  assert.equal(swipeDirection(80), 'next');
-  assert.equal(swipeDirection(300), 'next');
+  assert.equal(swipeDirection(80), 'prev');
+  assert.equal(swipeDirection(300), 'prev');
   assert.equal(swipeDirection(79), null);
   assert.equal(swipeDirection(0), null);
   assert.equal(swipeDirection(-79), null);
-  assert.equal(swipeDirection(-80), 'prev');
+  assert.equal(swipeDirection(-80), 'next');
 });
 
 // --- Struktura: brak motion/react w nowym kodzie, GSAP core ----------------------------

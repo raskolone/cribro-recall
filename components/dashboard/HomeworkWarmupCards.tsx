@@ -16,7 +16,6 @@ import {
   type WarmupCardsIntent,
 } from '../../utils/warmupCardsKeys';
 import {
-  DRAG,
   FLIP_DEGREES,
   FLIP_DURATION,
   dragFollowVars,
@@ -25,9 +24,9 @@ import {
   exitMoveVars,
   snapBackVars,
   springEase,
-  swipeDirection,
   type CardDirection,
 } from '../../utils/flashcardCardMotion';
+import { SWIPE_TOUCH_ACTION_CLASS, useCardSwipe } from '../../hooks/useCardSwipe';
 
 interface HomeworkWarmupCardsProps {
   cards: WarmupCard[];
@@ -114,10 +113,6 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
   // Źródło prawdy dla animacji obrotu — stan Reacta jest jego odbiciem dla renderu.
   const flippedRef = useRef(false);
   const doneRef = useRef(false);
-  // Przeciąganie: bieżący gest oraz blokada „kliknięcia po przeciągnięciu".
-  const dragRef = useRef<{ id: number; startX: number; dx: number; active: boolean } | null>(null);
-  const suppressClickRef = useRef(false);
-  const suppressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Bieżące wartości dla obsług wołanych z GSAP i z listenera dokumentu.
   const liveRef = useRef({ index: safeIndex, total, card, onDone });
   liveRef.current = { index: safeIndex, total, card, onDone };
@@ -131,7 +126,6 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
       ctx.revert();
       ctxRef.current = null;
       barReadyRef.current = false;
-      if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
     };
   }, []);
 
@@ -226,78 +220,40 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
   dispatchRef.current = dispatch;
 
   // --- Przeciąganie kartą (dotyk i mysz) -------------------------------------------
-  // Jak w module fiszek: karta podąża za wskaźnikiem (opór, gdy nieodwrócona), po
-  // zwolnieniu powyżej progu zmienia się karta, inaczej wraca na miejsce. W rozgrzewce
-  // nie ma oceny, więc gest zawsze oznacza nawigację: w prawo = następna, w lewo = poprzednia.
-  const armClickSuppression = () => {
-    suppressClickRef.current = true;
-    if (suppressTimerRef.current) clearTimeout(suppressTimerRef.current);
-    suppressTimerRef.current = setTimeout(() => {
-      suppressClickRef.current = false;
-    }, 120);
-  };
-
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-    if (doneRef.current || queueRef.current.busy) return;
-    if ((e.target as Element).closest?.('button')) return;
-    suppressClickRef.current = false;
-    dragRef.current = { id: e.pointerId, startX: e.clientX, dx: 0, active: false };
-  };
-
-  const onPointerMove = (e: React.PointerEvent) => {
-    const drag = dragRef.current;
-    const cardEl = cardRef.current;
-    if (!drag || !cardEl || drag.id !== e.pointerId) return;
-    drag.dx = e.clientX - drag.startX;
-    if (!drag.active) {
-      if (Math.abs(drag.dx) < DRAG.startDistancePx) return;
-      drag.active = true;
-      try {
-        cardEl.setPointerCapture?.(e.pointerId);
-      } catch {
-        /* przechwycenie wskaźnika jest opcjonalne */
-      }
-    }
-    if (reducedMotion) return;
-    const dx = drag.dx;
-    withGsap(() => {
-      gsap.to(cardEl, dragFollowVars(dx, flippedRef.current));
-    });
-  };
-
-  const endDrag = (e: React.PointerEvent, cancelled: boolean) => {
-    const drag = dragRef.current;
-    if (!drag || drag.id !== e.pointerId) return;
-    dragRef.current = null;
-    if (!drag.active) return;
-    armClickSuppression();
-    try {
-      cardRef.current?.releasePointerCapture?.(e.pointerId);
-    } catch {
-      /* jw. */
-    }
-    const dir = cancelled ? null : swipeDirection(drag.dx);
-    const { index: current, total: count } = liveRef.current;
-    if (dir && intentToAction(dir, current, count)) {
-      dispatchRef.current(dir);
-      return;
-    }
-    // Za mało, brak następnej/poprzedniej karty albo anulowanie → sprężysty powrót.
-    const cardEl = cardRef.current;
-    if (cardEl && !reducedMotion) {
+  // Wspólny hook PointerEvents (jak w module fiszek): karta podąża za palcem (opór, gdy
+  // nieodwrócona), po zwolnieniu powyżej progu zmienia się karta w stronę ruchu palca
+  // (lewo = następna, prawo = poprzednia), inaczej — albo gdy przeglądarka przejmie gest
+  // (`pointercancel`) — wraca na miejsce. W rozgrzewce nie ma oceny: gest to zawsze nawigacja.
+  const swipe = useCardSwipe({
+    canStart: (e) => !(e.target as Element).closest?.('button') && !doneRef.current && !queueRef.current.busy,
+    onFollow: (dx) => {
+      const cardEl = cardRef.current;
+      if (!cardEl || reducedMotion) return;
       withGsap(() => {
-        gsap.killTweensOf(cardEl);
-        gsap.to(cardEl, snapBackVars());
+        gsap.to(cardEl, dragFollowVars(dx, flippedRef.current));
       });
-    }
-  };
+    },
+    onSwipe: ({ direction }) => {
+      const { index: current, total: count } = liveRef.current;
+      if (direction && intentToAction(direction, current, count)) {
+        dispatchRef.current(direction);
+        return true;
+      }
+      return false;
+    },
+    onSnapBack: () => {
+      const cardEl = cardRef.current;
+      if (cardEl && !reducedMotion) {
+        withGsap(() => {
+          gsap.killTweensOf(cardEl);
+          gsap.to(cardEl, snapBackVars());
+        });
+      }
+    },
+  });
 
   const onCardClick = () => {
-    if (suppressClickRef.current) {
-      suppressClickRef.current = false;
-      return;
-    }
+    if (swipe.consumeSuppressedClick()) return;
     dispatch('flip');
   };
 
@@ -415,11 +371,8 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
         <div ref={stageRef} data-testid="warmup-cards-stage" className="relative">
           <div
             ref={cardRef}
-            className="relative perspective-1000 touch-pan-y"
-            onPointerDown={onPointerDown}
-            onPointerMove={onPointerMove}
-            onPointerUp={(e) => endDrag(e, false)}
-            onPointerCancel={(e) => endDrag(e, true)}
+            className={`relative perspective-1000 ${SWIPE_TOUCH_ACTION_CLASS}`}
+            {...swipe.bind}
           >
             <div
               ref={flipRef}

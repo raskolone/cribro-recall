@@ -357,7 +357,7 @@ test('GSAP: odwrócenie = rotationY 180 sprężyną z modułu fiszek (0,6 s, krz
   assert.equal(animatedCalls().find((c) => c.target === flipEl)!.vars.rotationY, 0);
 });
 
-test('GSAP: zmiana karty jak w module — → odlot w prawo (x = szerokość okna, +20°), wjazd z lewej; ← lustrzanie; krycie osobnym tweenem', () => {
+test('GSAP: zmiana karty w stronę palca — Dalej: odlot w LEWO (x = −szerokość okna, −20°), wjazd z prawej; Wstecz lustrzanie; krycie osobnym tweenem', () => {
   const { getByTestId } = setup();
   const flipEl = getByTestId('warmup-card');
   const cardEl = flipEl.parentElement!;
@@ -369,11 +369,11 @@ test('GSAP: zmiana karty jak w module — → odlot w prawo (x = szerokość okn
   const exit = animatedCalls().find((c) => c.method === 'to' && c.target === cardEl)!;
   assert.deepEqual(
     [exit.vars.x, exit.vars.rotation, exit.vars.duration, exit.vars.ease],
-    [width, 20, 0.3, 'power2.in']
+    [-width, -20, 0.3, 'power2.in']
   );
   assert.equal('opacity' in exit.vars, false, 'krycie nie jest częścią tweena ruchu');
   const enter = animatedCalls().find((c) => c.method === 'fromTo' && c.target === cardEl)!;
-  assert.deepEqual([enter.fromVars.x, enter.fromVars.opacity, enter.fromVars.rotation], [-200, 0, -10]);
+  assert.deepEqual([enter.fromVars.x, enter.fromVars.opacity, enter.fromVars.rotation], [200, 0, 10]);
   assert.deepEqual(
     [enter.vars.x, enter.vars.y, enter.vars.rotation, enter.vars.opacity, enter.vars.scale, enter.vars.duration, enter.vars.ease],
     [0, 0, 0, 1, 1, 0.4, 'back.out(1.5)']
@@ -387,11 +387,11 @@ test('GSAP: zmiana karty jak w module — → odlot w prawo (x = szerokość okn
   gsapCalls.length = 0;
   key(document.body, 'ArrowLeft');
   const back = animatedCalls().find((c) => c.method === 'to' && c.target === cardEl)!;
-  assert.deepEqual([back.vars.x, back.vars.rotation], [-width, -20]);
+  assert.deepEqual([back.vars.x, back.vars.rotation], [width, 20]);
   const backFade = animatedCalls().filter((c) => c.method === 'to' && c.target === cardEl)[1];
   assert.equal(backFade.vars.opacity, 0);
   const backIn = animatedCalls().find((c) => c.method === 'fromTo' && c.target === cardEl)!;
-  assert.deepEqual([backIn.fromVars.x, backIn.fromVars.rotation], [200, 10]);
+  assert.deepEqual([backIn.fromVars.x, backIn.fromVars.rotation], [-200, -10]);
 });
 
 // --- Odlot bez ucinania ----------------------------------------------------------
@@ -444,7 +444,7 @@ test('odlot: krycie to osobny tween 1→0 (0,25 s, power1.out), krótszy niż ru
   const onCard = animatedCalls().filter((c) => c.method === 'to' && c.target === cardEl);
   const [move, fade] = onCard;
   assert.ok(move && fade, 'ruch i krycie');
-  assert.equal(move.vars.x, window.innerWidth);
+  assert.equal(move.vars.x, -window.innerWidth, 'Dalej: karta leci w lewo');
   assert.deepEqual(
     [fade.vars.opacity, fade.vars.duration, fade.vars.ease],
     [0, 0.25, 'power1.out']
@@ -481,7 +481,7 @@ test('odlot (prawdziwy GSAP): opacity dochodzi do 0 przed końcem tweena x, a ka
     move.pause().time(t);
     assert.equal(Number(gsap.getProperty(cardEl, 'opacity')), 0);
     const x = Number(gsap.getProperty(cardEl, 'x'));
-    assert.ok(x > 0 && x < window.innerWidth, `x=${x}: w locie, nie u celu`);
+    assert.ok(x < 0 && x > -window.innerWidth, `x=${x}: w locie w lewo, nie u celu`);
     assert.equal(progress(), 'Karta 1 z 2', 'podmiana dopiero po końcu ruchu');
   } finally {
     gsap.globalTimeline.clear();
@@ -642,16 +642,84 @@ test('przeciąganie: przy odwróconej karcie karta podąża za wskaźnikiem (x =
   assert.deepEqual([follow.vars.x, follow.vars.rotation], [60, 3]);
 });
 
-test('przeciąganie: w prawo ≥ 80 px = następna karta, w lewo = poprzednia; kliknięcie po gestcie nie odwraca', () => {
+test('przeciąganie: w LEWO ≥ 80 px = następna karta, w PRAWO = poprzednia; kliknięcie po gestcie nie odwraca', () => {
   const { getByTestId, progress, isFlipped } = setup(threeCards);
   const flipEl = getByTestId('warmup-card');
-  drag(flipEl, 100, 190);
+  drag(flipEl, 200, 110);
   assert.equal(progress(), 'Karta 2 z 3');
   fireEvent.click(flipEl); // click zaraz po puszczeniu palca
   assert.equal(isFlipped(), false, 'gest nie odwraca karty');
 
-  drag(getByTestId('warmup-card'), 200, 100);
+  drag(getByTestId('warmup-card'), 100, 190);
   assert.equal(progress(), 'Karta 1 z 3');
+});
+
+test('przeciąganie: karta odlatuje w stronę palca, a nowa wjeżdża z przeciwnej (lewo → x<0, wjazd z prawej)', () => {
+  const { getByTestId } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  const cardEl = flipEl.parentElement!;
+  gsapCalls.length = 0;
+  drag(flipEl, 200, 100);
+  const exit = animatedCalls().find((c) => c.method === 'to' && c.target === cardEl && (c.vars as any).x === -window.innerWidth);
+  assert.ok(exit, 'odlot w lewo');
+  const enter = animatedCalls().find((c) => c.method === 'fromTo' && c.target === cardEl)!;
+  assert.ok(enter.fromVars.x > 0, 'wjazd z prawej');
+
+  gsapCalls.length = 0;
+  drag(getByTestId('warmup-card'), 100, 200);
+  assert.ok(animatedCalls().find((c) => c.method === 'to' && c.target === cardEl && (c.vars as any).x === window.innerWidth), 'odlot w prawo');
+  assert.ok(animatedCalls().find((c) => c.method === 'fromTo' && c.target === cardEl)!.fromVars.x < 0, 'wjazd z lewej');
+});
+
+test('przeciąganie: dotyk zaczęty przy lewej krawędzi ekranu (gest „wstecz" systemu) nie rusza karty', () => {
+  const { getByTestId, progress } = setup(threeCards);
+  drag(getByTestId('warmup-card'), 5, 200);
+  assert.equal(progress(), 'Karta 1 z 3');
+});
+
+test('przeciąganie: lostpointercapture z elementu potomnego (niejawne przechwycenie dotyku w Chromium) nie przerywa gestu', () => {
+  const { getByTestId, progress } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  const child = getByTestId('warmup-card-front');
+  ptr(flipEl, 'pointerdown', 200);
+  ptr(flipEl, 'pointermove', 150);
+  act(() => {
+    child.dispatchEvent(new (dom.window as any).PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1, pointerType: 'touch' }));
+  });
+  ptr(flipEl, 'pointermove', 100);
+  ptr(flipEl, 'pointerup', 100);
+  assert.equal(progress(), 'Karta 2 z 3', 'gest dokończony mimo zwolnienia niejawnego przechwycenia');
+});
+
+test('przeciąganie: utrata własnego przechwycenia (cel = kontener karty) anuluje gest', () => {
+  const { getByTestId, progress } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  const cardEl = flipEl.parentElement!;
+  ptr(flipEl, 'pointerdown', 200);
+  ptr(flipEl, 'pointermove', 150);
+  act(() => {
+    cardEl.dispatchEvent(new (dom.window as any).PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1, pointerType: 'touch' }));
+  });
+  ptr(flipEl, 'pointermove', 100);
+  ptr(flipEl, 'pointerup', 100);
+  assert.equal(progress(), 'Karta 1 z 3');
+});
+
+test('przeciąganie: pointercapture po przekroczeniu progu ruchu i zwolnienie po puszczeniu', () => {
+  const { getByTestId } = setup(threeCards);
+  const flipEl = getByTestId('warmup-card');
+  const cardEl = flipEl.parentElement!;
+  const captured: number[] = [];
+  const released: number[] = [];
+  (cardEl as any).setPointerCapture = (id: number) => captured.push(id);
+  (cardEl as any).releasePointerCapture = (id: number) => released.push(id);
+  ptr(flipEl, 'pointerdown', 200);
+  ptr(flipEl, 'pointermove', 198); // < 8 px: jeszcze kliknięcie
+  assert.deepEqual(captured, []);
+  ptr(flipEl, 'pointermove', 150);
+  assert.deepEqual(captured, [1]);
+  ptr(flipEl, 'pointerup', 150);
+  assert.deepEqual(released, [1]);
 });
 
 test('przeciąganie: za krótkie (< 80 px) — sprężysty powrót z clearProps, bez zmiany karty', () => {
@@ -665,18 +733,18 @@ test('przeciąganie: za krótkie (< 80 px) — sprężysty powrót z clearProps,
   assert.equal(back.vars.ease, 'back.out(1.5)');
 });
 
-test('przeciąganie: na granicach (w lewo na pierwszej, w prawo na ostatniej) karta wraca na miejsce', () => {
+test('przeciąganie: na granicach (w prawo na pierwszej, w lewo na ostatniej) karta wraca na miejsce', () => {
   const { getByTestId, progress, calls } = setup();
   const flipEl = getByTestId('warmup-card');
   const cardEl = flipEl.parentElement!;
-  drag(flipEl, 200, 50); // pierwsza karta → „poprzednia" niemożliwa
+  drag(flipEl, 50, 200); // pierwsza karta → „poprzednia" niemożliwa
   assert.equal(progress(), 'Karta 1 z 2');
   assert.equal(animatedCalls().filter((c) => c.target === cardEl).pop()!.vars.clearProps, 'all');
 
-  drag(flipEl, 50, 200); // → karta 2 (ostatnia)
+  drag(flipEl, 200, 50); // → karta 2 (ostatnia)
   assert.equal(progress(), 'Karta 2 z 2');
   gsapCalls.length = 0;
-  drag(getByTestId('warmup-card'), 50, 200); // „następna" na ostatniej
+  drag(getByTestId('warmup-card'), 200, 50); // „następna" na ostatniej
   assert.equal(progress(), 'Karta 2 z 2');
   assert.equal(calls.done, 0, 'przeciągnięcie nie kończy kart');
   assert.equal(animatedCalls().filter((c) => c.target === cardEl).pop()!.vars.clearProps, 'all');
@@ -702,7 +770,7 @@ test('przeciąganie: anulowanie wskaźnika wraca na miejsce; prawy przycisk mysz
 test('przeciąganie myszą działa jak dotyk; zwykłe kliknięcie bez ruchu odwraca kartę', () => {
   const { getByTestId, progress, isFlipped } = setup(threeCards);
   const flipEl = getByTestId('warmup-card');
-  drag(flipEl, 100, 200, { pointerType: 'mouse' });
+  drag(flipEl, 200, 100, { pointerType: 'mouse' });
   assert.equal(progress(), 'Karta 2 z 3');
   const el2 = getByTestId('warmup-card');
   ptr(el2, 'pointerdown', 100, { pointerType: 'mouse' });
@@ -733,7 +801,7 @@ test('przeciąganie przy prefers-reduced-motion: gest przełącza kartę bez ża
   const { getByTestId, progress } = setup(threeCards);
   const bar = getByTestId('warmup-cards-bar');
   gsapCalls.length = 0;
-  drag(getByTestId('warmup-card'), 100, 220);
+  drag(getByTestId('warmup-card'), 220, 100);
   assert.equal(progress(), 'Karta 2 z 3');
   assert.deepEqual(animatedCalls().filter((c) => c.target !== bar), []);
 });
