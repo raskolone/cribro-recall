@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import BrandLogo from './BrandLogo';
 import ThemeToggle from './ThemeToggle';
+import { requestBugReport } from '../../utils/bugReportEvents';
 
 /**
  * Pasek górny — jedyna stała rama aplikacji po zdjęciu menu bocznego.
@@ -64,7 +65,7 @@ const TopBar: React.FC<TopBarProps> = ({
   newBugsCount = 0,
   notices = [],
 }) => {
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const { language, setLanguage } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -219,6 +220,23 @@ const TopBar: React.FC<TopBarProps> = ({
                   <HelpCircle size={16} className="text-content-muted shrink-0" />
                   {t('Pomoc', 'Help')}
                 </button>
+
+                {/* Tylko kursant (BugReporter jest dla roli `user`) i tylko tam, gdzie
+                    pływająca ikona jest schowana: wąski ekran lub dotyk. */}
+                {user?.role === 'user' && (
+                  <button
+                    type="button"
+                    data-testid="topbar-report-bug"
+                    onClick={() => {
+                      setIsOpen(false);
+                      requestBugReport();
+                    }}
+                    className="md:pointer-fine:hidden w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold text-text-hi hover:bg-line-soft transition-colors"
+                  >
+                    <Bug size={16} className="text-content-muted shrink-0" />
+                    {t('Zgłoś problem', 'Report a problem')}
+                  </button>
+                )}
 
                 {onOpenDiagnostics && (
                   <button

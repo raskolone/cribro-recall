@@ -5,6 +5,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../firebase';
 import i18n from "i18next";
 import { useEscapeModal } from '../../hooks/useEscapeModal';
+import { OPEN_BUG_REPORT_EVENT } from '../../utils/bugReportEvents';
 
 interface BugReporterProps {
   errorContext?: string;
@@ -23,6 +24,13 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
     setIsOpen(false);
     if (onCloseError) onCloseError();
   });
+
+  // Wejście z menu ustawień (telefon): ikona jest tam schowana, panel otwiera zdarzenie.
+  useEffect(() => {
+    const open = () => setIsOpen(true);
+    window.addEventListener(OPEN_BUG_REPORT_EVENT, open);
+    return () => window.removeEventListener(OPEN_BUG_REPORT_EVENT, open);
+  }, []);
 
   useEffect(() => {
     if (errorContext) {
@@ -72,7 +80,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-16 right-4 z-[340] bg-danger hover:brightness-110 text-[#ffffff] p-1.5 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 opacity-30 hover:opacity-100"
+        className="max-md:hidden pointer-coarse:hidden fixed top-16 right-4 z-[340] bg-danger hover:brightness-110 text-[#ffffff] p-1.5 rounded-full shadow-lg flex items-center justify-center transition-all transform hover:scale-110 opacity-30 hover:opacity-100"
         title={i18n.t("Zgłoś problem")}
       >
         <Bug className="w-7 h-7" />
@@ -81,7 +89,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
   }
 
   return (
-    <div className="fixed top-16 right-4 z-[340] w-80 sm:w-96 glass-panel rounded-2xl shadow-2xl overflow-hidden border border-danger/30 animate-in slide-in-from-top-5">
+    <div className="fixed top-[calc(4rem+env(safe-area-inset-top))] right-[max(1rem,env(safe-area-inset-right))] z-[340] w-[min(20rem,calc(100vw-2rem))] sm:w-96 max-h-[calc(100dvh-5rem)] overflow-y-auto glass-panel rounded-2xl shadow-2xl border border-danger/30 animate-in slide-in-from-top-5">
       <div className="bg-danger/10 p-4 border-b border-white/10 flex justify-between items-center">
         <h3 className="font-bold flex items-center gap-2 text-danger">
           <AlertCircle size={18} />
