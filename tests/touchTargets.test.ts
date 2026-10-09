@@ -62,7 +62,7 @@ test('znane małe cele mają wariant na dotyk (min. 44 px)', () => {
     ['components/ui/Button.tsx', /sm: 'px-5 py-2 text-xs pointer-coarse:min-h-11'/],
     ['components/dashboard/TodayScreen.tsx', /h-8 px-2\.5 rounded-lg pointer-coarse:h-11/],
     ['components/dashboard/StudentHomeworkScreen.tsx', /flex-1 min-h-\[2\.5rem\] rounded-lg text-xs font-bold pointer-coarse:min-h-11/],
-    ['components/dashboard/HomeworkWarmupScrambler.tsx', /px-3\.5 py-2 rounded-xl border text-\[15px\] font-bold pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
+    ['components/dashboard/HomeworkWarmupScrambler.tsx', /px-3\.5 py-2 rounded-xl border text-base font-bold pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
     ['components/flashcards/FlashcardStudyScreen.tsx', /text-xs px-2 py-1 rounded bg-white\/5 hover:bg-white\/10 text-text-2 pointer-coarse:min-h-11/],
     ['components/flashcards/FlashcardSetsScreen.tsx', /text-sm font-medium pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
     ['components/ui/PronunciationMic.tsx', /pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
@@ -75,6 +75,6 @@ test('UK/US: strefa kliknięcia ≥ 44 px to niewidoczny ::before tylko na dotyk
   assert.match(s, /pointer-coarse:before:absolute/);
   assert.match(s, /pointer-coarse:before:-inset-y-\[11px\]/);
   assert.match(s, /pointer-coarse:before:content-\[''\]/);
-  // chip ma 24 px wysokości (py-1 + 10 px tekstu + ramka) + 2 × 11 px = 46 px
-  assert.match(s, /text-\[10px\] font-bold px-1\.5 py-1/);
+  // chip ma ≥ 24 px wysokości (py-1 + 12 px tekstu + ramka) + 2 × 11 px ≥ 46 px
+  assert.match(s, /text-\[12px\] font-bold px-1\.5 py-1/);
 });

@@ -56,7 +56,7 @@ export const FillInTheBlankTask: React.FC<FillInTheBlankTaskProps> = ({
             key={idx}
             draggable
             onDragStart={(e) => handleDragStart(e, word)}
-            className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg cursor-grab active:cursor-grabbing font-medium text-sm transition-transform hover:scale-105"
+            className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg cursor-grab active:cursor-grabbing font-medium text-base transition-transform hover:scale-105"
           >
             {word}
           </div>

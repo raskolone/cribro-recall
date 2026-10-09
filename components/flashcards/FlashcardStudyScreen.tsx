@@ -532,11 +532,11 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
         <div className="grid grid-cols-2 gap-4 mt-2" data-testid="flashcard-actions">
           <Button variant="danger" className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(false)}>
             <span>{i18n.t("Nie umiem")}</span>
-            <span className="text-[10px] uppercase opacity-70">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
+            <span className="text-[12px] uppercase opacity-70">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
           </Button>
           <Button className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(true)}>
             <span>{i18n.t("Umiem")}</span>
-            <span className="text-[10px] uppercase opacity-70">{i18n.t("Umiem (Strzałka w prawo)")}</span>
+            <span className="text-[12px] uppercase opacity-70">{i18n.t("Umiem (Strzałka w prawo)")}</span>
           </Button>
         </div>
       ) : (
@@ -687,7 +687,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {options.map((option, i) => {
-          let btnClass = "py-6 text-lg h-auto whitespace-normal break-words";
+          let btnClass = "py-6 text-lg! h-auto whitespace-normal break-words"; // `!`: rozmiar z <Button> (text-sm) wygrywał z text-lg
           if (selectedOption !== null) {
             if (option === currentCard.definition) {
               btnClass += " bg-primary/20 border-primary text-primary";

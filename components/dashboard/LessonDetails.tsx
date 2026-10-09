@@ -166,12 +166,12 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  <span className="px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
                     BLOK 1
                   </span>
                   <h4 className="font-extrabold text-sm text-white">{L.block1Title}</h4>
                 </div>
-                <p className="text-[11px] text-sky-200/70">{L.block1Desc}</p>
+                <p className="text-[12px] text-sky-200/70">{L.block1Desc}</p>
               </div>
             </div>
             <div className="text-sky-300">
@@ -215,17 +215,17 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   BLOK 2
                 </span>
                 <h4 className="font-extrabold text-sm text-white">{L.block2Title}</h4>
                 {items.length > 0 && (
-                  <span className="text-[11px] text-emerald-400/80 font-bold">
+                  <span className="text-[12px] text-emerald-400/80 font-bold">
                     ({L.count(items.length)})
                   </span>
                 )}
               </div>
-              <p className="text-[11px] text-emerald-200/70">{L.block2Desc}</p>
+              <p className="text-[12px] text-emerald-200/70">{L.block2Desc}</p>
             </div>
           </div>
           <div className="text-emerald-300">
@@ -280,7 +280,7 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
               </div>
               <div>
                 <h4 className="font-extrabold text-sm text-white">{L.correctionsTitle}</h4>
-                <p className="text-[11px] text-amber-200/70">{L.correctionsDesc}</p>
+                <p className="text-[12px] text-amber-200/70">{L.correctionsDesc}</p>
               </div>
             </div>
             <div className="text-amber-300">
@@ -310,12 +310,12 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
+                  <span className="px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-yellow-500/20 text-yellow-300 border border-yellow-500/30">
                     BLOK 4
                   </span>
                   <h4 className="font-extrabold text-sm text-white">{L.nextLessonTitle}</h4>
                 </div>
-                <p className="text-[11px] text-yellow-200/70">{L.nextLessonDesc}</p>
+                <p className="text-[12px] text-yellow-200/70">{L.nextLessonDesc}</p>
               </div>
             </div>
             <div className="text-yellow-300">
@@ -343,12 +343,12 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  <span className="px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
                     LEARNING CURVE
                   </span>
                   <h4 className="font-extrabold text-sm text-white">{L.learningCurveTitle}</h4>
                 </div>
-                <p className="text-[11px] text-purple-200/70">{L.learningCurveDesc}</p>
+                <p className="text-[12px] text-purple-200/70">{L.learningCurveDesc}</p>
               </div>
             </div>
             <div className="text-purple-300">

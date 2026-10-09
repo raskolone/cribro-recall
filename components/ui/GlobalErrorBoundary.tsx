@@ -55,7 +55,7 @@ class GlobalErrorBoundary extends Component<Props, State> {
                   {this.state.error.toString()}
                 </p>
                 {this.state.errorInfo?.componentStack && (
-                  <p className="font-mono text-[11px] text-content-muted break-words">
+                  <p className="font-mono text-[12px] text-content-muted break-words">
                     w komponencie:{' '}
                     {this.state.errorInfo.componentStack
                       .split('\n')

@@ -86,7 +86,7 @@ const AssignedTasks: React.FC<AssignedTasksProps> = ({ onStudySet }) => {
               }`}
             >
               {recentAndUnchecked && (
-                <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[10px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
+                <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[12px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
                   {language === 'pl' ? 'Nowe' : 'New'}
                 </div>
               )}

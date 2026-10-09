@@ -122,7 +122,7 @@ const BugReporter: React.FC<BugReporterProps> = ({ errorContext, onCloseError })
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={i18n.t("Opisz problem... (np. Przycisk X nie reaguje po kliknięciu)")}
-            className="w-full h-32 p-3 bg-black/50 border border-white/10 rounded-xl text-sm focus:border-danger focus:ring-1 focus:ring-danger outline-none resize-none placeholder:text-white/20"
+            className="w-full h-32 p-3 bg-black/50 border border-white/10 rounded-xl text-base focus:border-danger focus:ring-1 focus:ring-danger outline-none resize-none placeholder:text-white/20"
             required
           />
           <button

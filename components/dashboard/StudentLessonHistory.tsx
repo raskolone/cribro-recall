@@ -119,7 +119,7 @@ const VocabularyGrid: React.FC<{ items: DisplayVocabItem[]; language: 'pl' | 'en
               {item.term}
             </p>
             {item.category && (
-              <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 shrink-0">
+              <span className="text-[12px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 shrink-0">
                 {VOCAB_CATEGORY_LABEL[item.category][language]}
               </span>
             )}
@@ -128,7 +128,7 @@ const VocabularyGrid: React.FC<{ items: DisplayVocabItem[]; language: 'pl' | 'en
             <p className="text-xs text-content-muted truncate mt-0.5">{item.translation}</p>
           )}
           {item.contextSentence && (
-            <p className="text-[11px] text-content-muted/80 italic mt-1 line-clamp-2">
+            <p className="text-[12px] text-content-muted/80 italic mt-1 line-clamp-2">
               {item.contextSentence}
             </p>
           )}
@@ -443,7 +443,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder={L.searchPlaceholder}
-                className="w-full pl-9 pr-3 py-1.5 text-xs bg-base-200/80 border border-white/10 rounded-xl text-white placeholder-content-muted focus:border-primary/50 focus:outline-none transition-colors"
+                className="w-full pl-9 pr-3 py-1.5 text-base bg-base-200/80 border border-white/10 rounded-xl text-white placeholder-content-muted focus:border-primary/50 focus:outline-none transition-colors"
               />
             </div>
           )}
@@ -534,7 +534,7 @@ const StudentLessonHistory: React.FC<StudentLessonHistoryProps> = ({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-content-muted uppercase tracking-wider flex items-center gap-1.5">
                     {L.items}
-                    <span className="text-[11px] font-mono text-primary font-bold ml-1">
+                    <span className="text-[12px] font-mono text-primary font-bold ml-1">
                       ({latestItems.length})
                     </span>
                   </h4>

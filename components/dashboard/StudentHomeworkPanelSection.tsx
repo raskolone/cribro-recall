@@ -113,7 +113,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
             {/* Lista oczekujących zadań */}
             {pendingTasks.length > 0 && (
               <div className="space-y-2">
-                <span className="block text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
+                <span className="block text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
                   {language === 'pl' ? 'Czekają na zrobienie' : 'To do'}
                 </span>
                 <ul className="space-y-2">
@@ -128,7 +128,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
                           <div className="flex items-center gap-2 text-xs text-content-muted mt-0.5">
                             <span className="font-semibold text-primary">{typeLabel(task.type)}</span>
                             {task.dueDate && (
-                              <span className="flex items-center gap-1 text-warn font-mono text-[11px]">
+                              <span className="flex items-center gap-1 text-warn font-mono text-[12px]">
                                 · <Clock size={11} /> do {task.dueDate}
                               </span>
                             )}
@@ -148,7 +148,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
             {/* Ostatnio sprawdzone przez nauczyciela */}
             {gradedTasks.length > 0 && (
               <div className="space-y-2 pt-1">
-                <span className="block text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary/90 flex items-center gap-1.5">
+                <span className="block text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-primary/90 flex items-center gap-1.5">
                   <CheckCircle2 size={13} />
                   {language === 'pl' ? 'Sprawdzone przez nauczyciela' : 'Checked by teacher'}
                 </span>
@@ -163,7 +163,7 @@ export const StudentHomeworkPanelSection: React.FC<StudentHomeworkPanelSectionPr
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-bold text-text-hi truncate">{task.title}</h4>
                             {task.grade !== undefined && (
-                              <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-black bg-primary/20 text-primary border border-primary/30">
+                              <span className="px-2 py-0.5 rounded-full text-[12px] font-mono font-black bg-primary/20 text-primary border border-primary/30">
                                 {task.grade}%
                               </span>
                             )}

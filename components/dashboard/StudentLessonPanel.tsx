@@ -161,7 +161,7 @@ const StudentLessonPanel: React.FC<StudentLessonPanelProps> = ({
           className="w-full min-h-[4rem] px-4 sm:px-5 py-3.5 text-left active:bg-white/[0.04] transition-colors"
         >
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
+            <span className="text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
               {L.lastLesson}
             </span>
             <span className="flex items-center gap-1.5 text-[12px] text-content-muted ml-auto shrink-0">

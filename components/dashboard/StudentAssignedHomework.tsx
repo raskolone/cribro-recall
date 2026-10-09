@@ -135,7 +135,7 @@ export const StudentAssignedHomework: React.FC<StudentAssignedHomeworkProps> = (
                 {language === 'pl' ? 'Powtórki i zadania od lektora' : 'Assigned Reviews & Homework'}
               </h2>
               {pendingTasks.length > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary text-accent-ink animate-pulse">
+                <span className="px-2 py-0.5 rounded-full text-[12px] font-bold bg-primary text-accent-ink animate-pulse">
                   {pendingTasks.length} {language === 'pl' ? (pendingTasks.length === 1 ? 'nowe' : 'nowe') : 'new'}
                 </span>
               )}
@@ -222,24 +222,24 @@ export const StudentAssignedHomework: React.FC<StudentAssignedHomeworkProps> = (
                 <div>
                   {/* Top Tags Bar */}
                   <div className="flex items-center justify-between gap-2 mb-3">
-                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-bold border font-mono ${typeInfo.badgeClass}`}>
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[12px] font-bold border font-mono ${typeInfo.badgeClass}`}>
                       <TypeIcon size={12} />
                       {typeInfo.name}
                     </span>
 
                     {/* Status Pill */}
                     {isPending && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-warn/20 text-warn border border-warn/30">
+                      <span className="px-2 py-0.5 rounded-md text-[12px] font-bold uppercase tracking-wider bg-warn/20 text-warn border border-warn/30">
                         {language === 'pl' ? 'Do zrobienia' : 'To do'}
                       </span>
                     )}
                     {isSubmitted && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                      <span className="px-2 py-0.5 rounded-md text-[12px] font-bold uppercase tracking-wider bg-blue-500/20 text-blue-300 border border-blue-500/30">
                         {language === 'pl' ? 'Oddane' : 'Submitted'}
                       </span>
                     )}
                     {isGraded && (
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30 flex items-center gap-1">
+                      <span className="px-2 py-0.5 rounded-md text-[12px] font-bold uppercase tracking-wider bg-primary/20 text-primary border border-primary/30 flex items-center gap-1">
                         <Award size={11} />
                         {task.grade !== undefined ? `${task.grade}%` : (language === 'pl' ? 'Ocenione' : 'Graded')}
                       </span>
@@ -275,11 +275,11 @@ export const StudentAssignedHomework: React.FC<StudentAssignedHomeworkProps> = (
                 <div className="mt-4 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2 text-xs">
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-content-muted">
                     {task.submittedAt ? (
-                      <span className="flex items-center gap-1 text-primary font-mono text-[11px]">
+                      <span className="flex items-center gap-1 text-primary font-mono text-[12px]">
                         <Clock size={12} /> Odesłano: {formatTaskDateTime(task.submittedAt)}
                       </span>
                     ) : task.createdAt ? (
-                      <span className="flex items-center gap-1 font-mono text-[11px]">
+                      <span className="flex items-center gap-1 font-mono text-[12px]">
                         <Clock size={12} /> Zadano: {formatTaskDateTime(task.createdAt)}
                       </span>
                     ) : null}

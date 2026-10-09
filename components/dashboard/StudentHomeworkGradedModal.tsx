@@ -192,7 +192,7 @@ const StudentHomeworkGradedModal: React.FC<StudentHomeworkGradedModalProps> = ({
                   <Award size={30} />
                 </div>
                 <div className="flex-1 min-w-0 pr-6">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[11px] font-bold uppercase tracking-wider mb-1.5">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[12px] font-bold uppercase tracking-wider mb-1.5">
                     Nowa ocena
                   </span>
                   <h3 className="text-xl font-extrabold text-white leading-tight">

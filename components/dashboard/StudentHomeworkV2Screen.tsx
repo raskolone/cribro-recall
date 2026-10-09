@@ -331,7 +331,7 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
               {MASTERY_LABEL[state.masteryState]}
             </span>
           ) : (
-            <span className="text-content-muted font-mono text-[11px]">
+            <span className="text-content-muted font-mono text-[12px]">
               Próby: {state.attemptsLeft}/3
             </span>
           )}
@@ -386,7 +386,7 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
           <div className="p-3.5 rounded-xl bg-amber-950/25 border border-amber-500/35 text-warn text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
             <Lightbulb size={16} className="text-warn shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-warn block text-[11px] uppercase tracking-wider mb-0.5">
+              <span className="font-bold text-warn block text-[12px] uppercase tracking-wider mb-0.5">
                 Wskazówka lektora:
               </span>
               <span>{availableHint}</span>
@@ -397,7 +397,7 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
         {/* Wzorzec po trzeciej próbie */}
         {state.modelAnswer && (
           <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 space-y-1.5 animate-in fade-in">
-            <span className="text-[11px] uppercase font-bold tracking-wider text-primary block">Poprawna odpowiedź:</span>
+            <span className="text-[12px] uppercase font-bold tracking-wider text-primary block">Poprawna odpowiedź:</span>
             <p className="text-sm sm:text-base font-semibold text-white">{state.modelAnswer}</p>
             {state.awaitingCorrection && (
               <p className="pt-1 text-xs text-content-muted">Przepisz ją powyżej własnymi słowami, aby utrwalić konstrukcję.</p>
@@ -421,7 +421,7 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
                 <button
                   type="button"
                   onClick={() => setAnswer(exercise.content)}
-                  className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
+                  className="text-[12px] font-bold text-primary hover:underline cursor-pointer"
                 >
                   Wstaw zdanie do edycji
                 </button>
@@ -432,7 +432,7 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
               onChange={(e) => setAnswer(e.target.value)}
               rows={3}
               placeholder="Wpisz odpowiedź…"
-              className="w-full p-4 rounded-xl border border-white/15 bg-base-100/90 text-white text-[15px] sm:text-base focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+              className="w-full p-4 rounded-xl border border-white/15 bg-base-100/90 text-white text-base focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
             />
             <div className="flex items-center justify-between text-xs text-content-muted">
               <span>
@@ -442,7 +442,7 @@ const StudentHomeworkV2Screen: React.FC<StudentHomeworkV2ScreenProps> = ({ user,
                   ? `Pozostałe próby: ${state.attemptsLeft}`
                   : 'Ostatni krok przed zakończeniem.'}
               </span>
-              <span className="text-[11px] text-content-muted/70">Wciśnij Sprawdź, aby zatwierdzić</span>
+              <span className="text-[12px] text-content-muted/70">Wciśnij Sprawdź, aby zatwierdzić</span>
             </div>
           </div>
         )}

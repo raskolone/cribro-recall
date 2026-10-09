@@ -123,7 +123,7 @@ const StudentProgressBar: React.FC<StudentProgressBarProps> = ({
             <span className="font-mono font-black text-base sm:text-lg text-white leading-none">
               {stat.value}
             </span>
-            <span className="text-[11px] text-content-muted uppercase tracking-wide hidden sm:inline">
+            <span className="text-[12px] text-content-muted uppercase tracking-wide hidden sm:inline">
               {stat.label}
             </span>
           </div>

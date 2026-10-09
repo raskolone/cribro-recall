@@ -741,8 +741,8 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
               <div className="h-full flex flex-row md:flex-col items-center md:items-end justify-center md:justify-end gap-6 md:gap-4 pb-2 pt-6 md:pt-2 border-t md:border-t-0 md:border-l border-base-300 md:pl-8">
                 <div className="flex flex-col items-center md:items-end gap-2 group/media">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'OBRAZ' : 'IMAGE'}</span>
-                    <button onClick={() => handleGenerateImage(index)} disabled={isGeneratingImageFor === index || card.isLocked} className="text-[10px] font-bold text-primary hover:text-accent-soft transition-colors uppercase" title={language === 'pl' ? 'Generuj obrazek' : 'Generate image'}>✨ {language === 'pl' ? 'Generuj' : 'Generate'}</button>
+                    <span className="text-[12px] font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'OBRAZ' : 'IMAGE'}</span>
+                    <button onClick={() => handleGenerateImage(index)} disabled={isGeneratingImageFor === index || card.isLocked} className="text-[12px] font-bold text-primary hover:text-accent-soft transition-colors uppercase" title={language === 'pl' ? 'Generuj obrazek' : 'Generate image'}>✨ {language === 'pl' ? 'Generuj' : 'Generate'}</button>
                   </div>
                   {card.imageUrl ? (
                     <div className="relative group/img">
@@ -773,7 +773,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <div>
                   <div className="flex justify-between mb-3 border-b-2 border-transparent">
                     <span className="text-xs font-bold text-content-muted uppercase tracking-widest">{language === 'pl' ? 'ZDANIE Z KONTEKSTEM' : 'CONTEXT SENTENCE'}</span>
-                    <button onClick={() => handleGenerateContext(index)} disabled={isGeneratingContextFor === index || card.isLocked} className="text-[10px] font-bold text-primary hover:text-accent-soft transition-colors uppercase" title={language === 'pl' ? 'Generuj zdanie z kontekstem' : 'Generate context sentence'}>
+                    <button onClick={() => handleGenerateContext(index)} disabled={isGeneratingContextFor === index || card.isLocked} className="text-[12px] font-bold text-primary hover:text-accent-soft transition-colors uppercase" title={language === 'pl' ? 'Generuj zdanie z kontekstem' : 'Generate context sentence'}>
                       {isGeneratingContextFor === index ? '⏳' : `✨ ${language === 'pl' ? 'Generuj' : 'Generate'}`}
                     </button>
                   </div>
@@ -911,7 +911,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                     <select 
                       value={importTermLang} 
                       onChange={(e) => setImportTermLang(e.target.value)}
-                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
+                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-base focus:outline-none focus:border-primary"
                     >
                       {LANGUAGES.map((l: any) => <option key={l.code} value={l.code}>{l.name}</option>)}
                     </select>
@@ -922,7 +922,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                     <select 
                       value={importDefLang} 
                       onChange={(e) => setImportDefLang(e.target.value)}
-                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-sm focus:outline-none focus:border-primary"
+                      className="bg-base-200/40 backdrop-blur-md border border-white/10 rounded px-2 py-1 text-base focus:outline-none focus:border-primary"
                     >
                       {LANGUAGES.map((l: any) => <option key={l.code} value={l.code}>{l.name}</option>)}
                     </select>
@@ -932,7 +932,7 @@ const FlashcardEditScreen: React.FC<FlashcardEditScreenProps> = ({ setId, onBack
                 <textarea
                   value={importText}
                   onChange={(e) => setImportText(e.target.value)}
-                  className="w-full h-64 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-4 focus:outline-none focus:border-primary font-mono text-sm resize-y"
+                  className="w-full h-64 bg-base-200/40 backdrop-blur-md border border-white/10 rounded-lg p-4 focus:outline-none focus:border-primary font-mono text-base resize-y"
                   placeholder={language === 'pl' ? 'Wklej tutaj tekst do automatycznej analizy...' : 'Paste text for automatic analysis here...'}
                 />
               </div>

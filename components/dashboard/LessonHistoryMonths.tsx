@@ -133,7 +133,7 @@ const LessonHistoryMonths: React.FC<LessonHistoryMonthsProps> = ({
                         onClick={() => setOpenLessonId(isOpen ? null : lesson.id)}
                         className="w-full min-h-[3.5rem] flex items-center gap-3 px-4 sm:px-5 py-3 text-left active:bg-white/[0.04] transition-colors"
                       >
-                        <span className="font-mono text-[11px] text-content-muted shrink-0 w-14">
+                        <span className="font-mono text-[12px] text-content-muted shrink-0 w-14">
                           {dayLabel}
                         </span>
                         <span

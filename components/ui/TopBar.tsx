@@ -183,7 +183,7 @@ const TopBar: React.FC<TopBarProps> = ({
           {isOpen && (
             <div className="absolute right-0 top-12 w-72 rounded-2xl border border-line-strong bg-base-200 shadow-[var(--shadow-lg)] overflow-hidden">
               <div className="flex items-center justify-between px-4 py-2.5 border-b border-line">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-content-muted">
+                <span className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted">
                   {t('Zarządzanie', 'Management')}
                 </span>
                 <button
@@ -254,7 +254,7 @@ const TopBar: React.FC<TopBarProps> = ({
                     <Bug size={16} className={alert ? 'shrink-0' : 'text-content-muted shrink-0'} />
                     {t('Diagnostyka', 'Diagnostics')}
                     {alert && (
-                      <span className="ml-auto text-[11px] font-mono font-bold">
+                      <span className="ml-auto text-[12px] font-mono font-bold">
                         {newBugsCount}
                       </span>
                     )}

@@ -986,7 +986,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                 {viewingGradedTask.teacherFeedback}
               </p>
               {viewingGradedTask.reviewedAt && (
-                <p className="text-[11px] font-mono text-content-muted pt-1">
+                <p className="text-[12px] font-mono text-content-muted pt-1">
                   Wystawiono: {formatTaskDateTime(viewingGradedTask.reviewedAt)}
                 </p>
               )}
@@ -1004,7 +1004,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                 <Clock size={20} />
               </span>
               <div className="space-y-1 min-w-0">
-                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-[0.14em] bg-primary/15 text-primary border border-primary/30">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[12px] font-mono font-bold uppercase tracking-[0.14em] bg-primary/15 text-primary border border-primary/30">
                   Czeka na sprawdzenie
                 </span>
                 <h3 className="text-xl sm:text-2xl font-black font-serif text-white leading-tight">
@@ -1023,37 +1023,37 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className={`p-4 rounded-2xl border text-center space-y-1 ${scoreColorClass}`}>
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider opacity-80 block">
+                <span className="text-[12px] font-mono font-bold uppercase tracking-wider opacity-80 block">
                   Ocena lektora
                 </span>
                 <span className="text-3xl font-black font-mono">
                   {score}%
                 </span>
-                <span className="text-[10px] block opacity-90 font-sans">
+                <span className="text-[12px] block opacity-90 font-sans">
                   {scoreAssessment}
                 </span>
               </div>
 
               <div className="p-4 rounded-2xl bg-emerald-500/[0.08] border border-emerald-500/30 text-center space-y-1 flex flex-col justify-center">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-1">
+                <span className="text-[12px] font-mono font-bold uppercase tracking-wider text-emerald-400 flex items-center justify-center gap-1">
                   <Check size={13} className="stroke-[3]" /> Zrobione dobrze
                 </span>
                 <span className="text-2xl font-black font-mono text-emerald-300">
                   {correctCount} <span className="text-xs font-sans text-emerald-400/70 font-normal">/ {totalCount}</span>
                 </span>
-                <span className="text-[11px] text-content-muted">
+                <span className="text-[12px] text-content-muted">
                   {totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : 0}% poprawności
                 </span>
               </div>
 
               <div className="p-4 rounded-2xl bg-amber-500/[0.08] border border-amber-500/30 text-center space-y-1 flex flex-col justify-center">
-                <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center justify-center gap-1">
+                <span className="text-[12px] font-mono font-bold uppercase tracking-wider text-amber-400 flex items-center justify-center gap-1">
                   <AlertTriangle size={13} /> Wymaga poprawy
                 </span>
                 <span className="text-2xl font-black font-mono text-amber-300">
                   {errorCount} <span className="text-xs font-sans text-amber-400/70 font-normal">/ {totalCount}</span>
                 </span>
-                <span className="text-[11px] text-content-muted">
+                <span className="text-[12px] text-content-muted">
                   {errorCount === 0 ? 'Brak błędów!' : `${errorCount} do analizy`}
                 </span>
               </div>
@@ -1073,7 +1073,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                     title={`Do poprawy: ${errorCount}`}
                   />
                 </div>
-                <div className="flex justify-between text-[11px] font-mono text-content-muted">
+                <div className="flex justify-between text-[12px] font-mono text-content-muted">
                   <span>Poprawne: {Math.round((correctCount / totalCount) * 100)}%</span>
                   <span>Do poprawy: {Math.round((errorCount / totalCount) * 100)}%</span>
                 </div>
@@ -1160,7 +1160,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
 
                 {/* Prompt */}
                 <div>
-                  <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-content-muted block mb-1">
+                  <span className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted block mb-1">
                     Treść zadania:
                   </span>
                   <p className="prose-justified text-[15px] font-semibold text-white leading-relaxed">
@@ -1170,7 +1170,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
 
                 {/* Student's answer */}
                 <div className="p-3 rounded-xl bg-base-100/70 border border-white/10 space-y-1">
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-content-muted block">
+                  <span className="text-[12px] font-bold uppercase tracking-wider text-content-muted block">
                     Twoja odpowiedź:
                   </span>
                   <div
@@ -1189,7 +1189,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                 {/* Expected answer if incorrect and already graded */}
                 {isGraded && !row.isCorrect && row.expected && (
                   <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-1">
-                    <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
+                    <span className="text-[12px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
                       <Check size={13} className="stroke-[3]" /> Wzorzec lektora (poprawna wersja):
                     </span>
                     <p className="text-[14px] text-white font-semibold font-mono leading-relaxed">
@@ -1203,7 +1203,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   <div className="p-3 rounded-xl bg-primary/[0.06] border border-primary/20 flex items-start gap-2.5">
                     <Sparkles size={15} className="text-primary shrink-0 mt-0.5" />
                     <div className="space-y-0.5">
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-primary block">
+                      <span className="text-[12px] font-bold uppercase tracking-wider text-primary block">
                         Wskazówka / Wyjaśnienie:
                       </span>
                       <p className="text-[13px] text-content leading-relaxed font-sans">
@@ -1253,7 +1253,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                 <ArrowLeft size={14} />
                 <span>Wróć do listy</span>
               </button>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/15 text-primary border border-primary/25">
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold bg-primary/15 text-primary border border-primary/25">
                 <Sparkles size={12} />
                 <span>Nowe wyzwanie</span>
               </span>
@@ -1518,7 +1518,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
         <>
           {pending.length > 0 && (
             <section className="space-y-2">
-              <h2 className="px-1 text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
+              <h2 className="px-1 text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
                 {L.todo}
               </h2>
               <ul className="space-y-2">
@@ -1535,7 +1535,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                             {task.title}
                           </span>
                           {isTaskNewForStudent(task) && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-primary text-black shadow-sm flex items-center gap-1 animate-pulse">
+                            <span className="px-2 py-0.5 rounded-full text-[12px] font-extrabold uppercase tracking-wider bg-primary text-black shadow-sm flex items-center gap-1 animate-pulse">
                               <Sparkles size={11} /> Nowa
                             </span>
                           )}
@@ -1584,7 +1584,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                                 key={`${block.type}-${block.from}`}
                                 className="flex items-center gap-2 text-[12px] text-content-muted"
                               >
-                                <span className="w-5 h-5 shrink-0 rounded-md bg-primary/10 border border-primary/25 text-primary font-mono text-[10px] flex items-center justify-center">
+                                <span className="w-5 h-5 shrink-0 rounded-md bg-primary/10 border border-primary/25 text-primary font-mono text-[12px] flex items-center justify-center">
                                   {i + 1}
                                 </span>
                                 <span className="text-content">{typeLabel(block.type)}</span>
@@ -1604,7 +1604,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           {/* Sekcja: Odesłane (oczekujące na sprawdzenie) */}
           {submittedTasks.length > 0 && (
             <section className="space-y-2">
-              <h2 className="px-1 text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted flex items-center gap-1.5">
+              <h2 className="px-1 text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted flex items-center gap-1.5">
                 <Clock size={13} className="text-primary" />
                 <span>{language === 'pl' ? 'Odesłane (oczekujące na sprawdzenie)' : 'Submitted (Awaiting review)'}</span>
                 <span className="ml-auto font-mono text-xs">{submittedTasks.length}</span>
@@ -1625,7 +1625,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                             <Clock size={12} /> {L.statusSubmitted}
                           </span>
                           {task.submittedAt && (
-                            <span className="inline-flex items-center gap-1 font-mono text-[11px] text-content-muted">
+                            <span className="inline-flex items-center gap-1 font-mono text-[12px] text-content-muted">
                               · <Clock size={11} /> Odesłano: {formatTaskDateTime(task.submittedAt)}
                             </span>
                           )}
@@ -1703,12 +1703,12 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                                 <CheckCheck size={13} /> {L.statusGraded}
                               </span>
                               {task.reviewedAt && (
-                                <span className="inline-flex items-center gap-1 font-mono text-[11px] text-content-muted">
+                                <span className="inline-flex items-center gap-1 font-mono text-[12px] text-content-muted">
                                   · Sprawdzono: {formatTaskDateTime(task.reviewedAt)}
                                 </span>
                               )}
                               {task.submittedAt && (
-                                <span className="inline-flex items-center gap-1 font-mono text-[11px] text-content-muted">
+                                <span className="inline-flex items-center gap-1 font-mono text-[12px] text-content-muted">
                                   · Odesłano: {formatTaskDateTime(task.submittedAt)}
                                 </span>
                               )}
@@ -1768,7 +1768,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
             <GraduationCap size={15} />
             <span>{language === 'pl' ? 'Testy i Sprawdziany wiedzy' : 'Tests & Exams'}</span>
             {tests.length > 0 && (
-              <span className="px-1.5 py-0.2 bg-primary/20 rounded-full text-[10px] text-primary font-bold">
+              <span className="px-1.5 py-0.2 bg-primary/20 rounded-full text-[12px] text-primary font-bold">
                 {tests.length}
               </span>
             )}
@@ -1791,7 +1791,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-danger opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-danger"></span>
                 </span>
-                <h2 className="text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-danger">
+                <h2 className="text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-danger">
                   Termin wykonania minął
                 </h2>
               </div>
@@ -1801,7 +1801,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                     <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-danger/35 bg-danger/[0.06] text-left">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="px-2 py-0.5 rounded-md bg-danger/20 text-danger border border-danger/30 text-[10px] font-bold font-mono uppercase">
+                          <span className="px-2 py-0.5 rounded-md bg-danger/20 text-danger border border-danger/30 text-[12px] font-bold font-mono uppercase">
                             Zaległy
                           </span>
                           <span className="text-[12px] text-danger font-medium flex items-center gap-1">
@@ -1812,7 +1812,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                         {t.scope && (
                           <p className="text-[12px] text-content-muted line-clamp-1 mt-0.5">{t.scope}</p>
                         )}
-                        <span className="text-[11px] text-content-muted font-mono mt-1 block">
+                        <span className="text-[12px] text-content-muted font-mono mt-1 block">
                           Pytań: {t.questions?.length || 0}
                         </span>
                       </div>
@@ -1839,7 +1839,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           {/* Testy do zrobienia (pending & in time) */}
           {pendingTests.length > 0 && (
             <section className="space-y-2">
-              <h2 className="px-1 text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
+              <h2 className="px-1 text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
                 Testy do zrobienia
               </h2>
               <ul className="space-y-2">
@@ -1848,7 +1848,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                     <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/[0.08] to-base-200/50 text-left">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 text-[10px] font-bold font-mono uppercase">
+                          <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 text-[12px] font-bold font-mono uppercase">
                             Nowy test
                           </span>
                           {t.dueDate && (
@@ -1861,7 +1861,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                         {t.scope && (
                           <p className="text-[12px] text-content-muted line-clamp-1 mt-0.5">{t.scope}</p>
                         )}
-                        <span className="text-[11px] text-content-muted font-mono mt-1 block">
+                        <span className="text-[12px] text-content-muted font-mono mt-1 block">
                           Pytań: {t.questions?.length || 0}
                         </span>
                       </div>
@@ -1888,7 +1888,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           {/* Testy odesłane / ocenione */}
           {finishedTests.length > 0 && (
             <section className="space-y-2">
-              <h2 className="px-1 text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted">
+              <h2 className="px-1 text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted">
                 Odesłane i Ocenione testy
               </h2>
               <ul className="rounded-2xl border border-white/10 bg-base-200/40 divide-y divide-white/[0.06] overflow-hidden">
@@ -1896,11 +1896,11 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                   <li key={t.id} className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 text-[10px] font-bold font-mono uppercase">
+                        <span className="px-2 py-0.5 rounded-md bg-primary/20 text-primary border border-primary/30 text-[12px] font-bold font-mono uppercase">
                           Odesłany
                         </span>
                         {t.completedAt && (
-                          <span className="text-[11px] text-content-muted">
+                          <span className="text-[12px] text-content-muted">
                             {new Date(t.completedAt).toLocaleDateString(language === 'pl' ? 'pl-PL' : 'en-US')}
                           </span>
                         )}
@@ -1943,7 +1943,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
           <Card className="w-full max-w-2xl max-h-[90dvh] flex flex-col bg-base-200 border border-primary/30 shadow-2xl rounded-3xl overflow-hidden">
             <div className="flex items-center justify-between p-5 sm:p-6 border-b border-white/10 bg-base-100">
               <div>
-                <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[11px] font-bold uppercase tracking-wider mb-1">
+                <span className="inline-block px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 text-[12px] font-bold uppercase tracking-wider mb-1">
                   Raport z testu
                 </span>
                 <h3 className="text-lg sm:text-xl font-bold text-white">{feedbackTest.title}</h3>

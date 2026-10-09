@@ -106,7 +106,7 @@ const LessonHistory: React.FC = () => {
         {lessons.map((lesson, index) => (
           <div key={lesson.id} className="p-4 bg-base-200/50 rounded-xl border border-white/5 relative overflow-hidden group">
             {isRecent(lesson.date) && (
-               <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[10px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
+               <div className="absolute top-0 right-0 px-2 py-1 bg-secondary text-secondary-content text-[12px] font-bold uppercase rounded-bl-lg z-10 animate-pulse">
                  {language === 'pl' ? 'Nowe' : 'New'}
                </div>
             )}

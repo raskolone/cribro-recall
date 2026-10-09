@@ -143,7 +143,7 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
               <span className="text-xs font-bold uppercase tracking-wider text-primary font-mono">
                 {language === 'pl' ? 'Pierwsze logowanie' : 'First Sign-in'}
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/5 text-content-muted border border-white/10">
+              <span className="text-[12px] px-2 py-0.5 rounded-full bg-white/5 text-content-muted border border-white/10">
                 {language === 'pl' ? 'Opcjonalne' : 'Optional'}
               </span>
             </div>
@@ -208,7 +208,7 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder={language === 'pl' ? 'Nowe hasło (min. 6 znaków)' : 'New password (min 6 chars)'}
-                className="w-full sm:w-48 px-3 py-1.5 rounded-xl bg-black/40 border border-white/20 text-white text-xs focus:outline-none focus:border-primary placeholder:text-content-muted"
+                className="w-full sm:w-48 px-3 py-1.5 rounded-xl bg-black/40 border border-white/20 text-white text-base focus:outline-none focus:border-primary placeholder:text-content-muted"
                 autoFocus
               />
             </div>
@@ -218,7 +218,7 @@ export const PasswordChangeSuggestion: React.FC<PasswordChangeSuggestionProps> =
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder={language === 'pl' ? 'Powtórz nowe hasło' : 'Confirm password'}
-                className="w-full sm:w-44 px-3 py-1.5 rounded-xl bg-black/40 border border-white/20 text-white text-xs focus:outline-none focus:border-primary placeholder:text-content-muted"
+                className="w-full sm:w-44 px-3 py-1.5 rounded-xl bg-black/40 border border-white/20 text-white text-base focus:outline-none focus:border-primary placeholder:text-content-muted"
               />
             </div>
             <div className="flex items-center gap-1.5">

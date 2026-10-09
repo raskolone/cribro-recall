@@ -341,7 +341,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
             układ licznika i paska jak w module fiszek */}
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="text-[11px] font-mono text-primary font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-[12px] font-mono text-primary font-bold uppercase tracking-wider flex items-center gap-1.5">
               <Zap size={13} />
               {i18n.t('Niepunktowane • Fiszki')}
             </span>
@@ -403,7 +403,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
                 actions={speech}
                 footer={
                   card.contextSentence ? (
-                    <p className="mt-4 text-sm text-content italic leading-relaxed max-w-md break-words">
+                    <p className="mt-4 text-base text-content italic leading-relaxed max-w-md break-words">
                       &ldquo;{card.contextSentence}&rdquo;
                     </p>
                   ) : undefined
@@ -467,7 +467,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
           {/* Podpowiedź klawiatury tylko przy precyzyjnym wskaźniku (mysz/gładzik) */}
           <p
             data-testid="warmup-cards-hint"
-            className="hidden pointer-fine:flex items-center justify-center gap-1.5 text-[11px] text-content-muted"
+            className="hidden pointer-fine:flex items-center justify-center gap-1.5 text-[12px] text-content-muted"
           >
             <Keyboard size={12} className="shrink-0" />
             <span>

@@ -32,7 +32,7 @@ export interface HomeworkExerciseProps {
 }
 
 const chipBase =
-  'min-h-[2.75rem] px-3.5 rounded-xl border text-[15px] font-semibold transition-colors active:scale-[0.97]';
+  'min-h-[2.75rem] px-3.5 rounded-xl border text-base font-semibold transition-colors active:scale-[0.97]';
 
 const InvalidExerciseCard: React.FC<{ message?: string }> = ({ message }) => (
   <div className="p-4 sm:p-5 rounded-2xl bg-warn/10 border border-warn/30 flex items-start gap-2.5">
@@ -164,7 +164,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
             <button
               key={index}
               onClick={() => onChange(index)}
-              className={`w-full min-h-[3.25rem] px-4 rounded-xl border text-left text-[15px] font-semibold transition-colors ${
+              className={`w-full min-h-[3.25rem] px-4 rounded-xl border text-left text-base font-semibold transition-colors ${
                 selected === index
                   ? 'bg-primary/15 border-primary/45 text-primary'
                   : 'bg-base-100/50 border-white/12 text-content'
@@ -237,7 +237,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
           <div className="p-3.5 rounded-xl bg-base-200 border border-line-strong text-content text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
             <Lightbulb size={16} className="text-primary shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-text-hi block text-[11px] uppercase tracking-wider mb-0.5">
+              <span className="font-bold text-text-hi block text-[12px] uppercase tracking-wider mb-0.5">
                 Wskazówka lektora:
               </span>
               <span>{hintText}</span>
@@ -249,14 +249,14 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-bold text-content-muted">Twoja odpowiedź:</label>
-            <span className="text-[11px] text-content-muted/70">{i18n.t('Zapisz tłumaczenie w języku angielskim.')}</span>
+            <span className="text-[12px] text-content-muted/70">{i18n.t('Zapisz tłumaczenie w języku angielskim.')}</span>
           </div>
           <textarea
             value={answer || ''}
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             placeholder="Wpisz tłumaczenie po angielsku…"
-            className="w-full p-4 bg-base-100/90 text-text-hi text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+            className="w-full p-4 bg-base-100/90 text-text-hi text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
           />
         </div>
       </div>
@@ -344,7 +344,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             placeholder="Wpisz pełne, uzupełnione zdanie po angielsku…"
-            className="w-full p-4 bg-base-100/90 text-text-hi text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+            className="w-full p-4 bg-base-100/90 text-text-hi text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
           />
         </div>
       );
@@ -389,7 +389,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       <div className="space-y-4">
         {/* Treść ćwiczenia jest angielska, a strona deklaruje polski. Bez tego
             przeglądarka dzieliłaby angielskie słowa według polskich wzorców. */}
-        <p lang="en" className="prose-justified text-[15px] text-content leading-loose">
+        <p lang="en" className="prose-justified text-base text-content leading-loose">
           {segments.map((segment, index) => {
             if (segment.kind === 'text') return <span key={index}>{segment.text}</span>;
             const filled = blanks[segment.gapId];
@@ -402,7 +402,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
                   delete next[segment.gapId];
                   onChange(next);
                 }}
-                className={`inline-flex items-center justify-center min-h-[2.25rem] min-w-[5rem] px-2.5 mx-0.5 align-middle rounded-lg border text-[14px] font-semibold ${
+                className={`inline-flex items-center justify-center min-h-[2.25rem] min-w-[5rem] px-2.5 mx-0.5 align-middle rounded-lg border text-base font-semibold ${
                   filled
                     ? 'bg-primary/15 border-primary/40 text-primary'
                     : 'border-dashed border-white/30 text-content-muted'
@@ -470,7 +470,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
 
         {/* Zdanie z błędem w wyeksponowanej karcie */}
         <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 space-y-2.5 shadow-inner">
-          <span className="text-[11px] font-mono uppercase tracking-wider text-content-muted font-bold block">
+          <span className="text-[12px] font-mono uppercase tracking-wider text-content-muted font-bold block">
             Zdanie z błędem do poprawy:
           </span>
           <p className="text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
@@ -489,7 +489,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
           <div className="p-3.5 rounded-xl bg-base-200 border border-line-strong text-content text-xs sm:text-sm leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-200 shadow-sm">
             <Lightbulb size={16} className="text-primary shrink-0 mt-0.5" />
             <div>
-              <span className="font-bold text-text-hi block text-[11px] uppercase tracking-wider mb-0.5">
+              <span className="font-bold text-text-hi block text-[12px] uppercase tracking-wider mb-0.5">
                 Wskazówka lektora:
               </span>
               <span>{hintText}</span>
@@ -505,7 +505,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
               <button
                 type="button"
                 onClick={() => onChange(incorrect)}
-                className="inline-flex items-center gap-1 text-[11px] text-primary hover:text-primary/80 font-bold transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 text-[12px] text-primary hover:text-primary/80 font-bold transition-colors cursor-pointer"
                 title="Wstaw zdanie z błędem, aby szybko zmienić tylko niepoprawne słowo"
               >
                 <Copy size={11} /> Kopiuj zdanie do edycji
@@ -518,7 +518,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
             onChange={(e) => onChange(e.target.value)}
             rows={3}
             placeholder="Wpisz w pełni poprawione zdanie po angielsku…"
-            className="w-full p-4 bg-base-100/90 text-text-hi text-[15px] sm:text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
+            className="w-full p-4 bg-base-100/90 text-text-hi text-base border border-white/15 rounded-xl focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all resize-y placeholder:text-content-muted/50"
           />
         </div>
       </div>

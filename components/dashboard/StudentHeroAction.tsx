@@ -58,7 +58,7 @@ const StudentHeroAction: React.FC<StudentHeroActionProps> = ({
                 <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
                   {tText('Zadania od lektora', 'Teacher assignments')}
                 </span>
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                <span className="text-[12px] font-mono font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
                   {plZadania(pendingTasks.length, language)}
                 </span>
               </div>

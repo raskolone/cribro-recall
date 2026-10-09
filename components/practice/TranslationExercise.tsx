@@ -56,7 +56,7 @@ const ClassicAssisted: React.FC<{
               key={`${hint}-${idx}`}
               type="button"
               onClick={() => handleHintClick(hint)}
-              className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors ${CHIP_COLORS[idx % CHIP_COLORS.length]}`}
+              className={`px-3 py-1.5 rounded-full border text-base font-medium transition-colors ${CHIP_COLORS[idx % CHIP_COLORS.length]}`}
             >
               <Lightbulb size={12} className="inline mr-1 -mt-0.5" />
               {hint}
@@ -127,7 +127,7 @@ const FragmentPool: React.FC<{
       <div className="space-y-3">
         {steps.map((step, stepIdx) => (
           <div key={step.stepIndex} className={stepIdx > activeStepIndex && activeStepIndex !== -1 ? 'opacity-40 pointer-events-none' : ''}>
-            <p className="text-[11px] font-mono uppercase tracking-wider text-content-muted mb-1.5">
+            <p className="text-[12px] font-mono uppercase tracking-wider text-content-muted mb-1.5">
               {i18n.t('Fragment')} {stepIdx + 1}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -139,7 +139,7 @@ const FragmentPool: React.FC<{
                     type="button"
                     disabled={selections[stepIdx] !== null}
                     onClick={() => handlePick(stepIdx, chunk)}
-                    className={`px-3 py-1.5 rounded-full border text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                    className={`px-3 py-1.5 rounded-full border text-base font-medium transition-colors disabled:cursor-not-allowed ${
                       isPicked
                         ? 'bg-primary/25 border-primary text-primary'
                         : `${CHIP_COLORS[chunkIdx % CHIP_COLORS.length]} disabled:opacity-30`

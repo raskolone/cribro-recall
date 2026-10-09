@@ -62,7 +62,7 @@ const Badge: React.FC<BadgeProps> = ({
       title={title}
       className={[
         'inline-flex items-center gap-2 px-3 py-[5px] rounded-full border',
-        'font-mono text-[11px] font-medium whitespace-nowrap',
+        'font-mono text-[12px] font-medium whitespace-nowrap',
         plain ? '' : 'uppercase tracking-[0.1em]',
         TONES[resolved],
         className,

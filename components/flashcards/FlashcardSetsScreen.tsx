@@ -233,7 +233,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       return (
         <Card key={set.id} className={`!p-3.5 flex flex-col h-full group relative overflow-hidden ${cardClass}`}>
           {isNew && (
-             <div className="absolute top-0 right-0 px-3 py-1 bg-warn text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+             <div className="absolute top-0 right-0 px-3 py-1 bg-warn text-black font-extrabold text-[12px] uppercase rounded-bl-lg z-10 shadow-md">
                {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
              </div>
           )}
@@ -243,9 +243,9 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
-                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+                {set.isDraft && <span className="ml-2 text-[12px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
-            <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-[11px] text-content-muted">
+            <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-[12px] text-content-muted">
               <span className="inline-flex items-center gap-1 font-mono font-bold text-warn bg-warn/15 px-2 py-0.5 rounded border border-warn/30">
                 {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
               </span>
@@ -265,7 +265,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                   style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
                 />
               </div>
-              <span className={`shrink-0 font-mono text-[11px] ${(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-content-muted'}`}>
+              <span className={`shrink-0 font-mono text-[12px] ${(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-content-muted'}`}>
                 {Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%
               </span>
             </div>
@@ -297,7 +297,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return (
       <div key={set.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${cardClass}`}>
         {isNew && (
-           <div className="absolute top-0 right-0 px-3 py-1 bg-warn text-black font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+           <div className="absolute top-0 right-0 px-3 py-1 bg-warn text-black font-extrabold text-[12px] uppercase rounded-bl-lg z-10 shadow-md">
              {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
            </div>
         )}
@@ -308,7 +308,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
-                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+                {set.isDraft && <span className="ml-2 text-[12px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-content-muted mt-2">
@@ -381,7 +381,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
       return (
         <Card key={set.id} className={`!p-3.5 flex flex-col h-full group relative overflow-hidden ${cardClass}`}>
           {isNew && (
-             <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-accent-ink font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+             <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-accent-ink font-extrabold text-[12px] uppercase rounded-bl-lg z-10 shadow-md">
                {language === 'pl' ? 'Nowy zestaw' : 'New set'}
              </div>
           )}
@@ -392,11 +392,11 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                 onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
               >
                 {cleanTitle}
-                {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+                {set.isDraft && <span className="ml-2 text-[12px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
               </h3>
             </div>
             {set.description && <p className="text-content-muted text-xs mb-2 line-clamp-1">{set.description}</p>}
-            <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-[11px] text-content-muted">
+            <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-[12px] text-content-muted">
               {createdDate && (
                 <span className="font-mono bg-base-300/80 px-2 py-0.5 rounded text-content">
                   {createdDate}
@@ -417,7 +417,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                   style={{ width: `${Math.min(100, Math.max(0, setMastery[set.id] || 0))}%` }}
                 />
               </div>
-              <span className={`shrink-0 font-mono text-[11px] ${(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-content-muted'}`}>
+              <span className={`shrink-0 font-mono text-[12px] ${(setMastery[set.id] || 0) >= 80 ? 'text-primary font-bold' : 'text-content-muted'}`}>
                 {Number.isNaN(Number(setMastery[set.id])) ? 0 : (setMastery[set.id] || 0)}%
               </span>
             </div>
@@ -444,7 +444,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     return (
       <div key={set.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-5 rounded-xl transition-all duration-300 gap-4 relative overflow-hidden ${cardClass}`}>
         {isNew && (
-           <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-accent-ink font-extrabold text-[10px] uppercase rounded-bl-lg z-10 shadow-md">
+           <div className="absolute top-0 right-0 px-3 py-1 bg-primary text-accent-ink font-extrabold text-[12px] uppercase rounded-bl-lg z-10 shadow-md">
              {language === 'pl' ? 'Nowy zestaw' : 'New set'}
            </div>
         )}
@@ -455,7 +455,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
               onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
-              {set.isDraft && <span className="ml-2 text-[10px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
+              {set.isDraft && <span className="ml-2 text-[12px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-content-muted mt-2">

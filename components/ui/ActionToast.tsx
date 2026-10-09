@@ -65,7 +65,7 @@ export const ActionToast: React.FC<ActionToastProps> = ({
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                   </span>
-                  <span className="text-[11px] font-bold font-mono uppercase tracking-wider text-primary">
+                  <span className="text-[12px] font-bold font-mono uppercase tracking-wider text-primary">
                     Gotowe
                   </span>
                 </div>

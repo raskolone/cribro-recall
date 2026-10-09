@@ -182,7 +182,7 @@ export const AppAlertModal: React.FC = () => {
             {/* Badge & Title */}
             <div>
               <span
-                className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider mb-1.5 ${cfg.badgeStyle}`}
+                className={`inline-block px-2.5 py-0.5 rounded-full text-[12px] font-bold uppercase tracking-wider mb-1.5 ${cfg.badgeStyle}`}
               >
                 {cfg.badgeLabel}
               </span>

@@ -388,7 +388,7 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
 
             <div className="relative">
               <div className="flex items-start justify-between gap-3 mb-2">
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/12 border border-accent/30 text-accent text-[10px] font-mono uppercase tracking-[0.1em]">
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-accent/12 border border-accent/30 text-accent text-[12px] font-mono uppercase tracking-[0.1em]">
                   <GraduationCap size={11} />
                   {step.group}
                 </span>
@@ -405,7 +405,7 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
               <h4 className="text-sm font-bold text-text-hi leading-snug flex items-center gap-2 flex-wrap">
                 {step.title}
                 {step.shortcut && (
-                  <kbd className="px-1.5 py-0.5 rounded-md bg-white/[0.06] border border-line text-[10px] font-mono text-text-2">
+                  <kbd className="px-1.5 py-0.5 rounded-md bg-white/[0.06] border border-line text-[12px] font-mono text-text-2">
                     {step.shortcut}
                   </kbd>
                 )}
@@ -414,14 +414,14 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
               <p className="mt-1.5 text-xs leading-relaxed text-text-3">{step.description}</p>
 
               {step.tip && (
-                <p className="mt-2.5 flex items-start gap-2 rounded-xl bg-white/[0.04] border border-line px-2.5 py-2 text-[11px] leading-relaxed text-text-2">
+                <p className="mt-2.5 flex items-start gap-2 rounded-xl bg-white/[0.04] border border-line px-2.5 py-2 text-[12px] leading-relaxed text-text-2">
                   <Lightbulb size={13} className="shrink-0 mt-px text-warn" />
                   <span>{step.tip}</span>
                 </p>
               )}
 
               <div className="mt-3.5 pt-3 border-t border-line-soft flex items-center justify-between gap-3">
-                <span className="text-[10px] font-mono text-text-faint tabular-nums">
+                <span className="text-[12px] font-mono text-text-faint tabular-nums">
                   {stepIndex + 1} / {activeSteps.length}
                 </span>
 
@@ -430,7 +430,7 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
                     type="button"
                     onClick={goPrevious}
                     disabled={stepIndex === 0}
-                    className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] border border-line text-text-2 text-[11px] font-semibold flex items-center gap-1 transition-colors hover:text-white hover:bg-white/10 disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
+                    className="px-2.5 py-1.5 rounded-lg bg-white/[0.05] border border-line text-text-2 text-[12px] font-semibold flex items-center gap-1 transition-colors hover:text-white hover:bg-white/10 disabled:opacity-35 disabled:pointer-events-none cursor-pointer"
                   >
                     <ChevronLeft size={13} />
                     Wstecz
@@ -438,7 +438,7 @@ export const CoachMarks: React.FC<CoachMarksProps> = ({
                   <button
                     type="button"
                     onClick={goNext}
-                    className="px-3 py-1.5 rounded-lg bg-accent text-accent-ink text-[11px] font-bold flex items-center gap-1 shadow-btn transition-all hover:brightness-110 active:brightness-95 cursor-pointer"
+                    className="px-3 py-1.5 rounded-lg bg-accent text-accent-ink text-[12px] font-bold flex items-center gap-1 shadow-btn transition-all hover:brightness-110 active:brightness-95 cursor-pointer"
                   >
                     {isLastStep ? 'Zakończ' : 'Dalej'}
                     {!isLastStep && <ChevronRight size={13} />}

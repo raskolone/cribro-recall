@@ -12,7 +12,7 @@ const Select: React.FC<SelectProps> = ({ label, options, id, ...props }) => {
       <label htmlFor={id} className="block text-sm font-bold text-text-faint dark:text-content mb-1">{label}</label>
       <select
         id={id}
-        className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 text-content dark:text-dark-content border border-base-300 dark:border-dark-base-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
+        className="w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 text-content dark:text-dark-content border border-base-300 dark:border-dark-base-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-base transition-all duration-200"
         {...props}
       >
         {options.map(option => (

@@ -91,7 +91,7 @@ const ProgressOverview: React.FC = () => {
                 <div className="text-base sm:text-xl font-bold text-content mt-0 lg:mt-2">
                   {lastPractice ? new Date(lastPractice.lastPracticeDate).toLocaleDateString() : 'Never'}
                 </div>
-                <div className="text-[10px] sm:text-xs text-content-muted mt-0.5 lg:mt-1">
+                <div className="text-[12px] sm:text-xs text-content-muted mt-0.5 lg:mt-1">
                   {lastPractice ? lastPractice.lastExerciseType : '-'}
                 </div>
               </div>

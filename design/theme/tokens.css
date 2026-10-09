@@ -91,7 +91,7 @@
   --fs-body:         15px;
   --fs-sm:           14.5px;
   --fs-xs:           13px;
-  --fs-label:        11px;    /* mono, uppercase, .14em tracking */
+  --fs-label:        12px;    /* mono, uppercase, .14em tracking; min. 12 px — mniejsze etykiety są nieczytelne na telefonie */
 
   --lh-tight:        1.15;
   --lh-body:         1.6;

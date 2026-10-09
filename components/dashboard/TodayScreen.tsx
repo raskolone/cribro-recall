@@ -368,7 +368,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
 
         <div className="rounded-2xl border border-line-strong bg-base-200/50 p-5 sm:p-8">
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30 font-mono">
+            <span className="text-[12px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30 font-mono">
               {current.learningType}
             </span>
           </div>
@@ -682,7 +682,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                 <button
                   type="button"
                   onClick={() => setOpenTool(null)}
-                  className="shrink-0 h-8 px-2.5 rounded-lg pointer-coarse:h-11 border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] text-[11px] font-semibold transition-colors cursor-pointer"
+                  className="shrink-0 h-8 px-2.5 rounded-lg pointer-coarse:h-11 border border-line-strong bg-white/[0.04] text-text-2 hover:text-content hover:bg-white/[0.08] text-[12px] font-semibold transition-colors cursor-pointer"
                 >
                   {language === 'pl' ? 'Zwiń' : 'Collapse'}
                 </button>
@@ -737,7 +737,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                         type="button"
                         onClick={onOpenScratchpad}
                         title={L.tools.scratchpadDesc}
-                        className="ml-auto px-2.5 py-1.5 rounded-lg text-[11px] font-medium text-text-mute hover:text-content hover:bg-white/[0.05] transition-colors cursor-pointer flex items-center gap-1.5"
+                        className="ml-auto px-2.5 py-1.5 rounded-lg text-[12px] font-medium text-text-mute hover:text-content hover:bg-white/[0.05] transition-colors cursor-pointer flex items-center gap-1.5"
                       >
                         <FileEdit size={12} />
                         {L.tools.scratchpad}

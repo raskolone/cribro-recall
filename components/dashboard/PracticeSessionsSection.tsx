@@ -226,7 +226,7 @@ const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
                 aria-expanded={isOpen}
                 className="w-full min-h-[3.5rem] flex items-center gap-3 px-4 sm:px-5 py-3 text-left active:bg-white/[0.04] transition-colors"
               >
-                <span className="font-mono text-[11px] text-content-muted shrink-0 w-14">
+                <span className="font-mono text-[12px] text-content-muted shrink-0 w-14">
                   {dayLabel}
                 </span>
                 <span className="flex-1 min-w-0">
@@ -262,7 +262,7 @@ const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
                   <div className="flex gap-2">
                     {log.totalWords !== undefined && (
                       <div className="flex-1 rounded-xl bg-base-100/50 border border-white/[0.07] px-3 py-2.5 text-center">
-                        <div className="text-[10px] font-mono uppercase tracking-wider text-content-muted">
+                        <div className="text-[12px] font-mono uppercase tracking-wider text-content-muted">
                           {L.items}
                         </div>
                         <div className="font-bold text-lg text-text-hi">{log.totalWords}</div>
@@ -270,7 +270,7 @@ const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
                     )}
                     {hasScore && (
                       <div className="flex-1 rounded-xl bg-base-100/50 border border-white/[0.07] px-3 py-2.5 text-center">
-                        <div className="text-[10px] font-mono uppercase tracking-wider text-content-muted">
+                        <div className="text-[12px] font-mono uppercase tracking-wider text-content-muted">
                           {L.score}
                         </div>
                         <div className={`font-bold text-lg ${scoreTone(Number(log.score))}`}>
@@ -293,7 +293,7 @@ const PracticeSessionsSection: React.FC<PracticeSessionsSectionProps> = ({
                           item.score !== null &&
                           !isNaN(Number(item.score)) && (
                             <span
-                              className={`font-mono text-[11px] font-bold shrink-0 ${scoreTone(Number(item.score))}`}
+                              className={`font-mono text-[12px] font-bold shrink-0 ${scoreTone(Number(item.score))}`}
                             >
                               {Number(item.score)}%
                             </span>

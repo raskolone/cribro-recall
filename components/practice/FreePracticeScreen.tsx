@@ -119,7 +119,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
       <div>
         <h2
           id="free-practice-type-label"
-          className="text-[11px] font-mono font-bold uppercase tracking-wider text-content-muted mb-2"
+          className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted mb-2"
         >
           {t('Rodzaj ćwiczenia')}
         </h2>
@@ -160,7 +160,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
       <div>
         <h2
           id="free-practice-sets-label"
-          className="text-[11px] font-mono font-bold uppercase tracking-wider text-content-muted mb-2"
+          className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted mb-2"
         >
           {t('Materiał')}
         </h2>

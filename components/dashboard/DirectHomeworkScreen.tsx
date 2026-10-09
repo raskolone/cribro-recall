@@ -227,7 +227,7 @@ export const DirectHomeworkScreen: React.FC = () => {
               <span className="font-bold tracking-wider text-sm text-white uppercase block">
                 CRIBRO ENGLISH
               </span>
-              <span className="text-[11px] text-content-muted">
+              <span className="text-[12px] text-content-muted">
                 Zadanie domowe kursanta
               </span>
             </div>
@@ -418,7 +418,7 @@ export const DirectHomeworkScreen: React.FC = () => {
             <div className="inline-flex items-center gap-3 px-5 py-3 rounded-2xl bg-base-100/80 border border-primary/30 shadow-inner">
               <Award className="text-primary w-6 h-6" />
               <div className="text-left">
-                <span className="text-[11px] uppercase tracking-wider text-content-muted block font-bold">
+                <span className="text-[12px] uppercase tracking-wider text-content-muted block font-bold">
                   Twój wynik
                 </span>
                 <span className="text-2xl font-black text-white">
@@ -512,7 +512,7 @@ export const DirectHomeworkScreen: React.FC = () => {
           <span className="text-xs font-mono text-content-muted uppercase tracking-wider">
             CRIBRO ENGLISH
           </span>
-          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/15 text-primary border border-primary/25">
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[12px] font-bold bg-primary/15 text-primary border border-primary/25">
             <Sparkles size={12} />
             <span>Wyzwanie językowe</span>
           </span>
@@ -630,11 +630,11 @@ export const DirectHomeworkScreen: React.FC = () => {
       {/* Nagłówek zadania */}
       <header className="space-y-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <span className="text-[11px] font-mono font-bold uppercase tracking-wider text-primary">
+          <span className="text-[12px] font-mono font-bold uppercase tracking-wider text-primary">
             Cześć, {studentVocative}! 👋
           </span>
           {task.accessExpiresAt && (
-            <span className="text-[11px] text-content-muted flex items-center gap-1">
+            <span className="text-[12px] text-content-muted flex items-center gap-1">
               <Clock size={12} />
               Ważne do: {new Date(task.accessExpiresAt).toLocaleDateString('pl-PL')}
             </span>

@@ -132,10 +132,10 @@ const AssignedExercises: React.FC<AssignedExercisesProps> = ({
     <section className="rounded-2xl border border-primary/25 bg-gradient-to-br from-primary/[0.09] via-base-200/60 to-base-200/60 overflow-hidden">
       <header className="flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-white/[0.07]">
         <ClipboardList className="w-4 h-4 text-primary shrink-0" />
-        <h2 className="text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
+        <h2 className="text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
           {L.heading}
         </h2>
-        <span className="ml-auto text-[11px] font-mono font-bold text-primary/80">
+        <span className="ml-auto text-[12px] font-mono font-bold text-primary/80">
           {pending.length}
         </span>
       </header>

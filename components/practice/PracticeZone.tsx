@@ -45,7 +45,7 @@ const PracticeZone: React.FC<PracticeZoneProps> = ({
             <select
               value={selectedSetId}
               onChange={(e) => setSelectedSetId(e.target.value)}
-              className="px-4 py-2 bg-base-100/40 backdrop-blur-md border border-white/10 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
+              className="px-4 py-2 bg-base-100/40 backdrop-blur-md border border-white/10 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-base transition-all duration-200"
             >
               <option value="all">{i18n.t("All Words")}</option>
               <option value="global">{i18n.t("Global Words")}</option>
@@ -92,7 +92,7 @@ const PracticeZone: React.FC<PracticeZoneProps> = ({
           <select
             value={selectedSetId}
             onChange={(e) => setSelectedSetId(e.target.value)}
-            className="px-4 py-2 bg-base-100/40 backdrop-blur-md border border-white/10 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
+            className="px-4 py-2 bg-base-100/40 backdrop-blur-md border border-white/10 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-base transition-all duration-200"
           >
             <option value="all">{i18n.t("All Words")}</option>
             <option value="global">{i18n.t("Global Words")}</option>

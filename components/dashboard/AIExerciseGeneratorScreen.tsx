@@ -2340,7 +2340,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                 value={customGenPrompt}
                 onChange={(e) => setCustomGenPrompt(e.target.value)}
                 rows={5}
-                className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
+                className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-lg p-2.5 text-base font-mono outline-none focus:border-primary/50"
               />
             </div>
             <div className="space-y-1.5">
@@ -2349,7 +2349,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                 value={customEvalPrompt}
                 onChange={(e) => setCustomEvalPrompt(e.target.value)}
                 rows={5}
-                className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-lg p-2.5 text-xs font-mono outline-none focus:border-primary/50"
+                className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-lg p-2.5 text-base font-mono outline-none focus:border-primary/50"
               />
             </div>
           </div>
@@ -2469,12 +2469,12 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <h3 className="font-extrabold text-white text-sm sm:text-base leading-tight">
                                 {language === 'pl' ? 'Nowa praca domowa od nauczyciela' : 'New homework assigned by teacher'}
                               </h3>
-                              <span className="text-[11px] text-primary font-semibold">
+                              <span className="text-[12px] text-primary font-semibold">
                                 {specialTasks.length} {specialTasks.length === 1 ? (language === 'pl' ? 'zadanie oczekujące na rozwiązanie' : 'pending homework task') : (language === 'pl' ? 'zadania oczekujące na rozwiązanie' : 'pending homework tasks')}
                               </span>
                             </div>
                           </div>
-                          <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary border border-primary/30">
+                          <span className="text-[12px] font-mono font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary border border-primary/30">
                             {language === 'pl' ? 'Do zrobienia' : 'Pending'}
                           </span>
                         </div>
@@ -2486,7 +2486,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                 <h4 className="font-bold text-white text-xs sm:text-sm truncate">
                                   {hwTask.title || (language === 'pl' ? 'Praca domowa: Tłumaczenia' : 'Homework: Translations')}
                                 </h4>
-                                <p className="text-[11px] text-text-2 mt-0.5 line-clamp-1">
+                                <p className="text-[12px] text-text-2 mt-0.5 line-clamp-1">
                                   {hwTask.instructions || `${hwTask.sentences?.length || 0} zdań w zestawie`}
                                 </p>
                               </div>
@@ -2525,7 +2525,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                     {/* SECTION 1: TRYB ĆWICZENIA */}
                     <div className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
+                        <label className="text-[12px] font-bold text-text-2 uppercase tracking-widest">
                           {language === 'pl' ? 'Tryb ćwiczenia' : 'Exercise mode'}
                         </label>
                         <span className="text-xs font-mono text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full font-semibold">
@@ -2553,7 +2553,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <div className={`w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary group-hover/card:scale-110 transition-transform ${exerciseFormat === 'typing' ? 'text-primary bg-primary/20 border-primary shadow-[0_0_15px_rgba(114,240,180,0.5)]' : ''}`}>
                                 <Keyboard className="w-5 h-5 drop-shadow-[0_0_8px_rgba(114,240,180,0.8)]" />
                               </div>
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
+                              <span className="px-2.5 py-1 rounded-full text-[12px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Tłumaczenia' : 'Translations'}
                               </span>
                             </div>
@@ -2562,11 +2562,11 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1.5">
                                 {language === 'pl' ? 'Sprawdź Się' : 'Check Yourself'} <ChevronRight className="w-4 h-4 text-primary group-hover/card:translate-x-1 transition-transform" />
                               </h3>
-                              <p className="text-[11px] text-text-2 mt-1 leading-relaxed">
+                              <p className="text-[12px] text-text-2 mt-1 leading-relaxed">
                                 {language === 'pl' ? 'Tłumaczenie pełnych zdań z pamięci i natychmiastowa korekta AI.' : 'Full sentence translation from memory with instant AI grading.'}
                               </p>
                               <div className="mt-2.5 flex items-center gap-1.5">
-                                <span className="text-[10px] text-primary/90 font-mono bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 flex items-center gap-1 font-semibold">
+                                <span className="text-[12px] text-primary/90 font-mono bg-primary/10 px-2 py-0.5 rounded-md border border-primary/20 flex items-center gap-1 font-semibold">
                                   <span>🧩</span> {language === 'pl' ? 'Tryb rozgrzewki' : 'Warm-up mode'}
                                 </span>
                               </div>
@@ -2592,7 +2592,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <div className={`w-11 h-11 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 group-hover/card:scale-110 transition-transform ${exerciseFormat === 'correction' ? 'text-amber-400 bg-amber-500/20 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.5)]' : ''}`}>
                                 <Wrench className="w-5 h-5 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" />
                               </div>
-                              <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                              <span className="px-2.5 py-1 rounded-full text-[12px] font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
                                 {language === 'pl' ? 'Korekta' : 'Correction'}
                               </span>
                             </div>
@@ -2601,11 +2601,11 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <h3 className="text-xl font-serif font-bold text-white group-hover/card:text-amber-400 transition-colors flex items-center gap-1.5">
                                 {language === 'pl' ? 'Napraw Zdanie' : 'Fix the Sentence'} <ChevronRight className="w-4 h-4 text-amber-400 group-hover/card:translate-x-1 transition-transform" />
                               </h3>
-                              <p className="text-[11px] text-text-2 mt-1 leading-relaxed">
+                              <p className="text-[12px] text-text-2 mt-1 leading-relaxed">
                                 {language === 'pl' ? 'Wyszukaj błąd gramatyczny lub leksykalny i wpisz poprawne zdanie.' : 'Spot grammatical or lexical errors and type the corrected sentence.'}
                               </p>
                               <div className="mt-2.5 flex items-center gap-1.5">
-                                <span className="text-[10px] text-amber-300/90 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 flex items-center gap-1 font-semibold">
+                                <span className="text-[12px] text-amber-300/90 font-mono bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20 flex items-center gap-1 font-semibold">
                                   <span>🎯</span> {language === 'pl' ? 'Zadanie z pracy domowej' : 'Homework task'}
                                 </span>
                               </div>
@@ -2624,7 +2624,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-xl group-hover/card:scale-110 transition-transform">
                                 🗂️
                               </div>
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
+                              <span className="px-2.5 py-0.5 rounded-full text-[12px] font-mono font-bold text-primary bg-primary/10 border border-primary/20">
                                 {language === 'pl' ? 'Nauka' : 'Learn'}
                               </span>
                             </div>
@@ -2632,7 +2632,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <h4 className="text-base font-serif font-bold text-white group-hover/card:text-primary transition-colors flex items-center gap-1">
                                 {language === 'pl' ? 'Fiszki' : 'Flashcards'} <ChevronRight className="w-4 h-4 text-primary group-hover/card:translate-x-1 transition-transform" />
                               </h4>
-                              <p className="text-[11px] text-text-2 mt-0.5">
+                              <p className="text-[12px] text-text-2 mt-0.5">
                                 {language === 'pl' ? 'Aktywne przypominanie słownictwa' : 'Active vocabulary recall'}
                               </p>
                             </div>
@@ -2650,7 +2650,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <div className="w-10 h-10 rounded-2xl bg-warn/10 border border-warn/20 flex items-center justify-center text-warn text-xl group-hover/card:scale-110 transition-transform">
                                 🧩
                               </div>
-                              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold text-warn bg-warn/10 border border-warn/20">
+                              <span className="px-2.5 py-0.5 rounded-full text-[12px] font-mono font-bold text-warn bg-warn/10 border border-warn/20">
                                 {language === 'pl' ? 'Gra' : 'Game'}
                               </span>
                             </div>
@@ -2658,7 +2658,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <h4 className="text-base font-serif font-bold text-white group-hover/card:text-warn transition-colors flex items-center gap-1">
                                 {language === 'pl' ? 'Dopasowanie' : 'Match'} <ChevronRight className="w-4 h-4 text-warn group-hover/card:translate-x-1 transition-transform" />
                               </h4>
-                              <p className="text-[11px] text-text-2 mt-0.5">
+                              <p className="text-[12px] text-text-2 mt-0.5">
                                 {language === 'pl' ? 'Szybkie łączenie par na czas' : 'Fast-paced word matching'}
                               </p>
                             </div>
@@ -2672,7 +2672,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                       {/* Bar 1: Źródło materiału */}
                       <div className="w-full bg-ink-2 border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
+                          <label className="text-[12px] font-bold text-text-2 uppercase tracking-widest">
                             {language === 'pl' ? 'Źródło materiału' : 'Material Source'}
                           </label>
                         </div>
@@ -2749,7 +2749,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                       {/* Bar 2: Ilość zadań */}
                       <div className="w-full bg-ink-2 border-2 border-line-strong/80 p-4 rounded-3xl shadow-md space-y-3">
                         <div className="flex items-center justify-between">
-                          <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
+                          <label className="text-[12px] font-bold text-text-2 uppercase tracking-widest">
                             {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
                           </label>
                           <span className="text-2xl font-black text-white font-mono leading-none">
@@ -2882,7 +2882,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                             {/* Section 1: Źródło materiału */}
                             <div className="bg-ink-2 border border-white/10 p-4 rounded-2xl space-y-3">
                               <div className="flex items-center justify-between">
-                                <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
+                                <label className="text-[12px] font-bold text-text-2 uppercase tracking-widest">
                                   {language === 'pl' ? 'Źródło słownictwa' : 'Vocabulary Source'}
                                 </label>
                               </div>
@@ -2900,7 +2900,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                     <span className="text-xs font-bold text-white truncate">
                                       {language === 'pl' ? 'Źródło materiału' : 'Material Source'}
                                     </span>
-                                    <span className="text-[11px] text-text-2 truncate">
+                                    <span className="text-[12px] text-text-2 truncate">
                                       {selectedSetId === 'basket' ? (
                                         language === 'pl' ? `Koszyk słówek (${basketWords.length})` : `Word Basket (${basketWords.length})`
                                       ) : selectedLessonIds.length > 0 ? (
@@ -2946,7 +2946,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                             {/* Section 2: Ilość zadań */}
                             <div className="bg-ink-2 border border-white/10 p-4 rounded-2xl space-y-3">
                               <div className="flex items-center justify-between">
-                                <label className="text-[11px] font-bold text-text-2 uppercase tracking-widest">
+                                <label className="text-[12px] font-bold text-text-2 uppercase tracking-widest">
                                   {language === 'pl' ? 'Ilość zdań' : 'Number of sentences'}
                                 </label>
                                 <span className="text-2xl font-black text-white font-mono leading-none">
@@ -3095,7 +3095,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                     {/* Option 4: Lekcje indywidualne (Checkboxy) */}
                                     {vocabularySets.length > 0 ? (
                                       <div className="pt-1 space-y-2">
-                                        <p className="text-[11px] font-bold text-text-2 uppercase tracking-wider px-1 pt-1">
+                                        <p className="text-[12px] font-bold text-text-2 uppercase tracking-wider px-1 pt-1">
                                           {language === 'pl' ? 'Lekcje indywidualne:' : 'Individual lessons:'}
                                         </p>
                                         {vocabularySets.map((set, index) => {
@@ -3124,7 +3124,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                                 className="w-4 h-4 text-primary focus:ring-primary rounded border-white/20 bg-black/40 cursor-pointer accent-primary"
                                               />
                                               <div className="flex-1 flex flex-col min-w-0 gap-0.5">
-                                                <span className="text-[11px] font-bold text-primary uppercase tracking-wider">
+                                                <span className="text-[12px] font-bold text-primary uppercase tracking-wider">
                                                   Lesson {lessonNumber}
                                                 </span>
                                                 <span className={`text-xs font-semibold leading-relaxed ${isSelected ? 'text-white' : 'text-content'} break-words`}>
@@ -3154,7 +3154,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                     {/* Option 5: Słownictwo prywatne (Flashcards) */}
                                     {availableSets.length > 0 && (
                                       <div className="pt-2 space-y-2 border-t border-white/5 mt-2">
-                                        <p className="text-[11px] font-bold text-text-2 uppercase tracking-wider px-1 pt-1">
+                                        <p className="text-[12px] font-bold text-text-2 uppercase tracking-wider px-1 pt-1">
                                           {language === 'pl' ? 'Słownictwo prywatne:' : 'Private vocabulary:'}
                                         </p>
                                         {availableSets.map((set) => {
@@ -3181,7 +3181,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                                   {set.title}
                                                 </span>
                                               </div>
-                                              <span className="text-[10px] font-bold bg-white/5 text-text-2 px-2 py-0.5 rounded">
+                                              <span className="text-[12px] font-bold bg-white/5 text-text-2 px-2 py-0.5 rounded">
                                                 {set.cardCount}
                                               </span>
                                             </label>
@@ -3194,7 +3194,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                         Decyzja produktowa: powtórki mają iść z materiału
                                         zatwierdzonego po konkretnej lekcji, a otwarty
                                         generator jest opcją dodatkową, nie główną ścieżką. */}
-                                    <p className="text-[11px] font-bold text-text-2 uppercase tracking-wider px-1 pt-3">
+                                    <p className="text-[12px] font-bold text-text-2 uppercase tracking-wider px-1 pt-3">
                                       {language === 'pl' ? 'Opcje dodatkowe:' : 'Additional options:'}
                                     </p>
                                     {/* Option 1: Słownictwo ogólne: miks i koszyk */}
@@ -3215,7 +3215,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                         <span className={`text-sm font-bold ${selectedSetId === 'all' && selectedLessonIds.length === 0 ? 'text-primary' : 'text-content'}`}>
                                           {language === 'pl' ? 'Słownictwo ogólne: miks i koszyk' : 'General vocabulary: mix & basket'}
                                         </span>
-                                        <p className="text-[11px] text-text-2">
+                                        <p className="text-[12px] text-text-2">
                                           {language === 'pl'
                                             ? 'Opcja dodatkowa: miks ze wszystkich lekcji i koszyka, bez powiązania z konkretnymi zajęciami'
                                             : 'Additional option: a mix from all lessons and the basket, not tied to a specific class'}
@@ -3307,7 +3307,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                             onClick={() => setExpandedGenLevelGroup(isGroupExpanded ? null : group.key)}
                                           >
                                             <div className="flex items-center gap-2.5">
-                                              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded border ${group.badgeClass}`}>
+                                              <span className={`text-[12px] font-mono font-bold px-2 py-0.5 rounded border ${group.badgeClass}`}>
                                                 {group.levels}
                                               </span>
                                               <span className="text-sm font-bold text-content">{group.name}</span>
@@ -3323,7 +3323,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                                 exit={{ height: 0, opacity: 0 }}
                                                 className="overflow-hidden bg-black/30 p-2.5 space-y-2 border-t border-white/5"
                                               >
-                                                <p className="text-[11px] text-text-2 italic px-1 mb-1">{group.description}</p>
+                                                <p className="text-[12px] text-text-2 italic px-1 mb-1">{group.description}</p>
                                                 {groupSets.map((gSet) => {
                                                   const isSelected = selectedSetId === gSet.id;
                                                   return (
@@ -3348,11 +3348,11 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                                       <div className="flex-1 flex flex-col min-w-0">
                                                         <div className="flex items-center gap-2">
                                                           <span className={`text-xs font-bold ${isSelected ? 'text-primary' : 'text-white'} truncate`}>{gSet.title}</span>
-                                                          <span className="text-[10px] font-mono bg-white/10 text-primary px-1.5 py-0.5 rounded">
+                                                          <span className="text-[12px] font-mono bg-white/10 text-primary px-1.5 py-0.5 rounded">
                                                             {gSet.words.length} słówek
                                                           </span>
                                                         </div>
-                                                        <span className="text-[11px] text-text-2 truncate">{gSet.description}</span>
+                                                        <span className="text-[12px] text-text-2 truncate">{gSet.description}</span>
                                                       </div>
                                                       <button
                                                         type="button"
@@ -3585,7 +3585,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                     <select
                                       value={setupSelectedSource}
                                       onChange={(e) => setSetupSelectedSource(e.target.value)}
-                                      className="w-full bg-[var(--surface-flat)] text-white border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-primary/50 appearance-none pr-10"
+                                      className="w-full bg-[var(--surface-flat)] text-white border border-white/10 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-primary/50 appearance-none pr-10"
                                     >
                                       {basketWords.length > 0 && (
                                         <option value="basket">
@@ -3632,7 +3632,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                         : (language === 'pl' ? `2. Wybierz słówka (${setupCheckedWordIds.size} z ${setupWords.length})` : `2. Select words (${setupCheckedWordIds.size} of ${setupWords.length})`)}
                                     </label>
                                     {practiceSetupType === 'flashcards' ? (
-                                      <span className="text-[10px] font-bold text-primary bg-primary/15 border border-primary/30 px-2.5 py-1 rounded-lg">
+                                      <span className="text-[12px] font-bold text-primary bg-primary/15 border border-primary/30 px-2.5 py-1 rounded-lg">
                                         {language === 'pl' ? 'Kategoria w całości' : 'Full category'}
                                       </span>
                                     ) : (
@@ -3640,14 +3640,14 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                         <button
                                           type="button"
                                           onClick={() => setSetupCheckedWordIds(new Set(setupWords.map(w => w.id)))}
-                                          className="text-[10px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-colors border border-primary/20"
+                                          className="text-[12px] font-bold text-primary bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-colors border border-primary/20"
                                         >
                                           {language === 'pl' ? 'Zaznacz wszystkie' : 'Select all'}
                                         </button>
                                         <button
                                           type="button"
                                           onClick={() => setSetupCheckedWordIds(new Set())}
-                                          className="text-[10px] font-bold text-text-2 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors border border-white/10"
+                                          className="text-[12px] font-bold text-text-2 bg-white/5 hover:bg-white/10 px-2.5 py-1 rounded-lg transition-colors border border-white/10"
                                         >
                                           {language === 'pl' ? 'Odznacz wszystkie' : 'Deselect all'}
                                         </button>
@@ -3656,7 +3656,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                   </div>
 
                                   {practiceSetupType === 'flashcards' && (
-                                    <p className="text-[11px] text-primary/90 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5">
+                                    <p className="text-[12px] text-primary/90 bg-primary/10 border border-primary/20 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5">
                                       🎴 {language === 'pl' 
                                         ? 'Fiszki realizujesz jako pełną kategorię (zestaw). Wszystkie słówka są automatycznie dołączone.' 
                                         : 'Flashcards are studied as a complete category set. All words are automatically included.'}
@@ -3710,7 +3710,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                             <div className="flex-1 min-w-0">
                                               <span className={`font-semibold text-xs block ${isChecked ? 'text-white' : 'text-content'}`}>{word.term}</span>
                                               {word.definition && (
-                                                <span className="text-[11px] text-text-2 block truncate">{word.definition}</span>
+                                                <span className="text-[12px] text-text-2 block truncate">{word.definition}</span>
                                               )}
                                             </div>
                                           </label>
@@ -3819,7 +3819,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                                           <div className="flex items-center gap-2">
                                             <span className="font-semibold text-white truncate">{item.term}</span>
                                             {item.sourceTopic && (
-                                              <span className="text-[10px] font-mono bg-white/10 px-2 py-0.5 rounded text-text-2 truncate max-w-[120px]">
+                                              <span className="text-[12px] font-mono bg-white/10 px-2 py-0.5 rounded text-text-2 truncate max-w-[120px]">
                                                 {item.sourceTopic}
                                               </span>
                                             )}
@@ -3853,7 +3853,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
 
                                 {basketWords.length > 0 && (
                                   <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
-                                    <label className="block text-[10px] font-bold text-text-2 uppercase tracking-wider">
+                                    <label className="block text-[12px] font-bold text-text-2 uppercase tracking-wider">
                                       {language === 'pl' ? 'Wybierz typ ćwiczenia dla koszyka' : 'Choose exercise type for basket'}
                                     </label>
                                     <div className="grid grid-cols-2 gap-2">
@@ -4122,7 +4122,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
               </div>
 
             <div className="space-y-3 relative z-10 flex flex-col items-center text-center">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[10px] font-mono font-bold mx-auto">
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[12px] font-mono font-bold mx-auto">
                 {i18n.t("Zdanie")} {activeSentenceIndex + 1}
               </div>
 
@@ -4165,7 +4165,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                     <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/35 text-warn text-xs sm:text-sm leading-relaxed text-left flex items-start gap-2.5 animate-in fade-in duration-200">
                       <Lightbulb className="w-4 h-4 text-warn shrink-0 mt-0.5" />
                       <div>
-                        <span className="font-bold text-warn block text-[11px] uppercase tracking-wider mb-0.5">
+                        <span className="font-bold text-warn block text-[12px] uppercase tracking-wider mb-0.5">
                           {language === 'pl' ? 'Wskazówka lektora:' : 'Tutor hint:'}
                         </span>
                         <span>{exercises[activeSentenceIndex].hint}</span>
@@ -4218,7 +4218,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                           const val = exercises[activeSentenceIndex].erroneousSentence || '';
                           handleAnswerChange(activeSentenceIndex, val);
                         }}
-                        className="inline-flex items-center gap-1 text-[11px] text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer"
+                        className="inline-flex items-center gap-1 text-[12px] text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer"
                         title={language === 'pl' ? 'Wstaw zdanie z błędem, aby szybko poprawić tylko błąd' : 'Copy sentence to edit'}
                       >
                         <Copy className="w-3 h-3" /> {language === 'pl' ? 'Kopiuj zdanie do edycji' : 'Copy sentence to edit'}
@@ -4243,7 +4243,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                          <span className="flex items-center gap-2 flex-wrap">
                            {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
                            {canViewAiModels && (
-                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-[11px] font-medium">
+                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-[12px] font-medium">
                                <Sparkles className="w-3 h-3 text-primary" />
                                <span>
                                  {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
@@ -4265,17 +4265,17 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                        </div>
                        
                        {singleEvaluationResults[activeSentenceIndex].breakdown && (
-                         <div className="grid grid-cols-3 gap-2 w-full mb-3 text-[11px] font-mono">
+                         <div className="grid grid-cols-3 gap-2 w-full mb-3 text-[12px] font-mono">
                            <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
-                             <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
+                             <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
                              <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.meaning_score}/40</div>
                            </div>
                            <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
-                             <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
+                             <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
                              <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.grammar_score}/40</div>
                            </div>
                            <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
-                             <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
+                             <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
                              <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.vocabulary_score}/20</div>
                            </div>
                          </div>
@@ -4300,7 +4300,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                        <div className="space-y-3 mt-1 text-xs w-full text-left">
                          {singleEvaluationResults[activeSentenceIndex].feedbackSyntax && (
                            <div className="bg-danger/10 p-3 rounded-lg border border-danger/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-danger text-[10px] uppercase tracking-wider mb-1">
+                             <div className="flex items-center gap-1.5 font-bold text-danger text-[12px] uppercase tracking-wider mb-1">
                                <AlertCircle className="w-3.5 h-3.5" />
                                {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
                              </div>
@@ -4309,7 +4309,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackVocab && (
                            <div className="bg-info/10 p-3 rounded-lg border border-info/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-info text-[10px] uppercase tracking-wider mb-1">
+                             <div className="flex items-center gap-1.5 font-bold text-info text-[12px] uppercase tracking-wider mb-1">
                                <AlertCircle className="w-3.5 h-3.5" />
                                {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
                              </div>
@@ -4318,7 +4318,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                          )}
                          {singleEvaluationResults[activeSentenceIndex].feedbackRule && (
                            <div className="bg-warn/10 p-3 rounded-lg border border-warn/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-warn text-[10px] uppercase tracking-wider mb-1">
+                             <div className="flex items-center gap-1.5 font-bold text-warn text-[12px] uppercase tracking-wider mb-1">
                                <Sparkles className="w-3.5 h-3.5" />
                                {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
                              </div>
@@ -4335,7 +4335,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                            kafelek na ekranie startowym. */}
                        {consecutiveMisses >= 2 && exerciseFormat === 'typing' && (
                          <div className="mt-4 w-full rounded-2xl border border-warn/30 bg-warn/10 p-4 text-left">
-                           <div className="flex items-center gap-1.5 font-bold text-warn text-[10px] uppercase tracking-wider mb-1.5">
+                           <div className="flex items-center gap-1.5 font-bold text-warn text-[12px] uppercase tracking-wider mb-1.5">
                              <LayoutGrid className="w-3.5 h-3.5" />
                              {language === 'pl' ? 'Może rozłożyć to na części?' : 'Break it into pieces?'}
                            </div>
@@ -4397,7 +4397,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                     }
                     rows={2}
                     disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    className={`w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3 text-sm outline-none transition-all duration-200 text-center ${
+                    className={`w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3 text-base outline-none transition-all duration-200 text-center ${
                       exerciseFormat === 'correction'
                         ? 'focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/25'
                         : 'focus:border-primary/40 focus:ring-1 focus:ring-primary/20'
@@ -4710,17 +4710,17 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                   {/* Sentences table style */}
                   <div className="space-y-3 pt-2">
                     {res.breakdown && (
-                      <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
+                      <div className="grid grid-cols-3 gap-2 text-[12px] font-mono">
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
-                          <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
+                          <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
                           <div className="font-bold text-white mt-0.5">{res.breakdown.meaning_score}/40</div>
                         </div>
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
-                          <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
+                          <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
                           <div className="font-bold text-white mt-0.5">{res.breakdown.grammar_score}/40</div>
                         </div>
                         <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
-                          <div className="text-content-muted text-[9px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
+                          <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
                           <div className="font-bold text-white mt-0.5">{res.breakdown.vocabulary_score}/20</div>
                         </div>
                       </div>
@@ -4749,7 +4749,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                         <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider flex items-center justify-between">
                           <span>{language === 'pl' ? 'Wzorcowe tłumaczenie' : 'Suggested translation'}</span>
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-content-muted mr-1">{language === 'pl' ? 'Odsłuchaj:' : 'Listen:'}</span>
+                            <span className="text-[12px] text-content-muted mr-1">{language === 'pl' ? 'Odsłuchaj:' : 'Listen:'}</span>
                             {ACCENTS.map(accent => (
                               <button
                                 key={accent}
@@ -4791,7 +4791,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                           <div className="space-y-3">
                             {res.feedbackSyntax && (
                               <div className="bg-danger/10 p-3 rounded-lg border border-danger/20">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-danger uppercase tracking-wider mb-1">
+                                <div className="flex items-center gap-1.5 text-[12px] font-bold text-danger uppercase tracking-wider mb-1">
                                   <AlertCircle className="w-3.5 h-3.5" />
                                   {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
                                 </div>
@@ -4800,7 +4800,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                             )}
                             {res.feedbackVocab && (
                               <div className="bg-info/10 p-3 rounded-lg border border-info/20">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-info uppercase tracking-wider mb-1">
+                                <div className="flex items-center gap-1.5 text-[12px] font-bold text-info uppercase tracking-wider mb-1">
                                   <AlertCircle className="w-3.5 h-3.5" />
                                   {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
                                 </div>
@@ -4809,7 +4809,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                             )}
                             {res.feedbackRule && (
                               <div className="bg-warn/10 p-3 rounded-lg border border-warn/20">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold text-warn uppercase tracking-wider mb-1">
+                                <div className="flex items-center gap-1.5 text-[12px] font-bold text-warn uppercase tracking-wider mb-1">
                                   <Sparkles className="w-3.5 h-3.5" />
                                   {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
                                 </div>
@@ -4900,7 +4900,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               <span className="text-xs font-mono text-content-muted">{tIdx + 1}.</span>
                               <span className="font-semibold text-sm truncate flex-1">{topic.name}</span>
                             </div>
-                            {hasSentences && <div className="text-[10px] text-primary mt-1 ml-6">{topic.sentences.split("\n").filter((s:string) => s.trim()).length} zdań</div>}
+                            {hasSentences && <div className="text-[12px] text-primary mt-1 ml-6">{topic.sentences.split("\n").filter((s:string) => s.trim()).length} zdań</div>}
                           </button>
                          );
                       })}

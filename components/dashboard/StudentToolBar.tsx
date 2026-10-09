@@ -106,14 +106,14 @@ const StudentToolBar: React.FC<StudentToolBarProps> = ({ tools, openId, onToggle
 
           <span className="min-w-0 w-full mt-auto">
             <span
-              className={`block text-[11px] sm:text-[13px] font-bold leading-snug tracking-tight ${
+              className={`block text-[12px] sm:text-[13px] font-bold leading-snug tracking-tight ${
                 isOpen ? 'text-primary' : 'text-text-hi'
               }`}
             >
               {tool.label}
             </span>
             {tool.meta && (
-              <span className="block text-[9px] sm:text-[11px] font-normal text-text-mute mt-0.5 sm:mt-1 leading-snug break-words">
+              <span className="block text-[12px] sm:text-[12px] font-normal text-text-mute mt-0.5 sm:mt-1 leading-snug break-words">
                 {tool.meta}
               </span>
             )}

@@ -102,7 +102,7 @@ export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> =
             {/* Oczekujące testy do rozwiązania */}
             {pendingTests.length > 0 && (
               <div className="space-y-2">
-                <span className="block text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
+                <span className="block text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-primary">
                   {language === 'pl' ? 'Testy do rozwiązania' : 'Pending tests'}
                 </span>
                 <ul className="space-y-2">
@@ -117,7 +117,7 @@ export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> =
                           <div className="flex items-center gap-2 text-xs text-content-muted mt-0.5">
                             <span>{test.questions?.length || 0} {language === 'pl' ? 'pytań' : 'questions'}</span>
                             {test.dueDate && (
-                              <span className="flex items-center gap-1 text-warn font-mono text-[11px]">
+                              <span className="flex items-center gap-1 text-warn font-mono text-[12px]">
                                 · <Clock size={11} /> do {test.dueDate}
                               </span>
                             )}
@@ -137,7 +137,7 @@ export const StudentTestsPanelSection: React.FC<StudentTestsPanelSectionProps> =
             {/* Ukończone testy i wyniki */}
             {finishedTests.length > 0 && (
               <div className="space-y-2 pt-1">
-                <span className="block text-[11px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted">
+                <span className="block text-[12px] font-mono font-bold uppercase tracking-[0.12em] text-content-muted">
                   {language === 'pl' ? 'Wyniki z poprzednich testów' : 'Previous test results'}
                 </span>
                 <ul className="space-y-2">

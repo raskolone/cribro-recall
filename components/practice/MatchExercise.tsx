@@ -174,7 +174,7 @@ const MatchExercise: React.FC<MatchExerciseProps> = ({ words, onExit, onComplete
                 ${isWrong ? 'bg-danger/20 border-danger animate-shake' : ''}
               `}
             >
-              <span className={`font-medium ${card.type === 'word' ? 'text-lg text-primary' : 'text-sm text-text-faint'}`}>
+              <span className={`font-medium ${card.type === 'word' ? 'text-lg text-primary' : 'text-base text-text-faint'}`}>
                 {card.text}
               </span>
             </div>

@@ -68,7 +68,7 @@ const VocabularyGenerator: React.FC = () => {
               id="targetSet"
               value={targetSetId}
               onChange={(e) => setTargetSetId(e.target.value)}
-              className="block w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-sm transition-all duration-200"
+              className="block w-full px-4 py-2 bg-base-100 dark:bg-dark-base-100 border border-base-300 dark:border-dark-base-300 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent sm:text-base transition-all duration-200"
             >
               <option value="">{i18n.t("None (Global)")}</option>
               {wordSets.map(set => (

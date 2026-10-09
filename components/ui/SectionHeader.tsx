@@ -44,7 +44,7 @@ const SectionHeader: React.FC<SectionHeaderProps> = ({
   >
     <div className="min-w-0">
       {kicker && (
-        <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.14em] text-text-mute">
+        <p className="mb-2 font-mono text-[12px] uppercase tracking-[0.14em] text-text-mute">
           {kicker}
         </p>
       )}

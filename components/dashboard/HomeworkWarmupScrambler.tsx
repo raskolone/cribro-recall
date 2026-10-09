@@ -183,7 +183,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
             <Flame size={14} className="text-primary animate-pulse" />
             Rozgrzewka językowa
           </span>
-          <span className="text-[11px] font-mono text-content-muted">
+          <span className="text-[12px] font-mono text-content-muted">
             {currentIndex + 1} z {warmupItems.length}
           </span>
         </div>
@@ -206,7 +206,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
 
         {/* Informacja o braku oceny (ADHD-friendly: zero presji) — nagłówek odpowiada rzeczywistemu typowi zadania, nie zawsze "rozsypance" */}
         <div className="flex items-center justify-between mb-4">
-          <span className="text-[11px] font-mono text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
+          <span className="text-[12px] font-mono text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
             <Zap size={13} className="text-emerald-400" />
             Niepunktowane • {currentItem.heading}
           </span>
@@ -215,7 +215,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
             <button
               type="button"
               onClick={() => setShowHint((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-content-muted hover:text-primary font-bold transition-colors cursor-pointer"
+              className="inline-flex items-center gap-1 text-[12px] text-content-muted hover:text-primary font-bold transition-colors cursor-pointer"
             >
               <Lightbulb size={12} />
               <span>{showHint ? 'Ukryj podpowiedź' : 'Podpowiedź'}</span>
@@ -252,7 +252,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1 text-[11px] text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 text-[12px] text-content-muted hover:text-white transition-colors cursor-pointer"
               >
                 <RotateCcw size={11} /> Resetuj
               </button>
@@ -308,7 +308,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                   data-testid="warmup-bank-tile"
                   disabled={isUsed || isDone}
                   onClick={() => handleSelectTile(bankIndex)}
-                  className={`px-3.5 py-2 rounded-xl border text-[15px] font-bold pointer-coarse:min-h-11 pointer-coarse:min-w-11 transition-all duration-150 active:scale-95 cursor-pointer ${
+                  className={`px-3.5 py-2 rounded-xl border text-base font-bold pointer-coarse:min-h-11 pointer-coarse:min-w-11 transition-all duration-150 active:scale-95 cursor-pointer ${
                     isUsed
                       ? 'opacity-20 border-transparent bg-base-100/20 text-content-muted cursor-not-allowed scale-90'
                       : `${colorClass} shadow-sm hover:scale-105`

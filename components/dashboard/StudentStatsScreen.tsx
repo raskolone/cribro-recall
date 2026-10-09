@@ -133,7 +133,7 @@ const SpeechBubbleInfo: React.FC<SpeechBubbleInfoProps> = ({
 
           <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/10">
             <span className="text-base">{isCorrect ? '🎉' : '👨‍🏫'}</span>
-            <span className={`font-bold uppercase tracking-wider text-[11px] ${isCorrect ? 'text-primary' : 'text-warn'}`}>
+            <span className={`font-bold uppercase tracking-wider text-[12px] ${isCorrect ? 'text-primary' : 'text-warn'}`}>
               {isCorrect ? 'Komentarz pedagogiczny' : 'Wskazówka językowa'}
             </span>
           </div>
@@ -143,7 +143,7 @@ const SpeechBubbleInfo: React.FC<SpeechBubbleInfoProps> = ({
           </p>
 
           {!isCorrect && correctTranslation && (
-            <div className="mt-2.5 pt-2 border-t border-white/10 text-[11px] text-primary">
+            <div className="mt-2.5 pt-2 border-t border-white/10 text-[12px] text-primary">
               <span className="font-semibold text-text-2 block">Wzorcowe zdanie:</span>
               <span className="italic font-mono">{correctTranslation}</span>
             </div>

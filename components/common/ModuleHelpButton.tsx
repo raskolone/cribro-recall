@@ -80,7 +80,7 @@ export const ModuleHelpButton: React.FC<ModuleHelpButtonProps> = ({ guideId }) =
                     >
                       {guide.title}
                     </h2>
-                    <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold shrink-0">
+                    <span className="text-[12px] uppercase font-mono px-2 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/30 font-bold shrink-0">
                       {guide.badge}
                     </span>
                   </div>
@@ -115,7 +115,7 @@ export const ModuleHelpButton: React.FC<ModuleHelpButtonProps> = ({ guideId }) =
                       key={idx}
                       className="flex gap-3 p-3 rounded-2xl bg-base-100/60 border border-line hover:border-primary/30 transition-colors"
                     >
-                      <span className="mt-0.5 w-5 h-5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[11px] font-black flex items-center justify-center shrink-0">
+                      <span className="mt-0.5 w-5 h-5 rounded-full bg-primary/20 border border-primary/40 text-primary text-[12px] font-black flex items-center justify-center shrink-0">
                         {idx + 1}
                       </span>
                       <div className="min-w-0">
@@ -132,7 +132,7 @@ export const ModuleHelpButton: React.FC<ModuleHelpButtonProps> = ({ guideId }) =
                 <div className="flex gap-3 p-3.5 rounded-2xl bg-amber-500/8 border border-amber-500/25">
                   <Lightbulb size={16} className="text-amber-400 shrink-0 mt-0.5" />
                   <div className="min-w-0">
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-amber-400 mb-1">
+                    <p className="text-[12px] font-bold uppercase tracking-wider text-amber-400 mb-1">
                       Wskazówka lektorska
                     </p>
                     <p className="text-xs text-content-muted leading-relaxed">{guide.proTip}</p>
