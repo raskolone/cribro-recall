@@ -1,14 +1,9 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import {
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  BookOpen,
   Languages,
   Award,
   ChevronRight,
-  ArrowRight,
   Flame,
   Dumbbell,
   GraduationCap
@@ -19,12 +14,12 @@ import { useAuth } from '../../context/AuthContext';
 import { SpecialTask, PracticeLog, User, StudentTest } from '../../types';
 import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
 import { formatPolishGreeting } from '../../utils/polishVocative';
-import { plZadania } from '../../utils/taskCountLabel';
+import StudentHeroAction from './StudentHeroAction';
 
 interface StudentHeroHeaderProps {
   studentId: string;
   onOpenHomework: (taskId?: string) => void;
-  onOpenExtraPractice: () => void;
+  onOpenFreePractice: () => void;
   onOpenTests?: (testId?: string) => void;
   streakCount?: number;
   streakHidden?: boolean;
@@ -48,17 +43,6 @@ const getMillis = (val: any): number => {
   return isNaN(t) ? 0 : t;
 };
 
-function formatTaskDate(dateStr?: string, lang: 'pl' | 'en' = 'pl'): string {
-  if (!dateStr) return '';
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return dateStr;
-    return d.toLocaleDateString(lang === 'pl' ? 'pl-PL' : 'en-US', { day: 'numeric', month: 'long' });
-  } catch {
-    return dateStr;
-  }
-}
-
 function plZdania(n: number, lang: 'pl' | 'en' = 'pl'): string {
   if (lang === 'en') {
     return n === 1 ? '1 translated sentence' : `${n} translated sentences`;
@@ -75,7 +59,7 @@ function plZdania(n: number, lang: 'pl' | 'en' = 'pl'): string {
 export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
   studentId,
   onOpenHomework,
-  onOpenExtraPractice,
+  onOpenFreePractice,
   onOpenTests,
   streakCount = 0,
   streakHidden = false,
@@ -229,75 +213,14 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
         </p>
       </div>
 
-      {/* Action Hero Card (Pojedynczy Kafelek Akcji) */}
+      {/* Kafelek akcji: praca domowa albo „nic nie czeka"; pod nim wejście do Ćwiczeń dowolnych */}
       <div className="relative z-10 pt-2">
-        {pendingTasks.length > 0 ? (
-          <div
-            onClick={() => onOpenHomework(pendingTasks[0].id)}
-            className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-primary/40 hover:border-primary shadow-lg hover:shadow-[0_0_25px_rgba(114,240,180,0.2)] transition-all cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
-          >
-            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-primary/20 text-primary border border-primary/40 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                <BookOpen size={22} />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-primary">
-                    {tText('Zadania od lektora', 'Teacher assignments')}
-                  </span>
-                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
-                    {plZadania(pendingTasks.length, language)}
-                  </span>
-                </div>
-                <h3 className="text-base sm:text-lg font-black text-text-hi truncate group-hover:text-primary transition-colors mt-0.5">
-                  {pendingTasks[0].title || (language === 'pl' ? 'Praca domowa' : 'Homework')}
-                </h3>
-                {pendingTasks[0].dueDate && (
-                  <p className="text-xs text-content-muted flex items-center gap-1.5 mt-0.5 font-mono">
-                    <Clock size={12} className="text-warn" />
-                    <span>Termin: {formatTaskDate(pendingTasks[0].dueDate, language)}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div className="shrink-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-primary text-accent-ink font-bold text-xs shadow-btn group-hover:brightness-110 transition-all">
-              <span>{tText('Rozwiąż zadania', 'Solve tasks')}</span>
-              <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </div>
-        ) : (
-          <div className="p-4 sm:p-5 rounded-2xl bg-base-100/60 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-2xl bg-primary/15 text-primary border border-primary/30 flex items-center justify-center shrink-0">
-                <CheckCircle2 size={22} />
-              </div>
-              <div>
-                <span className="text-sm sm:text-base font-bold text-text-hi block">
-                  {tText(
-                    'Brak nowych zadań od lektora. Sprawdź ćwiczenia w Moich zasobach',
-                    'No new homework from your teacher. Check exercises in My Resources'
-                  )}
-                </span>
-                <p className="text-xs text-content-muted mt-0.5">
-                  {tText(
-                    'Wszystkie przypisane prace są wykonane. Możesz powtórzyć materiał w zakładkach poniżej.',
-                    'All assigned tasks are completed. You can practice in the tabs below.'
-                  )}
-                </p>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={onOpenExtraPractice}
-              className="px-4 py-2.5 rounded-xl bg-primary text-accent-ink hover:bg-primary/90 font-bold text-xs flex items-center justify-center gap-2 shadow-btn transition-all shrink-0 cursor-pointer active:scale-95"
-            >
-              <Sparkles size={14} />
-              <span>{tText('Wykonaj ćwiczenia', 'Do exercises')}</span>
-            </button>
-          </div>
-        )}
+        <StudentHeroAction
+          pendingTasks={pendingTasks}
+          language={language}
+          onOpenHomework={onOpenHomework}
+          onOpenFreePractice={onOpenFreePractice}
+        />
       </div>
     </header>
   );

@@ -69,8 +69,8 @@ import GSAPModuleTransition from '../ui/GSAPModuleTransition';
  */
 
 interface TodayScreenProps {
-  /** Wejście w „Praktykę dodatkową" — otwarty generator, nigdy jako domyślne. */
-  onOpenExtraPractice?: () => void;
+  /** Wejście w „Ćwiczenia dowolne" — wybór rodzaju i zestawu, poza pracą domową. */
+  onOpenFreePractice?: () => void;
   /** Wejście w zadanie od lektora. */
   onOpenHomework?: (taskId?: string) => void;
   /** Wejście w testy kursanta. */
@@ -128,7 +128,7 @@ type Phase = 'loading' | 'ready' | 'empty' | 'session' | 'done';
 type Feedback = null | 'correct' | 'wrong';
 
 const TodayScreen: React.FC<TodayScreenProps> = ({
-  onOpenExtraPractice,
+  onOpenFreePractice,
   onOpenHomework,
   onOpenTests,
   onOpenScratchpad,
@@ -645,7 +645,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
       <StudentHeroHeader
         studentId={targetId}
         onOpenHomework={onOpenHomework || (() => {})}
-        onOpenExtraPractice={onOpenExtraPractice || (() => {})}
+        onOpenFreePractice={onOpenFreePractice || (() => {})}
         onOpenTests={onOpenTests || (() => {})}
         streakCount={user?.streakCount || 0}
         streakHidden={user?.streakHidden}

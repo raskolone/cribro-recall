@@ -21,7 +21,7 @@ import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'extra-practice' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios' | 'scratchpad';
+type View = 'dashboard' | 'extra-practice' | 'free-practice' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios' | 'scratchpad';
 
 import AdminPanel from '../admin/AdminPanel';
 import StandaloneStudentDatabaseScreen from '../admin/StandaloneStudentDatabaseScreen';
@@ -44,6 +44,7 @@ import StudentTestsScreen from '../tests/StudentTestsScreen';
 import AdminStatsScreen from '../admin/AdminStatsScreen';
 import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
+import FreePracticeScreen from '../practice/FreePracticeScreen';
 import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
@@ -655,6 +656,23 @@ const Dashboard: React.FC = () => {
       }
       return homeworkV1;
     }
+    if (view === 'free-practice' && !isTeacher) {
+      // Ćwiczenia dowolne: wybór rodzaju i zestawu, start przez istniejący moduł fiszek
+      // (`flashcard-study`). Nic tu nie dotyka prac domowych — zapis wyniku robi
+      // `saveSession` w module nauki, jak przy ćwiczeniu z „Mojego słownictwa".
+      return (
+        <FreePracticeScreen
+          sets={sets}
+          onStart={(launch) => {
+            (window as any)._initialStudyMode = launch.mode;
+            handleNavigate(launch.view, { setId: launch.setId });
+          }}
+          onBack={() => handleNavigate('dashboard')}
+          onOpenVocabulary={() => handleNavigate('flashcard-sets')}
+          onOpenExtraPractice={() => handleNavigate('extra-practice')}
+        />
+      );
+    }
     if (view === 'settings') {
       return <SettingsScreen />;
     }
@@ -770,7 +788,7 @@ const Dashboard: React.FC = () => {
       }
 
       const panelProps = {
-        onOpenExtraPractice: () => handleNavigate('extra-practice'),
+        onOpenFreePractice: () => handleNavigate('free-practice'),
         onOpenHomework: (taskId?: string) =>
           handleNavigate('homework', taskId ? { taskId } : undefined),
         onOpenTests: (testId?: string) =>
