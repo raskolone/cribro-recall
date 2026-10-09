@@ -937,7 +937,11 @@ const Dashboard: React.FC = () => {
           title={isTeacher ? 'Przewodnik po panelu lektora' : 'Przewodnik po panelu'}
         />
         <div className="flex-1 min-h-0 flex flex-col">
-          <GSAPModuleTransition activeKey={view} className="flex-1 min-h-0 flex flex-col">
+          {/* `max-md:[&>*]:w-full max-md:[&>*]:min-w-0`: korzenie ekranów mają `max-w-* mx-auto`, a auto-margines
+              w kontenerze flex wyłącza rozciąganie — szerokość brała się wtedy z treści (długi tytuł
+              w `truncate` = 672 px na telefonie) i `main` obcinał ekran po prawej. Tylko poniżej `md`:
+              od `md` ekrany zostają jak były (część celowo węższa niż `max-w-*`). */}
+          <GSAPModuleTransition activeKey={view} className="flex-1 min-h-0 flex flex-col max-md:[&>*]:w-full max-md:[&>*]:min-w-0">
             {renderContent()}
           </GSAPModuleTransition>
         </div>

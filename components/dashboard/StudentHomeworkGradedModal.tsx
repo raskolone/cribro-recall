@@ -241,7 +241,7 @@ const StudentHomeworkGradedModal: React.FC<StudentHomeworkGradedModalProps> = ({
                     <MessageSquareQuote size={15} />
                     <span>Komentarz i wskazówki od lektora:</span>
                   </div>
-                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/[0.08] to-base-100/80 border border-primary/20 text-content text-sm leading-relaxed whitespace-pre-wrap font-sans">
+                  <div className="p-4 rounded-2xl bg-gradient-to-br from-primary/[0.08] to-base-100/80 border border-primary/20 text-content text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-sans">
                     {feedback}
                   </div>
                 </div>

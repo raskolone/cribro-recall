@@ -982,7 +982,7 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                 <MessageSquareQuote size={18} />
                 <span>{L.teacherFeedback}</span>
               </div>
-              <p className="text-[15px] sm:text-[16px] text-white leading-relaxed whitespace-pre-wrap font-sans font-medium">
+              <p className="text-[15px] sm:text-[16px] text-white leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] font-sans font-medium">
                 {viewingGradedTask.teacherFeedback}
               </p>
               {viewingGradedTask.reviewedAt && (
@@ -1743,9 +1743,9 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
                         </div>
 
                         {task.teacherFeedback && (
-                          <p className="text-xs text-primary/85 bg-primary/[0.06] border border-primary/15 px-3 py-2 rounded-xl line-clamp-2 italic font-sans flex items-start gap-2">
+                          <p className="text-xs text-primary/85 bg-primary/[0.06] border border-primary/15 px-3 py-2 rounded-xl line-clamp-2 break-words [overflow-wrap:anywhere] italic font-sans flex items-start gap-2">
                             <MessageSquareQuote size={13} className="shrink-0 mt-0.5 text-primary" />
-                            <span>"{task.teacherFeedback}"</span>
+                            <span className="min-w-0">"{task.teacherFeedback}"</span>
                           </p>
                         )}
                       </div>

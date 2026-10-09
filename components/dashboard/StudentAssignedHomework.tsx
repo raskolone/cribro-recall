@@ -261,11 +261,11 @@ export const StudentAssignedHomework: React.FC<StudentAssignedHomeworkProps> = (
                   {isGraded && task.teacherFeedback && (
                     <div className="mt-3 p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-xs text-content flex items-start gap-2">
                       <MessageSquare size={14} className="text-primary shrink-0 mt-0.5" />
-                      <div className="space-y-0.5">
+                      <div className="space-y-0.5 min-w-0">
                         <span className="font-bold text-primary block">
                           {language === 'pl' ? 'Komentarz lektora:' : 'Teacher feedback:'}
                         </span>
-                        <p className="text-content-muted line-clamp-2">{task.teacherFeedback}</p>
+                        <p className="text-content-muted line-clamp-2 break-words [overflow-wrap:anywhere]">{task.teacherFeedback}</p>
                       </div>
                     </div>
                   )}

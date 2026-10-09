@@ -8,6 +8,7 @@ import Button from '../ui/Button';
 import TTSButtons from './TTSButtons';
 import { FlashcardSet } from '../../types';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
+import { formatDisplayDateValue } from '../../utils/displayDate';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
 interface FlashcardSetsScreenProps {
@@ -187,22 +188,12 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     } catch (e) {}
   };
 
-  const formatDisplayDate = (dateVal: any) => {
-    if (!dateVal) return '';
-    if (typeof dateVal === 'string') return dateVal;
-    if (dateVal.toDate && typeof dateVal.toDate === 'function') {
-      return dateVal.toDate().toLocaleDateString();
-    }
-    if (dateVal.seconds) {
-      return new Date(dateVal.seconds * 1000).toLocaleDateString();
-    }
-    return String(dateVal);
-  };
+  const formatDisplayDate = (dateVal: any) => formatDisplayDateValue(dateVal, language === 'pl' ? 'pl-PL' : 'en-GB');
 
   const getSetCleanTitle = (set: FlashcardSet) => {
     const raw = set.title || set.lessonTopic || '';
     const cleaned = cleanVocabularyTopic(raw);
-    return cleaned || set.lessonDate || formatDisplayDate(set.createdAt) || (language === 'pl' ? 'Zestaw słówek' : 'Word Set');
+    return cleaned || formatDisplayDate(set.lessonDate) || formatDisplayDate(set.createdAt) || (language === 'pl' ? 'Zestaw słówek' : 'Word Set');
   };
 
   const sortedSets = useMemo(() => {
@@ -310,10 +301,10 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
              {language === 'pl' ? 'Nowe słownictwo' : 'New vocabulary'}
            </div>
         )}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 max-sm:w-full">
           <div className="flex items-center gap-3 mb-1">
             <h3 
-              className="text-lg font-bold hover:text-warn transition-colors cursor-pointer hover:underline truncate" 
+              className="min-w-0 text-lg font-bold hover:text-warn transition-colors cursor-pointer hover:underline truncate" 
               onClick={() => { markSetAsChecked(set.id); handlePreviewSet(set.id); }}
             >
               {cleanTitle}
