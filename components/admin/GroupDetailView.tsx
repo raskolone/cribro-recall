@@ -216,7 +216,7 @@ const GroupDetailView: React.FC<GroupDetailViewProps> = ({
               {
                 id: 'homework',
                 label: i18n.t('Prace domowe'),
-                desc: i18n.t('Zadaj pracę całej grupie'),
+                desc: i18n.t('Lista prac grupy i przypisywanie nowych'),
                 icon: ClipboardList,
                 spin: false,
                 disabled: isArchived,

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { User, SpecialTask, HomeworkType, TranslationExercise, FillInTheBlankExercise, ErrorCorrectionExercise, LessonRecord, StudentTest } from '../../types';
-import { collection, collectionGroup, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, collectionGroup, getDocs, addDoc, updateDoc, doc, query, where, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../../firebase';
 import { generateTranslationExercises, generateFillInTheBlankExercises, evaluateErrorCorrectionSentence, evaluateTranslations, evaluateTeacherHomework, processBulkSentences, generateHomeworkChatPipeline } from '../../services/geminiService';
 import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
@@ -36,9 +36,44 @@ import { useEscapeModal } from '../../hooks/useEscapeModal';
 import { useIsDesktop } from '../../hooks/useMediaQuery';
 import HomeworkTaskList from './HomeworkTaskList';
 import HomeworkGroupRow from './HomeworkGroupRow';
-import { buildHomeworkRows, isActiveRow, isArchivedRow, HomeworkRow } from '../../utils/groupHomeworkRows';
+import BulkSelectCheckbox from './BulkSelectCheckbox';
+import HomeworkBulkDeleteDialog, { BulkDeletePhase } from './HomeworkBulkDeleteDialog';
+import TeacherReviewModal from './TeacherReviewModal';
+import MenuDropdown from '../ui/MenuDropdown';
+import { filterTasksByGroup, isActiveRow, HomeworkRow } from '../../utils/groupHomeworkRows';
 import {
-  filterHomeworkRows,
+  BulkDeleteItem,
+  BulkDeleteReport,
+  collectViewItems,
+  expandHomeworkRow,
+  homeworkItemKey,
+  runBulkDelete,
+  selectionState,
+  testBulkItem,
+  testItemKey,
+  toggleItems,
+} from '../../utils/homeworkBulkDelete';
+import { deleteHomeworkTask, deleteStudentTest } from '../../services/homeworkDeletion';
+import { getGroupById, fetchGroupsForCaller } from '../../services/groupService';
+import { Group } from '../../types/group';
+import {
+  buildRecipientFilterOptions,
+  filterTestsForRecipient,
+  groupFilterValue,
+  initialRecipientFilter,
+  recipientFilterParts,
+  RecipientFilterValue,
+  ALL_RECIPIENTS,
+} from '../../utils/homeworkRecipientFilter';
+import { canUseBulkActions } from '../../utils/homeworkBulkAccess';
+import {
+  readViewMode,
+  selectHomeworkViewRows,
+  viewScopeFor,
+  writeViewMode,
+} from '../../utils/homeworkListView';
+import i18n from 'i18next';
+import {
   HOMEWORK_SEARCH_PLACEHOLDER,
   HOMEWORK_SEARCH_CLEAR_LABEL,
   HOMEWORK_SEARCH_EMPTY_TITLE,
@@ -78,13 +113,19 @@ import {
   ChevronUp,
   ShieldCheck,
   ChevronDown,
-  Search
+  Search,
+  Users,
+  Zap
 } from 'lucide-react';
 
 interface HomeworkScreenProps {
   initialTaskId?: string | null;
   initialStudentId?: string | null;
-  /** Otwiera od razu kreator w trybie „Grupa" z tą grupą wybraną (kafelek grupy w CRM). */
+  /**
+   * Karta grupy w CRM: otwiera LISTĘ prac tej grupy (filtr po `groupId`,
+   * do wyczyszczenia w pasku filtrów). Kreator z tą grupą wybraną otwiera
+   * „Przypisz pracę domową" albo „Przypisz pierwszą pracę".
+   */
   initialGroupId?: string | null;
   initialFilterStatus?: string | null;
   onBack?: () => void;
@@ -95,6 +136,12 @@ interface HomeworkScreenProps {
    * jej nagłówek.
    */
   headless?: boolean;
+  /**
+   * „Szybkie akcje" → „Zaznacz do usunięcia" (lektor, widok listy). Włączane
+   * tylko przez moduł „Zadania i testy" — zakładka prac w profilu kursanta
+   * zostaje bez trybu zaznaczania.
+   */
+  bulkActions?: boolean;
 }
 
 export const getTaskDateMillis = (val: any): number => {
@@ -316,6 +363,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   initialFilterStatus = null,
   onBack,
   headless = false,
+  bulkActions = false,
 }) => {
   const { user, updateUserStreak } = useAuth();
   const { language } = useLanguage();
@@ -355,8 +403,16 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   // Wyłącznie prezentacyjne — nie wpływają na zapytania Firestore ani logikę oceniania.
   const [contentTab, setContentTab] = useState<'homework' | 'tests' | 'archived'>('homework');
 
-  // Filter state for teacher
-  const [filterStudentId, setFilterStudentId] = useState<string>('all');
+  // Filtr lektora „Kursant": JEDNA wartość — `all`, `student:<id>` albo
+  // `group:<id>` (utils/homeworkRecipientFilter.ts). Chip „Grupa: …" z karty
+  // grupy i lista rozwijana to ten sam stan, więc kursant i grupa wykluczają się.
+  const [recipientFilter, setRecipientFilter] = useState<RecipientFilterValue>(() =>
+    initialRecipientFilter(initialStudentId, initialGroupId)
+  );
+  const { studentId: filterStudentId, groupId: filterGroupId } = recipientFilterParts(recipientFilter);
+  // Grupy lektora do listy „Kursant". `null` = jeszcze nie wczytane albo błąd —
+  // wtedy lista ma samą sekcję kursantów, jak dotąd.
+  const [teacherGroups, setTeacherGroups] = useState<Group[] | null>(null);
   /**
    * Lista czy kafelki.
    *
@@ -368,9 +424,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
    * urządzeniu, a nie cecha konta. Lektor na tablecie może chcieć kafelków,
    * a przy biurku listy.
    */
+  // Klucz zapamiętanego widoku jest osobny dla sekcji (moduł „Zadania i
+  // testy" vs zakładka prac w profilu kursanta) — przełączenie w jednej nie
+  // zmienia drugiej (utils/homeworkListView.ts).
+  const viewScope = viewScopeFor(headless);
   const [tileView, setTileView] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('cribro:homework-view') === 'tiles';
+      return readViewMode(localStorage, viewScope) === 'tiles';
     } catch {
       return false;
     }
@@ -409,15 +469,54 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   useEffect(() => {
     if (initialStudentId) {
       setSelectedStudentId(initialStudentId);
-      setFilterStudentId(initialStudentId);
+      setRecipientFilter(initialRecipientFilter(initialStudentId, null));
     }
   }, [initialStudentId]);
 
+  // Karta grupy → LISTA prac tej grupy, nie kreator. Kreator z wybraną grupą
+  // otwiera „Przypisz pracę domową" (albo „Przypisz pierwszą pracę" przy
+  // pustej liście) — tak jak dotąd przy `initialGroupId`.
+  const [fetchedGroupName, setFetchedGroupName] = useState<string | null>(null);
   useEffect(() => {
     if (initialGroupId) {
-      setActiveTab('create');
+      setRecipientFilter(groupFilterValue(initialGroupId));
+      setContentTab('homework');
+      setActiveTab('list');
     }
   }, [initialGroupId]);
+
+  // Grupy lektora do listy „Kursant" — to samo źródło co karta grup
+  // (`/api/groups`). Błąd → lista bez sekcji grup, bez komunikatu.
+  useEffect(() => {
+    if (!isTeacher) return;
+    let active = true;
+    fetchGroupsForCaller()
+      .then((groups) => {
+        if (active) setTeacherGroups(groups);
+      })
+      .catch((err) => {
+        console.warn('Nie udało się pobrać grup do filtra prac domowych:', err);
+        if (active) setTeacherGroups(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [isTeacher]);
+
+  // Nazwa grupy do paska filtrów — także gdy grupa nie ma jeszcze żadnej pracy.
+  useEffect(() => {
+    if (!filterGroupId) {
+      setFetchedGroupName(null);
+      return;
+    }
+    let active = true;
+    getGroupById(filterGroupId).then((group) => {
+      if (active) setFetchedGroupName(group?.name || null);
+    });
+    return () => {
+      active = false;
+    };
+  }, [filterGroupId]);
   const [homeworkType, setHomeworkType] = useState<HomeworkType>('translation');
   const [title, setTitle] = useState<string>('');
   const [instructions, setInstructions] = useState<string>('');
@@ -703,6 +802,13 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const completedStudentTests = React.useMemo(() => {
     return studentTests.filter((t) => t.status === 'graded' || t.status === 'completed' || Boolean(t.completedAt));
   }, [studentTests]);
+
+  // Testy w zakładce „Sprawdzone" — przy filtrze grupy odpadają (testy nie
+  // mają `groupId`), żeby widok i „Zaznacz wszystko w widoku" trzymały filtr.
+  const archivedStudentTests = React.useMemo(
+    () => filterTestsForRecipient(completedStudentTests, recipientFilter),
+    [completedStudentTests, recipientFilter]
+  );
 
   // Auto-select initial task if provided
   useEffect(() => {
@@ -1094,7 +1200,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     if (!taskToDelete?.id) return;
     setIsDeleting(true);
     try {
-      await deleteDoc(doc(db, 'specialTasks', taskToDelete.id));
+      await deleteHomeworkTask(taskToDelete.id);
       setTasks(prev => prev.filter(t => t.id !== taskToDelete.id));
       setTaskToDelete(null);
       if (previewTask?.id === taskToDelete.id) {
@@ -1550,51 +1656,130 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     }
   };
 
-  // Filtered tasks for Teacher - base filter by student
-  const teacherStudentTasks = React.useMemo(() => {
-    return tasks.filter(t => {
-      if (filterStudentId !== 'all') {
-        const targetStudent = students.find(s => s.id === filterStudentId);
-        if (targetStudent) {
-          if (!isTaskForStudent(t, targetStudent)) return false;
-        } else if (t.studentId !== filterStudentId) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [tasks, students, filterStudentId]);
+  // Grupa z filtra nie ma żadnej pracy (niezależnie od filtra kursanta/statusu).
+  const filterGroupIsEmpty = React.useMemo(
+    () => Boolean(filterGroupId) && filterTasksByGroup(tasks, filterGroupId).length === 0,
+    [tasks, filterGroupId]
+  );
+
+  // Nazwa grupy z filtra: z jej prac, a gdy prac nie ma — z dokumentu grupy.
+  const filterGroupName = React.useMemo(() => {
+    if (!filterGroupId) return '';
+    const fromTasks = tasks.find((t) => t.groupId === filterGroupId && t.groupName)?.groupName;
+    const fromGroups = teacherGroups?.find((g) => g.id === filterGroupId)?.name;
+    return fromTasks || fromGroups || fetchedGroupName || i18n.t('Wybrana grupa');
+  }, [filterGroupId, tasks, teacherGroups, fetchedGroupName]);
+
+  // Lista „Kursant": „Wszyscy kursanci", sekcja „Grupy" (aktywne, alfabetycznie,
+  // z liczbą członków) i sekcja „Kursanci". Ta sama lista w obu zakładkach.
+  const recipientOptions = React.useMemo(
+    () =>
+      buildRecipientFilterOptions({
+        groups: teacherGroups,
+        students,
+        studentLabel: (st: User) => formatStudentDisplayName(st),
+        selected: recipientFilter,
+        selectedGroupName: filterGroupName,
+      }),
+    [teacherGroups, students, recipientFilter, filterGroupName]
+  );
+
+  const renderRecipientSelect = () => (
+    <div className="flex items-center gap-2">
+      <label htmlFor="homework-recipient-filter" className="text-xs font-bold text-content-muted">
+        {i18n.t('Kursant')}:
+      </label>
+      <select
+        id="homework-recipient-filter"
+        data-testid="homework-recipient-filter"
+        aria-label={i18n.t('Kursant lub grupa')}
+        value={recipientFilter}
+        onChange={(e) => setRecipientFilter(e.target.value)}
+        className="px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs max-w-[16rem]"
+      >
+        <option value={ALL_RECIPIENTS}>{i18n.t('Wszyscy kursanci')}</option>
+        {recipientOptions.groups.length > 0 && (
+          <optgroup label={i18n.t('Grupy')}>
+            {recipientOptions.groups.map((g) => (
+              <option key={g.value} value={g.value}>
+                {i18n.t('{{name}} ({{count}} os.)', { name: g.name, count: g.memberCount })}
+              </option>
+            ))}
+          </optgroup>
+        )}
+        {recipientOptions.groups.length > 0 ? (
+          <optgroup label={i18n.t('Kursanci')}>
+            {recipientOptions.students.map((st) => (
+              <option key={st.value} value={st.value}>
+                {st.label}
+              </option>
+            ))}
+          </optgroup>
+        ) : (
+          recipientOptions.students.map((st) => (
+            <option key={st.value} value={st.value}>
+              {st.label}
+            </option>
+          ))
+        )}
+      </select>
+    </div>
+  );
+
+  const renderGroupFilterChip = () =>
+    filterGroupId ? (
+      <span
+        data-testid="homework-group-filter"
+        className="inline-flex items-center gap-1.5 pl-3 pr-1 py-1 rounded-full bg-primary/15 border border-primary/35 text-primary text-xs font-bold max-w-full"
+      >
+        <Users size={13} className="shrink-0" />
+        <span className="truncate">{i18n.t('Grupa: {{name}}', { name: filterGroupName })}</span>
+        <button
+          type="button"
+          onClick={() => setRecipientFilter(ALL_RECIPIENTS)}
+          aria-label={i18n.t('Wyczyść filtr grupy')}
+          title={i18n.t('Wyczyść filtr grupy')}
+          className="p-1 rounded-full hover:bg-primary/20 cursor-pointer shrink-0"
+        >
+          <X size={12} />
+        </button>
+      </span>
+    ) : null;
 
   // Wiersze listy lektora: prace przypisane wielu kursantom naraz (wspólny
   // `homeworkSetId`, co najmniej 2 dokumenty) zwinięte w jeden wiersz. Przy
   // wybranym konkretnym kursancie nie zwijamy — dokumenty pojedynczo.
   // Zadania silnika v2 nie są zwijane (ich status żyje w `attempts`).
   const rowStudentName = React.useCallback((t: SpecialTask) => resolveStudentName(t), [resolveStudentName]);
-  const allHomeworkRows = React.useMemo(
+  const matchesFilteredStudent = React.useCallback(
+    (t: SpecialTask) => {
+      if (filterStudentId === 'all') return true;
+      const targetStudent = students.find((s) => s.id === filterStudentId);
+      return targetStudent ? isTaskForStudent(t, targetStudent) : t.studentId === filterStudentId;
+    },
+    [students, filterStudentId]
+  );
+  // Jedno źródło wierszy dla Listy i Kafelków (utils/homeworkListView.ts):
+  // grupa, kursant, status i wyszukiwarka liczą się tu raz, a oba widoki
+  // rysują ten sam `visibleActive`.
+  const viewRows = React.useMemo(
     () =>
-      buildHomeworkRows(teacherStudentTasks, {
+      selectHomeworkViewRows({
+        tasks,
+        groupId: filterGroupId,
+        matchesStudent: matchesFilteredStudent,
+        collapseGroups: filterStudentId === 'all',
+        status: filterStatus,
+        search: homeworkSearch,
         getName: rowStudentName,
         canGroup: (t) => !isV2Task(t),
-        group: filterStudentId === 'all',
       }),
-    [teacherStudentTasks, rowStudentName, filterStudentId]
+    [tasks, filterGroupId, matchesFilteredStudent, filterStudentId, filterStatus, homeworkSearch, rowStudentName]
   );
-  const activeRows = React.useMemo(
-    () => allHomeworkRows.filter((r) => isActiveRow(r, filterStatus)),
-    [allHomeworkRows, filterStatus]
-  );
-  const archivedRows = React.useMemo(
-    () => allHomeworkRows.filter(isArchivedRow).sort((a, b) => b.activityMs - a.activityMs),
-    [allHomeworkRows]
-  );
-  const visibleActiveRows = React.useMemo(
-    () => filterHomeworkRows(activeRows, homeworkSearch, rowStudentName),
-    [activeRows, homeworkSearch, rowStudentName]
-  );
-  const visibleArchivedRows = React.useMemo(
-    () => filterHomeworkRows(archivedRows, homeworkSearch, rowStudentName),
-    [archivedRows, homeworkSearch, rowStudentName]
-  );
+  const allHomeworkRows = viewRows.all;
+  const archivedRows = viewRows.archived;
+  const visibleActiveRows = viewRows.visibleActive;
+  const visibleArchivedRows = viewRows.visibleArchived;
   const isSearching = homeworkSearch.trim().length > 0;
   // Kursant widzi własne dokumenty, bez zwijania i bez wyszukiwarki.
   const homeworkRows: HomeworkRow[] = React.useMemo(
@@ -1693,6 +1878,119 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
     }
   };
 
+  // ---------------- SZYBKIE AKCJE: ZAZNACZ DO USUNIĘCIA ----------------
+  // Zaznaczenie trzyma dokumenty, nie wiersze (utils/homeworkBulkDelete.ts),
+  // więc przetrwa zmianę zakładki i filtrów, a wiersz grupowy to wszystkie
+  // dokumenty zestawu. „Zaznacz wszystko w widoku" bierze tylko to, co lista
+  // pokazuje po filtrach i wyszukiwarce.
+  const [bulkMode, setBulkMode] = useState(false);
+  const [bulkSelection, setBulkSelection] = useState<Map<string, BulkDeleteItem>>(() => new Map());
+  const [bulkPhase, setBulkPhase] = useState<BulkDeletePhase | null>(null);
+  const [bulkProgress, setBulkProgress] = useState({ done: 0, total: 0 });
+  const [bulkReport, setBulkReport] = useState<BulkDeleteReport | null>(null);
+  const bulkRunningRef = React.useRef(false);
+  // Wejście z karty grupy to ta sama lista z filtrem grupy — też ma menu.
+  const bulkEnabled = canUseBulkActions({
+    bulkActions,
+    openedFromGroup: Boolean(initialGroupId),
+    isTeacher,
+    activeTab,
+    hasActiveTask: Boolean(activeTask),
+  });
+  const bulkActive = bulkEnabled && bulkMode;
+
+  const exitBulkMode = () => {
+    setBulkMode(false);
+    setBulkSelection(new Map());
+  };
+
+  // Wyjście z listy (kreator, rozwiązywanie) kończy tryb zaznaczania.
+  useEffect(() => {
+    if (!bulkEnabled && bulkMode) exitBulkMode();
+  }, [bulkEnabled, bulkMode]);
+
+  const bulkItemOptions = React.useMemo(
+    () => ({
+      getName: rowStudentName,
+      // Zadania v2 nie zmieniają `status` — oddanie widać po próbie czekającej na ocenę.
+      isHandedIn: (t: SpecialTask) => Boolean(t.id && v2NeedsReviewTaskIds.has(t.id)),
+    }),
+    [rowStudentName, v2NeedsReviewTaskIds]
+  );
+
+  const bulkViewItems = React.useMemo(() => {
+    if (!bulkActive) return [];
+    if (contentTab === 'homework') return collectViewItems(homeworkRows, [], bulkItemOptions);
+    if (contentTab === 'tests') return collectViewItems([], activeStudentTests, bulkItemOptions);
+    return collectViewItems(visibleArchivedRows, archivedStudentTests, bulkItemOptions);
+  }, [bulkActive, contentTab, homeworkRows, activeStudentTests, visibleArchivedRows, archivedStudentTests, bulkItemOptions]);
+
+  const bulkSelectedItems = React.useMemo(() => Array.from(bulkSelection.values()), [bulkSelection]);
+
+  const rowSelection = bulkActive
+    ? {
+        stateOf: (row: HomeworkRow) => selectionState(bulkSelection, expandHomeworkRow(row, bulkItemOptions)),
+        toggle: (row: HomeworkRow) =>
+          setBulkSelection((prev) => toggleItems(prev, expandHomeworkRow(row, bulkItemOptions))),
+      }
+    : undefined;
+
+  const renderRowCheckbox = (row: HomeworkRow, title: string, student: string) =>
+    rowSelection ? (
+      <BulkSelectCheckbox
+        state={rowSelection.stateOf(row)}
+        onToggle={() => rowSelection.toggle(row)}
+        label={i18n.t('Zaznacz: „{{title}}" — {{student}}', { title, student })}
+      />
+    ) : null;
+
+  const renderTestCheckbox = (test: StudentTest) => {
+    if (!bulkActive) return null;
+    const items = [testBulkItem(test)].filter((item): item is BulkDeleteItem => item !== null);
+    if (items.length === 0) return null;
+    return (
+      <BulkSelectCheckbox
+        state={selectionState(bulkSelection, items)}
+        onToggle={() => setBulkSelection((prev) => toggleItems(prev, items))}
+        label={i18n.t('Zaznacz: „{{title}}" — {{student}}', {
+          title: test.title || 'Test',
+          student: test.studentName || 'Kursant',
+        })}
+      />
+    );
+  };
+
+  const handleBulkDelete = async () => {
+    if (bulkRunningRef.current) return;
+    const items = Array.from(bulkSelection.values());
+    if (items.length === 0) return;
+    bulkRunningRef.current = true;
+    setBulkProgress({ done: 0, total: items.length });
+    setBulkPhase('running');
+    try {
+      const report = await runBulkDelete(
+        items,
+        (item) =>
+          item.kind === 'homework'
+            ? deleteHomeworkTask(item.id)
+            : deleteStudentTest(item.studentId as string, item.id),
+        { onProgress: (done, total) => setBulkProgress({ done, total }) }
+      );
+      // Prace przychodzą na żywo (onSnapshot), testy są wczytywane raz — usunięte
+      // zdejmujemy od razu, żeby lista i liczniki zakładek nie czekały.
+      const removed = new Set(report.deleted.map((item) => item.key));
+      setTasks((prev) => prev.filter((t) => !(t.id && removed.has(homeworkItemKey(t.id)))));
+      setStudentTests((prev) =>
+        prev.filter((t) => !(t.id && t.studentId && removed.has(testItemKey(t.studentId, t.id))))
+      );
+      setBulkReport(report);
+      setBulkPhase('done');
+      exitBulkMode();
+    } finally {
+      bulkRunningRef.current = false;
+    }
+  };
+
   return (
     <div className={headless ? 'space-y-5' : 'max-w-6xl mx-auto space-y-6 pb-20'}>
       <ActionToast toast={reviewToast} onDismiss={() => setReviewToast(null)} />
@@ -1725,6 +2023,37 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         {isTeacher && (
           <div className="flex flex-col sm:items-end gap-2">
             <div className="flex gap-2">
+              {bulkEnabled && (
+                <MenuDropdown
+                  align="end"
+                  width={280}
+                  aria-label={i18n.t('Szybkie akcje')}
+                  triggerClassName="px-4 py-2 rounded-full border border-line-strong bg-base-100/60 text-content-muted hover:text-text-hi text-sm font-semibold flex items-center gap-1.5 cursor-pointer transition-colors"
+                  trigger={
+                    <>
+                      <Zap size={15} />
+                      <span>{i18n.t('Szybkie akcje')}</span>
+                      <ChevronDown size={13} />
+                    </>
+                  }
+                  sections={[
+                    {
+                      id: 'bulk',
+                      items: [
+                        {
+                          id: 'select-to-delete',
+                          label: i18n.t('Zaznacz do usunięcia'),
+                          description: i18n.t('Pola wyboru przy pracach i testach, potem „Usuń zaznaczone"'),
+                          icon: <Trash2 size={14} />,
+                          checked: bulkMode,
+                          variant: 'danger',
+                          onSelect: () => (bulkMode ? exitBulkMode() : setBulkMode(true)),
+                        },
+                      ],
+                    },
+                  ]}
+                />
+              )}
               {activeTab === 'create' && (
                 <Button
                   onClick={() => {
@@ -2662,7 +2991,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               {([
                 { key: 'homework', label: 'Prace domowe', count: activeHomeworkCount },
                 { key: 'tests', label: 'Moje testy', count: activeStudentTests.length },
-                { key: 'archived', label: 'Sprawdzone przez nauczyciela', count: archivedRows.length + completedStudentTests.length },
+                { key: 'archived', label: 'Sprawdzone przez nauczyciela', count: archivedRows.length + archivedStudentTests.length },
               ] as const).map((tab) => {
                 const isActive = contentTab === tab.key;
                 const highlightCount = tab.key !== 'archived' && tab.count > 0;
@@ -2697,24 +3026,47 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             </div>
           )}
 
+          {/* Pasek trybu „Zaznacz do usunięcia" — liczy dokumenty, nie wiersze */}
+          {bulkActive && (
+            <div
+              data-testid="bulk-action-bar"
+              className="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 rounded-xl border border-danger/30 bg-base-200 shadow-lg"
+            >
+              <BulkSelectCheckbox
+                state={selectionState(bulkSelection, bulkViewItems)}
+                onToggle={() => setBulkSelection((prev) => toggleItems(prev, bulkViewItems))}
+                disabled={bulkViewItems.length === 0}
+                label={i18n.t('Zaznacz wszystko w widoku ({{count}})', { count: bulkViewItems.length })}
+              >
+                <span className="text-xs font-semibold text-text-hi">
+                  {i18n.t('Zaznacz wszystko w widoku ({{count}})', { count: bulkViewItems.length })}
+                </span>
+              </BulkSelectCheckbox>
+              <span className="text-xs font-mono font-bold text-content-muted tabular-nums" aria-live="polite">
+                {i18n.t('Zaznaczono: {{count}}', { count: bulkSelection.size })}
+              </span>
+              <div className="ml-auto flex items-center gap-2">
+                <Button size="sm" variant="secondary" onClick={exitBulkMode}>
+                  {i18n.t('Anuluj')}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  disabled={bulkSelection.size === 0}
+                  onClick={() => setBulkPhase('confirm')}
+                  className="flex items-center gap-1.5"
+                >
+                  <Trash2 size={14} />
+                  {i18n.t('Usuń zaznaczone ({{count}})', { count: bulkSelection.size })}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {/* Teacher Filters */}
           {isTeacher && contentTab === 'homework' && (
             <div className="flex flex-wrap items-center gap-4 p-4 rounded-xl bg-base-200/60 border border-white/10">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-content-muted">Kursant:</span>
-                <select
-                  value={filterStudentId}
-                  onChange={(e) => setFilterStudentId(e.target.value)}
-                  className="px-3 py-1.5 bg-base-100 text-white border border-white/10 rounded-lg text-xs"
-                >
-                  <option value="all">Wszyscy kursanci</option>
-                  {students.map((st) => (
-                    <option key={st.id} value={st.id}>
-                      {formatStudentDisplayName(st)}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {renderRecipientSelect()}
 
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-content-muted">Status:</span>
@@ -2728,6 +3080,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   <option value="submitted">Przesłane do oceny</option>
                 </select>
               </div>
+
+              {renderGroupFilterChip()}
 
               {renderSearchBox()}
 
@@ -2752,12 +3106,9 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                         onClick={() => {
                           setTileView(option.tiles);
                           try {
-                            localStorage.setItem(
-                              'cribro:homework-view',
-                              option.tiles ? 'tiles' : 'list'
-                            );
+                            writeViewMode(localStorage, viewScope, option.tiles ? 'tiles' : 'list');
                           } catch {
-                            /* Tryb prywatny — wybór zadziała, tylko go nie zapamiętamy. */
+                            /* Brak localStorage — wybór zadziała, tylko go nie zapamiętamy. */
                           }
                         }}
                         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold transition-colors ${
@@ -2783,7 +3134,26 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               Ładowanie prac domowych...
             </div>
           ) : homeworkRows.length === 0 ? (
-            isTeacher && isSearching ? (
+            // Grupa bez żadnej pracy (także w archiwum) — od razu droga do pierwszej.
+            isTeacher && filterGroupIsEmpty ? (
+              <Card className="text-center py-12" data-testid="homework-group-empty">
+                <Users className="mx-auto text-content-muted mb-3 opacity-40" size={48} />
+                <p className="text-base font-bold text-content">
+                  {i18n.t('Grupa {{name}} nie ma jeszcze prac domowych', { name: filterGroupName })}
+                </p>
+                <p className="text-xs text-content-muted mt-1">
+                  {i18n.t('Kreator otworzy się z tą grupą już wybraną.')}
+                </p>
+                <Button
+                  onClick={() => setActiveTab('create')}
+                  variant="primary"
+                  className="mt-5 inline-flex items-center gap-2 text-sm"
+                >
+                  <Plus size={16} />
+                  {i18n.t('Przypisz pierwszą pracę')}
+                </Button>
+              </Card>
+            ) : isTeacher && isSearching ? (
               <Card className="text-center py-12">
                 <Search className="mx-auto text-content-muted mb-3 opacity-40" size={40} />
                 <p className="text-base font-bold text-content">{HOMEWORK_SEARCH_EMPTY_TITLE}</p>
@@ -2809,7 +3179,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
           ) : !showTiles ? (
             <HomeworkTaskList
               tasks={tasks}
-              rows={isTeacher ? visibleActiveRows : undefined}
+              rows={isTeacher ? homeworkRows : undefined}
               showStudent={isTeacher}
               getStudentName={resolveStudentName}
               isNew={isTeacher ? isTaskNewForTeacher : undefined}
@@ -2835,6 +3205,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   : undefined
               }
               needsReviewTaskIds={v2NeedsReviewTaskIds}
+              selection={isTeacher ? rowSelection : undefined}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -2848,6 +3219,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                         formatDate={formatTaskDateTime}
                         onPreview={openGroupMemberPreview}
                         onReview={openGroupMemberReview}
+                        selection={
+                          rowSelection
+                            ? { state: rowSelection.stateOf(row), onToggle: () => rowSelection.toggle(row) }
+                            : undefined
+                        }
                       />
                     </div>
                   );
@@ -2871,6 +3247,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   >
                     <div className="flex justify-between items-start mb-3 gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {isTeacher && renderRowCheckbox(row, task.title || 'Praca domowa', resolveStudentName(task))}
                         <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-base-300 text-primary">
                           {task.type === 'find_errors' ? 'Poprawianie błędów' : task.type === 'fill_in_the_blank' ? 'Uzupełnij luki' : 'Tłumaczenie zdań'}
                         </span>
@@ -3075,6 +3452,8 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               </div>
 
               <div className="flex flex-wrap items-center gap-4 p-4 rounded-xl bg-base-200/60 border border-white/10">
+                {renderRecipientSelect()}
+                {renderGroupFilterChip()}
                 {renderSearchBox()}
               </div>
 
@@ -3103,6 +3482,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                             formatDate={formatTaskDateTime}
                             onPreview={(t) => (isV2Task(t) ? setV2ReviewTask(t) : setPreviewTask(t))}
                             onReview={openTaskReview}
+                            selection={
+                              rowSelection
+                                ? { state: rowSelection.stateOf(row), onToggle: () => rowSelection.toggle(row) }
+                                : undefined
+                            }
                           />
                         </div>
                       );
@@ -3119,6 +3503,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2 mb-1">
+                            {renderRowCheckbox(row, task.title || 'Praca domowa', resolveStudentName(task))}
                             <span className="text-[10px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-base-300 text-content-muted">
                               {task.type === 'find_errors' ? 'Poprawianie błędów' : task.type === 'fill_in_the_blank' ? 'Uzupełnij luki' : 'Tłumaczenie zdań'}
                             </span>
@@ -3207,16 +3592,17 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
               )}
 
               {/* Testy sprawdzone/ukończone — ta sama zakładka archiwum */}
-              {completedStudentTests.length > 0 && (
+              {archivedStudentTests.length > 0 && (
                 <div className="space-y-2.5 pt-4">
                   <p className="text-xs font-bold text-content-muted uppercase tracking-wider flex items-center gap-1.5">
                     <GraduationCap size={14} className="text-primary" />
                     Testy sprawdzone/ukończone
                   </p>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {completedStudentTests.map((test) => (
+                    {archivedStudentTests.map((test) => (
                       <Card key={test.id} className="p-4 flex items-center justify-between gap-3 border border-white/10 bg-base-200/50">
-                        <div className="min-w-0">
+                        {renderTestCheckbox(test)}
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-bold text-white truncate">{test.title}</p>
                           <p className="text-xs text-content-muted flex items-center gap-1.5 mt-0.5">
                             <UserIcon size={11} className="text-primary" />
@@ -3276,6 +3662,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                         <div>
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <span className="text-xs font-semibold text-content-muted flex items-center gap-1.5 truncate">
+                              {renderTestCheckbox(test)}
                               <UserIcon size={14} className="text-primary" />
                               <strong className="text-white">{test.studentName}</strong>
                             </span>
@@ -3363,126 +3750,36 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         </div>
       )}
 
-      {/* ---------------- TEACHER REVIEW & GRADING MODAL ---------------- */}
-      {reviewTask && (
-        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-4 space-y-6">
-            <div className="flex justify-between items-start border-b border-white/10 pb-4">
-              <div>
-                <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary font-bold">
-                  Przegląd & Ocena nauczyciela
-                </span>
-                <h2 className="text-xl font-bold text-white mt-2">{reviewTask.title}</h2>
-                <p className="text-xs text-content-muted mt-1">
-                  Kursant: <strong className="text-white">{resolveStudentName(reviewTask)}</strong> | Status: <span className="text-primary font-bold">{reviewTask.status}</span>
-                </p>
-              </div>
-              <button
-                onClick={() => setReviewTask(null)}
-                className="p-1 rounded-lg text-content-muted hover:text-text-hi"
-              >
-                <X size={20} />
-              </button>
-            </div>
+      {/* ---------------- TEACHER REVIEW & GRADING MODAL (v1) ---------------- */}
+      <TeacherReviewModal
+        isOpen={Boolean(reviewTask)}
+        task={reviewTask}
+        onClose={() => setReviewTask(null)}
+        studentName={reviewTask ? resolveStudentName(reviewTask) : undefined}
+        isV2={false}
+        language={language}
+        formatDate={formatTaskDateTime}
+        teacherFeedbackText={teacherFeedbackText}
+        onFeedbackChange={setTeacherFeedbackText}
+        onAnalyzeWithAI={handleAnalyzeWithAI}
+        isAnalyzing={isAnalyzing}
+        onSaveReview={handleSaveReview}
+        isSavingReview={isSavingReview}
+        renderExercisePrompt={renderExercisePrompt}
+        renderStudentAnswerDisplay={renderStudentAnswerDisplay}
+        homeworkItemType={homeworkItemType}
+      />
 
-            {/* List of answers submitted by student */}
-            <div className="space-y-4 max-h-[50vh] overflow-y-auto pr-2">
-              {reviewTask.sentences.map((item: any, idx: number) => {
-                const stAns = reviewTask.studentAnswers ? (reviewTask.studentAnswers as any)[idx] : '';
-                const evalItem = reviewTask.evaluationResults ? reviewTask.evaluationResults[idx] : null;
-                const itemType = homeworkItemType(item, reviewTask);
-
-                return (
-                  <div key={idx} className="p-4 rounded-xl bg-base-200/60 border border-white/5 space-y-2">
-                    <div className="flex justify-between items-center text-xs font-mono text-content-muted">
-                      <span>Zadanie #{idx + 1}</span>
-                      {evalItem?.score !== undefined && (
-                        <span className="text-primary font-bold">Wynik AI: {Number.isNaN(Number(evalItem.score)) ? 0 : evalItem.score}%</span>
-                      )}
-                    </div>
-
-                    {renderExercisePrompt(item, itemType)}
-
-                    <div className="p-2.5 rounded-lg bg-base-100 border border-white/10 text-sm">
-                      <span className="text-xs font-semibold text-content-muted block mb-0.5">Odpowiedź kursanta:</span>
-                      {renderStudentAnswerDisplay(stAns, item)}
-                    </div>
-
-                    {evalItem?.explanation && (
-                      <p className="text-xs text-content-muted italic bg-base-300/40 p-2 rounded-lg">
-                        💡 {evalItem.explanation}
-                      </p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Teacher feedback area */}
-            <div className="pt-4 border-t border-white/10 space-y-3">
-              <label className="block text-sm font-bold text-content">
-                Komentarz / Wskazówki nauczyciela dla kursanta:
-              </label>
-              <textarea
-                rows={3}
-                value={teacherFeedbackText}
-                onChange={(e) => setTeacherFeedbackText(e.target.value)}
-                placeholder="Wpisz słowa uznania, uwagi do gramatyki lub zalecenia do powtórki..."
-                className="w-full px-4 py-2.5 bg-base-100 text-white border border-white/10 rounded-xl focus:border-primary focus:outline-none text-sm resize-y"
-              />
-
-              <div className="flex justify-between items-center pt-2">
-                <Button onClick={handleAnalyzeWithAI} isLoading={isAnalyzing} className="flex items-center gap-2">
-                  <Sparkles size={18} /> Zaproponuj ocenę z AI
-                </Button>
-                <div className="flex justify-end gap-3">
-                  <Button variant="secondary" onClick={() => setReviewTask(null)}>
-                    Zamknij
-                  </Button>
-                  <Button onClick={handleSaveReview} isLoading={isSavingReview} className="flex items-center gap-2">
-                    <Check size={18} /> Zatwierdź i wyślij do kursanta
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* ---------------- TEACHER V2 REVIEW MODAL ---------------- */}
-      {v2ReviewTask && (
-        <div className="fixed inset-0 bg-ink/72 backdrop-blur-md z-50 flex items-start justify-center p-4 overflow-y-auto">
-          <Card className="w-full max-w-3xl liquid-glass border-primary/30 my-4 space-y-6">
-            <div className="flex justify-between items-start border-b border-white/10 pb-4">
-              <div>
-                <span className="text-xs font-mono uppercase tracking-wider px-2.5 py-1 rounded-full bg-primary/20 text-primary font-bold">
-                  Przegląd & Ocena nauczyciela
-                </span>
-                <h2 className="text-xl font-bold text-white mt-2">{v2ReviewTask.title}</h2>
-                <p className="text-xs text-content-muted mt-1">
-                  Kursant: <strong className="text-white">{resolveStudentName(v2ReviewTask)}</strong>
-                </p>
-              </div>
-              <button
-                onClick={() => setV2ReviewTask(null)}
-                className="p-1 rounded-lg text-content-muted hover:text-text-hi"
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="max-h-[65vh] overflow-y-auto pr-2">
-              <HomeworkV2ReviewScreen task={v2ReviewTask} />
-            </div>
-
-            <div className="pt-4 border-t border-white/10 flex justify-end">
-              <Button variant="secondary" onClick={() => setV2ReviewTask(null)}>
-                Zamknij
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
+      {/* ---------------- TEACHER V2 REVIEW MODAL (v2) ---------------- */}
+      <TeacherReviewModal
+        isOpen={Boolean(v2ReviewTask)}
+        task={v2ReviewTask}
+        onClose={() => setV2ReviewTask(null)}
+        studentName={v2ReviewTask ? resolveStudentName(v2ReviewTask) : undefined}
+        isV2={true}
+        language={language}
+        formatDate={formatTaskDateTime}
+      />
 
       {showBulkAddModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
@@ -3677,8 +3974,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                       onClick={() => {
                         const t = previewTask;
                         setPreviewTask(null);
-                        setReviewTask(t);
-                        setTeacherFeedbackText(t.teacherFeedback || '');
+                        openTaskReview(t);
                       }}
                       className="text-xs flex items-center gap-1.5"
                     >
@@ -3706,6 +4002,18 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
         onConfirm={handleConfirmDelete}
         onCancel={() => {
           if (!isDeleting) setTaskToDelete(null);
+        }}
+      />
+      <HomeworkBulkDeleteDialog
+        phase={bulkPhase}
+        items={bulkSelectedItems}
+        progress={bulkProgress}
+        report={bulkReport}
+        onConfirm={handleBulkDelete}
+        onCancel={() => setBulkPhase(null)}
+        onClose={() => {
+          setBulkPhase(null);
+          setBulkReport(null);
         }}
       />
       <TestPreviewModal

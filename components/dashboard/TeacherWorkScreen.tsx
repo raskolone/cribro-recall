@@ -193,6 +193,7 @@ const TeacherWorkScreen: React.FC<TeacherWorkScreenProps> = ({
       >
         <HomeworkScreen
           headless
+          bulkActions
           initialTaskId={initialTaskId}
           initialFilterStatus={initialFilterStatus}
           initialGroupId={initialGroupId}

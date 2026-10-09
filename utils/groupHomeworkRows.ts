@@ -170,6 +170,17 @@ export const buildHomeworkRows = (
   return rows.sort((a, b) => b.createdMs - a.createdMs);
 };
 
+/**
+ * Prace jednej grupy (wejście z karty grupy): dokumenty z `groupId` równym
+ * grupie. Prace innych grup i „Kilku kursantów" (bez `groupId`) odpadają.
+ * Wynik idzie dalej do `buildHomeworkRows`, więc zwijanie po `homeworkSetId`
+ * działa jak dotąd. Bez `groupId` — lista bez zmian.
+ */
+export const filterTasksByGroup = <T extends Pick<SpecialTask, 'groupId'>>(
+  tasks: T[],
+  groupId: string | null | undefined
+): T[] => (groupId ? tasks.filter((t) => t.groupId === groupId) : tasks);
+
 export type HomeworkStatusFilter = 'all' | 'pending' | 'submitted' | 'graded' | string;
 
 /**

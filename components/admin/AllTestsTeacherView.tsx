@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { collection, getDocs, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { deleteStudentTest } from '../../services/homeworkDeletion';
 import { StudentTest, User } from '../../types';
 import { getAllUsers } from '../../services/userService';
 import Card from '../ui/Card';
@@ -69,7 +70,7 @@ export const AllTestsTeacherView: React.FC = () => {
   const handleDeleteTest = async (test: StudentTest) => {
     if (!test.id || !test.studentId) return;
     try {
-      await deleteDoc(doc(db, `users/${test.studentId}/tests`, test.id));
+      await deleteStudentTest(test.studentId, test.id);
       setTests(prev => prev.filter(t => t.id !== test.id));
       setConfirmModal({isOpen: false, test: null});
     } catch (err) {

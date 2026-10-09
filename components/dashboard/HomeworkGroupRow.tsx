@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Award, CheckCircle2, ChevronDown, ChevronRight, Clock, Eye, FileText, Users } from 'lucide-react';
+import i18n from 'i18next';
 import { SpecialTask } from '../../types';
 import { GroupHomeworkRow, HomeworkMemberState } from '../../utils/groupHomeworkRows';
+import type { BulkSelectionState } from '../../utils/homeworkBulkDelete';
+import BulkSelectCheckbox from './BulkSelectCheckbox';
 
 /**
  * Jedna praca przypisana wielu kursantom naraz (N dokumentów ze wspólnym
@@ -10,7 +13,9 @@ import { GroupHomeworkRow, HomeworkMemberState } from '../../utils/groupHomework
  * Zwinięty: nazwa grupy, tytuł, data, „X/N oddało" i status zbiorczy.
  * Rozwinięty: kursanci ze swoim stanem i przyciskami działającymi na
  * POJEDYNCZYM dokumencie (podgląd, sprawdzenie/ocena) — ta sama logika, co przy
- * pracy jednego kursanta. Edycji ani usuwania całego zestawu tu nie ma.
+ * pracy jednego kursanta. Edycji ani przycisku usuwania całego zestawu tu nie
+ * ma — w trybie „Zaznacz do usunięcia" (Szybkie akcje) pole wyboru obok
+ * nagłówka zaznacza wszystkie dokumenty zestawu naraz.
  */
 
 interface HomeworkGroupRowProps {
@@ -20,6 +25,8 @@ interface HomeworkGroupRowProps {
   onReview: (task: SpecialTask) => void;
   /** `tile` — karta w siatce kafelków; `row` — wiersz listy i archiwum. */
   layout?: 'row' | 'tile';
+  /** Tryb „Zaznacz do usunięcia": jedno pole wyboru = wszystkie dokumenty zestawu. */
+  selection?: { state: BulkSelectionState; onToggle: () => void };
 }
 
 const AGGREGATE: Record<HomeworkMemberState, { label: string; icon: typeof Clock; cls: string }> = {
@@ -34,11 +41,39 @@ const MEMBER_LABEL: Record<HomeworkMemberState, string> = {
   pending: 'W trakcie',
 };
 
-const HomeworkGroupRow: React.FC<HomeworkGroupRowProps> = ({ row, formatDate, onPreview, onReview, layout = 'row' }) => {
+const HomeworkGroupRow: React.FC<HomeworkGroupRowProps> = ({ row, formatDate, onPreview, onReview, layout = 'row', selection }) => {
   const [open, setOpen] = useState(false);
   const status = AGGREGATE[row.status];
   const StatusIcon = status.icon;
   const statusText = row.status === 'submitted' ? `${status.label} (${row.toCheckCount})` : status.label;
+
+  const header = (
+    <button
+      type="button"
+      onClick={() => setOpen((v) => !v)}
+      aria-expanded={open}
+      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-line-soft transition-colors"
+    >
+      {open ? <ChevronDown size={16} className="text-content-muted shrink-0" /> : <ChevronRight size={16} className="text-content-muted shrink-0" />}
+      <span className="min-w-0 flex-1">
+        <span className="flex items-center gap-1.5 text-[12px] font-bold text-primary truncate">
+          <Users size={13} className="shrink-0" />
+          <span className="truncate">{row.groupName}</span>
+        </span>
+        <span className="block text-sm font-semibold text-text-hi truncate">{row.title || 'Praca domowa'}</span>
+      </span>
+      <span className="hidden sm:block text-[11px] font-mono text-content-muted whitespace-nowrap">
+        {formatDate(row.createdAt)}
+      </span>
+      <span className="text-[11px] font-mono text-content-muted whitespace-nowrap">
+        {row.submittedCount}/{row.total} oddało
+      </span>
+      <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${status.cls}`}>
+        <StatusIcon size={11} />
+        {statusText}
+      </span>
+    </button>
+  );
 
   return (
     <div
@@ -49,31 +84,28 @@ const HomeworkGroupRow: React.FC<HomeworkGroupRowProps> = ({ row, formatDate, on
       }
       data-testid="homework-group-row"
     >
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-line-soft transition-colors"
-      >
-        {open ? <ChevronDown size={16} className="text-content-muted shrink-0" /> : <ChevronRight size={16} className="text-content-muted shrink-0" />}
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-[12px] font-bold text-primary truncate">
-            <Users size={13} className="shrink-0" />
-            <span className="truncate">{row.groupName}</span>
-          </span>
-          <span className="block text-sm font-semibold text-text-hi truncate">{row.title || 'Praca domowa'}</span>
-        </span>
-        <span className="hidden sm:block text-[11px] font-mono text-content-muted whitespace-nowrap">
-          {formatDate(row.createdAt)}
-        </span>
-        <span className="text-[11px] font-mono text-content-muted whitespace-nowrap">
-          {row.submittedCount}/{row.total} oddało
-        </span>
-        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${status.cls}`}>
-          <StatusIcon size={11} />
-          {statusText}
-        </span>
-      </button>
+      {selection ? (
+        // Pole wyboru obok, nie wewnątrz przycisku rozwijania (kontrolka w kontrolce).
+        <div className="flex items-center">
+          <BulkSelectCheckbox
+            state={selection.state}
+            onToggle={selection.onToggle}
+            label={i18n.t('Zaznacz cały zestaw: „{{title}}" — {{group}} ({{count}})', {
+              title: row.title || 'Praca domowa',
+              group: row.groupName,
+              count: row.total,
+            })}
+            className="pl-4 py-3 shrink-0"
+          >
+            <span className="text-[10px] font-mono font-bold text-content-muted whitespace-nowrap">
+              {i18n.t('Cały zestaw: {{count}}', { count: row.total })}
+            </span>
+          </BulkSelectCheckbox>
+          <div className="min-w-0 flex-1">{header}</div>
+        </div>
+      ) : (
+        header
+      )}
 
       {open && (
         <ul className="border-t border-line bg-base-100/30 divide-y divide-line">

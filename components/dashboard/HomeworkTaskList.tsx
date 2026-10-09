@@ -1,9 +1,12 @@
 import React from 'react';
 import { Award, CheckCircle2, Clock, Edit3, Eye, FileText } from 'lucide-react';
+import i18n from 'i18next';
 import { SpecialTask } from '../../types';
 import { formatStudentDisplayName } from '../../utils/studentFormat';
 import { HomeworkRow } from '../../utils/groupHomeworkRows';
+import type { BulkSelectionState } from '../../utils/homeworkBulkDelete';
 import HomeworkGroupRow from './HomeworkGroupRow';
+import BulkSelectCheckbox from './BulkSelectCheckbox';
 
 /**
  * Prace domowe jako kompaktowa lista.
@@ -51,6 +54,11 @@ interface HomeworkTaskListProps {
    * pokazane jako "W trakcie" na zawsze, nawet gdy próba czeka na ocenę.
    */
   needsReviewTaskIds?: Set<string>;
+  /** Tryb „Zaznacz do usunięcia" (lektor): pole wyboru przy wierszu; wiersz grupowy zaznacza cały zestaw. */
+  selection?: {
+    stateOf: (row: HomeworkRow) => BulkSelectionState;
+    toggle: (row: HomeworkRow) => void;
+  };
 }
 
 const STATUS = {
@@ -77,6 +85,7 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
   onReview,
   formatDate,
   needsReviewTaskIds,
+  selection,
 }) => (
   <div className="rounded-2xl border border-line-strong bg-base-200/40 overflow-hidden">
     {/* Nagłówek kolumn tylko tam, gdzie kolumny są widoczne. */}
@@ -93,7 +102,13 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
         if (row.kind === 'group') {
           return (
             <li key={row.homeworkSetId}>
-              <HomeworkGroupRow row={row} formatDate={formatDate} onPreview={onPreview} onReview={(t) => onReview?.(t)} />
+              <HomeworkGroupRow
+                row={row}
+                formatDate={formatDate}
+                onPreview={onPreview}
+                onReview={(t) => onReview?.(t)}
+                selection={selection ? { state: selection.stateOf(row), onToggle: () => selection.toggle(row) } : undefined}
+              />
             </li>
           );
         }
@@ -101,6 +116,32 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
         const status = (task.id && needsReviewTaskIds?.has(task.id)) ? STATUS.submitted : STATUS[task.status as keyof typeof STATUS] ?? STATUS.pending;
         const StatusIcon = status.icon;
         const fresh = isNew?.(task);
+        const studentName = getStudentName ? getStudentName(task) : formatStudentDisplayName(null, task.studentName);
+
+        const titleButton = (
+          <button
+            type="button"
+            onClick={() => onPreview(task)}
+            className="text-left min-w-0 group"
+            title="Otwórz podgląd pracy"
+          >
+            <span className="flex items-center gap-1.5">
+              {fresh && (
+                // Kolor jako sygnał stanu: jedna kropka zamiast plakietki
+                // „NOWA", bo w wierszu plakietka wypycha tytuł.
+                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+              )}
+              {showStudent && (
+                <span className="text-[12px] font-bold text-primary truncate">
+                  {studentName}
+                </span>
+              )}
+            </span>
+            <span className="block text-sm font-semibold text-text-hi truncate group-hover:text-primary transition-colors">
+              {task.title || 'Praca domowa'}
+            </span>
+          </button>
+        );
 
         return (
           <li
@@ -108,28 +149,21 @@ const HomeworkTaskList: React.FC<HomeworkTaskListProps> = ({
             className="grid grid-cols-1 lg:grid-cols-[1fr_9rem_8rem_9rem_11rem] gap-2 lg:gap-3 items-center px-4 py-3 hover:bg-line-soft transition-colors"
           >
             {/* Kursant i tytuł — jedyna kolumna, która nigdy nie znika. */}
-            <button
-              type="button"
-              onClick={() => onPreview(task)}
-              className="text-left min-w-0 group"
-              title="Otwórz podgląd pracy"
-            >
-              <span className="flex items-center gap-1.5">
-                {fresh && (
-                  // Kolor jako sygnał stanu: jedna kropka zamiast plakietki
-                  // „NOWA", bo w wierszu plakietka wypycha tytuł.
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                )}
-                {showStudent && (
-                  <span className="text-[12px] font-bold text-primary truncate">
-                    {getStudentName ? getStudentName(task) : formatStudentDisplayName(null, task.studentName)}
-                  </span>
-                )}
+            {selection ? (
+              <span className="flex items-center gap-3 min-w-0">
+                <BulkSelectCheckbox
+                  state={selection.stateOf(row)}
+                  onToggle={() => selection.toggle(row)}
+                  label={i18n.t('Zaznacz: „{{title}}" — {{student}}', {
+                    title: task.title || 'Praca domowa',
+                    student: studentName,
+                  })}
+                />
+                {titleButton}
               </span>
-              <span className="block text-sm font-semibold text-text-hi truncate group-hover:text-primary transition-colors">
-                {task.title || 'Praca domowa'}
-              </span>
-            </button>
+            ) : (
+              titleButton
+            )}
 
             <span className="text-[11px] text-content-muted truncate">
               {TYPE_LABEL[task.type ?? 'translation'] ?? 'Tłumaczenie zdań'}
