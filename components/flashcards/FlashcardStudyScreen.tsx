@@ -564,12 +564,14 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
       {isFlipped ? (
         <div className="grid grid-cols-2 gap-4 mt-2" data-testid="flashcard-actions">
           <Button variant="danger" className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(false)}>
-            <span>{i18n.t("Nie umiem")}</span>
-            <span className="text-[12px] uppercase opacity-70">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
+            {/* Czerwony tekst na czerwonawym tle: 4,05:1 w trybie jasnym. Stan niesie obwódka i tło
+                przycisku, tekst idzie tokenem `text-hi` (patrz tests/flashcardRatingContrast.test.ts). */}
+            <span className="text-text-hi">{i18n.t("Nie umiem")}</span>
+            <span className="text-[12px] uppercase text-text-hi">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
           </Button>
           <Button className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(true)}>
             <span>{i18n.t("Umiem")}</span>
-            <span className="text-[12px] uppercase opacity-70">{i18n.t("Umiem (Strzałka w prawo)")}</span>
+            <span className="text-[12px] uppercase">{i18n.t("Umiem (Strzałka w prawo)")}</span>
           </Button>
         </div>
       ) : (
