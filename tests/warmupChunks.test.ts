@@ -77,6 +77,12 @@ test('resolveChunks: dane z frazami zostają, lista słów i niespójne kawałki
   assert.deepEqual(resolveChunks([undefined, null, []], sentence), chunkSentence(sentence));
   assert.deepEqual(resolveChunks([], 'Hi there'), []);
   assert.ok(joinsTo(['I have', 'to go'], 'I have  to go'));
+  // końcowa kropka może być tylko w jednej z wersji — kawałki lektora nie lecą przez to do kosza
+  assert.ok(joinsTo(['I have to', 'meet the deadline', 'by tomorrow morning'], 'I have to meet the deadline by tomorrow morning.'));
+  assert.ok(joinsTo(['I have to', 'meet the deadline.'], 'I have to meet the deadline'));
+  assert.ok(!joinsTo(['I have to', 'meet the deadline'], 'I have to meet the DEADLINE'), 'wielkość liter nadal ma znaczenie');
+  assert.ok(!joinsTo(['I have to', 'meet'], 'I have to meet the deadline'), 'brakujące słowa nie przechodzą');
+  assert.deepEqual(resolveChunks([['I have to', 'meet the deadline', 'by tomorrow morning']], 'I have to meet the deadline by tomorrow morning.'), ['I have to', 'meet the deadline', 'by tomorrow morning'], 'dane lektora bez kropki zostają');
 });
 
 test('dystraktory: cały kawałek z innych rund, bez dubli, najwyżej max, deterministycznie', () => {

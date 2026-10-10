@@ -25,9 +25,16 @@ export const countWords = (text: string): number =>
     .split(' ')
     .filter((token) => /[\p{L}\p{N}]/u.test(token)).length;
 
-/** Czy kawałki po złożeniu dają dokładnie to zdanie (spacje i wielkość znaków bez zmian). */
+/** Zdanie bez końcowej interpunkcji (. ! ? …) — dane lektora bywają zapisane z kropką albo bez niej. */
+const withoutFinalPunctuation = (text: string): string => normalizeText(text).replace(/[\s.!?…]+$/u, '');
+
+/**
+ * Czy kawałki po złożeniu dają to zdanie (spacje i wielkość znaków bez zmian; końcowa kropka,
+ * wykrzyknik lub pytajnik mogą różnić się tylko obecnością — samo to nie jest powodem do odrzucenia
+ * kawałków napisanych przez lektora).
+ */
 export const joinsTo = (chunks: readonly string[], sentence: string): boolean =>
-  normalizeText(chunks.join(' ')) === normalizeText(sentence);
+  withoutFinalPunctuation(chunks.join(' ')) === withoutFinalPunctuation(sentence);
 
 /**
  * Scala kawałki, które nie mają dwóch słów (pojedyncze słowo, samotny znak interpunkcyjny):

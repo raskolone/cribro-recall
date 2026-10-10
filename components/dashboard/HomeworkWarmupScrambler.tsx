@@ -120,8 +120,10 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
     ].map((tile, id) => ({ ...tile, id }));
     const seed = hashString(`${currentKey}|${sessionSeedRef.current}`);
     return stableShuffle(tiles, seed, (order) => {
+      // Pula nie może zaczynać się od ułożonej odpowiedzi — także gdy między kafelkami odpowiedzi
+      // leży dystraktor (wtedy wystarczyłoby kliknąć kafelki po kolei, pomijając obcy).
       const answerOrder = order.filter((t) => !t.isDistractor).map((t) => t.text);
-      return order.every((t) => !t.isDistractor) && answerOrder.every((text, i) => text === currentItem.chunks[i]);
+      return answerOrder.every((text, i) => text === currentItem.chunks[i]);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentKey]);

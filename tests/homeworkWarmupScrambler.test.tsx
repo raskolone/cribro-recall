@@ -218,3 +218,28 @@ test('STABILNOŚĆ: wiersz z „Resetuj" ma stałą wysokość równą celowi do
   const reset = src.slice(src.indexOf('onClick={handleReset}'), src.indexOf('onClick={handleReset}') + 400);
   assert.match(reset, /pointer-coarse:min-h-11/, 'przycisk Resetuj ma cel 44 px — i wiersz już go mieści');
 });
+
+test('pula nigdy nie zaczyna się od ułożonej odpowiedzi — także z dystraktorem między kafelkami (40 losowych sesji)', () => {
+  let solvedAtStart = 0;
+  for (let i = 0; i < 40; i++) {
+    const { getAllByTestId, unmount } = renderScrambler();
+    const order = getAllByTestId('warmup-bank-tile').map((el) => el.textContent!).filter((text) => ROUND_1_CHUNKS.includes(text));
+    if (order.length === ROUND_1_CHUNKS.length && order.every((text, idx) => text === ROUND_1_CHUNKS[idx])) solvedAtStart++;
+    unmount();
+  }
+  assert.equal(solvedAtStart, 0);
+});
+
+test('kawałki lektora bez końcowej kropki zostają kawałkami lektora (nie są zastępowane podziałem zdania)', () => {
+  const { getAllByTestId } = render(
+    React.createElement(HomeworkWarmupScrambler, {
+      sentences: [],
+      task: { warmup: [{ chunks: ['I have to', 'meet the deadline', 'by tomorrow morning'], correctSentence: 'I have to meet the deadline by tomorrow morning.', polishTranslation: 'Muszę dotrzymać terminu do jutra rano.' }] },
+      onComplete: () => {},
+      onSkip: () => {},
+    } as any)
+  );
+  const texts = getAllByTestId('warmup-bank-tile').map((el) => el.textContent).sort();
+  assert.deepEqual(texts, ['I have to', 'by tomorrow morning', 'meet the deadline']);
+  cleanup();
+});
