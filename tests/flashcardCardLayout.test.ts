@@ -57,6 +57,6 @@ test('powrót karty czyści style inline (reset x/y/rotation po zmianie i po prz
 test('odlot i snap-back przechodzą przez wspólne parametry (overwrite, clearProps)', () => {
   assert.equal((mode.match(/onComplete: proceed/g) || []).length, 3);
   assert.equal((mode.match(/exitVars\(/g) || []).length, 2);
-  assert.equal((mode.match(/overwrite: true,\s*onComplete: proceed/g) || []).length, 1);
+  assert.equal((mode.match(/\.\.\.ratingExitVars\(isCorrect, window\.innerWidth, prefersReducedMotion\(\)\),\s*onComplete: proceed/g) || []).length, 1);
   assert.ok(!/gsap\.to\(cardContainerRef\.current, \{ x: 0, rotation: 0/.test(mode));
 });

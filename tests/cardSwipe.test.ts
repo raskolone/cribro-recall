@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { createSwipeGesture, EDGE_GUARD_PX, moduleSwipeAction, SwipeEndResult, SwipePointer } from '../utils/cardSwipe';
+import { createSwipeGesture, EDGE_GUARD_PX, SwipeEndResult, SwipePointer } from '../utils/cardSwipe';
 import { DRAG } from '../utils/flashcardCardMotion';
 
 const touch = (clientX: number, over: Partial<SwipePointer> = {}): SwipePointer => ({ pointerId: 1, pointerType: 'touch', clientX, button: 0, ...over });
@@ -96,35 +96,26 @@ test('prawy przycisk myszy nie zaczyna gestu; canStart może go zablokować', ()
   assert.equal(blocked.g.down(touch(300)), false);
 });
 
-test('moduł fiszek, karta nieodwrócona: lewo = następna, prawo = poprzednia, końce talii → null (powrót karty)', () => {
-  assert.equal(moduleSwipeAction(-100, false, 0, 5), 'next');
-  assert.equal(moduleSwipeAction(100, false, 2, 5), 'prev');
-  assert.equal(moduleSwipeAction(100, false, 0, 5), null, 'przed pierwszą nie ma poprzedniej');
-  assert.equal(moduleSwipeAction(-100, false, 4, 5), null, 'po ostatniej nie ma następnej');
-  assert.equal(moduleSwipeAction(-79, false, 1, 5), null);
-});
-
-test('moduł fiszek, karta odwrócona to ocena (bez zmian): prawo = umiem, lewo = nie umiem', () => {
-  assert.equal(moduleSwipeAction(100, true, 0, 5), 'know');
-  assert.equal(moduleSwipeAction(-100, true, 4, 5), 'dontKnow');
-  assert.equal(moduleSwipeAction(50, true, 1, 5), null);
-});
-
 // --- Podpięcie w komponentach (te moduły nie renderują się w node: Firebase) -----------
 
 const src = (p: string) => readFileSync(new URL(`../${p}`, import.meta.url), 'utf8');
 
-test('oba moduły używają wspólnego hooka PointerEvents; moduł fiszek nie ma już handlerów touch*', () => {
+test('rozgrzewka używa useCardSwipe, moduł fiszek useRatingSwipe (nakładka na ten sam hook); żadnych handlerów touch*', () => {
   const module_ = src('components/flashcards/FlashcardStudyScreen.tsx');
   const warmup = src('components/dashboard/HomeworkWarmupCards.tsx');
+  assert.match(warmup, /useCardSwipe\(/);
+  assert.match(src('hooks/useRatingSwipe.ts'), /useCardSwipe\(/);
   for (const s of [module_, warmup]) {
-    assert.match(s, /useCardSwipe\(/);
     assert.match(s, /\{\.\.\.swipe\.bind\}/);
     assert.match(s, /SWIPE_TOUCH_ACTION_CLASS/);
     assert.match(s, /consumeSuppressedClick\(\)/);
   }
   assert.doesNotMatch(module_, /onTouchStart|onTouchMove|onTouchEnd|handleTouchStart/);
-  assert.match(module_, /moduleSwipeAction\(/);
+  assert.match(module_, /useRatingSwipe\(/);
+  // gest oceny nie zna stanu odwrócenia — to gwarantuje „tak samo na awersie i rewersie"
+  assert.doesNotMatch(src('hooks/useRatingSwipe.ts'), /isFlipped|flipped/i);
+  const call = module_.slice(module_.indexOf('useRatingSwipe({'), module_.indexOf('useRatingSwipe({') + 300);
+  assert.doesNotMatch(call, /isFlipped/);
 });
 
 test('hook: setPointerCapture po starcie przeciągania, pointercancel i lostpointercapture kończą gest', () => {
@@ -140,5 +131,5 @@ test('moduł fiszek: ocena, zapis sesji i SRS nietknięte przez zmianę gestów'
   const s = src('components/flashcards/FlashcardStudyScreen.tsx');
   assert.match(s, /await saveSession\(\{\s*setId,\s*mode: 'flashcards'/);
   assert.match(s, /enterFromVars\(isCorrect \? -1 : 1, 15\)/);
-  assert.match(s, /x: isCorrect \? window\.innerWidth : -window\.innerWidth/);
+  assert.match(s, /ratingExitVars\(isCorrect, window\.innerWidth/);
 });

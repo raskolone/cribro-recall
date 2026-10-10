@@ -159,3 +159,71 @@ export function swipeDirection(dx: number): CardDirection | null {
   if (dx >= DRAG.thresholdPx) return 'prev';
   return null;
 }
+
+// --- Ocena gestem w module fiszek ("Nie umiem" / "Umiem") --------------------------------
+// Jeden wzorzec ruchu dla karty odwróconej i nieodwróconej: karta idzie za palcem 1:1
+// (translate3d + lekki obrót), odlot w stronę ruchu jest tym samym tweenem, który wcześniej
+// miała tylko ocena na rewersie (±45°, 0,4 s `power2.in`). Rozgrzewka (bez oceny) zostaje przy
+// `DRAG`/`dragFollowVars`.
+
+export type SwipeRating = 'know' | 'dontKnow';
+
+export const RATING_DRAG = { xFactor: 1, rotationFactor: 0.05 } as const;
+export const RATING_EXIT_ROTATION_DEG = 45;
+export const RATING_EXIT_DURATION = 0.4;
+export const RATING_EXIT_EASE = 'power2.in';
+/** Odlot przy ograniczeniu ruchu: sam zanik, bez lotu i obrotu. */
+export const RATING_EXIT_REDUCED_DURATION = 0.12;
+
+/** Pozycja karty pod palcem; `force3D` wymusza translate3d (kompozycja na GPU, bez layoutu). */
+export function ratingDragPose(dx: number) {
+  return { x: dx * RATING_DRAG.xFactor, rotation: dx * RATING_DRAG.rotationFactor, force3D: true } as const;
+}
+
+/** Prawo = „umiem", lewo = „nie umiem" – niezależnie od tego, czy karta jest odwrócona. */
+export function ratingSwipeAction(dx: number): SwipeRating | null {
+  if (dx >= DRAG.thresholdPx) return 'know';
+  if (dx <= -DRAG.thresholdPx) return 'dontKnow';
+  return null;
+}
+
+/**
+ * Wskazówka kierunku w trakcie przeciągania: strona (`null` w martwej strefie) i siła 0…1,
+ * rosnąca do progu zatwierdzenia (1 = puszczenie palca zatwierdzi ocenę).
+ */
+export function ratingHint(dx: number): { side: SwipeRating | null; strength: number } {
+  const strength = Math.min(1, Math.abs(dx) / DRAG.thresholdPx);
+  if (Math.abs(dx) < DRAG.startDistancePx) return { side: null, strength: 0 };
+  return { side: dx > 0 ? 'know' : 'dontKnow', strength };
+}
+
+/** Odlot po ocenie: w stronę oceny, z zanikiem. `reduced` = prefers-reduced-motion. */
+export function ratingExitVars(isCorrect: boolean, viewportWidth: number, reduced = false) {
+  if (reduced) {
+    return { opacity: 0, duration: RATING_EXIT_REDUCED_DURATION, ease: 'none', overwrite: true } as const;
+  }
+  const sign = isCorrect ? 1 : -1;
+  return {
+    x: sign * viewportWidth,
+    rotation: sign * RATING_EXIT_ROTATION_DEG,
+    opacity: 0,
+    duration: RATING_EXIT_DURATION,
+    ease: RATING_EXIT_EASE,
+    overwrite: true,
+  } as const;
+}
+
+/** Sprężyna powrotu (sztywniejsza niż obrót karty: wygasa w ≈ 0,35 s, przestrzał ≈ 5 %). */
+export const RATING_SNAP_SPRING = { stiffness: 400, damping: 28, mass: 1 } as const;
+export const RATING_SNAP_DURATION = 0.35;
+
+/** Powrót karty poniżej progu: sprężyście; przy ograniczeniu ruchu natychmiast. */
+export function ratingSnapBackVars(reduced = false) {
+  return {
+    ...CARD_REST,
+    duration: reduced ? 0.01 : RATING_SNAP_DURATION,
+    ease: reduced ? 'none' : springEase(RATING_SNAP_SPRING, RATING_SNAP_DURATION),
+    overwrite: true,
+    clearProps: 'all',
+  } as const;
+}

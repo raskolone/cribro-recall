@@ -13,9 +13,11 @@ import PronunciationMic from '../ui/PronunciationMic';
 import TTSButtons from './TTSButtons';
 import MatchingGame from './MatchingGame';
 import FlashcardFace from './FlashcardFace';
-import { dragFollowVars, enterFromVars, enterVars, exitVars, snapBackVars } from '../../utils/flashcardCardMotion';
-import { moduleSwipeAction } from '../../utils/cardSwipe';
-import { SWIPE_TOUCH_ACTION_CLASS, useCardSwipe } from '../../hooks/useCardSwipe';
+import { enterFromVars, enterVars, exitVars, ratingExitVars } from '../../utils/flashcardCardMotion';
+import { prefersReducedMotion } from '../../services/gsapAnimations';
+import SwipeRatingHint from './SwipeRatingHint';
+import { SWIPE_TOUCH_ACTION_CLASS } from '../../hooks/useCardSwipe';
+import { useRatingSwipe } from '../../hooks/useRatingSwipe';
 import ConfirmModal from '../ui/ConfirmModal';
 import i18n from "i18next";
 
@@ -215,6 +217,10 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardContainerRef = useRef<HTMLDivElement>(null);
+  const knowHintRef = useRef<HTMLDivElement>(null);
+  const dontKnowHintRef = useRef<HTMLDivElement>(null);
+  // Odlot po ocenie trwa ~0,4 s: w tym czasie nie przyjmujemy kolejnej oceny ani gestu.
+  const answeringRef = useRef(false);
   const [isFlipped, setIsFlipped] = useState(false);
   const [results, setResults] = useState<{ flashcardId: string; isCorrect: boolean; responseTimeMs: number }[]>([]);
   const [startTime, setStartTime] = useState<number>(0);
@@ -264,6 +270,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   }, [cards, currentIndex, soundSettings]);
 
   const handleAnswer = useCallback(async (isCorrect: boolean) => {
+    if (answeringRef.current) return;
+    answeringRef.current = true;
     const responseTimeMs = Date.now() - startTime;
     const currentCard = cards[currentIndex];
     
@@ -276,6 +284,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
     setResults(newResults);
     
     const proceed = async () => {
+      answeringRef.current = false;
       if (currentIndex < cards.length - 1) {
         setCurrentIndex(prev => prev + 1);
         setIsFlipped(false);
@@ -301,12 +310,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
 
     if (cardContainerRef.current) {
       gsap.to(cardContainerRef.current, {
-        x: isCorrect ? window.innerWidth : -window.innerWidth,
-        rotation: isCorrect ? 45 : -45,
-        opacity: 0,
-        duration: 0.4,
-        ease: "power2.in",
-        overwrite: true,
+        ...ratingExitVars(isCorrect, window.innerWidth, prefersReducedMotion()),
         onComplete: proceed
       });
     } else {
@@ -315,7 +319,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   }, [currentIndex, cards, results, startTime, setId, saveSession]);
 
   const handlePrev = useCallback(() => {
-    if (currentIndex > 0) {
+    if (currentIndex > 0 && !answeringRef.current) {
       const proceed = () => {
         setCurrentIndex(prev => prev - 1);
         setIsFlipped(false);
@@ -335,7 +339,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   }, [currentIndex]);
 
   const handleNext = useCallback(() => {
-    if (currentIndex < cards.length - 1) {
+    if (currentIndex < cards.length - 1 && !answeringRef.current) {
       const proceed = () => {
         setCurrentIndex(prev => prev + 1);
         setIsFlipped(false);
@@ -354,26 +358,16 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
     }
   }, [currentIndex, cards.length]);
 
-  // Przeciąganie karty: wspólny hook PointerEvents (jak w rozgrzewce). Karta podąża za palcem
-  // i odlatuje w jego stronę. Nieodwrócona: lewo = następna, prawo = poprzednia (na końcach
-  // talii wraca na miejsce). Odwrócona to ocena — prawo „umiem", lewo „nie umiem" (bez zmian).
-  const swipe = useCardSwipe({
-    canStart: (e) => !(e.target as Element).closest?.('button'),
-    onFollow: (dx) => {
-      if (cardContainerRef.current) gsap.to(cardContainerRef.current, dragFollowVars(dx, isFlipped));
-    },
-    onSwipe: ({ dx, cancelled }) => {
-      if (cancelled) return false;
-      const action = moduleSwipeAction(dx, isFlipped, currentIndex, cards.length);
-      if (action === 'know') handleAnswer(true);
-      else if (action === 'dontKnow') handleAnswer(false);
-      else if (action === 'next') handleNext();
-      else if (action === 'prev') handlePrev();
-      return action !== null;
-    },
-    onSnapBack: () => {
-      if (cardContainerRef.current) gsap.to(cardContainerRef.current, snapBackVars());
-    },
+  // Przeciąganie karty: wspólny hook PointerEvents. Gest jest OCENĄ i działa tak samo na
+  // awersie i rewersie: karta idzie za palcem 1:1 (gsap.set → translate3d, bez tweena na każdy
+  // ruch), powyżej progu odlatuje w stronę ruchu (prawo „umiem", lewo „nie umiem"), poniżej
+  // wraca sprężyście. Nawigacja bez oceny: przyciski „Poprzednia / Następna" i strzałki (klawiatura).
+  const swipe = useRatingSwipe({
+    cardRef: cardContainerRef,
+    knowHintRef,
+    dontKnowHintRef,
+    isBusy: () => answeringRef.current,
+    onRate: handleAnswer,
   });
 
   useEffect(() => {
@@ -431,7 +425,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
   const currentCard = cards[currentIndex];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="max-w-3xl mx-auto space-y-8 px-4 sm:px-0">
       <div className="flex items-center justify-between">
         <button onClick={() => { showConfirm(
             t('flashcards.confirmQuitTitle') || 'Zakończ', 
@@ -474,7 +468,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
           <div
             ref={cardContainerRef}
             data-testid="flashcard-stage"
-            className={`w-full cursor-pointer ${SWIPE_TOUCH_ACTION_CLASS} perspective-1000`}
+            className={`relative w-full cursor-pointer will-change-transform ${SWIPE_TOUCH_ACTION_CLASS} perspective-1000`}
             onClick={() => {
               if (swipe.consumeSuppressedClick()) return;
               handleFlip();
@@ -511,6 +505,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
                 actions={<TTSButtons text={currentCard.definition} />}
               />
             </motion.div>
+            <SwipeRatingHint knowRef={knowHintRef} dontKnowRef={dontKnowHintRef} />
           </div>
         </div>
 

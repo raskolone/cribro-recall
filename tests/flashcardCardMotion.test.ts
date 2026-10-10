@@ -166,3 +166,61 @@ test('rozgrzewka bierze wszystkie parametry ruchu z jednego modułu (bez własny
   assert.doesNotMatch(src, /EXIT_X_PERCENT|EXIT_DROP_PX|ENTER_FROM_SCALE|ENTER_DELAY/);
   assert.doesNotMatch(src, /power2\.inOut/);
 });
+
+// --- Ocena gestem (moduł fiszek) -------------------------------------------------------
+import {
+  RATING_EXIT_ROTATION_DEG,
+  ratingDragPose,
+  ratingExitVars,
+  ratingHint,
+  ratingSnapBackVars,
+  ratingSwipeAction,
+  RATING_SNAP_DURATION,
+  RATING_SNAP_SPRING,
+  springEase as springEaseFn,
+} from '../utils/flashcardCardMotion';
+
+test('ocena gestem: prawo = umiem, lewo = nie umiem, od progu 80 px (bez zależności od odwrócenia)', () => {
+  assert.equal(ratingSwipeAction(DRAG.thresholdPx), 'know');
+  assert.equal(ratingSwipeAction(-DRAG.thresholdPx), 'dontKnow');
+  assert.equal(ratingSwipeAction(DRAG.thresholdPx - 1), null);
+  assert.equal(ratingSwipeAction(-(DRAG.thresholdPx - 1)), null);
+  assert.equal(ratingSwipeAction(0), null);
+});
+
+test('ocena gestem: karta idzie 1:1 (x = dx, obrót 0,05·dx) przez translate3d', () => {
+  assert.deepEqual(ratingDragPose(100), { x: 100, rotation: 5, force3D: true });
+  assert.deepEqual(ratingDragPose(-40), { x: -40, rotation: -2, force3D: true });
+});
+
+test('ocena gestem: wskazówka — martwa strefa, strona ruchu, siła do progu i nasycenie', () => {
+  assert.deepEqual(ratingHint(3), { side: null, strength: 0 });
+  assert.deepEqual(ratingHint(-40), { side: 'dontKnow', strength: 0.5 });
+  assert.deepEqual(ratingHint(60), { side: 'know', strength: 0.75 });
+  assert.equal(ratingHint(500).strength, 1);
+  assert.equal(ratingHint(-500).strength, 1);
+});
+
+test('ocena gestem: odlot = dawna animacja rewersu (±szerokość, ±45°, 0,4 s power2.in); ograniczenie ruchu = sam zanik', () => {
+  assert.deepEqual(ratingExitVars(true, 390), { x: 390, rotation: RATING_EXIT_ROTATION_DEG, opacity: 0, duration: 0.4, ease: 'power2.in', overwrite: true });
+  assert.deepEqual(ratingExitVars(false, 390), { x: -390, rotation: -45, opacity: 0, duration: 0.4, ease: 'power2.in', overwrite: true });
+  const reduced = ratingExitVars(true, 390, true) as Record<string, unknown>;
+  assert.equal(reduced.x, undefined);
+  assert.equal(reduced.rotation, undefined);
+  assert.equal(reduced.opacity, 0);
+  assert.ok((reduced.duration as number) < 0.2);
+});
+
+test('ocena gestem: powrót jest sprężyną z lekkim przestrzałem, kończy w 1 i czyści style inline', () => {
+  const v = ratingSnapBackVars() as any;
+  assert.equal(v.clearProps, 'all');
+  assert.equal(v.duration, RATING_SNAP_DURATION);
+  const ease = springEaseFn(RATING_SNAP_SPRING, RATING_SNAP_DURATION);
+  assert.equal(ease(0), 0);
+  assert.equal(ease(1), 1);
+  const peak = Math.max(...Array.from({ length: 100 }, (_, i) => ease(i / 100)));
+  assert.ok(peak > 1 && peak < 1.08, `przestrzał ${peak}`);
+  assert.ok(Math.abs(ease(0.99) - 1) < 0.01, 'u końca prawie w spoczynku');
+  const reduced = ratingSnapBackVars(true) as any;
+  assert.equal(reduced.ease, 'none');
+});

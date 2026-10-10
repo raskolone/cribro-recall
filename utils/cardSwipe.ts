@@ -8,7 +8,9 @@ import { CardDirection, DRAG, swipeDirection } from './flashcardCardMotion';
  * Reguły:
  * - gest zaczyna się jako „kandydat" i staje się przeciąganiem dopiero po
  *   `DRAG.startDistancePx` ruchu w poziomie (dotyk bez ruchu = zwykłe kliknięcie);
- * - zatwierdza go przesunięcie ≥ `DRAG.thresholdPx` (lewo = następna, prawo = poprzednia);
+ * - zatwierdza go przesunięcie ≥ `DRAG.thresholdPx`; znaczenie kierunku zależy od ekranu
+ *   (rozgrzewka: lewo = następna, prawo = poprzednia; moduł fiszek: lewo = „nie umiem",
+ *   prawo = „umiem", patrz `ratingSwipeAction`);
  * - `pointercancel` (przeglądarka przejęła gest — np. pionowe przewijanie, krawędź „wstecz")
  *   kończy gest bez zatwierdzenia;
  * - obsługiwany jest jeden wskaźnik naraz (drugi palec jest ignorowany);
@@ -92,27 +94,3 @@ export function createSwipeGesture(handlers: SwipeGestureHandlers) {
 }
 
 export type SwipeGesture = ReturnType<typeof createSwipeGesture>;
-
-/**
- * Co robi przeciągnięcie w module fiszek (kierunki jak w rozgrzewce, ocena bez zmian):
- * karta NIEodwrócona — lewo = następna, prawo = poprzednia (nic na końcach talii → powrót karty);
- * karta odwrócona to ocena: prawo = „umiem", lewo = „nie umiem".
- */
-export type ModuleSwipeAction = 'next' | 'prev' | 'know' | 'dontKnow';
-
-export function moduleSwipeAction(
-  dx: number,
-  flipped: boolean,
-  index: number,
-  total: number,
-): ModuleSwipeAction | null {
-  if (flipped) {
-    if (dx >= DRAG.thresholdPx) return 'know';
-    if (dx <= -DRAG.thresholdPx) return 'dontKnow';
-    return null;
-  }
-  const dir = swipeDirection(dx);
-  if (dir === 'next') return index < total - 1 ? 'next' : null;
-  if (dir === 'prev') return index > 0 ? 'prev' : null;
-  return null;
-}
