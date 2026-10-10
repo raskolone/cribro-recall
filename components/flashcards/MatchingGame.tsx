@@ -113,6 +113,10 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
   onFinishRef.current = onFinish;
 
   const rootRef = useRef<HTMLDivElement>(null);
+  // Warstwa cząsteczek: JEDYNE dziecko `rootRef`, do którego trafiają `span`y wybuchu. Dodawane wprost do
+  // korzenia (`space-y-6`) odbierały siatce „ostatnie dziecko" i dokładały jej margines na czas animacji,
+  // więc cała plansza skakała o kilka pikseli w górę i z powrotem.
+  const particleLayerRef = useRef<HTMLDivElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const comboRef = useRef<HTMLDivElement>(null);
   const starsRef = useRef<HTMLDivElement>(null);
@@ -254,7 +258,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
 
   const spawnBurst = useCallback(
     (base: DOMRect, cx: number, cy: number, count: number, radius: number) => {
-      const root = rootRef.current;
+      const root = particleLayerRef.current;
       if (!root || reduced) return;
       const colors = ['var(--accent)', 'var(--accent-soft)', 'var(--warn)'];
       run(() => {
@@ -523,6 +527,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
 
   return (
     <div ref={rootRef} className="relative max-w-5xl mx-auto space-y-6 w-full flex-1 flex flex-col justify-between min-h-[calc(100dvh-5rem)] pb-8">
+      <div ref={particleLayerRef} data-testid="match-particles" aria-hidden="true" className="pointer-events-none absolute inset-0 z-30" />
       <div className="flex items-center justify-between">
         <button onClick={onQuit} className="text-text-2 hover:text-text-hi flex items-center gap-2 pointer-coarse:min-h-11">
           ← {i18n.t('Zakończ')}
