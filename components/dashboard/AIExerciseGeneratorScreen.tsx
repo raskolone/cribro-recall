@@ -12,6 +12,8 @@ import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, 
 import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
 import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
+import { useSentenceSession } from '../../hooks/useSentenceSession';
+import { stampExercises } from '../../utils/sentenceSession';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
 import { isStudentTodoStatus, isV1Task, studentTasksQuery } from '../../utils/homework';
 import { getApprovedVocabularyText } from '../../utils/vocabulary';
@@ -858,10 +860,17 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
 
   // App states
   const [exercises, setExercises] = useState<TranslationExercise[]>([]);
-  const [studentAnswers, setStudentAnswers] = useState<string[]>([]);
+  /**
+   * Odpowiedzi, wskazówki, statusy sprawdzania i wyniki zdań — PO ID ZADANIA (nie po indeksie).
+   * Nowa runda zdań dostaje nowe id, więc nie dziedziczy odpowiedzi ani oceny z poprzedniej.
+   * Reszta ekranu czyta je dalej po indeksie zdania przez te widoki.
+   */
+  const sentences = useSentenceSession<TranslationEvaluationResult>(exercises);
+  const studentAnswers = sentences.answers;
+  const showHints = sentences.hints;
+  const evaluationStatuses = sentences.statuses;
+  const singleEvaluationResults = sentences.results;
   const [evaluationResults, setEvaluationResults] = useState<TranslationEvaluationResult[]>([]);
-  const [evaluationStatuses, setEvaluationStatuses] = useState<Record<number, 'evaluating' | 'evaluated'>>({});
-  const [singleEvaluationResults, setSingleEvaluationResults] = useState<Record<number, TranslationEvaluationResult>>({});
   /**
    * Nieudane próby z rzędu w trybie wpisywania.
    *
@@ -883,7 +892,6 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [puzzleHintIndex, setPuzzleHintIndex] = useState<number | null>(null);
   const [selectedVoiceLang, setSelectedVoiceLang] = useState<string>('en-US');
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [showHints, setShowHints] = useState<boolean[]>([]);
   const [isTopicModalOpen, setIsTopicModalOpen] = useState(false);
   const [grammarChapters, setGrammarChapters] = useState<any[]>([]);
   const [isLoadingTopics, setIsLoadingTopics] = useState(false);
@@ -1411,13 +1419,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         if (item.erroneousSentence) usedSentencesRef.current.push(item.erroneousSentence);
       });
       if (isAppending) {
-        setExercises((prev) => [...prev, ...generated]);
-        setStudentAnswers((prev) => [...prev, ...new Array(generated.length).fill('')]);
-        setShowHints((prev) => [...prev, ...new Array(generated.length).fill(false)]);
+        setExercises((prev) => [...prev, ...stampExercises(generated)]);
       } else {
-        setExercises(generated);
-        setStudentAnswers(new Array(generated.length).fill(''));
-        setShowHints(new Array(generated.length).fill(false));
+        setExercises(stampExercises(generated));
+        sentences.reset();
         setWarmupPhase('invite');
         setStep('practice');
       }
@@ -1444,9 +1449,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
         setIsLoading(true);
         setError('');
         try {
-           setExercises(task.sentences);
-           setStudentAnswers(new Array(task.sentences.length).fill(''));
-           setShowHints(new Array(task.sentences.length).fill(false));
+           setExercises(stampExercises<TranslationExercise>(task.sentences));
+           sentences.reset();
            setStep('practice');
         } catch(e) {
            setError('Błąd ładowania zadania specjalnego');
@@ -1475,9 +1479,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       setIsLoading(true);
       setError(null);
       setExercises([]);
-      setStudentAnswers([]);
+      sentences.reset();
       setEvaluationResults([]);
-      setShowHints([]);
       setActiveSentenceIndex(0);
       if (practiceMode === 'time') {
         setTimeLeft(timeLimit * 60);
@@ -1717,13 +1720,10 @@ ${learningContext?.briefing || ''}
             if (item.erroneousSentence) usedSentencesRef.current.push(item.erroneousSentence);
           });
           if (isAppending) {
-            setExercises(prev => [...prev, ...mappedItems]);
-            setStudentAnswers(prev => [...prev, ...new Array(mappedItems.length).fill('')]);
-            setShowHints(prev => [...prev, ...new Array(mappedItems.length).fill(false)]);
+            setExercises(prev => [...prev, ...stampExercises(mappedItems)]);
           } else {
-            setExercises(mappedItems);
-            setStudentAnswers(new Array(mappedItems.length).fill(''));
-            setShowHints(new Array(mappedItems.length).fill(false));
+            setExercises(stampExercises(mappedItems));
+            sentences.reset();
             setWarmupPhase('invite');
             setStep('practice');
           }
@@ -1760,13 +1760,10 @@ ${learningContext?.briefing || ''}
             if (item.polishSentence) usedSentencesRef.current.push(item.polishSentence);
           });
           if (isAppending) {
-             setExercises(prev => [...prev, ...generated]);
-             setStudentAnswers(prev => [...prev, ...new Array(generated.length).fill('')]);
-             setShowHints(prev => [...prev, ...new Array(generated.length).fill(false)]);
+             setExercises(prev => [...prev, ...stampExercises(generated)]);
           } else {
-             setExercises(generated);
-             setStudentAnswers(new Array(generated.length).fill(''));
-             setShowHints(new Array(generated.length).fill(false));
+             setExercises(stampExercises(generated));
+             sentences.reset();
              setWarmupPhase(exerciseFormat === 'typing' ? 'invite' : 'exercises');
              setStep('practice');
           }
@@ -1810,8 +1807,10 @@ ${learningContext?.briefing || ''}
     const currentIdx = activeSentenceIndex;
     const answer = studentAnswers[currentIdx];
     if (!answer || !answer.trim()) return;
-    
-    setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluating' }));
+
+    // Wynik wróci pod id TEGO zadania, nawet jeśli kursant zdąży przejść dalej albo zacząć nową rundę.
+    const evaluatedId = sentences.beginEvaluation(currentIdx);
+    if (!evaluatedId) return;
     setError(null);
     try {
       if (exerciseFormat === 'correction') {
@@ -1834,8 +1833,7 @@ ${learningContext?.briefing || ''}
               vocabulary_score: 20
             }
           };
-          setSingleEvaluationResults(prev => ({ ...prev, [currentIdx]: result }));
-          setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluated' }));
+          sentences.completeEvaluation(evaluatedId, result);
           setConsecutiveMisses(0);
           if (soundSettings?.autoPlaySentence && result.correctTranslation) {
             playAudio(result.correctTranslation, soundSettings.ttsAccent || 'en-US');
@@ -1875,8 +1873,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
       
       if (results && results.length > 0) {
         const result = results[0];
-        setSingleEvaluationResults(prev => ({ ...prev, [currentIdx]: result }));
-        setEvaluationStatuses(prev => ({ ...prev, [currentIdx]: 'evaluated' }));
+        sentences.completeEvaluation(evaluatedId, result);
         setConsecutiveMisses(prev => (result.isCorrect ? 0 : prev + 1));
 
         // Auto-play sentence pronunciation if user setting autoPlaySentence is enabled
@@ -1891,11 +1888,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
       setError(language === 'pl'
         ? 'Wystąpił błąd podczas oceniania odpowiedzi. Spróbuj ponownie. (' + err.message + ')'
         : 'An error occurred while evaluating your answers. Please try again. (' + err.message + ')');
-      setEvaluationStatuses(prev => {
-         const updated = { ...prev };
-         delete updated[currentIdx];
-         return updated;
-      });
+      sentences.failEvaluation(evaluatedId);
     }
   };
 
@@ -2060,13 +2053,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
           batchResults.forEach((res, idx) => {
             currentEvalResults[unevaluatedIndices[idx]] = res;
           });
-          setSingleEvaluationResults(currentEvalResults);
-          
-          let newStatuses = {};
-          unevaluatedIndices.forEach(idx => {
-            newStatuses[idx] = 'evaluated';
-          });
-          setEvaluationStatuses(prev => ({ ...prev, ...newStatuses }));
+          sentences.applyResults(currentEvalResults, unevaluatedIndices);
         }
       } catch (err) {
         console.error("Batch evaluation failed", err);
@@ -2217,27 +2204,15 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
     setExerciseFormat('puzzle');
     setPuzzleHintIndex(idx);
     setConsecutiveMisses(0);
-    setEvaluationStatuses(prev => {
-      const updated = { ...prev };
-      delete updated[idx];
-      return updated;
-    });
-    setSingleEvaluationResults(prev => {
-      const updated = { ...prev };
-      delete updated[idx];
-      return updated;
-    });
+    sentences.clearEvaluation(idx);
     handleAnswerChange(idx, '');
   };
 
   const handleProceedToTrueChallenge = () => {
     setExerciseFormat('typing');
     if (exercises && exercises.length > 0) {
-      setStudentAnswers(new Array(exercises.length).fill(''));
-      setShowHints(new Array(exercises.length).fill(false));
+      sentences.reset();
       setActiveSentenceIndex(0);
-      setEvaluationStatuses({});
-      setSingleEvaluationResults({});
       setConsecutiveMisses(0);
       setPuzzleHintIndex(null);
       setStep('practice');
@@ -2263,11 +2238,9 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
     setExerciseFormat('typing');
     returnToSetup();
     setExercises([]);
-    setStudentAnswers([]);
+    sentences.reset();
     setTimeLeft(null);
     setActiveSentenceIndex(0);
-    setEvaluationStatuses({});
-    setSingleEvaluationResults({});
     setConsecutiveMisses(0);
     setPuzzleHintIndex(null);
     if (onExerciseStateChange) {
@@ -2295,17 +2268,9 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
     }
   };
 
-  const handleAnswerChange = (index: number, val: string) => {
-    const updated = [...studentAnswers];
-    updated[index] = val;
-    setStudentAnswers(updated);
-  };
+  const handleAnswerChange = (index: number, val: string) => sentences.setAnswer(index, val);
 
-  const toggleHint = (index: number) => {
-    const updated = [...showHints];
-    updated[index] = !updated[index];
-    setShowHints(updated);
-  };
+  const toggleHint = (index: number) => sentences.toggleHint(index);
 
   const calcAvg = evaluationResults.length > 0
     ? Math.round(evaluationResults.reduce((acc, r) => {
@@ -2340,7 +2305,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                     closeConfirm();
                     returnToSetup();
                     setExercises([]);
-                    setStudentAnswers([]);
+                    sentences.reset();
                     setTimeLeft(null);
                   }
                 );
@@ -2392,7 +2357,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                 if (step === 'results') {
                   returnToSetup();
                   setExercises([]);
-                  setStudentAnswers([]);
+                  sentences.reset();
                   setTimeLeft(null);
                   return;
                 }
@@ -2403,7 +2368,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                     closeConfirm();
                     returnToSetup();
                     setExercises([]);
-                    setStudentAnswers([]);
+                    sentences.reset();
                     setTimeLeft(null);
                   }
                 );
@@ -4354,7 +4319,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                           highlightedAnswer: ans,
                           mistakes: []
                         };
-                        setSingleEvaluationResults(prev => ({ ...prev, [activeSentenceIndex]: result }));
+                        sentences.setResult(activeSentenceIndex, result);
                       }
                     }}
                   />
