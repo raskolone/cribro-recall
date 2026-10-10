@@ -204,6 +204,7 @@ import { resolveDailyLimit, type UsageDb } from "./utils/freePracticeQuota";
 import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 import { buildGradedHomeworkEmail } from "./services/homeworkEmail";
+import { GEMINI_PROXY_MAX_BODY, clampGeminiConfig, isProxyExempt, reserveProxyCall, resolveProxyLimits } from "./utils/geminiProxyGuard";
 import { isSafeDocId, validateAssignInput, validateGenerateInput } from "./utils/homeworkV2Input";
 import { resolveGradedNotification, taskOwnerUid } from "./utils/gradedNotification";
 import {
@@ -452,8 +453,15 @@ export function createApp() {
     next();
   });
   
-  app.use(express.json({ limit: '50mb' }));
-  app.use((err: any, req: any, res: any, next: any) => {
+  // Trasa /api/gemini/generate ma własny, niższy limit ciała (patrz utils/geminiProxyGuard.ts) —
+  // globalny parser pomija ją, a trasa parsuje sama, już PO uwierzytelnieniu.
+  const GEMINI_PROXY_PATH = '/api/gemini/generate';
+  const globalJsonParser = express.json({ limit: '50mb' });
+  // Express dopasowuje trasy bez względu na wielkość liter i ukośnik końcowy — porównanie musi robić to samo,
+  // inaczej wariant ścieżki dostawałby globalny limit 50 MB.
+  const isGeminiProxyPath = (p: string) => p.replace(/\/+$/, '').toLowerCase() === GEMINI_PROXY_PATH;
+  app.use((req, res, next) => (isGeminiProxyPath(req.path) ? next() : globalJsonParser(req, res, next)));
+  const jsonBodyErrorHandler = (err: any, req: any, res: any, next: any) => {
     if (err instanceof SyntaxError && 'body' in err) {
       return res.status(400).json({ error: 'Invalid JSON payload' });
     }
@@ -461,7 +469,8 @@ export function createApp() {
       return res.status(413).json({ error: 'Payload too large' });
     }
     next(err);
-  });
+  };
+  app.use(jsonBodyErrorHandler);
 
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
@@ -5715,9 +5724,48 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   // wyglądają tak samo jak przed przeniesieniem.
   const GEMINI_MODEL_PATTERN = /^gemini-[a-z0-9.\-]{1,60}$/i;
 
-  app.post("/api/gemini/generate", requireFirebaseAuth, async (req, res) => {
+  const geminiProxyBodyParser = express.json({ limit: GEMINI_PROXY_MAX_BODY });
+  const geminiProxyLimits = resolveProxyLimits();
+  // Ta sama lista co w requireFirebaseAdmin (middleware celowo nietknięty w SEC2).
+  const GEMINI_PROXY_EXEMPT_EMAILS = [
+    'maciej.wyrozumski@gmail.com',
+    'marta.lukaszczyk@gmail.com',
+    'maciejwyrozumski@icloud.com',
+    'wyrozumski@maciej.pro',
+    'maciej@learnwithmaciej.com',
+  ];
+
+  // Limit żądań na użytkownika (minuta i doba). Lektor/admin zwolnieni (rola z bazy, nie z klienta).
+  // Gdy baza jest niedostępna, NIE blokujemy legalnych wywołań (fail-open + ostrzeżenie): to ochrona
+  // kosztowa, a nie autoryzacja — autoryzację robi requireFirebaseAuth.
+  const geminiProxyRateLimit = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const uid = (req as any).userUid as string;
     try {
-      const { model, contents, config } = req.body || {};
+      const adminDb = getFirestore(getAdminApp(), FIRESTORE_DATABASE_ID);
+      const email = String((req as any).userEmail || '').toLowerCase();
+      const role = (await adminDb.collection('users').doc(uid).get()).data()?.role;
+      if (isProxyExempt(role, GEMINI_PROXY_EXEMPT_EMAILS.includes(email))) return next();
+      const reservation = await reserveProxyCall(adminDb as unknown as UsageDb, uid, new Date(), geminiProxyLimits);
+      if (reservation.ok === false) {
+        res.setHeader('Retry-After', String(reservation.retryAfterSec));
+        return res.status(429).json({
+          error: reservation.reason === 'minute'
+            ? 'Zbyt wiele zapytań do AI w krótkim czasie. Spróbuj za chwilę.'
+            : 'Wykorzystano dzienny limit zapytań do AI.',
+          reason: reservation.reason,
+          retryAfterSec: reservation.retryAfterSec,
+        });
+      }
+    } catch (err: any) {
+      console.warn('[Gemini Proxy] Limit żądań niedostępny, przepuszczam:', err?.message || err);
+    }
+    next();
+  };
+
+  app.post("/api/gemini/generate", requireFirebaseAuth, geminiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
+    try {
+      const { model, contents } = req.body || {};
+      const config = clampGeminiConfig(req.body?.config);
 
       // Nazwa modelu trafia do ścieżki URL po stronie SDK, więc nie może być
       // dowolnym ciągiem pochodzącym od klienta.
