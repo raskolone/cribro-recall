@@ -265,7 +265,9 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
 
         {/* Strefa odpowiedzi — o stałej wysokości (miernik z kompletną odpowiedzią) */}
         <div className="space-y-2 mb-5">
-          <div className="flex items-center justify-between min-h-6">
+          {/* Stała wysokość wiersza (także na dotyku), żeby pojawienie się „Resetuj" (cel 44 px) nie
+              przesunęło puli kafelków o 20 px po pierwszym wyborze. */}
+          <div className="flex items-center justify-between min-h-6 pointer-coarse:min-h-11">
             <span className="text-sm font-bold text-text-2">{t('Twoja odpowiedź')}</span>
             {selectedIds.length > 0 && !isDone && (
               <button

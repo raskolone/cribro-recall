@@ -209,3 +209,12 @@ test('wszystkie teksty komponentu mają wpis w pl.json i en.json (i18n, nie lite
     assert.doesNotMatch(key.replace(/\{\{[^}]+\}\}/g, ''), /:/, `klucz z dwukropkiem: ${key}`);
   }
 });
+
+test('STABILNOŚĆ: wiersz z „Resetuj" ma stałą wysokość równą celowi dotykowemu — pojawienie się przycisku nie przesuwa puli (pomiar w przeglądarce: +20 px)', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../components/dashboard/HomeworkWarmupScrambler.tsx', import.meta.url), 'utf8');
+  const row = src.slice(src.indexOf("t('Twoja odpowiedź')") - 400, src.indexOf("t('Twoja odpowiedź')"));
+  assert.match(row, /min-h-6 pointer-coarse:min-h-11/, 'wiersz nagłówka strefy odpowiedzi rezerwuje 44 px na dotyku');
+  const reset = src.slice(src.indexOf('onClick={handleReset}'), src.indexOf('onClick={handleReset}') + 400);
+  assert.match(reset, /pointer-coarse:min-h-11/, 'przycisk Resetuj ma cel 44 px — i wiersz już go mieści');
+});
