@@ -40,6 +40,7 @@ import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import Card from '../ui/Card';
 import Toast, { useToast } from '../ui/Toast';
 import PuzzleExercise from './PuzzleExercise';
+import { SentenceActionBar, SentenceAnswerInput, SentencePromptCard } from '../practice/SentencePracticeParts';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
 import { motion, AnimatePresence } from 'motion/react';
@@ -4267,115 +4268,36 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
               </div>
 
             <div className="space-y-3 relative z-10 flex flex-col items-center text-center">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-primary/10 text-primary rounded-full text-[12px] font-mono font-bold mx-auto">
-                {i18n.t("Zdanie")} {activeSentenceIndex + 1}
-              </div>
-
-              {/* Exercise prompt */}
-              {exerciseFormat === 'correction' ? (
-                <div className="w-full space-y-3">
-                  <div className="p-4 sm:p-5 rounded-2xl bg-amber-950/25 border border-amber-500/35 text-left space-y-2.5 shadow-sm">
-                    <div className="flex items-center justify-between">
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold uppercase tracking-wider font-mono">
-                        <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-400" />
-                        {language === 'pl' ? 'Znajdź i popraw błąd w zdaniu' : 'Spot & fix the error'}
-                      </span>
-                      {exercises[activeSentenceIndex].hint && (
-                        <button
-                          type="button"
-                          onClick={() => toggleHint(activeSentenceIndex)}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 hover:text-amber-300 transition-colors cursor-pointer"
-                        >
-                          <Lightbulb className="w-3.5 h-3.5" />
-                          {showHints[activeSentenceIndex] 
-                            ? (language === 'pl' ? 'Ukryj wskazówkę' : 'Hide hint') 
-                            : (language === 'pl' ? 'Wskazówka' : 'Hint')}
-                        </button>
-                      )}
-                    </div>
-
-                    <p className="text-lg sm:text-xl font-bold text-white leading-relaxed pt-1">
-                      {exercises[activeSentenceIndex].erroneousSentence || exercises[activeSentenceIndex].polishSentence}
-                    </p>
-
-                    {exercises[activeSentenceIndex].polishSentence && exercises[activeSentenceIndex].polishSentence !== exercises[activeSentenceIndex].erroneousSentence && (
-                      <p className="text-xs text-text-2 pt-2 border-t border-white/10 flex items-center gap-1.5">
-                        <span className="font-semibold text-text-hi">{language === 'pl' ? 'Kontekst / Znaczenie:' : 'Context / Meaning:'}</span>
-                        <span className="italic">{exercises[activeSentenceIndex].polishSentence}</span>
-                      </p>
-                    )}
-                  </div>
-
-                  {showHints[activeSentenceIndex] && exercises[activeSentenceIndex].hint && (
-                    <div className="p-3.5 rounded-xl bg-amber-950/30 border border-amber-500/35 text-warn text-xs sm:text-sm leading-relaxed text-left flex items-start gap-2.5 animate-in fade-in duration-200">
-                      <Lightbulb className="w-4 h-4 text-warn shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-bold text-warn block text-[12px] uppercase tracking-wider mb-0.5">
-                          {language === 'pl' ? 'Wskazówka lektora:' : 'Tutor hint:'}
-                        </span>
-                        <span>{exercises[activeSentenceIndex].hint}</span>
-                      </div>
-                    </div>
-                  )}
+              {exerciseFormat === 'puzzle' && (
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 border border-line-strong text-text-hi rounded-full text-[12px] font-mono font-bold mx-auto">
+                  {i18n.t("Zdanie")} {activeSentenceIndex + 1}
                 </div>
-              ) : exerciseFormat !== 'puzzle' ? (
-                <>
-                  <div className="w-full bg-[var(--surface-flat)] border border-white/10 rounded-2xl p-5 shadow-[inset_0_2px_15px_rgba(0,0,0,0.5)] mb-2">
-                    <div className="text-xl sm:text-2xl md:text-3xl font-black text-white tracking-tight leading-relaxed text-center">
-                      {exercises[activeSentenceIndex].polishSentence}
-                    </div>
-                  </div>
+              )}
 
-                  {/* Optional hint toggle */}
-                  {exercises[activeSentenceIndex].hint && (
-                    <div className="w-full">
-                      <button
-                        type="button"
-                        onClick={() => toggleHint(activeSentenceIndex)}
-                        className="inline-flex items-center gap-1.5 pointer-coarse:min-h-11 text-xs font-bold text-warn hover:opacity-80 transition-colors mx-auto cursor-pointer"
-                      >
-                        <Lightbulb className="w-3.5 h-3.5" />
-                        {showHints[activeSentenceIndex] 
-                          ? (language === 'pl' ? 'Ukryj wskazówkę' : 'Hide hint') 
-                          : (language === 'pl' ? 'Pokaż wskazówkę' : 'Show hint')}
-                      </button>
-                      {showHints[activeSentenceIndex] && (
-                        <div className="mt-1.5 mx-auto bg-warn/[0.04] border border-warn/15 rounded-xl p-3 text-xs text-warn animate-fade-in-up max-w-lg">
-                          {exercises[activeSentenceIndex].hint}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </>
+              {/* Karta zdania (Tłumaczenie / Korekta) — wspólny komponent, tokeny obu motywów */}
+              {exerciseFormat === 'correction' ? (
+                <SentencePromptCard
+                  variant="correction"
+                  index={activeSentenceIndex}
+                  sentence={exercises[activeSentenceIndex].erroneousSentence || exercises[activeSentenceIndex].polishSentence}
+                  context={exercises[activeSentenceIndex].polishSentence}
+                  hint={exercises[activeSentenceIndex].hint}
+                  hintOpen={Boolean(showHints[activeSentenceIndex])}
+                  onToggleHint={() => toggleHint(activeSentenceIndex)}
+                />
+              ) : exerciseFormat !== 'puzzle' ? (
+                <SentencePromptCard
+                  variant="translation"
+                  index={activeSentenceIndex}
+                  sentence={exercises[activeSentenceIndex].polishSentence}
+                  hint={exercises[activeSentenceIndex].hint}
+                  hintOpen={Boolean(showHints[activeSentenceIndex])}
+                  onToggleHint={() => toggleHint(activeSentenceIndex)}
+                />
               ) : null}
 
-              {/* Student answer field */}
-              <div className="w-full space-y-3 mt-4 pt-4 border-t border-white/5 flex flex-col items-center">
-                {exerciseFormat === 'correction' ? (
-                  <div className="flex items-center justify-between w-full">
-                    <label className="text-xs font-bold text-amber-400 uppercase tracking-widest">
-                      {language === 'pl' ? 'Twoja poprawiona wersja:' : 'Your corrected sentence:'}
-                    </label>
-                    {exercises[activeSentenceIndex].erroneousSentence && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const val = exercises[activeSentenceIndex].erroneousSentence || '';
-                          handleAnswerChange(activeSentenceIndex, val);
-                        }}
-                        className="inline-flex items-center gap-1 text-[12px] text-amber-400 hover:text-amber-300 font-bold transition-colors cursor-pointer"
-                        title={language === 'pl' ? 'Wstaw zdanie z błędem, aby szybko poprawić tylko błąd' : 'Copy sentence to edit'}
-                      >
-                        <Copy className="w-3 h-3" /> {language === 'pl' ? 'Kopiuj zdanie do edycji' : 'Copy sentence to edit'}
-                      </button>
-                    )}
-                  </div>
-                ) : exerciseFormat !== 'puzzle' ? (
-                  <label className="block text-sm font-bold text-primary/80 text-center w-full uppercase tracking-widest">
-                    {language === 'pl' ? 'Twoje tłumaczenie na angielski:' : 'Your translation to English:'}
-                  </label>
-                ) : null}
-                
+              {/* Pole odpowiedzi i wynik */}
+              <div className="w-full space-y-3 mt-2 flex flex-col items-center">
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
                   <div className="space-y-3 w-full text-center flex flex-col items-center">
                     <div 
@@ -4532,40 +4454,66 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                     }}
                   />
                 ) : (
-                  <textarea
-                    value={studentAnswers[activeSentenceIndex] || ''}
-                    onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
-                    placeholder={
-                      exerciseFormat === 'correction'
-                        ? (language === 'pl' ? 'Wpisz w pełni poprawione zdanie po angielsku...' : 'Type the fully corrected sentence in English...')
-                        : (language === 'pl' ? 'Wpisz swoje tłumaczenie tutaj...' : 'Type your translation here...')
-                    }
-                    rows={2}
-                    disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                    className={`w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3 text-base outline-none transition-all duration-200 text-center ${
-                      exerciseFormat === 'correction'
-                        ? 'focus:border-amber-400/50 focus:ring-1 focus:ring-amber-400/25'
-                        : 'focus:border-primary/40 focus:ring-1 focus:ring-primary/20'
-                    }`}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        if (evaluationStatuses[activeSentenceIndex] !== 'evaluated') {
-                          if (studentAnswers[activeSentenceIndex]?.trim()) {
-                            handleEvaluateSingle();
+                  <div className="w-full space-y-2">
+                    {exerciseFormat === 'correction' && exercises[activeSentenceIndex].erroneousSentence && (
+                      <button
+                        type="button"
+                        onClick={() => handleAnswerChange(activeSentenceIndex, exercises[activeSentenceIndex].erroneousSentence || '')}
+                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-text-hi hover:text-primary transition-colors motion-reduce:transition-none cursor-pointer"
+                        title={i18n.t('Wstaw zdanie z błędem, aby poprawić tylko błąd')}
+                      >
+                        <Copy className="w-3.5 h-3.5" aria-hidden="true" /> {i18n.t('Kopiuj zdanie do edycji')}
+                      </button>
+                    )}
+                    <SentenceAnswerInput
+                      label={exerciseFormat === 'correction' ? i18n.t('Twoja poprawiona wersja') : i18n.t('Twoje tłumaczenie na angielski')}
+                      value={studentAnswers[activeSentenceIndex] || ''}
+                      onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
+                      placeholder={exerciseFormat === 'correction' ? i18n.t('Wpisz w pełni poprawione zdanie po angielsku') : i18n.t('Wpisz swoje tłumaczenie tutaj')}
+                      disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (evaluationStatuses[activeSentenceIndex] !== 'evaluated') {
+                            if (studentAnswers[activeSentenceIndex]?.trim()) {
+                              handleEvaluateSingle();
+                            }
+                          } else {
+                            handleNext();
                           }
-                        } else {
-                          handleNext();
                         }
-                      }
-                    }}
-                  />
+                      }}
+                    />
+                  </div>
                 )}
-                </>
-               )}
+                  </>
+                )}
               </div>
             </div>
-            {/* Navigation controls */}
+            {/* Pasek akcji: Poprzednie / Sprawdź (główna) / Dalej (drugorzędna); układanka ma własne przyciski */}
+            {exerciseFormat !== 'puzzle' ? (
+              (() => {
+                const idx = activeSentenceIndex;
+                const isLastFixed = idx === exercises.length - 1 && practiceMode === 'fixed';
+                const answered = Boolean(studentAnswers[idx]?.trim());
+                const evaluated = evaluationStatuses[idx] === 'evaluated';
+                const loadingMore = isGeneratingMore && idx === exercises.length - 1;
+                const forward = isLastFixed
+                  ? { label: evaluated ? i18n.t('Zakończ i podsumuj') : i18n.t('Zakończ'), onClick: handleFinishAll, disabled: !evaluated && (!answered || isGeneratingMore), loading: !evaluated && isGeneratingMore }
+                  : { label: i18n.t('Dalej'), onClick: handleNext, disabled: (!evaluated && !answered) || isGeneratingMore, loading: loadingMore };
+                return (
+                  <SentenceActionBar
+                    previous={{ label: i18n.t('Poprzednie'), onClick: handlePrev, disabled: idx === 0 }}
+                    primary={
+                      evaluated
+                        ? forward
+                        : { label: i18n.t('Sprawdź'), onClick: handleEvaluateSingle, disabled: !answered, loading: evaluationStatuses[idx] === 'evaluating' }
+                    }
+                    secondary={evaluated ? undefined : forward}
+                  />
+                );
+              })()
+            ) : (
             <div className="flex justify-between items-center pt-4 flex-wrap gap-3">
               <Button
                 variant="secondary"
@@ -4655,6 +4603,8 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                 </div>
               )}
             </div>
+
+            )}
 
             {(evaluationStatuses[activeSentenceIndex] === 'evaluating' || isGeneratingMore) && (
               <div className="w-full flex justify-center mt-3 animate-fade-in">
