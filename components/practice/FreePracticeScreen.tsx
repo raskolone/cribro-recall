@@ -38,6 +38,7 @@ import {
 } from '../../utils/freePractice';
 import { filterLessonsByQuery, pruneLessonSelection, type LessonLike } from '../../utils/freeSentenceScope';
 import CreateCustomSetModal from './CreateCustomSetModal';
+import SentenceCountSlider from './SentenceCountSlider';
 
 export type SetTab = 'lessons' | 'general' | 'user';
 
@@ -133,6 +134,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   }, [categorized, sentences, lessons]);
   const [activeTab, setActiveTab] = useState<SetTab>(initialTab);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [sentenceCount, setSentenceCount] = useState(5);
   const hasSets = sets.filter((s) => !s.isDraft).length > 0;
   const hasLessons = sentences && lessons.length > 0;
 
@@ -162,7 +164,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
 
   const start = () => {
     if (blocker) return;
-    onStart(buildFreeLaunch(mode, scope));
+    onStart(buildFreeLaunch(mode, scope, sentenceCount));
   };
 
   const primaryAction = () => {
@@ -771,6 +773,15 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             ))}
           </ul>
         </div>
+        {sentences && (
+          <div data-testid="free-practice-sentence-count-wrapper" className="rounded-2xl border-2 border-line-strong bg-surface-flat p-4">
+            <SentenceCountSlider
+              id="free-practice-sentence-count"
+              value={sentenceCount}
+              onChange={setSentenceCount}
+            />
+          </div>
+        )}
         {blockerMessage && (
           <p role="status" className="text-sm text-text-2">
             {blockerMessage}

@@ -699,6 +699,21 @@
   "Zamknij": "Close",
   "Opanowano {{mastered}} z {{total}}": "Mastered {{mastered}} of {{total}}",
   "Zostaw na później": "Leave for later",
-  "Trudna karta — możesz zostawić ją na później": "Tricky card — you can leave it for later"
+  "Trudna karta — możesz zostawić ją na później": "Tricky card — you can leave it for later",
+  "Liczba zdań": "Number of sentences",
+  "{{count}} zdań": "{{count}} sentences",
+  "Zmniejsz liczbę zdań": "Decrease number of sentences",
+  "Zwiększ liczbę zdań": "Increase number of sentences",
+  "Co dalej?": "What's next?",
+  "Trudniejsza praktyka na tym samym materiale": "Harder practice with the same material",
+  "Słowa do powtórzenia": "Words to practice",
+  "Rozpocznij quiz": "Start quiz",
+  "Rozpocznij tłumaczenie": "Start translation",
+  "Rozpocznij korektę": "Start correction",
+  "Wróć do menu": "Back to menu",
+  "Polecane po rozgrzewce — trudniejsza praktyka": "Recommended after warmup — harder practice",
+  "Bez AI — utrwalenie słówek (słowa słabe na początku)": "No AI — vocabulary practice (weak words first)",
+  "Zdania AI z wykorzystaniem Twoich słów": "AI sentences using your words",
+  "Znajdź i popraw błędy w zdaniach z AI": "Find and fix mistakes in AI sentences"
 }
 

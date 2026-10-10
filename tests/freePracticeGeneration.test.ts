@@ -46,6 +46,7 @@ const request = (over: Partial<FreeGenerationRequest> = {}): FreeGenerationReque
   lessonRecordIds: [],
   count: 3,
   excludeSentences: [],
+  focusWords: [],
   ...over,
 });
 
@@ -84,7 +85,7 @@ test('sanityzacja: zostają litery, cyfry i podstawowa interpunkcja; ogranicznik
 
 test('żądanie: poprawne dane przechodzą, limity i typy są egzekwowane (400 z kodem)', () => {
   const ok = parseGenerateRequest({ format: 'correction', topics: ['travel'], words: ['a'], lessonRecordIds: ['rec1'], count: 4, excludeSentences: ['x'] });
-  assert.deepEqual(valueOf(ok), { format: 'correction', topics: ['travel'], words: ['a'], lessonRecordIds: ['rec1'], count: 4, excludeSentences: ['x'] });
+  assert.deepEqual(valueOf(ok), { format: 'correction', topics: ['travel'], words: ['a'], lessonRecordIds: ['rec1'], count: 4, excludeSentences: ['x'], focusWords: [] });
 
   const code = (body: unknown) => {
     const r = parseGenerateRequest(body);
@@ -333,3 +334,95 @@ test('log użycia: liczby i skrót identyfikatora — żadnego tematu, słowa an
   assert.ok(Object.values(entry).every((v) => typeof v === 'number' || /^[\w.\-]+$/.test(String(v))));
   assert.deepEqual(Object.keys(buildUsageLog({ uidHash: 'x', format: 'correction', topicCount: 0, wordCount: 0, lessonCount: 0, outcome: 'daily_limit' })).sort(), ['format', 'lessons', 'outcome', 'topics', 'uid', 'words']);
 });
+
+// --- R5: Wartości graniczne count i sanitizacja focusWords --------------------------------
+
+test('R5 parseGenerateRequest: wartości graniczne count (0, 1, 20, 21, nie-liczba)', () => {
+  const base = { format: 'translation', words: ['apple'] };
+  
+  // 0 lub ujemne → DEFAULT (5)
+  const res0 = parseGenerateRequest({ ...base, count: 0 });
+  assert.ok(res0.ok);
+  assert.equal(res0.value.count, 5);
+
+  const resNeg = parseGenerateRequest({ ...base, count: -3 });
+  assert.ok(resNeg.ok);
+  assert.equal(resNeg.value.count, 5);
+
+  // 1 (minimalna dozwolona) → 1
+  const res1 = parseGenerateRequest({ ...base, count: 1 });
+  assert.ok(res1.ok);
+  assert.equal(res1.value.count, 1);
+
+  // 20 (maksymalna dozwolona) → 20
+  const res20 = parseGenerateRequest({ ...base, count: 20 });
+  assert.ok(res20.ok);
+  assert.equal(res20.value.count, 20);
+
+  // 21 → przycięte do 20 (MAX_FREE_COUNT)
+  const res21 = parseGenerateRequest({ ...base, count: 21 });
+  assert.ok(res21.ok);
+  assert.equal(res21.value.count, 20);
+
+  // nie-liczba / NaN / brak → DEFAULT (5)
+  const resNaN = parseGenerateRequest({ ...base, count: 'invalid' });
+  assert.ok(resNaN.ok);
+  assert.equal(resNaN.value.count, 5);
+
+  const resUndefined = parseGenerateRequest({ ...base, count: undefined });
+  assert.ok(resUndefined.ok);
+  assert.equal(resUndefined.value.count, 5);
+});
+
+test('R5 parseGenerateRequest: sanitizacja i limity focusWords', () => {
+  const base = { format: 'translation', words: ['apple'] };
+
+  // Poprawne focusWords
+  const ok = parseGenerateRequest({ ...base, focusWords: ['apple', 'banana'] });
+  assert.ok(ok.ok);
+  assert.deepEqual(ok.value.focusWords, ['apple', 'banana']);
+
+  // Przycięcie każdego słowa do 60 znaków
+  const longWord = 'a'.repeat(80);
+  const truncated = parseGenerateRequest({ ...base, focusWords: [longWord] });
+  assert.ok(truncated.ok);
+  assert.equal(truncated.value.focusWords[0].length, 60);
+
+  // Odrzucenie nie-tekstów
+  const nonString = parseGenerateRequest({ ...base, focusWords: [123] });
+  assert.equal(nonString.ok, false);
+  if (!nonString.ok) assert.equal(nonString.code, 'invalid_focus_words');
+
+  // Przekroczenie limitu 30 słów słabych
+  const tooMany = parseGenerateRequest({
+    ...base,
+    focusWords: Array.from({ length: 35 }, (_, i) => `word${i}`),
+  });
+  assert.equal(tooMany.ok, false);
+  if (!tooMany.ok) assert.equal(tooMany.code, 'too_many_focus_words');
+
+  // Sam focusWords bez innych słów/tematów jest wystarczający do zakresu
+  const onlyFocus = parseGenerateRequest({
+    format: 'translation',
+    focusWords: ['awkward'],
+  });
+  assert.ok(onlyFocus.ok);
+  assert.deepEqual(onlyFocus.value.focusWords, ['awkward']);
+});
+
+test('R5 buildGenerationPrompt: zawiera blok <focus_words> i priorytet w instrukcji', () => {
+  const prompt = buildGenerationPrompt({
+    request: request({
+      focusWords: ['embarrassed', 'awkward'],
+      count: 7,
+    }),
+    context,
+  });
+
+  assert.match(prompt, /<focus_words>/);
+  assert.match(prompt, /embarrassed/);
+  assert.match(prompt, /awkward/);
+  assert.match(prompt, /Priorytet mają słowa słabe z <focus_words>/);
+  assert.match(prompt, /7 zdań do tłumaczenia/);
+});
+

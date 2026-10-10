@@ -46,7 +46,7 @@ import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FreePracticeScreen from '../practice/FreePracticeScreen';
 import { getVocabularySetsForStudent } from '../../services/lessonRecord';
-import { shortcutInitial, type FreePracticeInitial, type FreeSentencesLaunch } from '../../utils/freePractice';
+import { freeSentencesLaunch, shortcutInitial, type FreePracticeInitial, type FreeSentencesLaunch } from '../../utils/freePractice';
 import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
@@ -604,7 +604,23 @@ const Dashboard: React.FC = () => {
         initialMode={(window as any)._initialStudyMode} 
         onBack={() => handleNavigate('dashboard')} 
         onNavigate={(v: any, extra?: any) => {
+          if (extra?.freeLaunch) {
+            setFreeLaunch(extra.freeLaunch);
+          } else if (v === 'free-sentences' && (extra?.setIds || activeSetIds || activeSetId)) {
+            const setIdsToUse = extra?.setIds ?? (activeSetIds ? activeSetIds : activeSetId ? [activeSetId] : []);
+            setFreeLaunch(freeSentencesLaunch(
+              extra?.mode ?? 'translation',
+              {
+                setIds: setIdsToUse,
+                lessonIds: extra?.lessonIds ?? [],
+                topics: [],
+              },
+              extra?.count,
+              extra?.focusWords,
+            ));
+          }
           if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
+          if (extra?.setIds) setActiveSetIds(extra.setIds);
           if (extra && extra.initialMode) {
             (window as any)._initialStudyMode = extra.initialMode === 'match' ? 'matching' : extra.initialMode;
           }

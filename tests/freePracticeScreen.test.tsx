@@ -513,7 +513,7 @@ test('start tłumaczenia: generator dostaje zakres i format, korekty — format 
   fireEvent.click(next());
   assert.ok(container.textContent!.includes('Lekcja 26.10') && container.textContent!.includes('Moje słówka'));
   fireEvent.click(next());
-  assert.deepEqual(starts[0], { view: 'free-sentences', mode: 'translation', format: 'typing', setIds: ['s1'], lessonIds: ['l3'], topics: [] });
+  assert.deepEqual(starts[0], { view: 'free-sentences', mode: 'translation', format: 'typing', setIds: ['s1'], lessonIds: ['l3'], topics: [], count: 5 });
   cleanup();
 
   const second = setup({ initial: { mode: 'correction' } });
@@ -522,7 +522,24 @@ test('start tłumaczenia: generator dostaje zakres i format, korekty — format 
   fireEvent.click(second.box('s1'));
   second.toStart();
   assert.equal((second.starts[0] as any).format, 'correction');
+  assert.equal((second.starts[0] as any).count, 5);
   assert.ok(!Object.keys(second.starts[0]).some((key) => /task|homework|status/i.test(key)));
+});
+
+test('start zdań z AI: zmiana suwaka liczby zdań w kroku 3 przekazuje wybraną wartość w onStart', () => {
+  const { toScope, box, next, starts, container, tab } = setup({ initial: { mode: 'translation' } });
+  toScope();
+  fireEvent.click(tab('user'));
+  fireEvent.click(box('s1'));
+  fireEvent.click(next()); // idź do kroku 3
+
+  const incBtn = container.querySelector('[data-testid="sentence-count-increment"]') as HTMLButtonElement;
+  assert.ok(incBtn);
+  fireEvent.click(incBtn); // 5 -> 6
+  fireEvent.click(incBtn); // 6 -> 7
+
+  fireEvent.click(next()); // kliknij Start
+  assert.equal((starts[0] as any).count, 7);
 });
 
 test('skrót z innego ekranu: menu otwiera się na kroku zakresu z wybranym tłumaczeniem i zakresem', () => {

@@ -32,6 +32,7 @@ import {
   getSessionSummary,
   type FlashcardQueueState,
 } from '../../utils/flashcardQueue';
+import WhatsNextSection from '../practice/WhatsNextSection';
 
 interface FlashcardStudyScreenProps {
   setId: string;
@@ -43,19 +44,21 @@ interface FlashcardStudyScreenProps {
   setIds?: string[];
   initialMode?: StudyMode;
   onBack: () => void;
-  onNavigate?: (view: string) => void;
+  onNavigate?: (view: any, extra?: any) => void;
   onStartAIPractice?: () => void;
+  focusWords?: string[];
 }
 
 type StudyMode = 'flashcards' | 'quiz' | 'writing' | 'matching' | 'intro' | null;
 
-const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setIds, initialMode = null, onBack, onNavigate, onStartAIPractice }) => {
+const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setIds, initialMode = null, onBack, onNavigate, onStartAIPractice, focusWords }) => {
   const { sets, getFlashcards, saveSession } = useFlashcards();
   const { t, language } = useLanguage();
   const [set, setSet] = useState<FlashcardSet | null>(null);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode || null);
+  const [activeFocusWords, setActiveFocusWords] = useState<string[]>(() => focusWords || (window as any)._focusWords || []);
   const [isReversed, setIsReversed] = useState(false);
   const multiIds = setIds && setIds.length > 1 ? setIds : null;
   const multiKey = multiIds ? multiIds.join('|') : '';
@@ -226,7 +229,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
   if (selectedMode === 'quiz') {
     return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSessionForScope}
         onNavigate={onNavigate}
-        language={language} t={t} /></>;
+        language={language} t={t} focusWords={activeFocusWords} /></>;
   }
 
   if (selectedMode === 'writing') {
@@ -238,7 +241,22 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
   if (selectedMode === 'matching') {
     return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSessionForScope}
         onNavigate={onNavigate}
-        language={language} t={t} /></>;
+        language={language} t={t}
+        onStartQuiz={(wrongWords: string[]) => {
+          setActiveFocusWords(wrongWords);
+          setSelectedMode('quiz');
+        }}
+        onStartSentences={(format: 'translation' | 'correction', count: number, wrongWords: string[]) => {
+          if (onNavigate) {
+            onNavigate('free-sentences', {
+              mode: format,
+              setIds: setIds && setIds.length > 0 ? setIds : [setId],
+              count,
+              focusWords: wrongWords,
+            });
+          }
+        }}
+      /></>;
   }
 
   return (
@@ -253,13 +271,27 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
         onNavigate={onNavigate}
         language={language}
         t={t}
+        onStartQuiz={(weakWords: string[]) => {
+          setActiveFocusWords(weakWords);
+          setSelectedMode('quiz');
+        }}
+        onStartSentences={(format: 'translation' | 'correction', count: number, weakWords: string[]) => {
+          if (onNavigate) {
+            onNavigate('free-sentences', {
+              mode: format,
+              setIds: setIds && setIds.length > 0 ? setIds : [setId],
+              count,
+              focusWords: weakWords,
+            });
+          }
+        }}
       />
     </>
   );
 };
 
 // --- Flashcards Mode Component ---
-const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
+const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language, onStartQuiz, onStartSentences}: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [queueState, setQueueState] = useState<FlashcardQueueState<Flashcard>>(() => createFlashcardQueue([]));
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -508,12 +540,27 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
             {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', totalCount.toString())}
           </p>
         </Card>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
-          <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
-          <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
-            {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
-          </Button>
-        </div>
+        {onStartQuiz || onStartSentences ? (
+          <WhatsNextSection
+            weakWords={queueState.weakWords}
+            onStartQuiz={() => onStartQuiz?.(queueState.weakWords)}
+            onStartSentences={(format, count) => onStartSentences?.(format, count, queueState.weakWords)}
+            onBack={onBack}
+            onReplay={() => {
+              const shuffled = [...initialCards].sort(() => Math.random() - 0.5);
+              setCards(shuffled);
+              setQueueState(createFlashcardQueue(shuffled));
+              setIsFlipped(false);
+            }}
+          />
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+            <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
+            <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
+              {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
+            </Button>
+          </div>
+        )}
       </div>
     );
   }
@@ -662,7 +709,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
 };
 
 // --- Quiz Mode Component ---
-const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
+const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language, focusWords}: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [options, setOptions] = useState<string[]>([]);
@@ -675,9 +722,16 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
 
   useEffect(() => {
     const shuffled = [...initialCards].sort(() => Math.random() - 0.5);
-    setCards(shuffled);
+    if (Array.isArray(focusWords) && focusWords.length > 0) {
+      const focusSet = new Set(focusWords.map((w: string) => (w || '').trim().toLowerCase()));
+      const weak = shuffled.filter((c: Flashcard) => focusSet.has((c.term || '').trim().toLowerCase()));
+      const others = shuffled.filter((c: Flashcard) => !focusSet.has((c.term || '').trim().toLowerCase()));
+      setCards([...weak, ...others]);
+    } else {
+      setCards(shuffled);
+    }
     setStartTime(Date.now());
-  }, [initialCards]);
+  }, [initialCards, focusWords]);
 
   useEffect(() => {
     if (cards.length > 0 && currentIndex < cards.length) {

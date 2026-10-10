@@ -1393,7 +1393,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           topics: freeLaunch.topics,
           words,
           lessonRecordIds,
-          count: practiceMode === 'time' ? 10 : numSentences,
+          count: practiceMode === 'time' ? 10 : (freeLaunch.count ?? numSentences),
+          focusWords: freeLaunch.focusWords,
           excludeSentences: usedSentencesRef.current.slice(-40),
         },
         {

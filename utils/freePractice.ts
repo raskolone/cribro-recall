@@ -117,10 +117,17 @@ export interface FreeSentencesLaunch extends SentenceScope {
   view: 'free-sentences';
   mode: 'translation' | 'correction';
   format: SentenceFormat;
+  count?: number;
+  focusWords?: string[];
 }
 
-export function freeSentencesLaunch(mode: 'translation' | 'correction', scope: SentenceScope): FreeSentencesLaunch {
-  return {
+export function freeSentencesLaunch(
+  mode: 'translation' | 'correction',
+  scope: SentenceScope,
+  count?: number,
+  focusWords?: string[],
+): FreeSentencesLaunch {
+  const result: FreeSentencesLaunch = {
     view: 'free-sentences',
     mode,
     format: sentenceFormatFor(mode),
@@ -128,13 +135,21 @@ export function freeSentencesLaunch(mode: 'translation' | 'correction', scope: S
     lessonIds: [...scope.lessonIds],
     topics: scope.topics ? [...scope.topics] : [],
   };
+  if (count !== undefined) result.count = count;
+  if (focusWords && focusWords.length > 0) result.focusWords = [...focusWords];
+  return result;
 }
 
 export type AnyFreeLaunch = FreePracticeLaunch | FreeSentencesLaunch;
 
-export function buildFreeLaunch(mode: FreePracticeMode, scope: SentenceScope): AnyFreeLaunch {
+export function buildFreeLaunch(
+  mode: FreePracticeMode,
+  scope: SentenceScope,
+  count?: number,
+  focusWords?: string[],
+): AnyFreeLaunch {
   return mode === 'translation' || mode === 'correction'
-    ? freeSentencesLaunch(mode, scope)
+    ? freeSentencesLaunch(mode, scope, count, focusWords)
     : freePracticeLaunch(mode, scope.setIds);
 }
 

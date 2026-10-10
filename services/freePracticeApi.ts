@@ -28,6 +28,7 @@ export interface FreePracticeRequest {
   lessonRecordIds: string[];
   count: number;
   excludeSentences: string[];
+  focusWords?: string[];
 }
 
 export interface FreePracticeResponse {

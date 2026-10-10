@@ -701,6 +701,21 @@
   "Zamknij": "Zamknij",
   "Opanowano {{mastered}} z {{total}}": "Opanowano {{mastered}} z {{total}}",
   "Zostaw na później": "Zostaw na później",
-  "Trudna karta — możesz zostawić ją na później": "Trudna karta — możesz zostawić ją na później"
+  "Trudna karta — możesz zostawić ją na później": "Trudna karta — możesz zostawić ją na później",
+  "Liczba zdań": "Liczba zdań",
+  "{{count}} zdań": "{{count}} zdań",
+  "Zmniejsz liczbę zdań": "Zmniejsz liczbę zdań",
+  "Zwiększ liczbę zdań": "Zwiększ liczbę zdań",
+  "Co dalej?": "Co dalej?",
+  "Trudniejsza praktyka na tym samym materiale": "Trudniejsza praktyka na tym samym materiale",
+  "Słowa do powtórzenia": "Słowa do powtórzenia",
+  "Rozpocznij quiz": "Rozpocznij quiz",
+  "Rozpocznij tłumaczenie": "Rozpocznij tłumaczenie",
+  "Rozpocznij korektę": "Rozpocznij korektę",
+  "Wróć do menu": "Wróć do menu",
+  "Polecane po rozgrzewce — trudniejsza praktyka": "Polecane po rozgrzewce — trudniejsza praktyka",
+  "Bez AI — utrwalenie słówek (słowa słabe na początku)": "Bez AI — utrwalenie słówek (słowa słabe na początku)",
+  "Zdania AI z wykorzystaniem Twoich słów": "Zdania AI z wykorzystaniem Twoich słów",
+  "Znajdź i popraw błędy w zdaniach z AI": "Znajdź i popraw błędy w zdaniach z AI"
 }
 

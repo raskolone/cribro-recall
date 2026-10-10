@@ -7,6 +7,7 @@ import i18n from 'i18next';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
 import TTSButtons from './TTSButtons';
+import WhatsNextSection from '../practice/WhatsNextSection';
 import {
   buildRound,
   initialMatchState,
@@ -37,6 +38,8 @@ interface MatchingGameProps {
   /** Wołane RAZ po dopasowaniu ostatniej pary (zapis sesji robi rodzic, jak dotąd). */
   onFinish: (result: MatchingResult) => void | Promise<void>;
   onPracticeSentences?: () => void;
+  onStartQuiz?: (wrongWords: string[]) => void;
+  onStartSentences?: (format: 'translation' | 'correction', count: number, wrongWords: string[]) => void;
   /** Przyciski wymowy kafelka; domyślnie TTSButtons (ta sama ścieżka TTS co wcześniej). */
   renderPronunciation?: (text: string) => React.ReactNode;
   /** Wymuszenie trybu bez ruchu (testy); domyślnie prefers-reduced-motion. */
@@ -82,6 +85,8 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
   onQuit,
   onFinish,
   onPracticeSentences,
+  onStartQuiz,
+  onStartSentences,
   renderPronunciation,
   reducedMotion,
 }) => {
@@ -491,15 +496,25 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
             </div>
           </dl>
         </Card>
-        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
-          <Button onClick={handleReplay} className="flex-1">{i18n.t('Zagraj ponownie')}</Button>
-          <Button onClick={onBack} variant="secondary" className="flex-1">{i18n.t('Zakończ')}</Button>
-          {onPracticeSentences && (
-            <Button onClick={onPracticeSentences} variant="secondary" className="flex-1">
-              {i18n.t('Przećwicz w zdaniach')}
-            </Button>
-          )}
-        </div>
+        {onStartQuiz || onStartSentences ? (
+          <WhatsNextSection
+            weakWords={result.wrongWords || []}
+            onStartQuiz={() => onStartQuiz?.(result.wrongWords || [])}
+            onStartSentences={(format, count) => onStartSentences?.(format, count, result.wrongWords || [])}
+            onBack={onBack}
+            onReplay={handleReplay}
+          />
+        ) : (
+          <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+            <Button onClick={handleReplay} className="flex-1">{i18n.t('Zagraj ponownie')}</Button>
+            <Button onClick={onBack} variant="secondary" className="flex-1">{i18n.t('Zakończ')}</Button>
+            {onPracticeSentences && (
+              <Button onClick={onPracticeSentences} variant="secondary" className="flex-1">
+                {i18n.t('Przećwicz w zdaniach')}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
     );
   }

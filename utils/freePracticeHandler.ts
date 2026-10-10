@@ -69,6 +69,7 @@ export async function handleFreePracticeGenerate(
     topicCount: request.topics.length,
     wordCount: request.words.length,
     lessonCount: request.lessonRecordIds.length,
+    focusWordCount: request.focusWords.length,
   };
 
   if (!deps.modelAvailable) {
