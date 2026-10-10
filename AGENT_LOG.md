@@ -7064,3 +7064,14 @@ Zrobione etapy R1–R6:
 - R5 (commit `ba0553d`): Ekran „Co dalej?" (`WhatsNextSection.tsx`) i generowanie spersonalizowanej praktyki. Po rozgrzewce propozycja: Quiz (istniejący tryb, bez AI, słowa słabe z priorytetem), Tłumaczenie i Korekta przez `POST /api/free-practice/generate` z `focusWords` (max 30 słów po max 60 znaków w bloku `<focus_words>`) oraz `count` (1–20). Suwak liczby zdań (`SentenceCountSlider.tsx`) z natywnym input range, `aria-valuetext` i przyciskami dotykowymi ≥ 44 px. Przekazywanie `count` i `focusWords` w `Dashboard.tsx` i `AIExerciseGeneratorScreen.tsx`.
 - R6 (commit niniejszy): Porządki po scaleniu, weryfikacja zero-touch dla `firestore.rules` i `storage.rules`, odcięcie `specialTasks` w trybie `free`, pełna dokumentacja w CHANGELOG i AGENT_LOG, weryfikacja `tsc --noEmit`, pełny `npm test` oraz `npm run build`.
 
+
+
+---
+
+2026-10-10 — Claude Code / Sonnet 5.5
+
+Zadanie: cztery poprawki F1–F4 (rozgrzewka z fraz, kolorystyka i feedback „Tłumaczenia zdań", „Co dalej?" → krok 3) i przebieg weryfikacyjny V, każde w osobnych commitach, bez pusha.
+Zrobione: F1 `utils/warmupChunks.ts` (nowy), `utils/warmupRounds.ts`, `HomeworkWarmupScrambler.tsx`; F2/F3 `SentencePracticeParts.tsx`, `SentenceFeedback.tsx`, `utils/scoreTone.ts`, `utils/safeHighlight.ts`, `AIExerciseGeneratorScreen.tsx`; F4 `FreePracticeScreen.tsx`, `utils/freePractice.ts` (`quickStartInitial`), `Dashboard.tsx`, `WhatsNextSection.tsx`, `FlashcardStudyScreen.tsx`; V: poprawki fiszek (`utils/cardListEquality.ts`), dopasowania (`MatchingGame.tsx`), celów dotykowych/AA/odstępów, test trasy względem stałych ze źródła. Testy 1366 → 1489. tsc 0, build OK, `git diff api/index.js` pusty. Zrzuty (~170 `v-*.png`, dbg-*.png) w scratchpadzie `h/shots/`.
+Nie dokończone / do sprawdzenia: E3 (martwy kod generatora: ekran ustawień, `specialTasks` w trybie free, `highlighted_better_version`, `dangerouslySetInnerHTML` w MatchingGame); para AA 4.499 (accent #0b7a53 na #e5ecf5, jasny motyw); odstęp pod planszą dopasowania; exerciseStudioAndWheel ~98 s (import Firebase, nie wisi). Niesprawdzone: prawdziwy Gemini, Firestore Admin, iPhone.
+Decyzje architektoniczne: kawałki zamiast słów (`resolveChunks` pomija listy pojedynczych słów); `joinsTo` ignoruje końcową interpunkcję; sygnatura treści rund zamiast tożsamości propsów (provider zmienia tożsamość funkcji co render); interpolacja przez `i18n.t`, bo `LanguageContext.t` jej nie ma; wartości w teście trasy czytane ze źródła.
+Ryzyka: `firestore.rules`, `storage.rules`, `server.ts`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Statusy prac domowych: ćwiczenia dowolne ich nie zmieniają.
