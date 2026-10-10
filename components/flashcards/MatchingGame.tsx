@@ -465,7 +465,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
     // Bez „:" w kluczu i18n — i18next traktuje go jako separator przestrzeni nazw.
     const starsLabel = `${i18n.t('Zdobyte gwiazdki')}: ${i18n.t('{{n}} z 3', { n: result.stars })}`;
     return (
-      <div ref={rootRef} className="relative max-w-2xl mx-auto text-center space-y-8 w-full flex-1 flex flex-col justify-center min-h-[calc(100dvh-5rem)] py-8">
+      <div ref={rootRef} className="relative max-w-2xl mx-auto text-center space-y-8 w-full flex-1 flex flex-col justify-center min-h-[calc(100dvh-5rem)] px-3 sm:px-0 py-8">
         <h2 className="text-3xl font-bold text-text-hi">{i18n.t('Brawo!')}</h2>
         <div ref={starsRef} className="flex justify-center gap-3" role="img" aria-label={starsLabel}>
           {[1, 2, 3].map(n => {
@@ -526,7 +526,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
   const wrongKeys: string[] = game.wrongPair ?? [];
 
   return (
-    <div ref={rootRef} className="relative max-w-5xl mx-auto space-y-6 w-full flex-1 flex flex-col justify-between min-h-[calc(100dvh-5rem)] pb-8">
+    <div ref={rootRef} className="relative max-w-5xl mx-auto space-y-6 w-full flex-1 flex flex-col justify-between min-h-[calc(100dvh-5rem)] px-3 sm:px-0 pb-8">
       <div ref={particleLayerRef} data-testid="match-particles" aria-hidden="true" className="pointer-events-none absolute inset-0 z-30" />
       <div className="flex items-center justify-between">
         <button onClick={onQuit} className="text-text-2 hover:text-text-hi flex items-center gap-2 pointer-coarse:min-h-11">

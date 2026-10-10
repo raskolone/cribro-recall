@@ -536,7 +536,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
     const score = summary.scorePercent;
     
     return (
-      <div className="max-w-2xl mx-auto text-center space-y-8">
+      <div className="max-w-2xl mx-auto text-center space-y-8 px-3 sm:px-0">
         <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
         <Card className="py-12">
           <div className="text-6xl font-black text-primary mb-4">{Number.isNaN(Number(score)) ? 0 : score}%</div>
@@ -796,7 +796,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
     const score = cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0;
     
     return (
-      <div className="max-w-2xl mx-auto text-center space-y-8">
+      <div className="max-w-2xl mx-auto text-center space-y-8 px-3 sm:px-0">
         <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
         <Card className="py-12">
           <div className="text-6xl font-black text-primary mb-4">{Number.isNaN(Number(score)) ? 0 : score}%</div>
@@ -975,7 +975,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
     const score = cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0;
     
     return (
-      <div className="max-w-2xl mx-auto text-center space-y-8">
+      <div className="max-w-2xl mx-auto text-center space-y-8 px-3 sm:px-0">
         <h2 className="text-3xl font-bold">{t('flashcards.complete')}</h2>
         <Card className="py-12">
           <div className="text-6xl font-black text-primary mb-4">{Number.isNaN(Number(score)) ? 0 : score}%</div>

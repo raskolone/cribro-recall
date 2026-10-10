@@ -46,3 +46,36 @@ for (const theme of ['dark', 'light'] as ThemeName[]) {
     }
   });
 }
+
+test('ekrany ćwiczenia, zaproszenia do niego i wyników mają boczny odstęp na telefonie (karta nie dotyka krawędzi okna)', () => {
+  const src = read('components/dashboard/AIExerciseGeneratorScreen.tsx');
+  for (const marker of [
+    'max-w-2xl mx-auto space-y-4 px-3 sm:px-0 pb-28 md:pb-8 animate-fade-in',
+    'max-w-2xl mx-auto px-3 sm:px-0 pb-28 md:pb-8 animate-fade-in',
+    'max-w-2xl mx-auto space-y-4 px-3 sm:px-0 pb-28 md:pb-8',
+    'ref={resultsRef} className="max-w-3xl mx-auto space-y-8 px-3 sm:px-0"',
+  ]) {
+    assert.ok(src.includes(marker), marker);
+  }
+});
+
+test('plansza dopasowania i ekrany końca sesji mają boczny odstęp na telefonie (nic nie dotyka krawędzi okna)', () => {
+  const game = read('components/flashcards/MatchingGame.tsx');
+  assert.ok(game.includes('min-h-[calc(100dvh-5rem)] px-3 sm:px-0 pb-8'), 'plansza');
+  assert.ok(game.includes('min-h-[calc(100dvh-5rem)] px-3 sm:px-0 py-8'), 'podsumowanie dopasowania');
+  const study = read('components/flashcards/FlashcardStudyScreen.tsx');
+  assert.equal((study.match(/max-w-2xl mx-auto text-center space-y-8 px-3 sm:px-0/g) || []).length, 3, 'ekrany końca: fiszki, quiz, pisanie');
+  assert.doesNotMatch(study, /max-w-2xl mx-auto text-center space-y-8">/);
+});
+
+for (const theme of ['dark', 'light'] as ThemeName[]) {
+  test(`licznik na aktywnej zakładce zestawów: tekst accent-ink na akcencie ≥ 4,5:1 — motyw ${theme} (dawne text-white dawało 2,2:1 w ciemnym)`, () => {
+    const accent = themeColor(theme, '--color-primary');
+    const ink = themeColor(theme, '--color-accent-ink');
+    const badge = composite({ r: 0, g: 0, b: 0, a: 1 }, accent, 0.15); // bg-black/15 na akcencie
+    assert.ok(contrastRatio(ink, badge) >= AA_TEXT, `${contrastRatio(ink, badge).toFixed(2)}`);
+    const src = read('components/practice/FreePracticeScreen.tsx');
+    assert.doesNotMatch(src, /bg-black\/20 text-white/);
+    assert.match(src, /bg-black\/15 text-accent-ink/);
+  });
+}

@@ -4140,7 +4140,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
       )}
       {step === 'practice' && exercises.length > 0 && (
         warmupPhase === 'invite' && (exerciseFormat === 'typing' || exerciseFormat === 'correction') ? (
-          <div className="max-w-2xl mx-auto space-y-4 pb-28 md:pb-8 animate-fade-in">
+          <div className="max-w-2xl mx-auto space-y-4 px-3 sm:px-0 pb-28 md:pb-8 animate-fade-in">
             <div className="liquid-glass-card rounded-3xl p-6 sm:p-8 space-y-6 relative overflow-hidden border border-primary/30 shadow-[0_10px_40px_rgba(0,0,0,0.5)]">
               {/* Glow accent */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
@@ -4207,7 +4207,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
             </div>
           </div>
         ) : warmupPhase === 'scrambler' ? (
-          <div className="max-w-2xl mx-auto pb-28 md:pb-8 animate-fade-in">
+          <div className="max-w-2xl mx-auto px-3 sm:px-0 pb-28 md:pb-8 animate-fade-in">
             <HomeworkWarmupScrambler
               sentences={exercises}
               task={{ type: 'translation' }}
@@ -4217,7 +4217,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
             />
           </div>
         ) : (
-          <div className="max-w-2xl mx-auto space-y-4 pb-28 md:pb-8">
+          <div className="max-w-2xl mx-auto space-y-4 px-3 sm:px-0 pb-28 md:pb-8">
             {/* Progress header */}
             <div className="flex items-center justify-between text-xs">
               <span className="font-mono text-content-muted">
@@ -4625,7 +4625,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
 
       {/* STEP 3: RESULTS EVALUATION */}
       {step === 'results' && evaluationResults.length > 0 && (
-        <div ref={resultsRef} className="max-w-3xl mx-auto space-y-8">
+        <div ref={resultsRef} className="max-w-3xl mx-auto space-y-8 px-3 sm:px-0">
           {/* Main score board */}
           <Card className="score-board p-8 border-primary/30 bg-primary/[0.05] backdrop-blur-2xl text-center space-y-4 shadow-[0_0_40px_rgba(114,240,180,0.1),inset_0_1px_0_0_rgba(255,255,255,0.1)] rounded-3xl overflow-hidden relative">
             <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent pointer-events-none" />

@@ -530,7 +530,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                 <span>{t('Z moich lekcji')}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-xs font-mono ${
-                    activeTab === 'lessons' ? 'bg-black/20 text-white' : 'bg-surface text-text-3'
+                    activeTab === 'lessons' ? 'bg-black/15 text-accent-ink' : 'bg-surface text-text-3'
                   }`}
                 >
                   {visibleLessonsSets.length + (sentences ? visibleLessons.length : 0)}
@@ -555,7 +555,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                 <span>{t('Gotowe zestawy')}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-xs font-mono ${
-                    activeTab === 'general' ? 'bg-black/20 text-white' : 'bg-surface text-text-3'
+                    activeTab === 'general' ? 'bg-black/15 text-accent-ink' : 'bg-surface text-text-3'
                   }`}
                 >
                   {visibleGeneralSets.length}
@@ -580,7 +580,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                 <span>{sentences && (visibleLessons.length > 0 || hasLessons) ? t('Zestawy') : t('Moje zestawy')}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-xs font-mono ${
-                    activeTab === 'user' ? 'bg-black/20 text-white' : 'bg-surface text-text-3'
+                    activeTab === 'user' ? 'bg-black/15 text-accent-ink' : 'bg-surface text-text-3'
                   }`}
                 >
                   {visibleUserSets.length}
