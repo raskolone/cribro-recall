@@ -18,7 +18,7 @@
    trybu dziennego w `design/theme/tokens.css`. */
 :root[data-theme="light"],
 :root.light {
-  --color-primary: #0b7a53;
+  --color-primary: #0b7953;
   --color-secondary: #475569;
   --color-base-100: #e5ecf5;
   --color-base-200: #ffffff;
@@ -26,7 +26,7 @@
   --color-content: #0f172a;
   --color-content-muted: #334155;
 
-  --color-accent: #0b7a53;
+  --color-accent: #0b7953;
   --color-accent-soft: #085e40;
   --color-accent-ink: #ffffff;
 
@@ -526,13 +526,13 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
 
 :root.light .liquid-glass-card:hover,
 :root[data-theme="light"] .liquid-glass-card:hover {
-  border-color: rgba(11, 122, 83, 0.50);
+  border-color: rgba(11, 121, 83, 0.50);
   border-top-color: #ffffff;
   box-shadow:
     inset 0 1.5px 1px 0 #ffffff,
     0 2px 6px 0 rgba(16, 24, 40, 0.06),
     0 10px 24px -3px rgba(16, 24, 40, 0.10),
-    0 0 20px rgba(11, 122, 83, 0.15);
+    0 0 20px rgba(11, 121, 83, 0.15);
 }
 
 /* Panel — ta sama przezierna powierzchnia bez reakcji na hover */
@@ -684,13 +684,13 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
   :root.light .glass-tile:hover,
   :root[data-theme="light"] .liquid-glass-tile:hover,
   :root[data-theme="light"] .glass-tile:hover {
-    border-color: rgba(11, 122, 83, 0.55);
+    border-color: rgba(11, 121, 83, 0.55);
     border-top-color: #ffffff;
     box-shadow:
       inset 0 1.5px 1px 0 #ffffff,
       0 2px 6px 0 rgba(15, 23, 42, 0.10),
       0 10px 24px -3px rgba(15, 23, 42, 0.15),
-      0 0 22px rgba(11, 122, 83, 0.20);
+      0 0 22px rgba(11, 121, 83, 0.20);
   }
 
   :root.light .liquid-glass-tile:hover::after,
@@ -699,7 +699,7 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
   :root[data-theme="light"] .glass-tile:hover::after {
     box-shadow:
       inset 0 1.5px 0.5px #ffffff,
-      inset 0 0 0 1px rgba(11, 122, 83, 0.30);
+      inset 0 0 0 1px rgba(11, 121, 83, 0.30);
   }
 }
 
@@ -2251,10 +2251,10 @@ tr.liquid-glass-hover:hover {
   --pt-line: rgba(15, 23, 42, 0.18);
   --pt-btn: #ffffff;
   --pt-btn-hover: #e2e8f0;
-  --pt-accent: #0b7a53;
+  --pt-accent: #0b7953;
   --pt-accent-fg: #ffffff;
   --pt-studio-bg: #ecfdf5;
-  --pt-studio-line: rgba(11, 122, 83, 0.45);
+  --pt-studio-line: rgba(11, 121, 83, 0.45);
   --pt-studio-fg: #065f46;
   box-shadow: 0 12px 32px rgba(16, 24, 40, 0.18), 0 0 0 1px var(--pt-line);
 }
