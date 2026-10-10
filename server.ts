@@ -204,7 +204,8 @@ import { resolveDailyLimit, type UsageDb } from "./utils/freePracticeQuota";
 import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 import { buildGradedHomeworkEmail } from "./services/homeworkEmail";
-import { validateAssignInput, validateGenerateInput } from "./utils/homeworkV2Input";
+import { isSafeDocId, validateAssignInput, validateGenerateInput } from "./utils/homeworkV2Input";
+import { resolveGradedNotification, taskOwnerUid } from "./utils/gradedNotification";
 import {
   ingestAttempts,
   serializeLearningProfile,
@@ -2325,12 +2326,19 @@ export function createApp() {
     }
   });
 
-  // Powiadomienie e-mail i in-app o sprawdzonej pracy domowej
-  app.post('/api/homework/notify-graded', requireFirebaseAuth, async (req, res) => {
+  // Powiadomienie e-mail i in-app o sprawdzonej pracy domowej.
+  // Wywołuje je wyłącznie ekran lektora po zapisaniu oceny. Tytuł, komentarz i wynik pochodzą z
+  // DOKUMENTU ZADANIA (patrz utils/gradedNotification.ts), a podpis z profilu wywołującego — z ciała
+  // żądania bierzemy tylko wskazanie, o które zadanie i którego kursanta chodzi.
+  app.post('/api/homework/notify-graded', requireFirebaseAdmin, async (req, res) => {
     try {
-      const { studentUid, taskId, taskTitle, score, teacherFeedback, teacherName } = req.body;
-      if (!studentUid) {
+      const studentUid = typeof req.body?.studentUid === 'string' ? req.body.studentUid.trim() : '';
+      const taskId = typeof req.body?.taskId === 'string' ? req.body.taskId.trim() : '';
+      if (!isSafeDocId(studentUid)) {
         return res.status(400).json({ error: 'Brak studentUid.' });
+      }
+      if (!isSafeDocId(taskId)) {
+        return res.status(400).json({ error: 'Brak taskId.' });
       }
 
       const adminApp = getAdminApp();
@@ -2345,22 +2353,46 @@ export function createApp() {
       const userData = userSnap.data() || {};
       const nowIso = new Date().toISOString();
 
-      if (taskId) {
-        const taskRef = adminDb.collection('specialTasks').doc(taskId);
-        const taskSnap = await taskRef.get();
-        if (taskSnap.exists && taskSnap.data()?.emailGradedNotificationSent) {
-          console.log(`[notify-graded] Powiadomienie dla zadania ${taskId} zostało już wysłane (idempotency).`);
-          return res.status(200).json({ ok: true, skipped: true, reason: 'Already sent' });
-        }
+      const taskRef = adminDb.collection('specialTasks').doc(taskId);
+      const taskSnap = await taskRef.get();
+      if (!taskSnap.exists) {
+        return res.status(404).json({ error: 'Zadanie nie istnieje.' });
       }
+      const taskData = taskSnap.data() || {};
+      if (taskOwnerUid(taskData) !== studentUid) {
+        return res.status(403).json({ error: 'To zadanie nie należy do wskazanego kursanta.' });
+      }
+      if (taskData.emailGradedNotificationSent) {
+        console.log(`[notify-graded] Powiadomienie dla zadania ${taskId} zostało już wysłane (idempotency).`);
+        return res.status(200).json({ ok: true, skipped: true, reason: 'Already sent' });
+      }
+
+      let latestApprovedAttempt: Record<string, unknown> | null = null;
+      if (taskData.engineVersion !== undefined) {
+        const attempts = await taskRef.collection('attempts').orderBy('teacherApprovedAt', 'desc').limit(1).get();
+        latestApprovedAttempt = attempts.empty ? null : attempts.docs[0].data();
+      }
+      const resolved = resolveGradedNotification(taskData, latestApprovedAttempt);
+      if (resolved.ok === false) {
+        return res.status(409).json({ error: resolved.message });
+      }
+      const { title: taskTitle, score, feedback: teacherFeedback } = resolved.content;
+
+      // Podpis „sprawdził(a)" z profilu osoby wywołującej (rola już zweryfikowana w requireFirebaseAdmin).
+      let teacherName = 'Maciej Wyrozumski';
+      try {
+        const callerData = (await adminDb.collection('users').doc((req as any).adminUid).get()).data();
+        const callerName = `${callerData?.firstName || ''} ${callerData?.lastName || ''}`.trim();
+        if (callerName) teacherName = callerName.slice(0, 120);
+      } catch {}
 
       // Aktualizacja profilu kursanta (wyskakujący pop-up na żywo w aplikacji)
       await userDocRef.update({
         hasGradedHomework: true,
-        lastGradedHomeworkId: taskId || '',
-        lastGradedHomeworkTitle: taskTitle || 'Praca domowa',
-        lastGradedFeedback: teacherFeedback || '',
-        lastGradedScore: typeof score === 'number' ? score : null,
+        lastGradedHomeworkId: taskId,
+        lastGradedHomeworkTitle: taskTitle,
+        lastGradedFeedback: teacherFeedback,
+        lastGradedScore: score,
         lastGradedHomeworkSentAt: nowIso,
       });
 
@@ -2381,10 +2413,10 @@ export function createApp() {
           const studentName = userData.firstName || userData.name || userData.username || '';
           const emailData = buildGradedHomeworkEmail({
             studentName,
-            title: taskTitle || 'Praca domowa',
-            score: typeof score === 'number' ? score : null,
+            title: taskTitle,
+            score,
             teacherFeedback,
-            gradedBy: teacherName || 'Maciej Wyrozumski',
+            gradedBy: teacherName,
             appUrl: process.env.APP_URL || 'https://app.maciej.pro',
           });
 
