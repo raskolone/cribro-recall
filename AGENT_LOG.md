@@ -7123,3 +7123,13 @@ Zrobione: nowe `utils/warmupTileSet.ts` (niezmiennik `validateTileSet`, dystrakt
 Nie dokończone / do sprawdzenia: prawdziwy Gemini (czy nowy prompt kontroli odrzuca rozjechane pary), Firestore, iPhone; rozjechanej pary bez duplikatu polecenia nie da się wykryć lokalnie. Dotknięte rekordy w bazie NIE były czytane ani zmieniane — kryteria rozpoznania w CHANGELOG BS.
 Decyzje architektoniczne: (1) dystraktor tylko regułami gwarantującymi błąd w każdym miejscu zdania (to has / would likes / a hammocks) — zamiana przyimka/czasu odrzucona, bo może dać drugie poprawne zdanie; brak kandydata = brak dystraktora; (2) kolor z hasha TEKSTU kafelka + ziarna rundy (nie z id/indeksu — id odpowiadał pozycji i roli), kolejne odcienie wg rankingu hashy, więc ≤ 5 kafelków ma różne barwy; (3) dwie rundy z tym samym poleceniem i różnymi zdaniami są pomijane obie (nie zgadujemy, która jest dobra); (4) walidacja w buildzie rundy i drugi raz w komponencie; (5) tokeny koloru dopisane do `index.css`, nie do `design/theme/tokens.css`; (6) układ mobilny zagęszczony odstępami, bez usuwania elementów — 360×640 mieści pierwszy rząd kafelków (zapas ~17 px przy 5 kafelkach).
 Ryzyka: `firestore.rules`, `storage.rules`, `server.ts`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Zmieniony tekst promptu w `services/homeworkGenerator.ts` (kontrola jakości rozgrzewki).
+
+---
+
+2026-10-10 — Claude Code / Sonnet 5.5
+
+Zadanie: S1 krok 0 — diagnoza serii prac domowych (tylko odczyt) oraz push H3 (`5c00a80`) na origin/main.
+Zrobione: push `68c2770..5c00a80` (tsc 0, testy 1547/1547, build OK, `git diff api/index.js` pusty; Vercel `success`); raport diagnozy S1 w CHANGELOG BT. Zmian w kodzie nie było.
+Nie dokończone / do sprawdzenia: S1 krok 1 czeka na „OK” i decyzje (plan Vercela, e-mail przy wydaniu, status, token `/hw`); `POST /api/homework-v2/assign` bez sprawdzenia roli (do weryfikacji osobno).
+Decyzje architektoniczne: brak (tylko propozycje w CHANGELOG BT).
+Ryzyka: `firestore.rules`, `storage.rules`, `server.ts`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE.
