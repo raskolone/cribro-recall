@@ -5,6 +5,12 @@ import { readFileSync } from 'node:fs';
 import {
   DEFAULT_FREE_PRACTICE_MODE,
   MAX_SENTENCE_SOURCES,
+  MAX_SENTENCE_TOPICS,
+  MAX_TOPIC_LENGTH,
+  addTopic,
+  canAddTopic,
+  normalizeTopic,
+  removeTopic,
   SENTENCE_MODES,
   buildFreeLaunch,
   freeSentencesLaunch,
@@ -359,4 +365,22 @@ test('wspólna lista kart: kolizja id między zestawami nie gubi kart, a zapis p
 test('ta sama karta dwa razy w jednym zestawie nie jest dublowana', () => {
   const { cards } = mergeSetCards([{ setId: 'A', cards: [{ id: 'c0' }, { id: 'c0' }] }]);
   assert.equal(cards.length, 1);
+});
+
+test('tematy: normalizacja jak na serwerze, limit trzech tematów i pięciu źródeł, bez powtórek', () => {
+  assert.equal(normalizeTopic('  podróże   służbowe '), 'podróże służbowe');
+  assert.equal(normalizeTopic('<b>podróże</b> {{x}}'), 'b podróże /b x', 'znaczniki i klamry znikają');
+  assert.equal(normalizeTopic('😀'), '');
+  assert.equal(normalizeTopic('a'.repeat(300)).length, MAX_TOPIC_LENGTH);
+  assert.equal(MAX_TOPIC_LENGTH, 80);
+  assert.deepEqual(addTopic([], '  '), []);
+  assert.deepEqual(addTopic(['travel'], 'Travel'), ['travel'], 'powtórka bez rozróżniania wielkości liter');
+  assert.deepEqual(addTopic(['a'], 'b'), ['a', 'b']);
+  let topics: string[] = [];
+  for (const t of ['a', 'b', 'c', 'd']) topics = addTopic(topics, t);
+  assert.deepEqual(topics, ['a', 'b', 'c'], `limit ${MAX_SENTENCE_TOPICS} tematów`);
+  assert.deepEqual(addTopic(['a'], 'b', MAX_SENTENCE_SOURCES - 1), ['a'], 'łączny limit źródeł liczy też zestawy i lekcje');
+  assert.equal(canAddTopic([], 5), false);
+  assert.equal(canAddTopic([], 4), true);
+  assert.deepEqual(removeTopic(['a', 'b'], 'a'), ['b']);
 });

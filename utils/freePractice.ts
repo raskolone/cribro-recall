@@ -14,6 +14,7 @@
  */
 
 import { resolveLessonShortcut, shortcutKind, type LessonLike } from './freeSentenceScope';
+import { sanitizeFreeText } from './sanitizeFreeText';
 
 export type FreePracticeMode = 'flashcards' | 'quiz' | 'matching' | 'correction' | 'translation';
 
@@ -138,6 +139,7 @@ export interface FreePracticeInitial {
   step?: FreePracticeStep;
   setIds?: string[];
   lessonIds?: string[];
+  topics?: string[];
 }
 
 /**
@@ -257,6 +259,33 @@ export const MAX_SENTENCE_SOURCES = 5;
 /** Tematy wpisane ręcznie: liczba i długość jednego (to samo ogranicza serwer). */
 export const MAX_SENTENCE_TOPICS = 3;
 export const MAX_TOPIC_LENGTH = 80;
+
+/**
+ * Temat wpisany ręcznie → ta sama normalizacja co na serwerze (`sanitizeFreeText`), obcięty do
+ * `MAX_TOPIC_LENGTH`. Pusty wynik = temat odrzucony.
+ */
+export function normalizeTopic(raw: string): string {
+  return sanitizeFreeText(raw, MAX_TOPIC_LENGTH);
+}
+
+/** Czy da się dodać jeszcze jeden temat (limit tematów i łączny limit źródeł). */
+export function canAddTopic(topics: readonly string[], otherSources: number): boolean {
+  return topics.length < MAX_SENTENCE_TOPICS && topics.length + otherSources < MAX_SENTENCE_SOURCES;
+}
+
+/** Dodaje temat: pusty, powtórzony (bez rozróżniania wielkości liter) albo ponad limit — bez zmiany. */
+export function addTopic(topics: readonly string[], raw: string, otherSources = 0): string[] {
+  const topic = normalizeTopic(raw);
+  if (!topic) return [...topics];
+  const key = topic.toLocaleLowerCase('pl');
+  if (topics.some((existing) => existing.toLocaleLowerCase('pl') === key)) return [...topics];
+  if (!canAddTopic(topics, otherSources)) return [...topics];
+  return [...topics, topic];
+}
+
+export function removeTopic(topics: readonly string[], topic: string): string[] {
+  return topics.filter((existing) => existing !== topic);
+}
 
 export type StartBlocker = 'no-sets' | 'too-few-cards' | 'no-scope' | 'too-many-sources';
 

@@ -1,4 +1,5 @@
 import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { hydrateProfile } from '../utils/learningProfileHydrate';
 import { db } from '../firebase';
 import {
   AttemptRecord,
@@ -55,22 +56,7 @@ export async function getLearningProfile(
     if (!snapshot.exists()) return emptyProfileFor(studentId, baseLevel);
 
     const stored = snapshot.data() as Partial<LearningProfile>;
-    const now = new Date().toISOString();
-    const profile = createProfile(studentId, fallbackLevel, stored.lastUpdated || stored.updatedAt || now);
-    return {
-      ...profile,
-      ...stored,
-      studentId,
-      baseLevel: fallbackLevel,
-      currentLevel: normalizeLevel(stored.currentLevel, fallbackLevel),
-      byLevel: stored.byLevel || {},
-      byExerciseType: stored.byExerciseType || {},
-      recentOutcomes: stored.recentOutcomes || [],
-      recentMistakes: stored.recentMistakes || [],
-      levelHistory: stored.levelHistory || [],
-      lastUpdated: stored.lastUpdated || stored.updatedAt || now,
-      createdAt: stored.createdAt || now,
-    };
+    return hydrateProfile(studentId, baseLevel, stored, new Date().toISOString());
   } catch (error) {
     // Brak profilu nie może zablokować ćwiczenia — bez niego model dostaje
     // sam poziom od lektora, czyli zachowanie sprzed wprowadzenia krzywej.

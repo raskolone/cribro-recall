@@ -198,6 +198,9 @@ import { buildExerciseSet } from "./functions/src/homeworkV2/pipeline";
 import { createAiCall } from "./functions/src/homeworkV2/openai";
 import { isHomeworkEngineV2Enabled, ENGINE_DISABLED_MESSAGE } from "./functions/src/homeworkV2/flag";
 import { getRecentMistakes } from "./functions/src/homeworkV2/learningProfile";
+import { FREE_PRACTICE_CALL_TIMEOUT_MS, FREE_PRACTICE_MODEL, type CallModel } from "./utils/freePracticeGeneration";
+import { handleFreePracticeGenerate } from "./utils/freePracticeHandler";
+import { resolveDailyLimit, type UsageDb } from "./utils/freePracticeQuota";
 import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 import { buildGradedHomeworkEmail } from "./services/homeworkEmail";
@@ -5731,6 +5734,61 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         .status(status >= 400 && status < 600 ? status : 503)
         .json({ error: formatErrorString(err) });
     }
+  });
+
+  /*
+   * Ćwiczenia dowolne — generowanie zdań (Tłumaczenie, Korekta).
+   *
+   * Prompt składa SERWER z danych kursanta w ogranicznikach (patrz utils/freePracticeGeneration.ts),
+   * model i schemat są stałe, a dzienny limit liczy transakcja Firestore przez Admin SDK
+   * (`freePracticeUsage/{uid}_{dzień Europe/Warsaw}`) — bez zmian w firestore.rules. Konto lektora
+   * (rola z dokumentu w bazie, nie z klienta) jest zwolnione z limitu. Slot wraca przy błędzie
+   * generowania. Logi: tylko liczby i skrót identyfikatora — nigdy tematy ani dane osobowe.
+   * Czas wykonania: dwie próby po FREE_PRACTICE_CALL_TIMEOUT_MS mieszczą się w maxDuration 60 s.
+   */
+  app.post("/api/free-practice/generate", requireFirebaseAuth, async (req, res) => {
+    const apiKey = getGeminiApiKey();
+    const adminDb = getFirestore(getAdminApp(), FIRESTORE_DATABASE_ID);
+
+    const callModel: CallModel = async ({ prompt, schema }) => {
+      const ai = new GoogleGenAI({ apiKey });
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const timeout = new Promise<never>((_, reject) => {
+        timer = setTimeout(() => reject(new Error("Przekroczono limit czasu generowania.")), FREE_PRACTICE_CALL_TIMEOUT_MS);
+      });
+      try {
+        const response: any = await Promise.race([
+          ai.models.generateContent({
+            model: FREE_PRACTICE_MODEL,
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: schema as any,
+              thinkingConfig: { thinkingBudget: 0 },
+            },
+          }),
+          timeout,
+        ]);
+        return { text: response?.text ?? "", modelUsed: FREE_PRACTICE_MODEL };
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    };
+
+    const result = await handleFreePracticeGenerate(
+      {
+        usageDb: adminDb as unknown as UsageDb,
+        contextDb: adminDb as any,
+        modelAvailable: Boolean(apiKey),
+        callModel,
+        limit: resolveDailyLimit(process.env.FREE_PRACTICE_DAILY_LIMIT),
+        log: (entry) => console.info("[free-practice]", JSON.stringify(entry)),
+        onReleaseError: (err: any) => console.warn("[free-practice] Nie udało się zwrócić slotu:", err?.message || err),
+      },
+      { uid: (req as any).userUid as string, body: req.body },
+    );
+    if (!apiKey) console.warn("[Gemini] Brak GEMINI_API_KEY na serwerze.");
+    return res.status(result.status).json(result.body);
   });
 
   // Trasy AI wymagają zalogowania.

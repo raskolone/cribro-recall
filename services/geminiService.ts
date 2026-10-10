@@ -12,6 +12,7 @@ import { AI_MODEL_CASCADE, cascadeForCategory, HOMEWORK_GENERATION_MODELS, asser
 import { peekAiOverrides } from './aiConfigService';
 import { toPolishVocative, detectPolishGender } from '../utils/polishVocative';
 import { buildUsedSentencesBlock, filterRepeatedSentences } from '../utils/exerciseSentenceChecks';
+import { formatWeaknessesList, NO_WEAKNESSES, type WeaknessRow } from '../utils/weaknesses';
 import { CRIBRO_SENTENCE_NATURALNESS } from './cribroSentenceRules';
 
 
@@ -1605,7 +1606,7 @@ Zwróć 10 poprawionych zadań jako JSON (tablica obiektów). Zastąp te, które
 
 export const getUserWeaknesses = async (userId: string): Promise<string> => {
   if (!userId || userId === 'demo-id') {
-    return "Brak zidentyfikowanych błędów.";
+    return NO_WEAKNESSES;
   }
   try {
     const weaknessesRef = collection(db, `users/${userId}/weaknesses`);
@@ -1625,22 +1626,10 @@ export const getUserWeaknesses = async (userId: string): Promise<string> => {
       // Ignore user doc read errors
     }
 
-    if (snapshot.empty && userDocWeaknesses.length === 0) {
-      return "Brak zidentyfikowanych błędów.";
-    }
-
-    const collectionWeaknesses = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return `- Błąd/Problem: "${data.name || doc.id}" (częstość: ${data.frequency || 1}) ${data.description ? `[Kontekst: ${data.description}]` : ''}`;
-    });
-
-    const additionalFromDoc = userDocWeaknesses
-      .filter(err => !snapshot.docs.some(d => d.data()?.name?.toLowerCase() === err.toLowerCase()))
-      .map(err => `- Częsty błąd z profilu: "${err}"`);
-
-    const allWeaknessesList = [...collectionWeaknesses, ...additionalFromDoc];
-
-    return allWeaknessesList.join('\n');
+    // Skład tekstu we wspólnej funkcji — ten sam format czyta serwer przy generowaniu zdań
+    // w Ćwiczeniach dowolnych (utils/weaknesses.ts).
+    const rows: WeaknessRow[] = snapshot.docs.map(d => ({ ...(d.data() as WeaknessRow), id: d.id }));
+    return formatWeaknessesList(rows, userDocWeaknesses);
   } catch (error: any) {
     if (error?.code === 'permission-denied') {
       console.warn("Permission denied fetching weaknesses:", error.message);
