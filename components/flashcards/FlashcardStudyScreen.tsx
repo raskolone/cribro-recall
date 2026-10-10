@@ -1006,26 +1006,31 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
 // --- Matching Mode Component ---
 // Gra żyje w MatchingGame (plansza tasowana raz na rundę, efekty GSAP, gwiazdki);
 // tu zostaje tylko zapis sesji — dokładnie to, co zapisywała dotąd.
-const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => (
-  <MatchingGame
-    cards={cards}
-    onBack={onBack}
-    onQuit={() => showConfirm(
-      t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'),
-      t('flashcards.confirmQuit') || (language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję?' : 'Are you sure you want to quit the session?'),
-      () => { closeConfirm(); onBack(); }
-    )}
-    onFinish={async (r) => {
-      await saveSession({
-        setId,
-        mode: 'matching',
-        totalCards: r.pairs,
-        correctCount: r.pairs,
-        scorePercent: r.score
-      }, []);
-    }}
-    onPracticeSentences={onNavigate ? () => onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }) : undefined}
-  />
+const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language, onComplete}: any) => (
+  <div className="w-full flex-1 flex flex-col min-h-[calc(100dvh-5rem)]">
+    <MatchingGame
+      cards={cards}
+      onBack={onBack}
+      onQuit={() => showConfirm(
+        t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'),
+        t('flashcards.confirmQuit') || (language === 'pl' ? 'Czy na pewno chcesz zakończyć sesję?' : 'Are you sure you want to quit the session?'),
+        () => { closeConfirm(); onBack(); }
+      )}
+      onFinish={async (r) => {
+        await saveSession({
+          setId,
+          mode: 'matching',
+          totalCards: r.pairs,
+          correctCount: r.pairs,
+          scorePercent: r.score
+        }, r.wrongWords || []);
+        if (onComplete) {
+          onComplete(r.wrongWords || []);
+        }
+      }}
+      onPracticeSentences={onNavigate ? () => onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }) : undefined}
+    />
+  </div>
 );
 
 // --- Intro Mode Component ---

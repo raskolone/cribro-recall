@@ -216,3 +216,37 @@ test('prefers-reduced-motion: brak iskier i nakładki kombinacji, tylko zmiana s
   assert.ok(!/x2/.test(document.body.textContent || ''));
   assert.equal(tile('left-c1').getAttribute('data-state'), 'matched');
 });
+
+test('przycisk wymowy renderuje się tylko dla lewych kafelków (EN), a prawe (PL) go nie mają', () => {
+  const { tile } = setup();
+  const leftSay = tile('left-c0').querySelector('[data-testid^="say-"]');
+  const rightSay = tile('right-c0').querySelector('[data-testid^="say-"]');
+  assert.ok(leftSay, 'kafelek EN ma wymowę');
+  assert.equal(rightSay, null, 'kafelek PL nie ma wymowy');
+});
+
+test('błędne dopasowania są gromadzone w wrongWords i przekazywane w onFinish', async () => {
+  const { tile, finishes } = setup();
+  const ids = ['c0', 'c1', 'c2', 'c3', 'c4', 'c5'];
+  click(tile('left-c0'));
+  click(tile('right-c1')); // błąd!
+  await wait(800);
+  for (const id of ids) {
+    click(tile(`left-${id}`));
+    click(tile(`right-${id}`));
+  }
+  await wait(30);
+  assert.equal(finishes.length, 1);
+  assert.ok(finishes[0].wrongWords?.includes('term0'));
+  assert.ok(finishes[0].wrongWords?.includes('term1'));
+});
+
+test('trafione kafelki znikają z zachowaniem miejsca w siatce (opacity-0 invisible w reducedMotion)', () => {
+  const { tile, keys } = setup(mkCards(6), { reducedMotion: true });
+  click(tile('left-c0'));
+  click(tile('right-c0'));
+  assert.equal(keys().length, 12, 'plansza nie traci slotów w siatce');
+  assert.match(tile('left-c0').className, /opacity-0/);
+  assert.match(tile('left-c0').className, /invisible/);
+});
+

@@ -26,6 +26,7 @@ export interface MatchingResult {
   elapsedSeconds: number;
   score: number;
   stars: 1 | 2 | 3;
+  wrongWords?: string[];
 }
 
 interface MatchingGameProps {
@@ -46,11 +47,9 @@ interface MatchingGameProps {
 const SELECT_SCALE = 1.05;
 const SELECT_DURATION = 0.15;
 const SELECT_EASE = 'back.out(2)';
-const MATCH_NUDGE_PX = 10;
-const MATCH_PULSE_SCALE = 1.12;
-const MATCH_IN = 0.12;
-const MATCH_OUT = 0.35;
-const MATCH_EASE = 'elastic.out(1, 0.5)';
+const MATCH_PULSE_SCALE = 1.08;
+const MATCH_IN = 0.28;
+const MATCH_FADE_DURATION = 0.35;
 const SHAKE_STEPS = [-8, 8, -6, 6, 0]; // ≈ 0,35 s łącznie
 const SHAKE_STEP_DURATION = 0.07;
 const WRONG_REDUCED_MS = 700;
@@ -97,6 +96,8 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
   const [tiles, setTiles] = useState<MatchTile[]>(() => buildRound(cards));
   const [game, setGame] = useState<MatchState>(initialMatchState);
   const gameRef = useRef<MatchState>(game);
+  const [hiddenPairIds, setHiddenPairIds] = useState<string[]>([]);
+  const wrongWordsRef = useRef<Set<string>>(new Set());
   const [phase, setPhase] = useState<Phase>('play');
   const [elapsed, setElapsed] = useState(0);
   const [result, setResult] = useState<MatchingResult | null>(null);
@@ -299,27 +300,30 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
   );
 
   const animateMatch = useCallback(
-    (pair: [string, string]) => {
+    (pair: [string, string], pairId: string) => {
+      if (reduced) {
+        setHiddenPairIds(prev => (prev.includes(pairId) ? prev : [...prev, pairId]));
+        return;
+      }
       const [a, b] = pair.map(k => tileEls.current.get(k)) as [HTMLElement | undefined, HTMLElement | undefined];
-      if (!a || !b) return;
+      if (!a || !b) {
+        setHiddenPairIds(prev => (prev.includes(pairId) ? prev : [...prev, pairId]));
+        return;
+      }
       const base = rootRef.current?.getBoundingClientRect();
       const ra = a.getBoundingClientRect();
       const rb = b.getBoundingClientRect();
-      const dx = rb.left + rb.width / 2 - (ra.left + ra.width / 2);
-      const dy = rb.top + rb.height / 2 - (ra.top + ra.height / 2);
-      const dist = Math.hypot(dx, dy) || 1;
-      const nx = (dx / dist) * MATCH_NUDGE_PX;
-      const ny = (dy / dist) * MATCH_NUDGE_PX;
       run(() => {
-        [
-          [a, nx, ny],
-          [b, -nx, -ny],
-        ].forEach(([el, x, y]) => {
-          gsap.killTweensOf(el as HTMLElement);
+        [a, b].forEach(el => {
+          gsap.killTweensOf(el);
           gsap
-            .timeline()
-            .to(el as HTMLElement, { x: x as number, y: y as number, scale: MATCH_PULSE_SCALE, duration: MATCH_IN, ease: 'power2.out' })
-            .to(el as HTMLElement, { x: 0, y: 0, scale: 1, duration: MATCH_OUT, ease: MATCH_EASE });
+            .timeline({
+              onComplete: () => {
+                setHiddenPairIds(prev => (prev.includes(pairId) ? prev : [...prev, pairId]));
+              },
+            })
+            .to(el, { scale: MATCH_PULSE_SCALE, duration: MATCH_IN, ease: 'back.out(2)' })
+            .to(el, { opacity: 0, scale: 0.85, duration: MATCH_FADE_DURATION, ease: 'power2.in' });
         });
       });
       if (base) {
@@ -327,7 +331,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
         spawnBurst(base, rb.left + rb.width / 2, rb.top + rb.height / 2, BURST_PAIR_COUNT, 60);
       }
     },
-    [run, spawnBurst],
+    [reduced, run, spawnBurst],
   );
 
   const settleWrong = useCallback(() => {
@@ -381,10 +385,24 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
           animateSelect(key, true);
           break;
         case 'match':
-          if (r.pair) animateMatch(r.pair);
+          if (r.pair) {
+            const matchedTile = tiles.find(t => t.key === key);
+            if (matchedTile) animateMatch(r.pair, matchedTile.pairId);
+          }
           break;
         case 'wrong':
-          if (r.pair) animateWrong(r.pair);
+          if (r.pair) {
+            const [k1, k2] = r.pair;
+            const t1 = tiles.find(t => t.key === k1);
+            const t2 = tiles.find(t => t.key === k2);
+            [t1, t2].forEach(t => {
+              if (t) {
+                const card = cardsRef.current.find(c => c.id === t.pairId);
+                if (card?.term) wrongWordsRef.current.add(card.term);
+              }
+            });
+            animateWrong(r.pair);
+          }
           break;
       }
 
@@ -398,6 +416,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
           elapsedSeconds,
           score: matchingScore(elapsedSeconds, r.state.mistakes),
           stars: starsFor(pairs, r.state.mistakes),
+          wrongWords: Array.from(wrongWordsRef.current),
         };
         setElapsed(elapsedSeconds);
         void onFinishRef.current(final);
@@ -417,6 +436,8 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
     startRef.current = Date.now();
     const fresh = initialMatchState();
     gameRef.current = fresh;
+    wrongWordsRef.current.clear();
+    setHiddenPairIds([]);
     setTiles(buildRound(cardsRef.current)); // jedyne miejsce ponownego tasowania
     setGame(fresh);
     setElapsed(0);
@@ -435,7 +456,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
     // Bez „:" w kluczu i18n — i18next traktuje go jako separator przestrzeni nazw.
     const starsLabel = `${i18n.t('Zdobyte gwiazdki')}: ${i18n.t('{{n}} z 3', { n: result.stars })}`;
     return (
-      <div ref={rootRef} className="relative max-w-2xl mx-auto text-center space-y-8">
+      <div ref={rootRef} className="relative max-w-2xl mx-auto text-center space-y-8 w-full flex-1 flex flex-col justify-center min-h-[calc(100dvh-5rem)] py-8">
         <h2 className="text-3xl font-bold text-text-hi">{i18n.t('Brawo!')}</h2>
         <div ref={starsRef} className="flex justify-center gap-3" role="img" aria-label={starsLabel}>
           {[1, 2, 3].map(n => {
@@ -486,9 +507,9 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
   const wrongKeys: string[] = game.wrongPair ?? [];
 
   return (
-    <div ref={rootRef} className="relative max-w-5xl mx-auto space-y-6">
+    <div ref={rootRef} className="relative max-w-5xl mx-auto space-y-6 w-full flex-1 flex flex-col justify-between min-h-[calc(100dvh-5rem)] pb-8">
       <div className="flex items-center justify-between">
-        <button onClick={onQuit} className="text-text-2 hover:text-text-hi flex items-center gap-2">
+        <button onClick={onQuit} className="text-text-2 hover:text-text-hi flex items-center gap-2 pointer-coarse:min-h-11">
           ← {i18n.t('Zakończ')}
         </button>
         <div className="font-mono text-xl font-bold text-text-hi" aria-label={i18n.t('Czas')}>
@@ -526,20 +547,22 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
         </div>
       )}
 
-      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4" key={round}>
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 flex-1 items-start" key={round}>
         {tiles.map(tile => {
           const matched = game.matchedPairIds.includes(tile.pairId);
+          const isHidden = hiddenPairIds.includes(tile.pairId);
           const selected = game.selectedKey === tile.key;
           const wrong = wrongKeys.includes(tile.key);
           const state = matched ? 'matched' : wrong ? 'wrong' : selected ? 'selected' : 'idle';
           const tone =
             state === 'matched'
-              ? 'border-primary/40 bg-primary/10 opacity-70 cursor-default'
+              ? 'border-primary/50 bg-primary/15 cursor-default'
               : state === 'wrong'
-                ? 'border-danger bg-danger/10 cursor-pointer'
+                ? 'border-danger bg-danger/15 cursor-pointer'
                 : state === 'selected'
-                  ? 'border-primary bg-primary/10 shadow-lg shadow-primary/30 cursor-pointer'
-                  : 'border-line-strong bg-line-soft hover:border-primary/50 cursor-pointer';
+                  ? 'border-primary bg-primary/10 shadow-lg shadow-primary/20 cursor-pointer'
+                  : 'border-line-soft bg-surface-elevated/80 dark:bg-surface-elevated/40 hover:border-line-strong hover:bg-surface-elevated cursor-pointer shadow-sm';
+          const hiddenClass = isHidden ? 'opacity-0 pointer-events-none invisible select-none' : '';
           return (
             <div
               key={tile.key}
@@ -560,12 +583,14 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
                   handleTileClick(tile.key);
                 }
               }}
-              className={`relative min-h-[104px] md:min-h-[128px] rounded-xl border-2 px-3 pb-3 pt-9 flex items-center justify-center text-center text-text-hi select-none touch-manipulation transition-colors duration-150 ${tone}`}
+              className={`relative min-h-[104px] md:min-h-[128px] rounded-2xl border-2 px-3 pb-3 pt-9 flex items-center justify-center text-center text-text-hi select-none touch-manipulation transition-colors duration-150 ${tone} ${hiddenClass}`}
             >
-              <div className="absolute top-1 right-1" data-pronunciation onClick={e => e.stopPropagation()}>
-                {pronunciation(tile.text)}
-              </div>
-              {matched && <Check aria-hidden="true" className="absolute top-2 left-2 w-4 h-4 text-primary" />}
+              {tile.side === 'left' && !isHidden && (
+                <div className="absolute top-1.5 right-1.5 z-10" data-pronunciation onClick={e => e.stopPropagation()}>
+                  {pronunciation(tile.text)}
+                </div>
+              )}
+              {matched && !isHidden && <Check aria-hidden="true" className="absolute top-2 left-2 w-4 h-4 text-primary" />}
               {wrong && <X aria-hidden="true" className="absolute top-2 left-2 w-4 h-4 text-danger" />}
               <span
                 className="font-medium text-base md:text-lg leading-snug break-words"
