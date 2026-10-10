@@ -723,7 +723,7 @@ const Dashboard: React.FC = () => {
               step: 'scope',
               setIds: launch.setIds,
               lessonIds: launch.view === 'free-sentences' ? launch.lessonIds : [],
-              topics: launch.view === 'free-sentences' ? launch.topics : [],
+              topics: [],
             });
             if (launch.view === 'free-sentences') {
               setFreeLaunch(launch);

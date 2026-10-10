@@ -10,21 +10,15 @@ import {
   FREE_PRACTICE_TYPES,
   MAX_FREE_PRACTICE_SETS,
   MAX_SENTENCE_SOURCES,
-  MAX_SENTENCE_TOPICS,
-  MAX_TOPIC_LENGTH,
-  addTopic,
   buildFreeLaunch,
-  canAddTopic,
   filterSetsByQuery,
   groupFreePracticeSets,
   isSentenceMode,
   isSetSelectable,
   nextFreePracticeMode,
-  normalizeTopic,
   nextStep,
   previousStep,
   pruneSelection,
-  removeTopic,
   sentenceSourceCount,
   sentenceStartBlocker,
   setCardCount,
@@ -100,9 +94,6 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   const [mode, setMode] = useState<FreePracticeMode>(initial?.mode ?? DEFAULT_FREE_PRACTICE_MODE);
   const [selected, setSelected] = useState<string[]>(initial?.setIds ?? []);
   const [selectedLessons, setSelectedLessons] = useState<string[]>(initial?.lessonIds ?? []);
-  const [topics, setTopics] = useState<string[]>(initial?.topics ?? []);
-  const [topicDraft, setTopicDraft] = useState('');
-  const topicInputId = useId();
   const [query, setQuery] = useState('');
   const radioRefs = useRef<Partial<Record<FreePracticeMode, HTMLButtonElement | null>>>({});
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -117,16 +108,10 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   const validLessons = useMemo(() => pruneLessonSelection(selectedLessons, lessons), [selectedLessons, lessons]);
   const summary = useMemo(() => summarizeSelection(sets, validSelected), [sets, validSelected]);
   const sentences = isSentenceMode(mode);
-  // Wpisany, ale jeszcze niedodany temat liczy się od razu (kursant, który tylko wpisał temat
-  // i kliknął „Dalej", nie traci wpisu) — o ile da się go dodać.
-  const draftTopic = normalizeTopic(topicDraft);
-  const otherSources = validSelected.length + validLessons.length;
-  const draftCounts =
-    sentences && draftTopic !== '' && !topics.some((t) => t.toLocaleLowerCase('pl') === draftTopic.toLocaleLowerCase('pl')) && canAddTopic(topics, otherSources);
   const scope: SentenceScope = {
     setIds: validSelected,
     lessonIds: validLessons,
-    topics: sentences ? (draftCounts ? [...topics, draftTopic] : topics) : [],
+    topics: [],
   };
   const sourceCount = sentenceSourceCount(scope);
   const study = startBlocker(mode, summary);
@@ -161,11 +146,6 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
     radioRefs.current[next]?.focus();
   };
 
-  const commitTopic = () => {
-    setTopics((current) => addTopic(current, topicDraft, otherSources));
-    setTopicDraft('');
-  };
-
   const goBack = () => (step === 'type' ? onBack() : setStep(previousStep(step)));
 
   const start = () => {
@@ -195,61 +175,96 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             : null;
 
   // --- Krok 1: rodzaj ------------------------------------------------------------------------
-  const renderTypeStep = () => (
-    <div className="space-y-4">
-      <h2
-        id="free-practice-type-label"
-        ref={stepHeadingRef}
-        tabIndex={-1}
-        className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted focus:outline-none"
+  const warmupTypes = FREE_PRACTICE_TYPES.filter((type) => type.section === 'warmup');
+  const advancedTypes = FREE_PRACTICE_TYPES.filter((type) => type.section === 'advanced');
+
+  const renderTypeTile = (type: (typeof FREE_PRACTICE_TYPES)[number], isLarge: boolean) => {
+    const selectedTile = type.mode === mode;
+    const Icon = ICONS[type.icon];
+    const accent = ACCENT_CLASSES[type.accent];
+    return (
+      <button
+        key={type.mode}
+        ref={(el) => {
+          radioRefs.current[type.mode] = el;
+        }}
+        type="button"
+        role="radio"
+        data-stagger
+        data-mode={type.mode}
+        aria-checked={selectedTile}
+        tabIndex={selectedTile ? 0 : -1}
+        onClick={() => setMode(type.mode)}
+        className={`relative flex flex-col items-start gap-2 text-left rounded-2xl border-2 transition-colors motion-reduce:transition-none ${focusRing} ${
+          isLarge ? 'min-h-36 sm:min-h-40 p-4 sm:p-5' : 'min-h-24 p-3.5 sm:p-4'
+        } ${
+          selectedTile
+            ? 'border-primary bg-primary/10 text-text-hi cursor-pointer shadow-sm shadow-primary/10'
+            : 'border-line-strong bg-surface-flat text-text-hi hover:border-primary/50 cursor-pointer'
+        }`}
       >
-        {t('Rodzaj ćwiczenia')}
-      </h2>
+        <div className="flex w-full items-center justify-between gap-2">
+          <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent.chip}`}>
+            <Icon size={22} aria-hidden="true" />
+          </span>
+          {type.recommended && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-bold text-primary">
+              ★ {t('Polecane na start')}
+            </span>
+          )}
+        </div>
+        <span data-testid="tile-title" className={`block font-bold leading-tight ${isLarge ? 'text-lg sm:text-xl' : 'text-base'}`}>
+          {t(type.titleKey)}
+        </span>
+        <span className="block text-sm leading-snug text-text-2">{t(type.descriptionKey)}</span>
+        {selectedTile && (
+          <span
+            data-testid="free-practice-selected-mark"
+            className="absolute top-2.5 right-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-accent-ink"
+          >
+            <Check size={14} strokeWidth={3} aria-hidden="true" />
+          </span>
+        )}
+      </button>
+    );
+  };
+
+  const renderTypeStep = () => (
+    <div className="space-y-6">
       <div
         role="radiogroup"
-        aria-labelledby="free-practice-type-label"
-        className="grid grid-cols-2 gap-2.5 sm:gap-3"
+        aria-label={t('Rodzaj ćwiczenia')}
+        className="space-y-6"
         onKeyDown={onRadioKeyDown}
       >
-        {FREE_PRACTICE_TYPES.map((type) => {
-          const selectedTile = type.mode === mode;
-          const Icon = ICONS[type.icon];
-          const accent = ACCENT_CLASSES[type.accent];
-          return (
-            <button
-              key={type.mode}
-              ref={(el) => {
-                radioRefs.current[type.mode] = el;
-              }}
-              type="button"
-              role="radio"
-              data-stagger
-              data-mode={type.mode}
-              aria-checked={selectedTile}
-              tabIndex={selectedTile ? 0 : -1}
-              onClick={() => setMode(type.mode)}
-              className={`relative flex flex-col items-start gap-2 min-h-32 p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-colors motion-reduce:transition-none ${focusRing} ${
-                selectedTile
-                  ? 'border-primary bg-primary/10 text-text-hi cursor-pointer'
-                  : 'border-line-strong bg-surface-flat text-text-hi hover:border-primary/50 cursor-pointer'
-              }`}
-            >
-              <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent.chip}`}>
-                <Icon size={22} aria-hidden="true" />
-              </span>
-              <span className="block text-base font-bold leading-tight">{t(type.titleKey)}</span>
-              <span className="block text-sm leading-snug text-text-2">{t(type.descriptionKey)}</span>
-              {selectedTile && (
-                <span
-                  data-testid="free-practice-selected-mark"
-                  className="absolute top-2.5 right-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-accent-ink"
-                >
-                  <Check size={14} strokeWidth={3} aria-hidden="true" />
-                </span>
-              )}
-            </button>
-          );
-        })}
+        {/* Sekcja 1: Rozpocznij tutaj – rozgrzewka */}
+        <div className="space-y-3">
+          <h2
+            ref={stepHeadingRef}
+            tabIndex={-1}
+            className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted focus:outline-none"
+          >
+            {t('Rozpocznij tutaj – rozgrzewka')}
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {warmupTypes.map((type) => renderTypeTile(type, true))}
+          </div>
+        </div>
+
+        {/* Sekcja 2: Trudniejsza praktyka */}
+        <div className="space-y-3">
+          <div>
+            <h3 className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted">
+              {t('Trudniejsza praktyka')}
+            </h3>
+            <p className="text-xs text-text-2 mt-0.5">
+              {t('Najlepiej po rozgrzewce — utrwal wiedzę w praktyce')}
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
+            {advancedTypes.map((type) => renderTypeTile(type, false))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -258,9 +273,8 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   // Fiszki, quiz i dopasowanie: do 10 zestawów. Zdania z AI: łącznie do 5 źródeł (zestawy + lekcje).
   const limitReached = sentences ? sourceCount >= MAX_SENTENCE_SOURCES : validSelected.length >= MAX_FREE_PRACTICE_SETS;
   const limitMax = sentences ? MAX_SENTENCE_SOURCES : MAX_FREE_PRACTICE_SETS;
-  const topicsInScope = scope.topics.length;
-  const setsMax = sentences ? Math.max(0, MAX_SENTENCE_SOURCES - validLessons.length - topicsInScope) : MAX_FREE_PRACTICE_SETS;
-  const lessonsMax = Math.max(0, MAX_SENTENCE_SOURCES - validSelected.length - topicsInScope);
+  const setsMax = sentences ? Math.max(0, MAX_SENTENCE_SOURCES - validLessons.length) : MAX_FREE_PRACTICE_SETS;
+  const lessonsMax = Math.max(0, MAX_SENTENCE_SOURCES - validSelected.length);
 
   const renderSetRow = (set: FlashcardSet) => {
     const count = setCardCount(set);
@@ -367,70 +381,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
         {t('Materiał')}
       </h2>
 
-      {sentences && (
-        <section data-stagger data-testid="free-practice-topics" aria-labelledby={`${topicInputId}-label`} className="space-y-3 rounded-2xl border-2 border-line-strong bg-surface-flat p-3.5">
-          <div className="space-y-1">
-            <label id={`${topicInputId}-label`} htmlFor={topicInputId} className="block text-base font-bold text-text-hi">
-              {t('Własny temat')}
-            </label>
-            <p id={`${topicInputId}-hint`} className="text-sm text-text-2">
-              {t('Wpisz temat, na przykład podróże albo rozmowa o pracę — maksymalnie {{max}} tematy, do {{length}} znaków każdy', {
-                max: MAX_SENTENCE_TOPICS,
-                length: MAX_TOPIC_LENGTH,
-              })}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <input
-              id={topicInputId}
-              type="text"
-              data-testid="free-practice-topic-input"
-              value={topicDraft}
-              maxLength={MAX_TOPIC_LENGTH}
-              disabled={!canAddTopic(topics, otherSources)}
-              onChange={(e) => setTopicDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  e.preventDefault();
-                  commitTopic();
-                }
-              }}
-              placeholder={t('Twój temat')}
-              aria-describedby={`${topicInputId}-hint`}
-              autoComplete="off"
-              enterKeyHint="done"
-              className={`min-h-12 min-w-0 flex-1 rounded-xl border-2 border-line-strong bg-base-100/60 px-3.5 text-base text-text-hi placeholder:text-text-3 disabled:opacity-60 ${focusRing}`}
-            />
-            <Button
-              type="button"
-              variant="secondary"
-              data-testid="free-practice-topic-add"
-              onClick={commitTopic}
-              disabled={!draftCounts}
-              className="min-h-12 shrink-0 px-4 text-text-hi!"
-            >
-              {t('Dodaj temat')}
-            </Button>
-          </div>
-          {topics.length > 0 && (
-            <ul aria-label={t('Wybrane tematy')} className="flex flex-wrap gap-2">
-              {topics.map((topic) => (
-                <li key={topic} data-testid="free-practice-topic-chip" className="flex max-w-full items-center gap-1 rounded-full border border-primary bg-primary/10 pl-3 text-sm text-text-hi">
-                  <span className="min-w-0 break-words py-1">{topic}</span>
-                  <button
-                    type="button"
-                    onClick={() => setTopics((current) => removeTopic(current, topic))}
-                    aria-label={t('Usuń temat {{topic}}', { topic })}
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-text-2 hover:text-text-hi cursor-pointer ${focusRing}`}
-                  >
-                    <X size={16} aria-hidden="true" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
+
 
       {!hasSets && !hasLessons ? (
         <div
@@ -488,8 +439,6 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                 onClick={() => {
                   setSelected([]);
                   setSelectedLessons([]);
-                  setTopics([]);
-                  setTopicDraft('');
                 }}
                 className={`min-h-11 px-3 rounded-lg text-sm font-semibold text-text-2 hover:text-text-hi cursor-pointer ${focusRing}`}
               >
@@ -565,7 +514,6 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
     const chosenSets = validSelected.map((id) => sets.find((set) => set.id === id)).filter((set): set is FlashcardSet => Boolean(set));
     const chosenLessons = validLessons.map((id) => lessons.find((lesson) => lesson.id === id)).filter((l): l is LessonLike => Boolean(l));
     const chosen = [
-      ...scope.topics.map((topic) => ({ id: `topic:${topic}`, title: topic })),
       ...chosenSets.map((set) => ({ id: set.id, title: set.title })),
       ...chosenLessons.map((lesson) => ({ id: lesson.id, title: lesson.title || lesson.topic || '' })),
     ];

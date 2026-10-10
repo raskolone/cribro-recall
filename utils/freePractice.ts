@@ -24,6 +24,8 @@ export type FreePracticeAccent = 'primary' | 'info' | 'accent-2' | 'warn';
 /** Klucz ikony (lucide-react); mapowanie na komponent robi ekran, tu zostaje czysta logika. */
 export type FreePracticeIcon = 'layers' | 'listChecks' | 'link' | 'spellCheck' | 'languages';
 
+export type PracticeSection = 'warmup' | 'advanced';
+
 export interface FreePracticeType {
   mode: FreePracticeMode;
   /** Klucze i18n (pl.json / en.json) — nazwa i jedno zdanie opisu. */
@@ -31,15 +33,20 @@ export interface FreePracticeType {
   descriptionKey: string;
   icon: FreePracticeIcon;
   accent: FreePracticeAccent;
+  section: PracticeSection;
+  recommended?: boolean;
 }
 
-/** Kolejność = kolejność na ekranie. Pierwszy jest domyślnie wybrany. */
+export const WARMUP_MODES: readonly FreePracticeMode[] = ['flashcards', 'matching'];
+export const ADVANCED_MODES: readonly FreePracticeMode[] = ['translation', 'quiz', 'correction'];
+
+/** Kolejność = kolejność na ekranie. Pierwszy jest domyślnie wybrany (Fiszki — polecane na start). */
 export const FREE_PRACTICE_TYPES: readonly FreePracticeType[] = [
-  { mode: 'translation', titleKey: 'Tłumaczenie zdań', descriptionKey: 'Przetłumacz zdania na angielski', icon: 'languages', accent: 'info' },
-  { mode: 'correction', titleKey: 'Korekta zdań', descriptionKey: 'Znajdź błąd w zdaniu i popraw go', icon: 'spellCheck', accent: 'warn' },
-  { mode: 'flashcards', titleKey: 'Fiszki', descriptionKey: 'Odwracaj karty i sprawdzaj, co pamiętasz', icon: 'layers', accent: 'primary' },
-  { mode: 'matching', titleKey: 'Dopasowanie', descriptionKey: 'Połącz słowo z jego znaczeniem', icon: 'link', accent: 'accent-2' },
-  { mode: 'quiz', titleKey: 'Quiz', descriptionKey: 'Szybki test wielokrotnego wyboru', icon: 'listChecks', accent: 'info' },
+  { mode: 'flashcards', titleKey: 'Fiszki', descriptionKey: 'Odwracaj karty i sprawdzaj, co pamiętasz', icon: 'layers', accent: 'primary', section: 'warmup', recommended: true },
+  { mode: 'matching', titleKey: 'Dopasowanie', descriptionKey: 'Połącz słowo z jego znaczeniem', icon: 'link', accent: 'accent-2', section: 'warmup' },
+  { mode: 'translation', titleKey: 'Tłumaczenie zdań', descriptionKey: 'Przetłumacz zdania na angielski', icon: 'languages', accent: 'info', section: 'advanced' },
+  { mode: 'quiz', titleKey: 'Quiz', descriptionKey: 'Szybki test wielokrotnego wyboru', icon: 'listChecks', accent: 'info', section: 'advanced' },
+  { mode: 'correction', titleKey: 'Korekta zdań', descriptionKey: 'Znajdź błąd w zdaniu i popraw go', icon: 'spellCheck', accent: 'warn', section: 'advanced' },
 ];
 
 export const DEFAULT_FREE_PRACTICE_MODE: FreePracticeMode = FREE_PRACTICE_TYPES[0].mode;
@@ -100,7 +107,7 @@ export function freePracticeLaunch(mode: FreePracticeMode, setIds: readonly stri
 export interface SentenceScope {
   setIds: string[];
   lessonIds: string[];
-  topics: string[];
+  topics?: string[];
 }
 
 export const EMPTY_SENTENCE_SCOPE: SentenceScope = { setIds: [], lessonIds: [], topics: [] };
@@ -119,7 +126,7 @@ export function freeSentencesLaunch(mode: 'translation' | 'correction', scope: S
     format: sentenceFormatFor(mode),
     setIds: [...scope.setIds],
     lessonIds: [...scope.lessonIds],
-    topics: [...scope.topics],
+    topics: scope.topics ? [...scope.topics] : [],
   };
 }
 
@@ -290,7 +297,7 @@ export function removeTopic(topics: readonly string[], topic: string): string[] 
 export type StartBlocker = 'no-sets' | 'too-few-cards' | 'no-scope' | 'too-many-sources';
 
 export function sentenceSourceCount(scope: SentenceScope): number {
-  return scope.setIds.length + scope.lessonIds.length + scope.topics.length;
+  return scope.setIds.length + scope.lessonIds.length + (scope.topics?.length ?? 0);
 }
 
 export function startBlocker(mode: FreePracticeMode, summary: SelectionSummary): { blocker: StartBlocker | null; min: number } {

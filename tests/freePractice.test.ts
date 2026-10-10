@@ -43,15 +43,16 @@ const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url)
 const pl = JSON.parse(read('pl.json')) as Record<string, string>;
 const en = JSON.parse(read('en.json')) as Record<string, string>;
 
-test('menu ma pięć rodzajów we właściwej kolejności: Tłumaczenie, Korekta, Fiszki, Dopasowanie, Quiz', () => {
+test('menu ma pięć rodzajów w dwóch sekcjach: Fiszki, Dopasowanie (rozgrzewka) oraz Tłumaczenie, Quiz, Korekta (trudniejsza)', () => {
   assert.deepEqual(
     FREE_PRACTICE_TYPES.map((type) => type.mode),
-    ['translation', 'correction', 'flashcards', 'matching', 'quiz'],
+    ['flashcards', 'matching', 'translation', 'quiz', 'correction'],
   );
   assert.deepEqual(
     FREE_PRACTICE_TYPES.map((type) => type.titleKey),
-    ['Tłumaczenie zdań', 'Korekta zdań', 'Fiszki', 'Dopasowanie', 'Quiz'],
+    ['Fiszki', 'Dopasowanie', 'Tłumaczenie zdań', 'Quiz', 'Korekta zdań'],
   );
+  assert.equal(FREE_PRACTICE_TYPES[0].recommended, true, 'Fiszki są polecane na start');
 });
 
 test('„Fiszki Intro" i „Pisanie" zniknęły z menu, ale tryby zostają w module fiszek (używa ich Moje słownictwo)', () => {
@@ -70,7 +71,7 @@ test('wszystkie rodzaje są aktywne: fiszki/quiz/dopasowanie to tryby modułu fi
   const src = read('components/flashcards/FlashcardStudyScreen.tsx');
   const union = src.match(/type StudyMode = ([^;]+);/)![1].split('|').map((p) => p.trim().replace(/'/g, ''));
   for (const mode of STUDY_MODES) assert.ok(union.includes(mode), mode);
-  assert.deepEqual([...STUDY_MODES], ['flashcards', 'quiz', 'matching']);
+  assert.deepEqual([...STUDY_MODES].sort(), ['flashcards', 'matching', 'quiz'].sort());
   assert.deepEqual([...SENTENCE_MODES], ['translation', 'correction']);
   assert.equal(new Set(FREE_PRACTICE_TYPES.map((type) => type.mode)).size, FREE_PRACTICE_TYPES.length);
   assert.deepEqual([...STUDY_MODES, ...SENTENCE_MODES].sort(), FREE_PRACTICE_TYPES.map((t) => t.mode).sort());
@@ -81,8 +82,8 @@ test('wszystkie rodzaje są aktywne: fiszki/quiz/dopasowanie to tryby modułu fi
   for (const type of FREE_PRACTICE_TYPES) assert.match(type.accent, /^(primary|info|accent-2|warn)$/);
 });
 
-test('domyślny rodzaj to pierwszy na liście: tłumaczenie zdań', () => {
-  assert.equal(DEFAULT_FREE_PRACTICE_MODE, 'translation');
+test('domyślny rodzaj to pierwszy na liście: fiszki (polecane na start)', () => {
+  assert.equal(DEFAULT_FREE_PRACTICE_MODE, 'flashcards');
   assert.equal(FREE_PRACTICE_TYPES[0].mode, DEFAULT_FREE_PRACTICE_MODE);
   assert.ok(isSentenceMode('translation') && isSentenceMode('correction') && !isSentenceMode('quiz'));
   assert.equal(sentenceFormatFor('translation'), 'typing', 'dawne „Sprawdź się"');
@@ -117,14 +118,14 @@ test('zestawy: własne i z lekcji osobno od słownictwa ogólnego, szkice pomini
 });
 
 test('klawiatura w grupie rodzajów: strzałki cyklicznie po wszystkich rodzajach, Home/End, reszta zostaje przeglądarce', () => {
-  assert.equal(nextFreePracticeMode('translation', 'ArrowRight'), 'correction');
-  assert.equal(nextFreePracticeMode('translation', 'ArrowDown'), 'correction');
-  assert.equal(nextFreePracticeMode('correction', 'ArrowLeft'), 'translation');
-  assert.equal(nextFreePracticeMode('correction', 'ArrowUp'), 'translation');
-  assert.equal(nextFreePracticeMode('translation', 'ArrowLeft'), 'quiz', 'zawinięcie na ostatni');
-  assert.equal(nextFreePracticeMode('quiz', 'ArrowRight'), 'translation', 'zawinięcie na pierwszy');
-  assert.equal(nextFreePracticeMode('quiz', 'Home'), 'translation');
-  assert.equal(nextFreePracticeMode('translation', 'End'), 'quiz');
+  assert.equal(nextFreePracticeMode('flashcards', 'ArrowRight'), 'matching');
+  assert.equal(nextFreePracticeMode('flashcards', 'ArrowDown'), 'matching');
+  assert.equal(nextFreePracticeMode('matching', 'ArrowLeft'), 'flashcards');
+  assert.equal(nextFreePracticeMode('matching', 'ArrowUp'), 'flashcards');
+  assert.equal(nextFreePracticeMode('flashcards', 'ArrowLeft'), 'correction', 'zawinięcie na ostatni');
+  assert.equal(nextFreePracticeMode('correction', 'ArrowRight'), 'flashcards', 'zawinięcie na pierwszy');
+  assert.equal(nextFreePracticeMode('correction', 'Home'), 'flashcards');
+  assert.equal(nextFreePracticeMode('flashcards', 'End'), 'correction');
   for (const key of ['Enter', ' ', 'Tab', 'a', 'Escape']) assert.equal(nextFreePracticeMode('flashcards', key), null, key);
 });
 

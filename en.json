@@ -669,5 +669,9 @@
   "Brak połączenia z serwerem — sprawdź internet i spróbuj ponownie": "Cannot reach the server — check your connection and try again",
   "Sesja wygasła — zaloguj się ponownie": "Your session has expired — please sign in again",
   "Nie udało się przygotować ćwiczenia z tego zakresu — zmień zakres i spróbuj ponownie": "Could not prepare an exercise from this scope — change the scope and try again",
-  "Serwer nie przygotował poprawnych zdań — spróbuj ponownie za chwilę": "The server could not prepare valid sentences — please try again in a moment"
+  "Serwer nie przygotował poprawnych zdań — spróbuj ponownie za chwilę": "The server could not prepare valid sentences — please try again in a moment",
+  "Rozpocznij tutaj – rozgrzewka": "Start here – warm-up",
+  "Polecane na start": "Recommended to start",
+  "Trudniejsza praktyka": "Challenging practice",
+  "Najlepiej po rozgrzewce — utrwal wiedzę w praktyce": "Best after warm-up — practice in depth"
 }
