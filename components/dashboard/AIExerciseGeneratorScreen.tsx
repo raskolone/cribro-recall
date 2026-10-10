@@ -4147,14 +4147,14 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
 
               <div className="space-y-2 relative z-10">
                 <div className="flex items-center justify-between">
-                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-primary bg-primary/10 border border-primary/25">
+                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold text-text-hi bg-primary/10 border border-primary">
                     {isFree
                       ? (exerciseFormat === 'correction' ? i18n.t('Korekta zdań') : i18n.t('Tłumaczenie zdań'))
                       : exerciseFormat === 'correction'
                         ? (language === 'pl' ? 'Napraw Zdanie' : 'Fix the Sentence')
                         : (language === 'pl' ? 'Sprawdź Się' : 'Check Yourself')}
                   </span>
-                  <span className="text-primary font-bold text-xs font-mono">
+                  <span className="text-text-hi font-bold text-xs font-mono">
                     {exercises.length} {exercises.length === 1 ? 'zadanie' : exercises.length < 5 ? 'zadania' : 'zadań'}
                   </span>
                 </div>

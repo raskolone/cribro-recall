@@ -231,7 +231,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             <Icon size={22} aria-hidden="true" />
           </span>
           {type.recommended && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/20 px-2.5 py-0.5 text-xs font-bold text-primary">
+            <span className="inline-flex items-center gap-1 rounded-full border border-primary bg-primary/10 px-2.5 py-0.5 text-xs font-bold text-text-hi">
               ★ {t('Polecane na start')}
             </span>
           )}
@@ -595,7 +595,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
               type="button"
               data-testid="free-practice-create-set-button"
               onClick={() => setIsCreateModalOpen(true)}
-              className={`inline-flex items-center justify-center gap-1.5 min-h-10 px-3 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary text-xs sm:text-sm font-semibold transition-colors motion-reduce:transition-none cursor-pointer ${focusRing}`}
+              className={`inline-flex items-center justify-center gap-1.5 min-h-11 px-3 rounded-xl border border-primary bg-primary/10 hover:bg-primary/20 text-text-hi text-xs sm:text-sm font-semibold transition-colors motion-reduce:transition-none cursor-pointer ${focusRing}`}
             >
               <Plus size={16} aria-hidden="true" />
               <span>{t('Utwórz własny zestaw')}</span>
@@ -654,7 +654,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                       type="button"
                       data-testid="free-practice-create-set"
                       onClick={() => setIsCreateModalOpen(true)}
-                      className={`inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer ${focusRing}`}
+                      className={`inline-flex min-h-11 items-center gap-1 text-xs font-semibold text-text-hi underline-offset-4 hover:underline cursor-pointer ${focusRing}`}
                     >
                       <Plus size={14} aria-hidden="true" />
                       {t('Utwórz własny zestaw')}

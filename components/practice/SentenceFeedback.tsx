@@ -71,7 +71,7 @@ export const OverallScore: React.FC<{ score: number }> = ({ score }) => {
   );
 };
 
-/** Odsłuch: wizualnie mały przycisk, strefa dotyku ≥ 44 px (niewidoczny ::before sięga 8 px w górę i w dół). */
+/** Odsłuch: wizualnie mały przycisk, strefa dotyku ≥ 44 px (niewidoczny ::before sięga 12 px w górę i w dół). */
 export const ListenButtons: React.FC<{
   text: string;
   onPlay: (text: string, accent: 'en-US' | 'en-GB') => void;
@@ -94,7 +94,7 @@ export const ListenButtons: React.FC<{
           disabled={disabled}
           title={title}
           aria-label={title}
-          className="relative inline-flex h-7 min-w-11 items-center justify-center gap-1 rounded-lg border border-line-strong bg-surface-flat px-2 text-xs font-bold text-text-hi before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] hover:border-primary disabled:cursor-default disabled:text-text-3 cursor-pointer transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="relative inline-flex h-7 min-w-11 items-center justify-center gap-1 rounded-lg border border-line-strong bg-surface-flat px-2 text-xs font-bold text-text-hi before:absolute before:inset-x-0 before:-inset-y-3 before:content-[''] hover:border-primary disabled:cursor-default disabled:text-text-3 cursor-pointer transition-colors motion-reduce:transition-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         >
           {playing ? <Loader2 className="h-3 w-3 animate-spin motion-reduce:animate-none" aria-hidden="true" /> : <Volume2 className="h-3 w-3" aria-hidden="true" />}
           {label}

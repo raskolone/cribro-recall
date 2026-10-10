@@ -116,7 +116,7 @@ test('przyciski odsłuchu: wizualnie małe (h-7), strefa dotyku ≥ 44 px przez 
   const { getByTestId } = render(<SentenceFeedbackPanel result={result()} onPlay={() => {}} />);
   const us = getByTestId('listen-us');
   assert.match(us.className, /\bh-7\b/);
-  assert.match(us.className, /before:-inset-y-2/, '28 px + 2 × 8 px = 44 px strefy dotyku');
+  assert.match(us.className, /before:-inset-y-3/, '28 px + 2 × 12 px = 52 px strefy dotyku (≥ 44 px także przy zaokrągleniach wysokości)');
   assert.match(us.className, /before:inset-x-0/);
   assert.match(us.className, /min-w-11/);
   assert.equal(us.getAttribute('aria-label'), 'Wymowa amerykańska');

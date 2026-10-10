@@ -95,7 +95,7 @@ export const CreateCustomSetModal: React.FC<CreateCustomSetModalProps> = ({ isOp
             onClick={onClose}
             disabled={isSubmitting}
             aria-label={t('Zamknij')}
-            className={`flex h-10 w-10 items-center justify-center rounded-xl text-text-2 hover:bg-surface-flat hover:text-text-hi cursor-pointer disabled:opacity-50 ${focusRing}`}
+            className={`flex h-11 w-11 items-center justify-center rounded-xl text-text-2 hover:bg-surface-flat hover:text-text-hi cursor-pointer disabled:opacity-50 ${focusRing}`}
           >
             <X size={20} aria-hidden="true" />
           </button>

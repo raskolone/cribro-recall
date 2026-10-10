@@ -41,7 +41,7 @@ export const WhatsNextSection: React.FC<WhatsNextSectionProps> = ({
           className="rounded-2xl border border-line-soft bg-surface-elevated/80 dark:bg-surface-elevated/40 p-4 space-y-2"
         >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-bold uppercase tracking-wider text-warn">
+            <span className="text-xs font-mono font-bold uppercase tracking-wider text-text-hi">
               {i18n.t('Słowa do powtórzenia')} ({uniqueWeakWords.length})
             </span>
           </div>
@@ -49,7 +49,7 @@ export const WhatsNextSection: React.FC<WhatsNextSectionProps> = ({
             {uniqueWeakWords.map((word) => (
               <span
                 key={word}
-                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-warn/10 text-warn border border-warn/20"
+                className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-warn/10 text-text-hi border border-warn"
               >
                 {word}
               </span>
