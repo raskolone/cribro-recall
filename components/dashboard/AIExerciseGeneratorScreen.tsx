@@ -41,6 +41,7 @@ import Card from '../ui/Card';
 import Toast, { useToast } from '../ui/Toast';
 import PuzzleExercise from './PuzzleExercise';
 import { SentenceActionBar, SentenceAnswerInput, SentencePromptCard } from '../practice/SentencePracticeParts';
+import { SentenceFeedbackPanel, SentenceResultCard } from '../practice/SentenceFeedback';
 import Button from '../ui/Button';
 import ConfirmModal from '../ui/ConfirmModal';
 import { motion, AnimatePresence } from 'motion/react';
@@ -4299,130 +4300,34 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
               {/* Pole odpowiedzi i wynik */}
               <div className="w-full space-y-3 mt-2 flex flex-col items-center">
                 {evaluationStatuses[activeSentenceIndex] === 'evaluated' && singleEvaluationResults[activeSentenceIndex] ? (
-                  <div className="space-y-3 w-full text-center flex flex-col items-center">
-                    <div 
-                      className="w-full bg-black/30 backdrop-blur-sm border border-white/10 shadow-inner rounded-xl p-3 text-sm text-center"
-                      dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlightedAnswer || singleEvaluationResults[activeSentenceIndex].studentAnswer }}
-                    />
-                    
-                    <div className={`w-full p-3.5 rounded-xl border flex flex-col items-center text-center ${singleEvaluationResults[activeSentenceIndex].isCorrect ? 'bg-primary/10 border-primary/30' : 'bg-danger/10 border-danger/30'}`}>
-                       <div className="font-bold flex flex-col sm:flex-row items-center justify-between w-full mb-3 text-sm gap-2">
-                         <span className="flex items-center gap-2 flex-wrap">
-                           {singleEvaluationResults[activeSentenceIndex].isCorrect ? '✅ Poprawnie!' : '❌ Błędy w tłumaczeniu'}
-                           {canViewAiModels && (
-                             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/30 text-primary text-[12px] font-medium">
-                               <Sparkles className="w-3 h-3 text-primary" />
-                               <span>
-                                 {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
-                                 <strong className="text-white font-bold">{formatAIModelName(singleEvaluationResults[activeSentenceIndex].modelUsed)}</strong>
-                               </span>
-                             </span>
-                           )}
-                         </span>
-                         <span className={`text-xs font-bold font-mono px-2.5 py-1 rounded-lg border ${
-                           singleEvaluationResults[activeSentenceIndex].score >= 80 
-                             ? 'bg-primary/20 border-primary/30 text-primary' 
-                             : singleEvaluationResults[activeSentenceIndex].score >= 60 
-                               ? 'bg-warn/20 border-warn/30 text-warn' 
-                               : 'bg-danger/20 border-danger/30 text-danger'
-                         }`}>
-                           
-                                                                                     {i18n.t("Wynik:")} {singleEvaluationResults[activeSentenceIndex].score}%
-                         </span>
-                       </div>
-                       
-                       {singleEvaluationResults[activeSentenceIndex].breakdown && (
-                         <div className="grid grid-cols-3 gap-2 w-full mb-3 text-[12px] font-mono">
-                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
-                             <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
-                             <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.meaning_score}/40</div>
-                           </div>
-                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
-                             <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
-                             <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.grammar_score}/40</div>
-                           </div>
-                           <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center flex flex-col items-center justify-center">
-                             <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
-                             <div className="font-bold text-white mt-0.5">{singleEvaluationResults[activeSentenceIndex].breakdown?.vocabulary_score}/20</div>
-                           </div>
-                         </div>
-                       )}
-                       
-                       <div className="w-full flex flex-col items-center gap-3 p-2.5 liquid-glass-tile rounded-lg mb-3 border border-white/5 text-center">
-                         <div 
-                           className="font-medium text-primary/90 text-sm"
-                           dangerouslySetInnerHTML={{ __html: singleEvaluationResults[activeSentenceIndex].highlighted_better_version || singleEvaluationResults[activeSentenceIndex].correctTranslation }}
-                         />
-                         <div className="flex items-center justify-center gap-1.5 shrink-0 bg-black/30 p-1 rounded-md mt-2">
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-US')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-primary text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa amerykańska")} disabled={isPlayingAudio}>
-  <Volume2 className="w-3.5 h-3.5" /> AmE
-</button>
-                           <button onClick={() => playAudio(singleEvaluationResults[activeSentenceIndex].correctTranslation, 'en-GB')} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-white/5 bg-white/5 hover:bg-white/10 text-primary text-xs font-bold transition-all ${isPlayingAudio ? 'opacity-50' : ''}`} title={i18n.t("Wymowa brytyjska")} disabled={isPlayingAudio}>
-  <Volume2 className="w-3.5 h-3.5" /> BrE
-</button>
-
-                         </div>
-                       </div>
-
-                       <div className="space-y-3 mt-1 text-xs w-full text-left">
-                         {singleEvaluationResults[activeSentenceIndex].feedbackSyntax && (
-                           <div className="bg-danger/10 p-3 rounded-lg border border-danger/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-danger text-[12px] uppercase tracking-wider mb-1">
-                               <AlertCircle className="w-3.5 h-3.5" />
-                               {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
-                             </div>
-                             <p className="opacity-90 leading-relaxed text-danger">{singleEvaluationResults[activeSentenceIndex].feedbackSyntax}</p>
-                           </div>
-                         )}
-                         {singleEvaluationResults[activeSentenceIndex].feedbackVocab && (
-                           <div className="bg-info/10 p-3 rounded-lg border border-info/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-info text-[12px] uppercase tracking-wider mb-1">
-                               <AlertCircle className="w-3.5 h-3.5" />
-                               {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
-                             </div>
-                             <p className="opacity-90 leading-relaxed text-info">{singleEvaluationResults[activeSentenceIndex].feedbackVocab}</p>
-                           </div>
-                         )}
-                         {singleEvaluationResults[activeSentenceIndex].feedbackRule && (
-                           <div className="bg-warn/10 p-3 rounded-lg border border-warn/20 flex flex-col items-start text-left w-full">
-                             <div className="flex items-center gap-1.5 font-bold text-warn text-[12px] uppercase tracking-wider mb-1">
-                               <Sparkles className="w-3.5 h-3.5" />
-                               {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
-                             </div>
-                             <p className="opacity-90 leading-relaxed text-warn font-medium">{singleEvaluationResults[activeSentenceIndex].feedbackRule}</p>
-                           </div>
-                         )}
-                         {(!singleEvaluationResults[activeSentenceIndex].feedbackSyntax && !singleEvaluationResults[activeSentenceIndex].feedbackVocab && !singleEvaluationResults[activeSentenceIndex].feedbackRule) && (
-                           <p className="whitespace-pre-wrap opacity-90 leading-relaxed text-xs text-center p-3">{singleEvaluationResults[activeSentenceIndex].explanation}</p>
-                         )}
-                       </div>
-
-                       {/* Rusztowanie po dwóch nieudanych próbach z rzędu. Jedyne
-                           wejście w Układankę — stąd propozycja, a nie kolejny
-                           kafelek na ekranie startowym. */}
-                       {consecutiveMisses >= 2 && exerciseFormat === 'typing' && (
-                         <div className="mt-4 w-full rounded-2xl border border-warn/30 bg-warn/10 p-4 text-left">
-                           <div className="flex items-center gap-1.5 font-bold text-warn text-[12px] uppercase tracking-wider mb-1.5">
-                             <LayoutGrid className="w-3.5 h-3.5" />
-                             {language === 'pl' ? 'Może rozłożyć to na części?' : 'Break it into pieces?'}
-                           </div>
-                           <p className="text-xs text-text-2 leading-relaxed">
-                             {language === 'pl'
-                               ? 'To zdanie nie chce się ułożyć. Spróbuj złożyć je z gotowych klocków — potem wrócisz do pisania z pamięci.'
-                               : 'This one is not coming together. Try assembling it from ready-made chunks, then go back to writing from memory.'}
-                           </p>
-                           <button
-                             type="button"
-                             onClick={handleSwitchToPuzzleHint}
-                             className="mt-3 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-warn/20 border border-warn/40 text-warn text-xs font-bold hover:bg-warn/30 transition-colors cursor-pointer"
-                           >
-                             <LayoutGrid className="w-3.5 h-3.5" />
-                             {language === 'pl' ? 'Ułóż z klocków' : 'Assemble from chunks'}
-                           </button>
-                         </div>
-                       )}
-                    </div>
-                  </div>
+                  <SentenceFeedbackPanel
+                    result={singleEvaluationResults[activeSentenceIndex]}
+                    modelLabel={canViewAiModels ? formatAIModelName(singleEvaluationResults[activeSentenceIndex].modelUsed) : undefined}
+                    onPlay={(text, accent) => playAudio(text, accent)}
+                    playing={isPlayingAudio}
+                  >
+                    {/* Rusztowanie po dwóch nieudanych próbach z rzędu. Jedyne wejście w Układankę —
+                        stąd propozycja, a nie kolejny kafelek na ekranie startowym. */}
+                    {consecutiveMisses >= 2 && exerciseFormat === 'typing' && (
+                      <div className="w-full rounded-xl border border-warn p-3 text-left">
+                        <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-text-hi mb-1">
+                          <LayoutGrid className="w-3.5 h-3.5 text-warn" aria-hidden="true" />
+                          {i18n.t('Może rozłożyć to na części?')}
+                        </div>
+                        <p className="text-sm text-text-2 leading-snug">
+                          {i18n.t('To zdanie nie chce się ułożyć — spróbuj złożyć je z gotowych klocków, potem wrócisz do pisania z pamięci')}
+                        </p>
+                        <button
+                          type="button"
+                          onClick={handleSwitchToPuzzleHint}
+                          className="mt-2 inline-flex min-h-11 items-center gap-2 rounded-xl border-2 border-text-mute px-4 text-sm font-bold text-text-hi hover:border-primary transition-colors motion-reduce:transition-none cursor-pointer"
+                        >
+                          <LayoutGrid className="w-3.5 h-3.5" aria-hidden="true" />
+                          {i18n.t('Ułóż z klocków')}
+                        </button>
+                      </div>
+                    )}
+                  </SentenceFeedbackPanel>
                 ) : (
                   <>
                 {exerciseFormat === 'puzzle' ? (
@@ -4759,169 +4664,20 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
           </Card>
 
           {/* Individual sentence evaluation list */}
-          <div className="space-y-6">
+          <div className="space-y-3">
             <h3 className="text-lg font-bold border-b border-base-300 pb-2">
               {language === 'pl' ? 'Szczegółowa analiza każdego zdania' : 'Detailed analysis of each sentence'}
             </h3>
 
             {evaluationResults.map((res, idx) => (
-              <Card key={idx} className={`p-6 border-l-4 transition-all ${
-                res.score >= 85 
-                  ? 'border-l-green-400 border-base-300 bg-primary/[0.01]' 
-                  : res.score >= 60 
-                    ? 'border-l-amber-500 border-base-300 bg-warn/[0.01]' 
-                    : 'border-l-red-500 border-base-300 bg-danger/[0.01]'
-              }`}>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-start gap-4">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-black/30 rounded text-xs font-mono text-content-muted">
-                        {i18n.t("Zdanie")} {idx + 1}
-                      </div>
-                      {canViewAiModels && (
-                        <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-primary/10 border border-primary/30 text-primary text-xs font-medium shadow-sm">
-                          <Sparkles className="w-3.5 h-3.5 text-primary" />
-                          <span>
-                            {language === 'pl' ? 'Sprawdzone przez: ' : 'Evaluated by: '}
-                            <strong className="text-white font-semibold">{formatAIModelName(res.modelUsed)}</strong>
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span className={`text-sm font-bold font-mono ${
-                        res.score >= 85 ? 'text-primary' : res.score >= 60 ? 'text-warn' : 'text-danger'
-                      }`}>
-                        {res.score}%
-                      </span>
-                      {res.score >= 80 ? (
-                        <CheckCircle className="w-4 h-4 text-primary" />
-                ) : (
-                        <XCircle className="w-4 h-4 text-warn" />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Sentences table style */}
-                  <div className="space-y-3 pt-2">
-                    {res.breakdown && (
-                      <div className="grid grid-cols-3 gap-2 text-[12px] font-mono">
-                        <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
-                          <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Znaczenie' : 'Meaning'}</div>
-                          <div className="font-bold text-white mt-0.5">{res.breakdown.meaning_score}/40</div>
-                        </div>
-                        <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
-                          <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Gramatyka' : 'Grammar'}</div>
-                          <div className="font-bold text-white mt-0.5">{res.breakdown.grammar_score}/40</div>
-                        </div>
-                        <div className="bg-black/30 p-2 rounded-lg border border-white/5 text-center">
-                          <div className="text-content-muted text-[12px] uppercase tracking-wider">{language === 'pl' ? 'Słownictwo' : 'Vocab'}</div>
-                          <div className="font-bold text-white mt-0.5">{res.breakdown.vocabulary_score}/20</div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider">{language === 'pl' ? 'Po polsku' : 'In Polish'}</div>
-                      <div className="text-base font-semibold text-white">{res.polishSentence}</div>
-                    </div>
-
-                    <div className="flex flex-col space-y-4 pt-2 border-t border-white/5">
-                      <div>
-                        <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider">{language === 'pl' ? 'Twoja odpowiedź' : 'Your translation'}</div>
-                        <div className={`text-sm p-2.5 rounded-lg font-medium border ${
-                          res.score >= 85 
-                            ? 'bg-primary/[0.02] border-primary/10 text-primary' 
-                            : res.score >= 60 
-                              ? 'bg-warn/[0.02] border-warn/10 text-warn' 
-                              : 'bg-danger/[0.02] border-danger/10 text-danger'
-                        }`}>
-                          {res.studentAnswer || <span className="italic opacity-50">{language === 'pl' ? '(brak)' : '(none)'}</span>}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-xs text-content-muted font-bold mb-1 uppercase tracking-wider flex items-center justify-between">
-                          <span>{language === 'pl' ? 'Wzorcowe tłumaczenie' : 'Suggested translation'}</span>
-                          <div className="flex items-center gap-1">
-                            <span className="text-[12px] text-content-muted mr-1">{language === 'pl' ? 'Odsłuchaj:' : 'Listen:'}</span>
-                            {ACCENTS.map(accent => (
-                              <button
-                                key={accent}
-                                onClick={() => handlePlaySentenceAudio(res.correctTranslation, accent as any, idx)}
-                                disabled={playingAudioIndex === idx}
-                                className="flex items-center justify-center w-6 h-6 bg-black/30 hover:bg-primary/20 text-primary rounded transition-colors"
-                                title={`Posłuchaj (${accent})`}
-                              >
-                                {playingAudioIndex === idx ? (
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                                  <span className="text-[12px]">{ACCENT_FLAGS[accent]}</span>
-                                )}
-                              </button>
-                            ))}
-
-                          </div>
-                        </div>
-                        <div className="text-sm p-2.5 bg-primary/[0.02] border border-primary/10 text-primary-light rounded-lg font-medium" dangerouslySetInnerHTML={{ __html: res.highlighted_better_version || res.correctTranslation }}>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Explanations & corrections */}
-                    <details className="liquid-glass-tile p-4 rounded-xl border border-white/5 space-y-2 mt-2 group">
-                      <summary className="text-sm text-warn font-bold flex items-center gap-2 uppercase tracking-wider cursor-pointer select-none list-none [&::-webkit-details-marker]:hidden">
-                        <span className="relative flex h-3 w-3 shrink-0">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-warn opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-3 w-3 bg-warn"></span>
-                        </span>
-                        <Lightbulb className="w-4 h-4 shrink-0" />
-                        {language === 'pl' ? 'Sprawdź Feedback' : 'Check Feedback'}
-                        <svg className="w-4 h-4 ml-auto transition-transform group-open:rotate-180 text-warn" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                        </svg>
-                      </summary>
-                      <div className="pt-3 border-t border-white/10 mt-3 space-y-4">
-                        {(res.feedbackSyntax || res.feedbackVocab || res.feedbackRule) ? (
-                          <div className="space-y-3">
-                            {res.feedbackSyntax && (
-                              <div className="bg-danger/10 p-3 rounded-lg border border-danger/20">
-                                <div className="flex items-center gap-1.5 text-[12px] font-bold text-danger uppercase tracking-wider mb-1">
-                                  <AlertCircle className="w-3.5 h-3.5" />
-                                  {language === 'pl' ? 'Szyk i gramatyka' : 'Syntax & Grammar'}
-                                </div>
-                                <div className="text-sm text-danger/90 leading-relaxed">{res.feedbackSyntax}</div>
-                              </div>
-                            )}
-                            {res.feedbackVocab && (
-                              <div className="bg-info/10 p-3 rounded-lg border border-info/20">
-                                <div className="flex items-center gap-1.5 text-[12px] font-bold text-info uppercase tracking-wider mb-1">
-                                  <AlertCircle className="w-3.5 h-3.5" />
-                                  {language === 'pl' ? 'Słownictwo i naturalność' : 'Vocabulary & Naturalness'}
-                                </div>
-                                <div className="text-sm text-info/90 leading-relaxed">{res.feedbackVocab}</div>
-                              </div>
-                            )}
-                            {res.feedbackRule && (
-                              <div className="bg-warn/10 p-3 rounded-lg border border-warn/20">
-                                <div className="flex items-center gap-1.5 text-[12px] font-bold text-warn uppercase tracking-wider mb-1">
-                                  <Sparkles className="w-3.5 h-3.5" />
-                                  {language === 'pl' ? 'Złota zasada' : 'Golden Rule'}
-                                </div>
-                                <div className="text-sm text-warn font-medium leading-relaxed">{res.feedbackRule}</div>
-                              </div>
-                            )}
-                          </div>
-                ) : (
-                          <p className="text-sm leading-relaxed text-warn whitespace-pre-wrap">
-                            {res.explanation}
-                          </p>
-                        )}
-                      </div>
-                    </details>
-                  </div>
-                </div>
-              </Card>
+              <SentenceResultCard
+                key={idx}
+                result={res}
+                index={idx}
+                modelLabel={canViewAiModels ? formatAIModelName(res.modelUsed) : undefined}
+                onPlay={(text, accent) => handlePlaySentenceAudio(text, accent, idx)}
+                playing={playingAudioIndex === idx}
+              />
             ))}
           </div>
           
