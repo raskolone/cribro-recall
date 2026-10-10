@@ -17,6 +17,7 @@ import { enterFromVars, enterVars, exitVars, ratingExitVars } from '../../utils/
 import { prefersReducedMotion } from '../../services/gsapAnimations';
 import SwipeRatingHint from './SwipeRatingHint';
 import QuizOption from './QuizOption';
+import { mergeSetCards, splitSessionBySet } from '../../utils/multiSetSession';
 import { quizOptionState } from '../../utils/quizOptionStates';
 import { SWIPE_TOUCH_ACTION_CLASS } from '../../hooks/useCardSwipe';
 import { useRatingSwipe } from '../../hooks/useRatingSwipe';
@@ -25,6 +26,12 @@ import i18n from "i18next";
 
 interface FlashcardStudyScreenProps {
   setId: string;
+  /**
+   * Ćwiczenie z kilku zestawów („Ćwiczenia dowolne"): karty z wszystkich zestawów w jednej sesji,
+   * wynik zapisywany istniejącym `saveSession` osobno dla każdego zestawu. Przy jednym zestawie
+   * (lub braku) działa jak dotąd.
+   */
+  setIds?: string[];
   initialMode?: StudyMode;
   onBack: () => void;
   onNavigate?: (view: string) => void;
@@ -33,7 +40,7 @@ interface FlashcardStudyScreenProps {
 
 type StudyMode = 'flashcards' | 'quiz' | 'writing' | 'matching' | 'intro' | null;
 
-const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, initialMode = null, onBack, onNavigate, onStartAIPractice }) => {
+const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setIds, initialMode = null, onBack, onNavigate, onStartAIPractice }) => {
   const { sets, getFlashcards, saveSession } = useFlashcards();
   const { t, language } = useLanguage();
   const [set, setSet] = useState<FlashcardSet | null>(null);
@@ -41,6 +48,11 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
   const [isLoading, setIsLoading] = useState(true);
   const [selectedMode, setSelectedMode] = useState<StudyMode>(initialMode || null);
   const [isReversed, setIsReversed] = useState(false);
+  const multiIds = setIds && setIds.length > 1 ? setIds : null;
+  const multiKey = multiIds ? multiIds.join('|') : '';
+  // id karty → zestaw, z którego pochodzi (do podziału zapisu wyniku); tylko przy wielu zestawach.
+  const cardSetMapRef = useRef<Record<string, string>>({});
+  const originalIdsRef = useRef<Record<string, string>>({});
 
   const [confirmModalState, setConfirmModalState] = useState<{isOpen: boolean; title: string; message: string; onConfirm: () => void}>({
     isOpen: false,
@@ -118,13 +130,35 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
     }
     
     const loadCards = async () => {
+      if (multiKey) {
+        // Zestawy wybrane na ekranie „Ćwiczenia dowolne": tylko istniejące, niepuste (ekran nie
+        // pozwala wybrać innych), więc nigdy nie wpadamy w generowanie fiszek z tematu.
+        const ids = multiKey.split('|');
+        const lists = await Promise.all(ids.map(async (id) => ({ id, cards: await getFlashcards(id) })));
+        const merged = mergeSetCards(lists.map(({ id, cards: list }) => ({ setId: id, cards: list })));
+        cardSetMapRef.current = merged.cardSetMap;
+        originalIdsRef.current = merged.originalIds;
+        setCards(merged.cards);
+        setIsLoading(false);
+        return;
+      }
       const loadedCards = await getFlashcards(setId);
       setCards(loadedCards);
       setIsLoading(false);
     };
     
     loadCards();
-  }, [setId, sets, getFlashcards, language]);
+  }, [setId, sets, getFlashcards, language, multiKey]);
+
+  // Zapis wyniku: jeden zestaw = jak dotąd; kilka = osobny `saveSession` dla każdego zestawu.
+  const saveSessionForScope = useCallback(
+    async (sessionData: any, results: any[]) => {
+      if (!multiKey) return saveSession(sessionData, results);
+      const parts = splitSessionBySet(sessionData, results, cardSetMapRef.current, multiKey.split('|')[0], originalIdsRef.current);
+      for (const part of parts) await saveSession(part.sessionData, part.results);
+    },
+    [multiKey, saveSession],
+  );
 
   if (isLoading) {
     return <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div></div>;
@@ -181,19 +215,19 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
   }
 
   if (selectedMode === 'quiz') {
-    return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession}
+    return <>{renderModal()}<QuizMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSessionForScope}
         onNavigate={onNavigate}
         language={language} t={t} /></>;
   }
 
   if (selectedMode === 'writing') {
-    return <>{renderModal()}<WritingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession}
+    return <>{renderModal()}<WritingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSessionForScope}
         onNavigate={onNavigate}
         language={language} t={t} /></>;
   }
 
   if (selectedMode === 'matching') {
-    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSession}
+    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSessionForScope}
         onNavigate={onNavigate}
         language={language} t={t} /></>;
   }
@@ -205,7 +239,8 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
         cards={cards} 
         setId={setId} 
         onBack={onBack} 
-        saveSession={saveSession}
+        saveSession={saveSessionForScope}
+        multi={Boolean(multiKey)}
         onNavigate={onNavigate}
         language={language}
         t={t}
@@ -215,7 +250,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, init
 };
 
 // --- Flashcards Mode Component ---
-const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
+const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardContainerRef = useRef<HTMLDivElement>(null);
@@ -236,7 +271,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
     const loadCards = async () => {
       let progress: any[] = [];
       if (getProgress) {
-         progress = await getProgress(setId);
+         // wiele zestawów: postęp SRS wszystkich kart kursanta (dopasowanie po `flashcardId`)
+         progress = await getProgress(multi ? undefined : setId);
       }
       
       const cardsWithProgress = initialCards.map((card: any) => {
@@ -253,7 +289,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, onBack, saveSession, t, sh
       setStartTime(Date.now());
     };
     loadCards();
-  }, [initialCards, setId, getProgress]);
+  }, [initialCards, setId, multi, getProgress]);
 
   const handleFlip = useCallback(() => {
     setIsFlipped(prev => {

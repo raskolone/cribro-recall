@@ -196,6 +196,9 @@ const Dashboard: React.FC = () => {
   });
   const [slogan, setSlogan] = useState('');
   const [activeSetId, setActiveSetId] = useState<string | null>(restoredPanelState.activeSetId ?? null);
+  // Ćwiczenie z kilku zestawów (Ćwiczenia dowolne). Nie jest zapisywane w stanie panelu:
+  // po odświeżeniu zostaje pierwszy zestaw (`activeSetId`).
+  const [activeSetIds, setActiveSetIds] = useState<string[] | null>(null);
   // Wybór kursanta we wszystkich kafelkach „Widoku kursanta" naraz — bez
   // tego przełączenie się między kafelkami zerowałoby wybór za każdym razem.
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
@@ -355,6 +358,7 @@ const Dashboard: React.FC = () => {
   const handleBackToDashboard = () => goBackOr(() => handleNavigate('dashboard'));
 
   const handleNavigate = (newView: View, extra?: any) => {
+    setActiveSetIds(Array.isArray(extra?.setIds) && extra.setIds.length > 1 ? extra.setIds : null);
     let newSetId = activeSetId;
     if (extra && (extra.setId || extra.activeSetId)) {
       newSetId = extra.setId || extra.activeSetId;
@@ -575,6 +579,7 @@ const Dashboard: React.FC = () => {
     if (view === 'flashcard-study') {
       return <FlashcardStudyScreen 
         setId={activeSetId || ''} 
+        setIds={activeSetIds ?? undefined}
         initialMode={(window as any)._initialStudyMode} 
         onBack={() => handleNavigate('dashboard')} 
         onNavigate={(v: any, extra?: any) => {
@@ -665,7 +670,7 @@ const Dashboard: React.FC = () => {
           sets={sets}
           onStart={(launch) => {
             (window as any)._initialStudyMode = launch.mode;
-            handleNavigate(launch.view, { setId: launch.setId });
+            handleNavigate(launch.view, { setId: launch.setId, setIds: launch.setIds });
           }}
           onBack={() => handleNavigate('dashboard')}
           onOpenVocabulary={() => handleNavigate('flashcard-sets')}
