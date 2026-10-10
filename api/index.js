@@ -186,10 +186,10 @@ var MIN_SUFFIX_WORD_LENGTH = 6;
 var countPolishSuffixes = (haystack) => haystack.filter(
   (w) => w.length >= MIN_SUFFIX_WORD_LENGTH && POLISH_SUFFIXES.some((suf) => w.endsWith(suf))
 ).length;
-var words = (text) => text.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
+var words = (text2) => text2.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
 var countMatches = (list, haystack) => haystack.filter((w) => list.includes(w)).length;
-var detectLanguage = (text) => {
-  const clean2 = String(text || "").trim();
+var detectLanguage = (text2) => {
+  const clean2 = String(text2 || "").trim();
   if (clean2.length < 12) return null;
   const w = words(clean2);
   if (w.length < 3) return null;
@@ -212,15 +212,15 @@ var validateExerciseLanguage = (question) => {
   const problems = [];
   for (const [field, expected] of Object.entries(expectations)) {
     if (!expected || expected === "mixed") continue;
-    const text = asText(q[field]);
-    const found = detectLanguage(text);
+    const text2 = asText(q[field]);
+    const found = detectLanguage(text2);
     if (!found || found === expected) continue;
     problems.push({
       type,
       field,
       expected,
       found,
-      snippet: text.slice(0, 120)
+      snippet: text2.slice(0, 120)
     });
   }
   return problems;
@@ -334,15 +334,15 @@ var openAiModelsFor = (requestedModel) => {
 // utils/lessonImport.ts
 var asText2 = (value) => typeof value === "string" ? value : value == null ? "" : String(value);
 function normalizeLessonDate(value, today) {
-  const text = asText2(value).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) return text;
-  const dmy = text.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
+  const text2 = asText2(value).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(text2)) return text2;
+  const dmy = text2.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})$/);
   if (dmy) {
     const [, d, m, y] = dmy;
     return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   }
-  const parsed = new Date(text);
-  if (text && !isNaN(parsed.getTime())) return parsed.toISOString().split("T")[0];
+  const parsed = new Date(text2);
+  if (text2 && !isNaN(parsed.getTime())) return parsed.toISOString().split("T")[0];
   return today;
 }
 function normalizeImportedLessons(payload, options) {
@@ -368,15 +368,15 @@ var asText3 = (value) => typeof value === "string" ? value : value == null ? "" 
 var asStringArray = (value) => Array.isArray(value) ? value.map(asText3).map((s) => s.trim()).filter(Boolean) : [];
 var CEFR_LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
 var asCefrLevel = (value) => {
-  const text = asText3(value).trim().toUpperCase();
-  return CEFR_LEVELS.includes(text) ? text : void 0;
+  const text2 = asText3(value).trim().toUpperCase();
+  return CEFR_LEVELS.includes(text2) ? text2 : void 0;
 };
 var EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function normalizeLessonImportDate(rawDate, today) {
-  const text = asText3(rawDate).trim();
-  if (!text) return { date: today, ambiguous: true };
-  const hasFourDigitYear = /\b\d{4}\b/.test(text);
-  const normalized = normalizeLessonDate(text, today);
+  const text2 = asText3(rawDate).trim();
+  if (!text2) return { date: today, ambiguous: true };
+  const hasFourDigitYear = /\b\d{4}\b/.test(text2);
+  const normalized = normalizeLessonDate(text2, today);
   return { date: normalized, ambiguous: !hasFourDigitYear };
 }
 function normalizeParsedLessons(payload, today) {
@@ -806,11 +806,11 @@ WYMAGANIA DOTYCZ\u0104CE WYGENEROWANYCH TRE\u015ACI:
     },
     [PRIMARY_MODEL]
   );
-  const text = response?.text;
-  if (!text) {
+  const text2 = response?.text;
+  if (!text2) {
     throw new Error("Brak odpowiedzi z modelu Gemini podczas personalizacji lekcji.");
   }
-  const cleanText2 = String(text).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
+  const cleanText2 = String(text2).replace(/^```json\n?/g, "").replace(/```$/g, "").trim();
   const parsed = JSON.parse(cleanText2);
   return parsed;
 }
@@ -1339,15 +1339,15 @@ var PRONUNCIATION_MARKERS = /(wymow|pronunc|akcent|stress|intonac|intonat|sylab|
 var stripPronunciationLines = (corrections) => (corrections || "").split("\n").filter((line) => line.trim().length > 0 && !PRONUNCIATION_MARKERS.test(line)).join("\n").trim();
 var readLessonFuel = (lessonId, record) => {
   const blocks = record.structuredBlocks || {};
-  const text = (blockValue, flatValue) => String(blockValue || flatValue || "").trim();
+  const text2 = (blockValue, flatValue) => String(blockValue || flatValue || "").trim();
   return {
     lessonId,
     topic: String(record.topic || "").trim(),
     date: String(record.date || "").trim(),
-    vocabulary: text(blocks.vocabulary, record.vocabularyText),
-    corrections: stripPronunciationLines(text(blocks.corrections, record.corrections)),
-    summary: text(blocks.summary, record.lessonSummary),
-    goals: text(blocks.nextLesson, record.nextLessonPlan || record.suggestedFollowUp)
+    vocabulary: text2(blocks.vocabulary, record.vocabularyText),
+    corrections: stripPronunciationLines(text2(blocks.corrections, record.corrections)),
+    summary: text2(blocks.summary, record.lessonSummary),
+    goals: text2(blocks.nextLesson, record.nextLessonPlan || record.suggestedFollowUp)
   };
 };
 var isApprovedLesson = (record) => {
@@ -2019,10 +2019,10 @@ var mapToActualGeminiModel = (modelName) => {
   if (clean2.includes("1.5-flash")) return "gemini-1.5-flash";
   return "gemini-2.5-flash";
 };
-var extractJson = (text) => {
-  if (!text) throw new Error("Model zwr\xF3ci\u0142 pust\u0105 odpowied\u017A.");
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-  const candidate = fenced && fenced[1] ? fenced[1].trim() : text.trim();
+var extractJson = (text2) => {
+  if (!text2) throw new Error("Model zwr\xF3ci\u0142 pust\u0105 odpowied\u017A.");
+  const fenced = text2.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  const candidate = fenced && fenced[1] ? fenced[1].trim() : text2.trim();
   try {
     return JSON.parse(candidate);
   } catch {
@@ -2327,8 +2327,8 @@ ${JSON.stringify(value)}
 </${tag}>`;
 function lessonLine(note) {
   const part = (label, value, max) => {
-    const text = sanitizeFreeText(value, max);
-    return text ? `${label}: ${text}` : "";
+    const text2 = sanitizeFreeText(value, max);
+    return text2 ? `${label}: ${text2}` : "";
   };
   return [
     part("topic", note.topic, 120),
@@ -2425,9 +2425,9 @@ var CORRECTION_SCHEMA = {
   },
   required: ["items"]
 };
-function parseModelJson(text) {
-  if (typeof text !== "string") return null;
-  const stripped = text.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
+function parseModelJson(text2) {
+  if (typeof text2 !== "string") return null;
+  const stripped = text2.replace(/^\s*```(?:json)?\s*/i, "").replace(/\s*```\s*$/i, "").trim();
   try {
     return JSON.parse(stripped);
   } catch {
@@ -2446,9 +2446,9 @@ function parseModelJson(text) {
 var URL_OR_MARKUP = /https?:\/\/|www\.|<|>|\{\{|`/i;
 function cleanOutput(value, max) {
   if (typeof value !== "string") return "";
-  const text = value.replace(/\s+/g, " ").trim();
-  if (!text || text.length > max || URL_OR_MARKUP.test(text)) return "";
-  return text;
+  const text2 = value.replace(/\s+/g, " ").trim();
+  if (!text2 || text2.length > max || URL_OR_MARKUP.test(text2)) return "";
+  return text2;
 }
 var listOf = (parsed, key) => {
   if (Array.isArray(parsed)) return parsed;
@@ -2584,8 +2584,8 @@ var MAX_RECENT_OUTCOMES = DECISION_WINDOW * 2;
 var isCefrLevel = (value) => typeof value === "string" && CEFR_LEVELS2.includes(value);
 var normalizeLevel = (raw, fallback = "B1") => {
   if (isCefrLevel(raw)) return raw;
-  const text = String(raw || "").toUpperCase();
-  const match = text.match(/[ABC][12]/g);
+  const text2 = String(raw || "").toUpperCase();
+  const match = text2.match(/[ABC][12]/g);
   if (!match || match.length === 0) return fallback;
   const found = match.filter(isCefrLevel);
   if (found.length === 0) return fallback;
@@ -2678,7 +2678,7 @@ function evaluateLevelChange(profile, now) {
     };
   }
   const accuracy = windowAccuracy(profile);
-  const percent = Math.round(accuracy * 100);
+  const percent2 = Math.round(accuracy * 100);
   if (accuracy >= PROMOTE_ACCURACY) {
     const candidate = shiftLevel(profile.currentLevel, 1);
     if (candidate === profile.currentLevel) {
@@ -2688,13 +2688,13 @@ function evaluateLevelChange(profile, now) {
       return {
         level: profile.currentLevel,
         changed: false,
-        reason: `Skuteczno\u015B\u0107 ${percent}%, ale wy\u017Cej ni\u017C ${MAX_DRIFT_FROM_BASE} stopie\u0144 ponad poziom od lektora nie schodzimy bez jego decyzji.`
+        reason: `Skuteczno\u015B\u0107 ${percent2}%, ale wy\u017Cej ni\u017C ${MAX_DRIFT_FROM_BASE} stopie\u0144 ponad poziom od lektora nie schodzimy bez jego decyzji.`
       };
     }
     return {
       level: candidate,
       changed: true,
-      reason: `Skuteczno\u015B\u0107 ${percent}% w ostatnich ${DECISION_WINDOW} zadaniach \u2014 podnosimy poziom.`
+      reason: `Skuteczno\u015B\u0107 ${percent2}% w ostatnich ${DECISION_WINDOW} zadaniach \u2014 podnosimy poziom.`
     };
   }
   if (accuracy <= DEMOTE_ACCURACY) {
@@ -2706,19 +2706,19 @@ function evaluateLevelChange(profile, now) {
       return {
         level: profile.currentLevel,
         changed: false,
-        reason: `Skuteczno\u015B\u0107 ${percent}%, ale ni\u017Cej ni\u017C ${MAX_DRIFT_FROM_BASE} stopie\u0144 pod poziom od lektora nie schodzimy bez jego decyzji.`
+        reason: `Skuteczno\u015B\u0107 ${percent2}%, ale ni\u017Cej ni\u017C ${MAX_DRIFT_FROM_BASE} stopie\u0144 pod poziom od lektora nie schodzimy bez jego decyzji.`
       };
     }
     return {
       level: candidate,
       changed: true,
-      reason: `Skuteczno\u015B\u0107 ${percent}% w ostatnich ${DECISION_WINDOW} zadaniach \u2014 obni\u017Camy poziom.`
+      reason: `Skuteczno\u015B\u0107 ${percent2}% w ostatnich ${DECISION_WINDOW} zadaniach \u2014 obni\u017Camy poziom.`
     };
   }
   return {
     level: profile.currentLevel,
     changed: false,
-    reason: `Skuteczno\u015B\u0107 ${percent}% mie\u015Bci si\u0119 w przedziale roboczym \u2014 poziom bez zmian.`
+    reason: `Skuteczno\u015B\u0107 ${percent2}% mie\u015Bci si\u0119 w przedziale roboczym \u2014 poziom bez zmian.`
   };
 }
 function applyLevelDecision(profile, decision, now) {
@@ -3351,7 +3351,7 @@ function buildGradedHomeworkEmail(params) {
     </table>
   </body>
 </html>`;
-  const text = `${greeting}
+  const text2 = `${greeting}
 
 Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105 \u201E${cleanTitle}\u201D. Zajrzyj do aplikacji, aby sprawdzi\u0107 sw\xF3j wynik i ewentualnie prze\u0107wiczy\u0107 rzeczy do poprawy.${score !== void 0 && score !== null ? `
 
@@ -3365,7 +3365,150 @@ Otw\xF3rz aplikacj\u0119: ${appUrl}
 \u2014
 ${gradedBy}
 CRIBRO ENGLISH`;
-  return { subject, html, text, greeting };
+  return { subject, html, text: text2, greeting };
+}
+
+// utils/geminiProxyGuard.ts
+var GEMINI_PROXY_USAGE_COLLECTION = "geminiProxyUsage";
+var GEMINI_PROXY_MAX_BODY = "2mb";
+var GEMINI_MAX_OUTPUT_TOKENS_CEILING = 65536;
+var DEFAULT_PER_MINUTE_LIMIT = 60;
+var DEFAULT_PER_DAY_LIMIT = 2e3;
+var MAX_CONFIGURABLE = 1e5;
+var positiveInt = (raw, fallback) => {
+  if (raw === void 0 || raw === null || raw === "") return fallback;
+  const value = typeof raw === "number" ? raw : Number(String(raw).trim());
+  return Number.isInteger(value) && value >= 1 ? Math.min(value, MAX_CONFIGURABLE) : fallback;
+};
+function resolveProxyLimits(env = process.env) {
+  return {
+    perMinute: positiveInt(env.GEMINI_PROXY_PER_MINUTE, DEFAULT_PER_MINUTE_LIMIT),
+    perDay: positiveInt(env.GEMINI_PROXY_PER_DAY, DEFAULT_PER_DAY_LIMIT)
+  };
+}
+function isProxyExempt(role, isAdminEmail) {
+  return isAdminEmail || role === "teacher" || role === "admin" || role === "admin_student";
+}
+var num = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
+async function reserveProxyCall(db, uid, now, limits) {
+  const ref = db.collection(GEMINI_PROXY_USAGE_COLLECTION).doc(uid);
+  const minuteKey = Math.floor(now.getTime() / 6e4);
+  const dayKey = warsawDayKey(now);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? snap.data() || {} : {};
+    const minuteCount = data.minuteKey === minuteKey ? num(data.minuteCount) : 0;
+    const dayCount = data.dayKey === dayKey ? num(data.dayCount) : 0;
+    if (minuteCount >= limits.perMinute) {
+      return { ok: false, reason: "minute", retryAfterSec: Math.max(1, 60 - Math.floor(now.getTime() % 6e4 / 1e3)) };
+    }
+    if (dayCount >= limits.perDay) {
+      return { ok: false, reason: "day", retryAfterSec: 3600 };
+    }
+    tx.set(ref, { uid, minuteKey, minuteCount: minuteCount + 1, dayKey, dayCount: dayCount + 1, updatedAt: now.toISOString() }, { merge: true });
+    return { ok: true };
+  });
+}
+function clampGeminiConfig(config) {
+  if (!config || typeof config !== "object") return config;
+  const c = config;
+  if (typeof c.maxOutputTokens === "number" && c.maxOutputTokens > GEMINI_MAX_OUTPUT_TOKENS_CEILING) {
+    return { ...c, maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS_CEILING };
+  }
+  return config;
+}
+
+// utils/homeworkV2Input.ts
+var MAX_ASSIGN_STUDENTS = 200;
+var MAX_ASSIGN_EXERCISES = 100;
+var MAX_EXERCISES_JSON_CHARS = 1e6;
+var MAX_TITLE_CHARS = 200;
+var MAX_GENERATE_LESSONS = 100;
+var MAX_GENERATE_ITEM_COUNT = 50;
+var MAX_GENERATE_MINUTES = 600;
+var MAX_RAW_LESSONS_JSON_CHARS = 2e6;
+var MAX_ID_CHARS = 200;
+var fail2 = (error) => ({ ok: false, error });
+var isSafeDocId = (value) => typeof value === "string" && value.length > 0 && value.length <= MAX_ID_CHARS && value === value.trim() && !value.includes("/") && value !== "." && value !== "..";
+var idList = (raw, label, max) => {
+  if (!Array.isArray(raw)) return fail2(`${label}: oczekiwano listy.`);
+  if (raw.length > max) return fail2(`${label}: za du\u017Co pozycji (maks. ${max}).`);
+  for (const item of raw) {
+    if (!isSafeDocId(item)) return fail2(`${label}: nieprawid\u0142owy identyfikator.`);
+  }
+  return { ok: true, value: Array.from(new Set(raw)) };
+};
+function validateAssignInput(body) {
+  const uids = idList(body?.studentUids ?? [], "studentUids", MAX_ASSIGN_STUDENTS);
+  if (uids.ok === false) return uids;
+  if (uids.value.length === 0) return fail2("Nie wskazano kursant\xF3w.");
+  const exercises = Array.isArray(body?.exercises) ? body.exercises : [];
+  if (exercises.length > MAX_ASSIGN_EXERCISES) return fail2(`Za du\u017Co zada\u0144 w zestawie (maks. ${MAX_ASSIGN_EXERCISES}).`);
+  if (JSON.stringify(exercises).length > MAX_EXERCISES_JSON_CHARS) return fail2("Zestaw zada\u0144 jest zbyt du\u017Cy.");
+  const title = String(body?.title || "Praca domowa").trim();
+  if (title.length > MAX_TITLE_CHARS) return fail2(`Tytu\u0142 jest zbyt d\u0142ugi (maks. ${MAX_TITLE_CHARS} znak\xF3w).`);
+  const groupId = String(body?.groupId || "").trim();
+  if (groupId && !isSafeDocId(groupId)) return fail2("Nieprawid\u0142owy identyfikator grupy.");
+  return { ok: true, value: { studentUids: uids.value, exercises, title, dueDate: String(body?.dueDate || "").trim(), groupId } };
+}
+function validateGenerateInput(body) {
+  const studentUid = String(body?.studentUid || "").trim();
+  if (!studentUid) return fail2("Nie wskazano kursanta.");
+  if (!isSafeDocId(studentUid)) return fail2("Nieprawid\u0142owy identyfikator kursanta.");
+  const lessons = idList(Array.isArray(body?.lessonIds) ? body.lessonIds : [], "lessonIds", MAX_GENERATE_LESSONS);
+  if (lessons.ok === false) return lessons;
+  if (lessons.value.length === 0) return fail2("Nie wskazano lekcji.");
+  const itemCount = Number(body?.itemCount) || 6;
+  if (!Number.isFinite(itemCount) || itemCount < 1 || itemCount > MAX_GENERATE_ITEM_COUNT) {
+    return fail2(`Liczba zada\u0144 musi mie\u015Bci\u0107 si\u0119 w zakresie 1\u2013${MAX_GENERATE_ITEM_COUNT}.`);
+  }
+  const plannedMinutes = Number(body?.plannedMinutes) || 0;
+  if (!Number.isFinite(plannedMinutes) || plannedMinutes < 0 || plannedMinutes > MAX_GENERATE_MINUTES) {
+    return fail2("Nieprawid\u0142owy planowany czas.");
+  }
+  if (body?.rawLessons !== void 0) {
+    if (!Array.isArray(body.rawLessons)) return fail2("rawLessons: oczekiwano listy.");
+    if (JSON.stringify(body.rawLessons).length > MAX_RAW_LESSONS_JSON_CHARS) return fail2("rawLessons: zbyt du\u017Ce wej\u015Bcie.");
+  }
+  return { ok: true, value: { studentUid, lessonIds: lessons.value, itemCount, plannedMinutes } };
+}
+
+// utils/gradedNotification.ts
+var MAX_NOTIFICATION_TITLE_CHARS = 200;
+var MAX_NOTIFICATION_FEEDBACK_CHARS = 5e3;
+var text = (value, max) => typeof value === "string" ? value.trim().slice(0, max) : "";
+var percent = (value) => typeof value === "number" && Number.isFinite(value) ? Math.min(100, Math.max(0, Math.round(value))) : null;
+function taskOwnerUid(task) {
+  if (!task) return "";
+  for (const key of ["studentUid", "studentId", "userId"]) {
+    const v = task[key];
+    if (typeof v === "string" && v) return v;
+  }
+  return "";
+}
+function resolveGradedNotification(task, latestApprovedAttempt) {
+  const title = text(task.title, MAX_NOTIFICATION_TITLE_CHARS) || "Praca domowa";
+  if (task.engineVersion !== void 0) {
+    if (!latestApprovedAttempt) {
+      return { ok: false, code: "not_graded", message: "Brak zatwierdzonej oceny tej pracy." };
+    }
+    const weighted = latestApprovedAttempt.weightedScore;
+    return {
+      ok: true,
+      content: {
+        title,
+        score: typeof weighted === "number" && Number.isFinite(weighted) ? percent(weighted * 100) : null,
+        feedback: text(latestApprovedAttempt.feedbackMessage, MAX_NOTIFICATION_FEEDBACK_CHARS)
+      }
+    };
+  }
+  if (task.status !== "graded") {
+    return { ok: false, code: "not_graded", message: "Ta praca nie zosta\u0142a jeszcze sprawdzona." };
+  }
+  return {
+    ok: true,
+    content: { title, score: percent(task.grade), feedback: text(task.teacherFeedback, MAX_NOTIFICATION_FEEDBACK_CHARS) }
+  };
 }
 
 // utils/notionBlocksFetcher.ts
@@ -3413,8 +3556,8 @@ var fetchNotionBlocksText = async (token, blockId, depth = 0) => {
     const data = await fetchNotionBlockChildrenPage(token, blockId, cursor);
     for (const block of data?.results || []) {
       if (!block || typeof block !== "object") continue;
-      const text = richTextOf(block);
-      if (text) lines.push(text);
+      const text2 = richTextOf(block);
+      if (text2) lines.push(text2);
       if (block.has_children) {
         const childDepth = depth + 1;
         if (childDepth >= NOTION_BLOCKS_MAX_DEPTH) {
@@ -3601,9 +3744,9 @@ var WARMUP_MAX_SENTENCE_LENGTH = 250;
 var WARMUP_MAX_TRANSLATION_LENGTH = 300;
 var cleanText = (value, maxLength) => {
   if (typeof value !== "string") return null;
-  const text = value.trim().replace(/\s+/g, " ");
-  if (!text || text.length > maxLength) return null;
-  return text;
+  const text2 = value.trim().replace(/\s+/g, " ");
+  if (!text2 || text2.length > maxLength) return null;
+  return text2;
 };
 var sanitizeWarmupItem = (raw) => {
   if (!raw || typeof raw !== "object") return null;
@@ -3612,9 +3755,9 @@ var sanitizeWarmupItem = (raw) => {
   if (source.chunks.length < WARMUP_MIN_CHUNKS || source.chunks.length > WARMUP_MAX_CHUNKS) return null;
   const chunks = [];
   for (const chunk of source.chunks) {
-    const text = cleanText(chunk, WARMUP_MAX_CHUNK_LENGTH);
-    if (!text) return null;
-    chunks.push(text);
+    const text2 = cleanText(chunk, WARMUP_MAX_CHUNK_LENGTH);
+    if (!text2) return null;
+    chunks.push(text2);
   }
   const correctSentence = cleanText(source.correctSentence, WARMUP_MAX_SENTENCE_LENGTH);
   const polishTranslation = cleanText(source.polishTranslation, WARMUP_MAX_TRANSLATION_LENGTH);
@@ -3643,7 +3786,7 @@ var clean = (value) => {
   if (typeof value !== "string") return null;
   return value.trim().replace(/\s+/g, " ");
 };
-var countWords = (text) => text.split(" ").filter(Boolean).length;
+var countWords = (text2) => text2.split(" ").filter(Boolean).length;
 var termEqualsTaskSentence = (term, taskSentences) => {
   const key = normalizeSentence2(term);
   if (!key) return false;
@@ -4005,8 +4148,11 @@ function createApp() {
     }
     next();
   });
-  app2.use(express.json({ limit: "50mb" }));
-  app2.use((err, req, res, next) => {
+  const GEMINI_PROXY_PATH = "/api/gemini/generate";
+  const globalJsonParser = express.json({ limit: "50mb" });
+  const isGeminiProxyPath = (p) => p.replace(/\/+$/, "").toLowerCase() === GEMINI_PROXY_PATH;
+  app2.use((req, res, next) => isGeminiProxyPath(req.path) ? next() : globalJsonParser(req, res, next));
+  const jsonBodyErrorHandler = (err, req, res, next) => {
     if (err instanceof SyntaxError && "body" in err) {
       return res.status(400).json({ error: "Invalid JSON payload" });
     }
@@ -4014,7 +4160,8 @@ function createApp() {
       return res.status(413).json({ error: "Payload too large" });
     }
     next(err);
-  });
+  };
+  app2.use(jsonBodyErrorHandler);
   const adminApp = getAdminApp();
   const adminAuth = getAuth(adminApp);
   const FIRESTORE_DATABASE_ID = "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d";
@@ -5097,33 +5244,34 @@ function createApp() {
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/homework-v2/generate", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/homework-v2/generate", requireFirebaseAdmin, async (req, res) => {
     try {
       if (!isHomeworkEngineV2Enabled()) {
         return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
       }
-      const studentUid = String(req.body?.studentUid || "").trim();
-      if (!studentUid) return res.status(400).json({ error: "Nie wskazano kursanta." });
-      const lessonIds = Array.isArray(req.body?.lessonIds) ? req.body.lessonIds : [];
-      if (lessonIds.length === 0) return res.status(400).json({ error: "Nie wskazano lekcji." });
-      const itemCount = Number(req.body?.itemCount) || 6;
-      const plannedMinutes = Number(req.body?.plannedMinutes) || 0;
+      const input = validateGenerateInput(req.body);
+      if (input.ok === false) return res.status(400).json({ error: input.error });
+      const { studentUid, lessonIds, itemCount, plannedMinutes } = input.value;
       const requestedTypes = req.body?.types;
-      const teacherId = req.userUid;
+      const teacherId = req.adminUid;
       const rawLessons = Array.isArray(req.body?.rawLessons) ? req.body.rawLessons : void 0;
       let cefr = String(req.body?.cefr || "B1");
       let recentMistakes = [];
+      let studentMissing = false;
       try {
         const adminApp2 = getAdminApp();
         const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
         const studentSnap = await adminDb.collection("users").doc(studentUid).get();
         if (studentSnap.exists) {
           cefr = String(studentSnap.data()?.level || cefr);
+        } else {
+          studentMissing = true;
         }
         recentMistakes = await getRecentMistakes(studentUid);
       } catch (dbErr) {
         console.warn("[server] pomijam zapytanie Admin DB przy generowaniu prac domowych v2:", dbErr);
       }
+      if (studentMissing) return res.status(404).json({ error: "Kursant nie istnieje." });
       const context = await assembleContext({
         studentUid,
         lessonIds,
@@ -5154,32 +5302,40 @@ function createApp() {
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 u\u0142o\u017Cy\u0107 zestawu." });
     }
   });
-  app2.post("/api/homework-v2/assign", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/homework-v2/assign", requireFirebaseAdmin, async (req, res) => {
     try {
-      const rawExercises = Array.isArray(req.body?.exercises) ? req.body.exercises : [];
-      const studentUids = Array.isArray(req.body?.studentUids) ? req.body.studentUids : [];
+      if (!isHomeworkEngineV2Enabled()) {
+        return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
+      }
+      const input = validateAssignInput(req.body);
+      if (input.ok === false) return res.status(400).json({ error: input.error });
+      const { studentUids, exercises: rawExercises, title, dueDate, groupId } = input.value;
       const studentNames = typeof req.body?.studentNames === "object" && req.body?.studentNames !== null ? req.body.studentNames : {};
       const studentEmails = typeof req.body?.studentEmails === "object" && req.body?.studentEmails !== null ? req.body.studentEmails : {};
       const studentUsernames = typeof req.body?.studentUsernames === "object" && req.body?.studentUsernames !== null ? req.body.studentUsernames : {};
-      const title = String(req.body?.title || "Praca domowa").trim();
-      const dueDate = String(req.body?.dueDate || "").trim();
-      const groupId = String(req.body?.groupId || "").trim();
-      const teacherId = req.userUid;
-      if (studentUids.length === 0) return res.status(400).json({ error: "Nie wskazano kursant\xF3w." });
+      const teacherId = req.adminUid;
       const exercises = selectSendableExercises(rawExercises);
       if (exercises.length === 0) {
         return res.status(400).json({ error: "\u017Badne z zada\u0144 nie nadaje si\u0119 do wys\u0142ania." });
       }
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
+      const profiles = await adminDb.getAll(...studentUids.map((uid) => adminDb.collection("users").doc(uid)));
+      const missing = studentUids.filter((_, i) => !profiles[i].exists || profiles[i].data()?.isGroup === true);
+      if (missing.length > 0) {
+        return res.status(400).json({ error: "Wskazani kursanci nie istniej\u0105.", missingCount: missing.length });
+      }
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
       const homeworkSetId = newHomeworkSetId();
       const created = [];
-      for (const studentUid of studentUids) {
+      for (const [index, studentUid] of studentUids.entries()) {
+        const dbEmail = profiles[index].data()?.email;
         const payload = buildV2TaskPayload({
           studentUid,
           studentName: studentNames[studentUid],
-          studentEmail: studentEmails[studentUid],
+          // Adres, na który później wychodzi powiadomienie, pochodzi z profilu w bazie; wartość z żądania
+          // tylko gdy profil nie ma e-maila (np. konto bez adresu).
+          studentEmail: typeof dbEmail === "string" && dbEmail.includes("@") ? dbEmail : studentEmails[studentUid],
           studentUsername: studentUsernames[studentUid],
           exercises,
           teacherId,
@@ -5450,11 +5606,15 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/homework/notify-graded", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/homework/notify-graded", requireFirebaseAdmin, async (req, res) => {
     try {
-      const { studentUid, taskId, taskTitle, score, teacherFeedback, teacherName } = req.body;
-      if (!studentUid) {
+      const studentUid = typeof req.body?.studentUid === "string" ? req.body.studentUid.trim() : "";
+      const taskId = typeof req.body?.taskId === "string" ? req.body.taskId.trim() : "";
+      if (!isSafeDocId(studentUid)) {
         return res.status(400).json({ error: "Brak studentUid." });
+      }
+      if (!isSafeDocId(taskId)) {
+        return res.status(400).json({ error: "Brak taskId." });
       }
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
@@ -5465,20 +5625,42 @@ RESEND_API_KEY=${cleanKey}
       }
       const userData = userSnap.data() || {};
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-      if (taskId) {
-        const taskRef = adminDb.collection("specialTasks").doc(taskId);
-        const taskSnap = await taskRef.get();
-        if (taskSnap.exists && taskSnap.data()?.emailGradedNotificationSent) {
-          console.log(`[notify-graded] Powiadomienie dla zadania ${taskId} zosta\u0142o ju\u017C wys\u0142ane (idempotency).`);
-          return res.status(200).json({ ok: true, skipped: true, reason: "Already sent" });
-        }
+      const taskRef = adminDb.collection("specialTasks").doc(taskId);
+      const taskSnap = await taskRef.get();
+      if (!taskSnap.exists) {
+        return res.status(404).json({ error: "Zadanie nie istnieje." });
+      }
+      const taskData = taskSnap.data() || {};
+      if (taskOwnerUid(taskData) !== studentUid) {
+        return res.status(403).json({ error: "To zadanie nie nale\u017Cy do wskazanego kursanta." });
+      }
+      if (taskData.emailGradedNotificationSent) {
+        console.log(`[notify-graded] Powiadomienie dla zadania ${taskId} zosta\u0142o ju\u017C wys\u0142ane (idempotency).`);
+        return res.status(200).json({ ok: true, skipped: true, reason: "Already sent" });
+      }
+      let latestApprovedAttempt = null;
+      if (taskData.engineVersion !== void 0) {
+        const attempts = await taskRef.collection("attempts").orderBy("teacherApprovedAt", "desc").limit(1).get();
+        latestApprovedAttempt = attempts.empty ? null : attempts.docs[0].data();
+      }
+      const resolved = resolveGradedNotification(taskData, latestApprovedAttempt);
+      if (resolved.ok === false) {
+        return res.status(409).json({ error: resolved.message });
+      }
+      const { title: taskTitle, score, feedback: teacherFeedback } = resolved.content;
+      let teacherName = "Maciej Wyrozumski";
+      try {
+        const callerData = (await adminDb.collection("users").doc(req.adminUid).get()).data();
+        const callerName = `${callerData?.firstName || ""} ${callerData?.lastName || ""}`.trim();
+        if (callerName) teacherName = callerName.slice(0, 120);
+      } catch {
       }
       await userDocRef.update({
         hasGradedHomework: true,
-        lastGradedHomeworkId: taskId || "",
-        lastGradedHomeworkTitle: taskTitle || "Praca domowa",
-        lastGradedFeedback: teacherFeedback || "",
-        lastGradedScore: typeof score === "number" ? score : null,
+        lastGradedHomeworkId: taskId,
+        lastGradedHomeworkTitle: taskTitle,
+        lastGradedFeedback: teacherFeedback,
+        lastGradedScore: score,
         lastGradedHomeworkSentAt: nowIso
       });
       const studentEmail = userData.email;
@@ -5497,10 +5679,10 @@ RESEND_API_KEY=${cleanKey}
           const studentName = userData.firstName || userData.name || userData.username || "";
           const emailData = buildGradedHomeworkEmail({
             studentName,
-            title: taskTitle || "Praca domowa",
-            score: typeof score === "number" ? score : null,
+            title: taskTitle,
+            score,
             teacherFeedback,
-            gradedBy: teacherName || "Maciej Wyrozumski",
+            gradedBy: teacherName,
             appUrl: process.env.APP_URL || "https://app.maciej.pro"
           });
           let fromAddress = process.env.FROM_ADDRESS || "Maciej Wyrozumski <wyrozumski@maciej.pro>";
@@ -5552,7 +5734,7 @@ RESEND_API_KEY=${cleanKey}
   });
   app2.post("/api/mailing/test-send", requireFirebaseAdmin, async (req, res) => {
     try {
-      const { to, from: clientFrom, subject, html, text, apiKey: clientApiKey, replyTo, bcc: clientBcc } = req.body;
+      const { to, from: clientFrom, subject, html, text: text2, apiKey: clientApiKey, replyTo, bcc: clientBcc } = req.body;
       if (!to || typeof to !== "string" || !to.includes("@")) {
         return res.status(400).json({ error: "Wymagany jest poprawny adres e-mail odbiorcy." });
       }
@@ -5636,7 +5818,7 @@ RESEND_API_KEY=${cleanKey}
         reply_to: replyToAddress,
         subject: subject || "Powiadomienie CRIBRO ENGLISH",
         html: html || "<p>To jest testowa wiadomo\u015B\u0107 wys\u0142ana z panelu CRIBRO ENGLISH.</p>",
-        text: text || "To jest testowa wiadomo\u015B\u0107 wys\u0142ana z panelu CRIBRO ENGLISH."
+        text: text2 || "To jest testowa wiadomo\u015B\u0107 wys\u0142ana z panelu CRIBRO ENGLISH."
       };
       if (bccToUse && bccToUse.length > 0) {
         resendPayload.bcc = bccToUse;
@@ -5674,7 +5856,7 @@ RESEND_API_KEY=${cleanKey}
       const rawFrom = String(payload.from || payload.sender || "");
       const to = Array.isArray(payload.to) ? payload.to.join(", ") : String(payload.to || "");
       const subject = String(payload.subject || "(Bez tematu)");
-      const text = String(payload.text || payload.body || "");
+      const text2 = String(payload.text || payload.body || "");
       const html = String(payload.html || "");
       const emailMatch = rawFrom.match(/<([^>]+)>/) || [null, rawFrom.trim()];
       const fromEmail = (emailMatch[1] || rawFrom).trim().toLowerCase();
@@ -5699,7 +5881,7 @@ RESEND_API_KEY=${cleanKey}
         studentName,
         toEmail: to,
         subject,
-        text,
+        text: text2,
         html,
         receivedAt: (/* @__PURE__ */ new Date()).toISOString(),
         read: false,
@@ -5752,7 +5934,7 @@ RESEND_API_KEY=${cleanKey}
   });
   app2.post("/api/mailing/simulate-inbound", requireFirebaseAdmin, async (req, res) => {
     try {
-      const { fromEmail, fromName, subject, text } = req.body;
+      const { fromEmail, fromName, subject, text: text2 } = req.body;
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       const targetEmail = (fromEmail || "kursant@example.com").trim().toLowerCase();
@@ -5772,8 +5954,8 @@ RESEND_API_KEY=${cleanKey}
         studentName: resolvedName,
         toEmail: "wyrozumski@maciej.pro",
         subject: subject || "Pytanie do ostatniej pracy domowej",
-        text: text || 'Cze\u015B\u0107! Mam pytanie odno\u015Bnie zadania z czasem Present Perfect. Kiedy dok\u0142adnie u\u017Cywamy "since" zamiast "for"? Pozdrawiam!',
-        html: `<p>${text || 'Cze\u015B\u0107! Mam pytanie odno\u015Bnie zadania z czasem Present Perfect. Kiedy dok\u0142adnie u\u017Cywamy "since" zamiast "for"? Pozdrawiam!'}</p>`,
+        text: text2 || 'Cze\u015B\u0107! Mam pytanie odno\u015Bnie zadania z czasem Present Perfect. Kiedy dok\u0142adnie u\u017Cywamy "since" zamiast "for"? Pozdrawiam!',
+        html: `<p>${text2 || 'Cze\u015B\u0107! Mam pytanie odno\u015Bnie zadania z czasem Present Perfect. Kiedy dok\u0142adnie u\u017Cywamy "since" zamiast "for"? Pozdrawiam!'}</p>`,
         receivedAt: (/* @__PURE__ */ new Date()).toISOString(),
         read: false,
         archived: false
@@ -6192,9 +6374,9 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         responseSchema: schema,
         thinkingConfig: { thinkingBudget: 0 }
       });
-      const text = response?.text;
-      if (!text) return { ...EMPTY_NOTION_EXTRACTION, date: fallbackDate };
-      const json = JSON.parse(text);
+      const text2 = response?.text;
+      if (!text2) return { ...EMPTY_NOTION_EXTRACTION, date: fallbackDate };
+      const json = JSON.parse(text2);
       return {
         topic: typeof json.topic === "string" ? json.topic.trim() : "",
         date: typeof json.date === "string" && json.date.trim() ? json.date.trim() : fallbackDate,
@@ -7143,7 +7325,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/scenario/generate", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/scenario/generate", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const durationMin = Number(req.body?.durationMin);
@@ -7174,7 +7356,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 scenariusza." });
     }
   });
-  app2.post("/api/scenario/generate-for-chat", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/scenario/generate-for-chat", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentRef = String(req.body?.studentRef || "").trim();
       if (!studentRef) return res.status(400).json({ error: "Nie podano kursanta." });
@@ -7209,7 +7391,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 scenariusza." });
     }
   });
-  app2.post("/api/scenario/save", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/scenario/save", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const targetLessonId = String(req.body?.targetLessonId || "").trim();
@@ -7234,7 +7416,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 zapisa\u0107 scenariusza." });
     }
   });
-  app2.post("/api/scenario/canvas/generate", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/scenario/canvas/generate", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const durationMin = Number(req.body?.durationMin);
@@ -7265,7 +7447,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 canvasu." });
     }
   });
-  app2.post("/api/scenario/canvas/save", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/scenario/canvas/save", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const targetLessonId = String(req.body?.targetLessonId || "").trim();
@@ -7290,7 +7472,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 zapisa\u0107 canvasu." });
     }
   });
-  app2.post("/api/scenario/canvas/refresh", requireFirebaseAuth, async (req, res) => {
+  app2.post("/api/scenario/canvas/refresh", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const targetLessonId = String(req.body?.targetLessonId || "").trim();
@@ -7380,14 +7562,14 @@ Powy\u017Cej znajduje si\u0119 plik PDF ${isTranscript ? "z TRANSKRYPCJ\u0104 le
             ]
           }];
         } else {
-          const text2 = await fetchRes.text();
+          const text3 = await fetchRes.text();
           promptContext = [{
             role: "user",
             parts: [{ text: `Baza kursant\xF3w:
 ${studentsListStr}
 
 Transkrypcja/Notatki ze spotkania (Google Docs / Text):
-${text2}` }]
+${text3}` }]
           }];
         }
       } else if (pdfBase64) {
@@ -7504,9 +7686,9 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
         responseMimeType: "application/json",
         responseSchema: schema
       });
-      const text = response.text;
-      if (!text) throw new Error("No response from Gemini");
-      const json = JSON.parse(text);
+      const text2 = response.text;
+      if (!text2) throw new Error("No response from Gemini");
+      const json = JSON.parse(text2);
       res.json(json);
     } catch (error) {
       console.error(error);
@@ -7515,8 +7697,8 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
   });
   app2.post("/api/notebook/spellcheck", requireFirebaseAdmin, async (req, res) => {
     try {
-      const { text } = req.body;
-      if (typeof text !== "string" || !text.trim()) {
+      const { text: text2 } = req.body;
+      if (typeof text2 !== "string" || !text2.trim()) {
         return res.status(400).json({ error: "Missing notebook text." });
       }
       const apiKey = getGeminiApiKey();
@@ -7545,7 +7727,7 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
         },
         required: ["issues"]
       };
-      const response = await generateContentWithRetry(ai, text.slice(0, 2e4), {
+      const response = await generateContentWithRetry(ai, text2.slice(0, 2e4), {
         systemInstruction: "Jeste\u015B profesjonalnym korektorem j\u0119zykowym notatek lektora j\u0119zyka angielskiego. Notatki s\u0105 dwuj\u0119zyczne (polski i angielski wsp\xF3\u0142istniej\u0105 w jednym dokumencie: wyja\u015Bnienia po polsku, zwroty docelowe i przyk\u0142ady po angielsku). Nie oznaczaj poprawnych s\u0142\xF3w angielskich jako b\u0142\u0119d\xF3w w polszczy\u017Anie ani odwrotnie. Wykrywaj: 1) liter\xF3wki, b\u0142\u0119dy ortograficzne i brak znak\xF3w diakrytycznych, 2) ra\u017C\u0105ce b\u0142\u0119dy gramatyczne, 3) s\u0142owa/zwroty nienaturalne w danym kontek\u015Bcie (awkward phrasing, kalki j\u0119zykowe). Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny JSON.",
         responseMimeType: "application/json",
         responseSchema: schema,
@@ -7713,17 +7895,17 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       return res.status(401).json({ error: "Invalid or expired token" });
     }
     try {
-      const text = req.body?.text || req.query.text;
+      const text2 = req.body?.text || req.query.text;
       const lang = req.body?.accent || req.body?.lang || req.query.lang || req.query.accent || "en-US";
       const gender = req.body?.gender || req.query.gender || "male";
       const speed = parseFloat(req.body?.speed || req.query.speed || "1.0") || 1;
       const engine = req.body?.engine || req.query.engine || "auto";
       const isUK = lang === "UK" || lang === "en-GB" || lang === "BrE";
       const isMale = gender === "male" || gender === "m" || !gender.includes("female") && !gender.includes("f");
-      if (!text) {
+      if (!text2) {
         return res.status(400).json({ error: "Missing text parameter" });
       }
-      const trimmedText = text.replace(/<[^>]+>/g, "").trim();
+      const trimmedText = text2.replace(/<[^>]+>/g, "").trim();
       const formattedText = /[.?!]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
       const crypto2 = await import("crypto");
       const hash = crypto2.default.createHash("sha256").update(`${formattedText}_${isUK ? "UK" : "US"}_${isMale ? "M" : "F"}_${speed.toFixed(2)}_${engine}`).digest("hex");
@@ -8180,9 +8362,40 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
     }
   };
   const GEMINI_MODEL_PATTERN = /^gemini-[a-z0-9.\-]{1,60}$/i;
-  app2.post("/api/gemini/generate", requireFirebaseAuth, async (req, res) => {
+  const geminiProxyBodyParser = express.json({ limit: GEMINI_PROXY_MAX_BODY });
+  const geminiProxyLimits = resolveProxyLimits();
+  const GEMINI_PROXY_EXEMPT_EMAILS = [
+    "maciej.wyrozumski@gmail.com",
+    "marta.lukaszczyk@gmail.com",
+    "maciejwyrozumski@icloud.com",
+    "wyrozumski@maciej.pro",
+    "maciej@learnwithmaciej.com"
+  ];
+  const geminiProxyRateLimit = async (req, res, next) => {
+    const uid = req.userUid;
     try {
-      const { model, contents, config } = req.body || {};
+      const adminDb = getFirestore2(getAdminApp(), FIRESTORE_DATABASE_ID);
+      const email = String(req.userEmail || "").toLowerCase();
+      const role = (await adminDb.collection("users").doc(uid).get()).data()?.role;
+      if (isProxyExempt(role, GEMINI_PROXY_EXEMPT_EMAILS.includes(email))) return next();
+      const reservation = await reserveProxyCall(adminDb, uid, /* @__PURE__ */ new Date(), geminiProxyLimits);
+      if (reservation.ok === false) {
+        res.setHeader("Retry-After", String(reservation.retryAfterSec));
+        return res.status(429).json({
+          error: reservation.reason === "minute" ? "Zbyt wiele zapyta\u0144 do AI w kr\xF3tkim czasie. Spr\xF3buj za chwil\u0119." : "Wykorzystano dzienny limit zapyta\u0144 do AI.",
+          reason: reservation.reason,
+          retryAfterSec: reservation.retryAfterSec
+        });
+      }
+    } catch (err) {
+      console.warn("[Gemini Proxy] Limit \u017C\u0105da\u0144 niedost\u0119pny, przepuszczam:", err?.message || err);
+    }
+    next();
+  };
+  app2.post("/api/gemini/generate", requireFirebaseAuth, geminiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
+    try {
+      const { model, contents } = req.body || {};
+      const config = clampGeminiConfig(req.body?.config);
       if (typeof model !== "string" || !GEMINI_MODEL_PATTERN.test(model)) {
         return res.status(400).json({ error: "Nieprawid\u0142owa nazwa modelu." });
       }
