@@ -33,6 +33,7 @@ import {
   type FlashcardQueueState,
 } from '../../utils/flashcardQueue';
 import WhatsNextSection from '../practice/WhatsNextSection';
+import { sameCardList } from '../../utils/cardListEquality';
 
 interface FlashcardStudyScreenProps {
   setId: string;
@@ -150,12 +151,14 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
         const merged = mergeSetCards(lists.map(({ id, cards: list }) => ({ setId: id, cards: list })));
         cardSetMapRef.current = merged.cardSetMap;
         originalIdsRef.current = merged.originalIds;
-        setCards(merged.cards);
+        // Ta sama talia = ta sama tablica: ponowne ładowanie po renderze dostawcy (np. po zapisie
+        // sesji) nie może zerować trwającej ani zakończonej sesji w żadnym trybie.
+        setCards(prev => (sameCardList(prev, merged.cards) ? prev : merged.cards));
         setIsLoading(false);
         return;
       }
       const loadedCards = await getFlashcards(setId);
-      setCards(loadedCards);
+      setCards(prev => (sameCardList(prev, loadedCards) ? prev : loadedCards));
       setIsLoading(false);
     };
     
@@ -302,13 +305,18 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
 
   const { getProgress } = useFlashcards();
   const { soundSettings } = useSettings();
+  // `getProgress` z FlashcardContext dostaje nową tożsamość przy KAŻDYM renderze dostawcy, a dostawca
+  // renderuje się po zapisie sesji (nasłuch `sessions`). Gdyby efekt ładowania zależał od tej funkcji,
+  // zapis wyniku na końcu talii zerowałby kolejkę i zamiast „Co dalej?" wracała nowa sesja „0 z N".
+  const getProgressRef = useRef(getProgress);
+  getProgressRef.current = getProgress;
 
   useEffect(() => {
     const loadCards = async () => {
       let progress: any[] = [];
-      if (getProgress) {
+      if (getProgressRef.current) {
          // wiele zestawów: postęp SRS wszystkich kart kursanta (dopasowanie po `flashcardId`)
-         progress = await getProgress(multi ? undefined : setId);
+         progress = await getProgressRef.current(multi ? undefined : setId);
       }
       
       const cardsWithProgress = initialCards.map((card: any) => {
@@ -326,7 +334,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
       setStartTime(Date.now());
     };
     loadCards();
-  }, [initialCards, setId, multi, getProgress]);
+  }, [initialCards, setId, multi]);
 
   const currentCard = getCurrentCard(queueState);
   const canLeaveLater = canLeaveCurrentForLater(queueState);
@@ -582,7 +590,8 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
             {isReversed ? 'PL -> EN' : 'EN -> PL'}
           </button>
           <div className="font-mono text-sm" data-testid="flashcard-counter">
-            {t('Opanowano {{mastered}} z {{total}}', {
+            {/* `t` z LanguageContext przyjmuje tylko klucz (bez interpolacji) — liczby podstawia i18n.t. */}
+            {i18n.t('Opanowano {{mastered}} z {{total}}', {
               mastered: queueState.masteredCount,
               total: queueState.initialTotal,
             })}
