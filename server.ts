@@ -4448,7 +4448,7 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
      model nie mógł zepsuć matematyki czasu trwania lekcji. Zobacz
      types/scenario.ts. ═══════════════════════════════════════════════ */
 
-  app.post('/api/scenario/generate', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/scenario/generate', requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || '').trim();
       const durationMin = Number(req.body?.durationMin) as ScenarioDurationMin;
@@ -4490,7 +4490,7 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
    * dokładnie tę samą funkcję generatora co `/api/scenario/generate` —
    * zero dublowania logiki.
    */
-  app.post('/api/scenario/generate-for-chat', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/scenario/generate-for-chat', requireFirebaseAdmin, async (req, res) => {
     try {
       const studentRef = String(req.body?.studentRef || '').trim();
       if (!studentRef) return res.status(400).json({ error: 'Nie podano kursanta.' });
@@ -4528,7 +4528,7 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
     }
   });
 
-  app.post('/api/scenario/save', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/scenario/save', requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || '').trim();
       const targetLessonId = String(req.body?.targetLessonId || '').trim();
@@ -4569,7 +4569,7 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
      przez `expectedRevision`/`mutationId` przed podwójnym/stale zapisem.
      ═══════════════════════════════════════════════════════════════════ */
 
-  app.post('/api/scenario/canvas/generate', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/scenario/canvas/generate', requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || '').trim();
       const durationMin = Number(req.body?.durationMin) as ScenarioDurationMin;
@@ -4602,7 +4602,7 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
     }
   });
 
-  app.post('/api/scenario/canvas/save', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/scenario/canvas/save', requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || '').trim();
       const targetLessonId = String(req.body?.targetLessonId || '').trim();
@@ -4633,7 +4633,7 @@ Jesteś skrupulatnym asystentem lektora języka angielskiego weryfikującym prof
     }
   });
 
-  app.post('/api/scenario/canvas/refresh', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/scenario/canvas/refresh', requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || '').trim();
       const targetLessonId = String(req.body?.targetLessonId || '').trim();
