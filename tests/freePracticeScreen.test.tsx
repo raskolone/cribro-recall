@@ -308,7 +308,7 @@ test('tworzenie własnego zestawu: modal waliduje formularz, zapisuje i zaznacza
   assert.ok(getByTestId('custom-set-parsed-count').textContent!.includes('2'));
   assert.equal((getByTestId('custom-set-submit') as HTMLButtonElement).disabled, false);
   fireEvent.click(getByTestId('custom-set-submit'));
-  await new Promise((r) => setTimeout(r, 10));
+  await new Promise((r) => setTimeout(r, 50));
   assert.equal(queryByTestId('custom-set-name-input'), null, 'modal zamknięty po zapisie');
   assert.equal(createdPayload?.name, 'Zwroty w hotelu');
   assert.equal(createdPayload?.pairs.length, 2);

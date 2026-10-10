@@ -23,6 +23,15 @@ import { SWIPE_TOUCH_ACTION_CLASS } from '../../hooks/useCardSwipe';
 import { useRatingSwipe } from '../../hooks/useRatingSwipe';
 import ConfirmModal from '../ui/ConfirmModal';
 import i18n from "i18next";
+import {
+  createFlashcardQueue,
+  getCurrentCard,
+  canLeaveCurrentForLater,
+  rateCurrentCard,
+  leaveCurrentForLater,
+  getSessionSummary,
+  type FlashcardQueueState,
+} from '../../utils/flashcardQueue';
 
 interface FlashcardStudyScreenProps {
   setId: string;
@@ -252,6 +261,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
 // --- Flashcards Mode Component ---
 const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language}: any) => {
   const [cards, setCards] = useState<Flashcard[]>([]);
+  const [queueState, setQueueState] = useState<FlashcardQueueState<Flashcard>>(() => createFlashcardQueue([]));
   const [currentIndex, setCurrentIndex] = useState(0);
   const cardContainerRef = useRef<HTMLDivElement>(null);
   const knowHintRef = useRef<HTMLDivElement>(null);
@@ -259,9 +269,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
   // Odlot po ocenie trwa ~0,4 s: w tym czasie nie przyjmujemy kolejnej oceny ani gestu.
   const answeringRef = useRef(false);
   const [isFlipped, setIsFlipped] = useState(false);
-  const [results, setResults] = useState<{ flashcardId: string; isCorrect: boolean; responseTimeMs: number }[]>([]);
   const [startTime, setStartTime] = useState<number>(0);
-  const [isFinished, setIsFinished] = useState(false);
   const [isReversed, setIsReversed] = useState(false);
 
   const { getProgress } = useFlashcards();
@@ -286,16 +294,20 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
       cardsWithProgress.sort((a: any, b: any) => new Date(a.nextReviewDate).getTime() - new Date(b.nextReviewDate).getTime());
       
       setCards(cardsWithProgress);
+      setQueueState(createFlashcardQueue(cardsWithProgress));
       setStartTime(Date.now());
     };
     loadCards();
   }, [initialCards, setId, multi, getProgress]);
 
+  const currentCard = getCurrentCard(queueState);
+  const canLeaveLater = canLeaveCurrentForLater(queueState);
+
   const handleFlip = useCallback(() => {
     setIsFlipped(prev => {
       const nextState = !prev;
-      if (soundSettings?.autoPlayFlashcards && cards[currentIndex]) {
-        const textToSpeak = nextState ? cards[currentIndex].definition : cards[currentIndex].term;
+      if (soundSettings?.autoPlayFlashcards && currentCard) {
+        const textToSpeak = nextState ? currentCard.definition : currentCard.term;
         playSpeech(textToSpeak, {
           accent: soundSettings.ttsAccent,
           gender: soundSettings.voiceGender,
@@ -305,25 +317,18 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
       }
       return nextState;
     });
-  }, [cards, currentIndex, soundSettings]);
+  }, [currentCard, soundSettings]);
 
   const handleAnswer = useCallback(async (isCorrect: boolean) => {
-    if (answeringRef.current) return;
+    if (answeringRef.current || !currentCard) return;
     answeringRef.current = true;
     const responseTimeMs = Date.now() - startTime;
-    const currentCard = cards[currentIndex];
-    
-    const newResults = [...results, {
-      flashcardId: currentCard.id,
-      isCorrect,
-      responseTimeMs
-    }];
-    
-    setResults(newResults);
-    
+    const nextState = rateCurrentCard(queueState, isCorrect, responseTimeMs);
+    setQueueState(nextState);
+
     const proceed = async () => {
       answeringRef.current = false;
-      if (currentIndex < cards.length - 1) {
+      if (!nextState.isFinished) {
         setCurrentIndex(prev => prev + 1);
         setIsFlipped(false);
         setStartTime(Date.now());
@@ -334,15 +339,15 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
           gsap.fromTo(cardContainerRef.current, enter.from, enter.to);
         }
       } else {
-        setIsFinished(true);
-        const correctCount = newResults.filter(r => r.isCorrect).length;
+        const summary = getSessionSummary(nextState);
         await saveSession({
           setId,
           mode: 'flashcards',
-          totalCards: cards.length,
-          correctCount,
-          scorePercent: cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0
-        }, newResults);
+          totalCards: summary.totalCards,
+          correctCount: summary.correctCount,
+          scorePercent: summary.scorePercent,
+          weakWords: summary.weakWords,
+        }, summary.results);
       }
     };
 
@@ -354,12 +359,57 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
     } else {
       proceed();
     }
-  }, [currentIndex, cards, results, startTime, setId, saveSession]);
+  }, [currentCard, startTime, queueState, setId, saveSession]);
+
+  const handleLeaveForLater = useCallback(async () => {
+    if (answeringRef.current || !canLeaveLater || !currentCard) return;
+    answeringRef.current = true;
+    const nextState = leaveCurrentForLater(queueState);
+    setQueueState(nextState);
+
+    const finishLeave = async () => {
+      answeringRef.current = false;
+      if (!nextState.isFinished) {
+        setCurrentIndex(prev => prev + 1);
+        setIsFlipped(false);
+        setStartTime(Date.now());
+        if (cardContainerRef.current) {
+          const enter = enterFromVars(1, 15);
+          gsap.fromTo(cardContainerRef.current, enter.from, enter.to);
+        }
+      } else {
+        const summary = getSessionSummary(nextState);
+        await saveSession({
+          setId,
+          mode: 'flashcards',
+          totalCards: summary.totalCards,
+          correctCount: summary.correctCount,
+          scorePercent: summary.scorePercent,
+          weakWords: summary.weakWords,
+        }, summary.results);
+      }
+    };
+
+    if (cardContainerRef.current) {
+      gsap.to(cardContainerRef.current, {
+        ...ratingExitVars(false, window.innerWidth, prefersReducedMotion()),
+        onComplete: finishLeave,
+      });
+    } else {
+      finishLeave();
+    }
+  }, [canLeaveLater, currentCard, queueState, setId, saveSession]);
 
   const handlePrev = useCallback(() => {
-    if (currentIndex > 0 && !answeringRef.current) {
+    if (queueState.queue.length > 1 && !answeringRef.current) {
       const proceed = () => {
-        setCurrentIndex(prev => prev - 1);
+        // Rotacja kolejki w tył
+        setQueueState(prev => {
+          if (prev.queue.length <= 1) return prev;
+          const last = prev.queue[prev.queue.length - 1];
+          return { ...prev, queue: [last, ...prev.queue.slice(0, prev.queue.length - 1)] };
+        });
+        setCurrentIndex(prev => prev + 1);
         setIsFlipped(false);
         
         if (cardContainerRef.current) {
@@ -374,11 +424,17 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
         proceed();
       }
     }
-  }, [currentIndex]);
+  }, [queueState.queue.length]);
 
   const handleNext = useCallback(() => {
-    if (currentIndex < cards.length - 1 && !answeringRef.current) {
+    if (queueState.queue.length > 1 && !answeringRef.current) {
       const proceed = () => {
+        // Rotacja kolejki w przód
+        setQueueState(prev => {
+          if (prev.queue.length <= 1) return prev;
+          const [first, ...rest] = prev.queue;
+          return { ...prev, queue: [...rest, first] };
+        });
         setCurrentIndex(prev => prev + 1);
         setIsFlipped(false);
         
@@ -394,7 +450,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
         proceed();
       }
     }
-  }, [currentIndex, cards.length]);
+  }, [queueState.queue.length]);
 
   // Przeciąganie karty: wspólny hook PointerEvents. Gest jest OCENĄ i działa tak samo na
   // awersie i rewersie: karta idzie za palcem 1:1 (gsap.set → translate3d, bez tweena na każdy
@@ -410,7 +466,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (isFinished) return;
+      if (queueState.isFinished) return;
       
       if (e.code === 'Space') {
         e.preventDefault();
@@ -433,13 +489,15 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFlipped, isFinished, handleFlip, handleAnswer, handlePrev, handleNext]);
+  }, [isFlipped, queueState.isFinished, handleFlip, handleAnswer, handlePrev, handleNext]);
 
   if (cards.length === 0) return null;
 
-  if (isFinished) {
-    const correctCount = results.filter(r => r.isCorrect).length;
-    const score = cards.length > 0 ? Math.round((correctCount / cards.length) * 100) : 0;
+  if (queueState.isFinished) {
+    const summary = getSessionSummary(queueState);
+    const correctCount = summary.correctCount;
+    const totalCount = summary.totalCards;
+    const score = summary.scorePercent;
     
     return (
       <div className="max-w-2xl mx-auto text-center space-y-8">
@@ -447,10 +505,10 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
         <Card className="py-12">
           <div className="text-6xl font-black text-primary mb-4">{Number.isNaN(Number(score)) ? 0 : score}%</div>
           <p className="text-xl text-content-muted">
-            {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', cards.length.toString())}
+            {t('flashcards.score').replace('{correct}', correctCount.toString()).replace('{total}', totalCount.toString())}
           </p>
         </Card>
-                <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
           <Button onClick={onBack} variant="secondary" className="flex-1">{t('flashcards.back')}</Button>
           <Button onClick={() => { if (onNavigate) onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }); }} className="flex-1">
             {language === 'pl' ? 'Przećwicz w zdaniach' : 'Practice in sentences'}
@@ -460,7 +518,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
     );
   }
 
-  const currentCard = cards[currentIndex];
+  if (!currentCard) return null;
 
   return (
     <div className="max-w-3xl mx-auto space-y-8 px-4 sm:px-0">
@@ -480,8 +538,11 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
           >
             {isReversed ? 'PL -> EN' : 'EN -> PL'}
           </button>
-          <div className="font-mono text-sm">
-            {currentIndex + 1} / {cards.length}
+          <div className="font-mono text-sm" data-testid="flashcard-counter">
+            {t('Opanowano {{mastered}} z {{total}}', {
+              mastered: queueState.masteredCount,
+              total: queueState.initialTotal,
+            })}
           </div>
         </div>
       </div>
@@ -489,15 +550,15 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
       <div className="w-full bg-base-300 h-2 rounded-full overflow-hidden">
         <div 
           className="bg-primary h-full transition-all duration-300"
-          style={{ width: `${cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0}%` }}
+          style={{ width: `${queueState.initialTotal > 0 ? (queueState.masteredCount / queueState.initialTotal) * 100 : 0}%` }}
         />
       </div>
 
       <div className="flex items-center gap-4">
         <button 
           onClick={handlePrev} 
-          disabled={currentIndex === 0}
-          className={`hidden md:flex p-4 rounded-full transition-colors ${currentIndex === 0 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
+          disabled={queueState.queue.length <= 1}
+          className={`hidden md:flex p-4 rounded-full transition-colors ${queueState.queue.length <= 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
@@ -549,16 +610,16 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
 
         <button 
           onClick={handleNext} 
-          disabled={currentIndex === cards.length - 1}
-          className={`hidden md:flex p-4 rounded-full transition-colors ${currentIndex === cards.length - 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
+          disabled={queueState.queue.length <= 1}
+          className={`hidden md:flex p-4 rounded-full transition-colors ${queueState.queue.length <= 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </button>
       </div>
 
       <div className="flex justify-between md:hidden px-4">
-         <button onClick={handlePrev} disabled={currentIndex === 0} className={`p-2 pointer-coarse:min-h-11 pointer-coarse:px-3 ${currentIndex === 0 ? 'opacity-30' : ''}`}>← {language === 'pl' ? 'Poprzednia' : 'Previous'}</button>
-         <button onClick={handleNext} disabled={currentIndex === cards.length - 1} className={`p-2 pointer-coarse:min-h-11 pointer-coarse:px-3 ${currentIndex === cards.length - 1 ? 'opacity-30' : ''}`}>{language === 'pl' ? 'Następna' : 'Next'} →</button>
+         <button onClick={handlePrev} disabled={queueState.queue.length <= 1} className={`p-2 pointer-coarse:min-h-11 pointer-coarse:px-3 ${queueState.queue.length <= 1 ? 'opacity-30' : ''}`}>← {language === 'pl' ? 'Poprzednia' : 'Previous'}</button>
+         <button onClick={handleNext} disabled={queueState.queue.length <= 1} className={`p-2 pointer-coarse:min-h-11 pointer-coarse:px-3 ${queueState.queue.length <= 1 ? 'opacity-30' : ''}`}>{language === 'pl' ? 'Następna' : 'Next'} →</button>
       </div>
 
       {isFlipped ? (
@@ -578,6 +639,22 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
         <div className="text-center text-content-muted text-sm animate-pulse mt-2 flex flex-col items-center gap-2" data-testid="flashcard-actions">
           <span>{t('flashcards.clickReveal')}</span>
           <span className="bg-base-300 px-2 py-1 rounded text-xs">{i18n.t("Spacja")}</span>
+        </div>
+      )}
+
+      {canLeaveLater && (
+        <div className="flex flex-col items-center gap-1.5 pt-2 text-center">
+          <p className="text-xs text-text-3">
+            {t('Trudna karta — możesz zostawić ją na później')}
+          </p>
+          <button
+            type="button"
+            data-testid="flashcard-leave-later"
+            onClick={handleLeaveForLater}
+            className="inline-flex items-center justify-center min-h-11 px-4 py-2 rounded-xl border border-line-strong bg-base-200/80 hover:bg-base-200 text-text-2 hover:text-text-hi text-sm font-semibold transition-colors cursor-pointer"
+          >
+            {t('Zostaw na później')}
+          </button>
         </div>
       )}
     </div>

@@ -696,6 +696,9 @@
   "Zobacz w": "View in",
   "Brak wyników w tej zakładce dla „{{query}}\"": "No results in this tab for \"{{query}}\"",
   "Utwórz swój pierwszy zestaw słówek klikając przycisk powyżej": "Create your first word set by clicking the button above.",
-  "Zamknij": "Close"
+  "Zamknij": "Close",
+  "Opanowano {{mastered}} z {{total}}": "Mastered {{mastered}} of {{total}}",
+  "Zostaw na później": "Leave for later",
+  "Trudna karta — możesz zostawić ją na później": "Tricky card — you can leave it for later"
 }
 
