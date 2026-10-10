@@ -62,56 +62,22 @@ test('WhatsNextSection: kliknięcie Rozpocznij quiz wywołuje onStartQuiz', () =
   assert.equal(quizStarted, true);
 });
 
-test('WhatsNextSection: zmiana liczby zdań i kliknięcie Tłumaczenie przekazuje count', () => {
-  let sentFormat: string | null = null;
-  let sentCount: number | null = null;
-
-  const { getByTestId } = render(
+test('WhatsNextSection: Tłumaczenie i Korekta przekazują sam rodzaj — liczbę zdań wybiera krok 3 (bez suwaków w tym ekranie)', () => {
+  const sent: string[][] = [];
+  const { getByTestId, container } = render(
     <WhatsNextSection
       weakWords={['hesitate']}
       onStartQuiz={() => {}}
-      onStartSentences={(format, count) => {
-        sentFormat = format;
-        sentCount = count;
+      onStartSentences={(...args) => {
+        sent.push(args.map(String));
       }}
       onBack={() => {}}
     />
   );
-
-  // Zwiększenie liczby zdań suwakiem Tłumaczenia z 5 na 6
-  const translationInc = getByTestId('whats-next-translation').querySelector('[data-testid="sentence-count-increment"]') as HTMLButtonElement;
-  assert.ok(translationInc);
-  fireEvent.click(translationInc);
-
+  assert.equal(container.querySelectorAll('[data-testid="sentence-count-increment"]').length, 0, 'suwak jest dopiero w kroku 3');
   fireEvent.click(getByTestId('whats-next-start-translation'));
-  assert.equal(sentFormat, 'translation');
-  assert.equal(sentCount, 6);
-});
-
-test('WhatsNextSection: zmiana liczby zdań i kliknięcie Korekta przekazuje count', () => {
-  let sentFormat: string | null = null;
-  let sentCount: number | null = null;
-
-  const { getByTestId } = render(
-    <WhatsNextSection
-      weakWords={[]}
-      onStartQuiz={() => {}}
-      onStartSentences={(format, count) => {
-        sentFormat = format;
-        sentCount = count;
-      }}
-      onBack={() => {}}
-    />
-  );
-
-  // Zmniejszenie liczby zdań suwakiem Korekty z 5 na 4
-  const correctionDec = getByTestId('whats-next-correction').querySelector('[data-testid="sentence-count-decrement"]') as HTMLButtonElement;
-  assert.ok(correctionDec);
-  fireEvent.click(correctionDec);
-
   fireEvent.click(getByTestId('whats-next-start-correction'));
-  assert.equal(sentFormat, 'correction');
-  assert.equal(sentCount, 4);
+  assert.deepEqual(sent, [['translation'], ['correction']], 'tylko format — bez count (ustawia go krok 3)');
 });
 
 test('MatchingGame: po zakończeniu partii pokazuje WhatsNextSection ze słowami błędnymi', async () => {

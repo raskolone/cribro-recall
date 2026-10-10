@@ -6,6 +6,9 @@ import Button from '../ui/Button';
 import { useStaggerIn } from '../../hooks/useStaggerIn';
 import {
   DEFAULT_FREE_PRACTICE_MODE,
+  DEFAULT_SENTENCE_COUNT,
+  MAX_SENTENCE_COUNT,
+  MIN_SENTENCE_COUNT,
   FREE_PRACTICE_STEPS,
   FREE_PRACTICE_TYPES,
   MAX_FREE_PRACTICE_SETS,
@@ -134,7 +137,12 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   }, [categorized, sentences, lessons]);
   const [activeTab, setActiveTab] = useState<SetTab>(initialTab);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [sentenceCount, setSentenceCount] = useState(5);
+  const [sentenceCount, setSentenceCount] = useState(() =>
+    Math.min(MAX_SENTENCE_COUNT, Math.max(MIN_SENTENCE_COUNT, initial?.count ?? DEFAULT_SENTENCE_COUNT)),
+  );
+  // Szybki start („Co dalej?"): słowa słabe tylko do odczytu, krok 3 w zwartej formie z „Generuj".
+  const focusWords = useMemo(() => initial?.focusWords ?? [], [initial?.focusWords]);
+  const quick = Boolean(initial?.quick) && sentences;
   const hasSets = sets.filter((s) => !s.isDraft).length > 0;
   const hasLessons = sentences && lessons.length > 0;
 
@@ -160,11 +168,12 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
     radioRefs.current[next]?.focus();
   };
 
-  const goBack = () => (step === 'type' ? onBack() : setStep(previousStep(step)));
+  // W szybkim starcie „Wróć do menu" z kroku 3 wraca do kroku 1 (wybór zostaje); „Zmień zakres" — do kroku 2.
+  const goBack = () => (step === 'type' ? onBack() : setStep(quick && step === 'start' ? 'type' : previousStep(step)));
 
   const start = () => {
     if (blocker) return;
-    onStart(buildFreeLaunch(mode, scope, sentenceCount));
+    onStart(buildFreeLaunch(mode, scope, sentences ? sentenceCount : undefined, sentences ? focusWords : undefined));
   };
 
   const primaryAction = () => {
@@ -173,7 +182,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   };
 
   const primaryDisabled = step === 'type' ? false : blocker !== null;
-  const primaryLabel = step === 'start' ? t('Start') : t('Dalej');
+  const primaryLabel = step === 'start' ? (quick ? t('Generuj') : t('Start')) : t('Dalej');
 
   const stepLabel = (s: FreePracticeStep) => (s === 'type' ? t('Rodzaj') : s === 'scope' ? t('Materiał') : t('Start'));
 
@@ -753,7 +762,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
           tabIndex={-1}
           className="text-[12px] font-mono font-bold uppercase tracking-wider text-content-muted focus:outline-none"
         >
-          {t('Gotowe do startu')}
+          {quick ? t('Ustaw liczbę zdań i generuj') : t('Gotowe do startu')}
         </h2>
         <div data-stagger data-testid="free-practice-summary" className="space-y-4 rounded-2xl border-2 border-line-strong bg-surface-flat p-4">
           <div className="flex items-center gap-3">
@@ -763,6 +772,11 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             <div className="min-w-0">
               <p className="text-base font-bold text-text-hi">{t(activeType.titleKey)}</p>
               <p className="text-sm text-text-2">{counterText}</p>
+              {quick && focusWords.length > 0 && (
+                <p data-testid="free-practice-focus-count" className="text-sm font-semibold text-text-hi">
+                  {t('Słowa do powtórzenia ({{count}})', { count: focusWords.length })}
+                </p>
+              )}
             </div>
           </div>
           <ul className="flex flex-wrap gap-2" aria-label={sentences ? t('Wybrane źródła') : t('Wybrane zestawy')}>
@@ -773,6 +787,16 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             ))}
           </ul>
         </div>
+        {quick && (
+          <button
+            type="button"
+            data-testid="free-practice-change-scope"
+            onClick={() => setStep('scope')}
+            className={`inline-flex min-h-11 items-center gap-1.5 rounded-xl px-2 text-sm font-bold text-text-hi underline underline-offset-4 hover:text-primary cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
+          >
+            {t('Zmień zakres')}
+          </button>
+        )}
         {sentences && (
           <div data-testid="free-practice-sentence-count-wrapper" className="rounded-2xl border-2 border-line-strong bg-surface-flat p-4">
             <SentenceCountSlider
@@ -868,7 +892,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
               onClick={goBack}
               className="min-h-12 flex-1 text-text-hi!"
             >
-              {t('Wstecz')}
+              {quick && step === 'start' ? t('Wróć do menu') : t('Wstecz')}
             </Button>
           )}
           <Button

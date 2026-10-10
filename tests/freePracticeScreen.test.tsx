@@ -603,3 +603,134 @@ test('dostępność i cele dotykowe: kafelki rozgrzewki min-h-36/40, cele dotyko
   toScope();
   assert.doesNotMatch(container.textContent!, /prac\w* domow|homework/i);
 });
+
+// --- Szybki start z „Co dalej?" (od razu krok 3) -------------------------------------------------
+
+import { quickStartInitial } from '../utils/freePractice';
+
+const quick = (mode: 'translation' | 'correction' = 'translation', words = ['hesitate', 'run out of', 'give it a go']) =>
+  setup({ initial: quickStartInitial(mode, ['s1', 'g1'], words) });
+
+test('szybki start: ekran otwiera się w kroku 3 z rodzajem, zestawami (chipy tylko do odczytu) i liczbą słów słabych', () => {
+  const { stepCounter, getByTestId, queryByTestId, container, next } = quick();
+  assert.equal(stepCounter(), 'Krok 3 z 3');
+  assert.ok(getByTestId('free-practice-step-start'));
+  assert.ok(!queryByTestId('free-practice-step-type') && !queryByTestId('free-practice-step-scope'), 'kroki 1 i 2 pominięte');
+  const summary = getByTestId('free-practice-summary');
+  assert.match(summary.textContent!, /Tłumaczenie zdań/);
+  assert.match(summary.textContent!, /Moje słówka/);
+  assert.match(summary.textContent!, /Ogólne A1/);
+  assert.equal(summary.querySelectorAll('input').length, 0, 'zestawy jako chipy tylko do odczytu');
+  assert.equal(getByTestId('free-practice-focus-count').textContent, 'Słowa do powtórzenia (3)');
+  assert.equal(next().textContent, 'Generuj', 'duży przycisk „Generuj" zamiast „Start"');
+  assert.match(container.querySelector('h2#free-practice-start-label')!.textContent!, /Ustaw liczbę zdań i generuj/);
+});
+
+test('szybki start: suwak 1–20, domyślnie 5; „Generuj" startuje z count i focusWords (ten sam kształt startu, bez pól pracy domowej)', () => {
+  const { getByTestId, starts, next, container } = quick('correction');
+  const slider = container.querySelector('input[type="range"]') as HTMLInputElement;
+  assert.equal(slider.min, '1');
+  assert.equal(slider.max, '20');
+  assert.equal(slider.value, '5');
+  assert.equal(getByTestId('sentence-count-value').textContent, '5 zdań');
+  fireEvent.change(slider, { target: { value: '12' } });
+  assert.equal(getByTestId('sentence-count-value').textContent, '12 zdań');
+  fireEvent.change(slider, { target: { value: '99' } });
+  assert.equal(slider.value, '20', 'górna granica 20');
+  fireEvent.change(slider, { target: { value: '0' } });
+  assert.equal(slider.value, '1', 'dolna granica 1');
+  fireEvent.change(slider, { target: { value: '8' } });
+  fireEvent.click(next());
+  assert.equal(starts.length, 1);
+  assert.deepEqual(starts[0], {
+    view: 'free-sentences',
+    mode: 'correction',
+    format: 'correction',
+    setIds: ['s1', 'g1'],
+    lessonIds: [],
+    topics: [],
+    count: 8,
+    focusWords: ['hesitate', 'run out of', 'give it a go'],
+  });
+  assert.ok(!Object.keys(starts[0]).some((key) => /task|homework|status/i.test(key)));
+});
+
+test('szybki start: domyślnie count 5 w żądaniu, a initial.count ustawia suwak (z przycięciem do 1–20)', () => {
+  const { starts, next } = quick();
+  fireEvent.click(next());
+  assert.equal((starts[0] as { count: number }).count, 5);
+  cleanup();
+  const preset = setup({ initial: { ...quickStartInitial('translation', ['s1']), count: 14 } });
+  assert.equal(preset.getByTestId('sentence-count-value').textContent, '14 zdań');
+  cleanup();
+  const clamped = setup({ initial: { ...quickStartInitial('translation', ['s1']), count: 500 } });
+  assert.equal(clamped.getByTestId('sentence-count-value').textContent, '20 zdań');
+});
+
+test('szybki start: „Zmień zakres" wraca do kroku 2 z zachowanym wyborem, a „Dalej" — do kroku 3 ze słowami słabymi', () => {
+  const { getByTestId, stepCounter, box, next, getByText, tab } = quick();
+  fireEvent.click(getByTestId('free-practice-change-scope'));
+  assert.equal(stepCounter(), 'Krok 2 z 3');
+  assert.ok(getByTestId('free-practice-step-scope'));
+  fireEvent.click(tab('user'));
+  assert.equal(box('s1').checked, true, 'wybrany zestaw zachowany');
+  fireEvent.click(tab('general'));
+  assert.equal(box('g1').checked, true, 'drugi wybrany zestaw zachowany');
+  assert.equal(getByTestId('free-practice-counter').textContent, 'Źródła: 2 z 5');
+  fireEvent.click(box('g2'));
+  fireEvent.click(next());
+  assert.equal(stepCounter(), 'Krok 3 z 3');
+  assert.equal(getByTestId('free-practice-focus-count').textContent, 'Słowa do powtórzenia (3)', 'słowa słabe przetrwały zmianę zakresu');
+  assert.equal(next().textContent, 'Generuj');
+  assert.ok(getByText('Ogólne A2'), 'dodany zestaw widoczny w podsumowaniu');
+});
+
+test('szybki start: „Wróć do menu" wraca do kroku 1 z zachowanym rodzajem i zestawami; „Pulpit" wychodzi z ekranu', () => {
+  const { getByTestId, stepCounter, checked, prev, toScope, calls, box, tab } = quick('correction');
+  assert.equal(prev().textContent, 'Wróć do menu');
+  fireEvent.click(prev());
+  assert.equal(stepCounter(), 'Krok 1 z 3');
+  assert.equal(checked().getAttribute('data-mode'), 'correction', 'rodzaj zachowany');
+  toScope();
+  fireEvent.click(tab('user'));
+  assert.equal(box('s1').checked, true, 'wybór zestawów zachowany');
+  fireEvent.click(getByTestId('free-practice-back'));
+  assert.equal(calls.back, 1);
+});
+
+test('szybki start: bez zakresu „Generuj" jest wyłączone z komunikatem; zwykły przepływ zostaje przy „Start" i bez „Zmień zakres"', () => {
+  const empty = setup({ initial: quickStartInitial('translation', [], ['hesitate']) });
+  assert.equal(empty.next().disabled, true);
+  assert.match(empty.container.textContent!, /Wybierz co najmniej jedno źródło/);
+  cleanup();
+  const normal = setup({ initial: { mode: 'translation', step: 'start', setIds: ['s1'] } });
+  assert.equal(normal.next().textContent, 'Start');
+  assert.ok(!normal.queryByTestId('free-practice-change-scope'));
+  assert.ok(!normal.queryByTestId('free-practice-focus-count'));
+  assert.equal(normal.prev().textContent, 'Wstecz');
+});
+
+test('szybki start działa tylko dla zdań z AI — dla quizu flaga jest ignorowana', () => {
+  const { next, queryByTestId } = setup({ initial: { mode: 'quiz', step: 'start', quick: true, setIds: ['s1'], focusWords: ['x'] } });
+  assert.equal(next().textContent, 'Start');
+  assert.ok(!queryByTestId('free-practice-change-scope'));
+});
+
+test('szybki start: cele ≥ 44 px, ekran bez odwołań do pracy domowej, teksty po angielsku', async () => {
+  const { container, getByTestId } = quick();
+  assert.doesNotMatch(container.textContent!, /prac\w* domow|homework/i);
+  assert.match(getByTestId('free-practice-change-scope').className, /min-h-11/);
+  assert.match(getByTestId('free-practice-next').className, /min-h-12/);
+  await i18n.changeLanguage('en');
+  try {
+    cleanup();
+    const en = quick();
+    assert.equal(en.next().textContent, 'Generate');
+    assert.equal(en.getByTestId('free-practice-focus-count').textContent, 'Words to review (3)');
+    assert.equal(en.getByTestId('free-practice-change-scope').textContent, 'Change scope');
+    assert.equal(en.prev().textContent, 'Back to menu');
+  } finally {
+    cleanup();
+    await i18n.changeLanguage('pl');
+  }
+});

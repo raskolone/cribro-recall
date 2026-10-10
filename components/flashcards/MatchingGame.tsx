@@ -39,7 +39,7 @@ interface MatchingGameProps {
   onFinish: (result: MatchingResult) => void | Promise<void>;
   onPracticeSentences?: () => void;
   onStartQuiz?: (wrongWords: string[]) => void;
-  onStartSentences?: (format: 'translation' | 'correction', count: number, wrongWords: string[]) => void;
+  onStartSentences?: (format: 'translation' | 'correction', wrongWords: string[]) => void;
   /** Przyciski wymowy kafelka; domyślnie TTSButtons (ta sama ścieżka TTS co wcześniej). */
   renderPronunciation?: (text: string) => React.ReactNode;
   /** Wymuszenie trybu bez ruchu (testy); domyślnie prefers-reduced-motion. */
@@ -500,7 +500,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
           <WhatsNextSection
             weakWords={result.wrongWords || []}
             onStartQuiz={() => onStartQuiz?.(result.wrongWords || [])}
-            onStartSentences={(format, count) => onStartSentences?.(format, count, result.wrongWords || [])}
+            onStartSentences={(format) => onStartSentences?.(format, result.wrongWords || [])}
             onBack={onBack}
             onReplay={handleReplay}
           />

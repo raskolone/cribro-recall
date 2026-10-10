@@ -761,5 +761,9 @@
   "To zdanie nie chce się ułożyć — spróbuj złożyć je z gotowych klocków, potem wrócisz do pisania z pamięci": "To zdanie nie chce się ułożyć — spróbuj złożyć je z gotowych klocków, potem wrócisz do pisania z pamięci",
   "Ułóż z klocków": "Ułóż z klocków",
   "Wstaw zdanie z błędem, aby poprawić tylko błąd": "Wstaw zdanie z błędem, aby poprawić tylko błąd",
-  "Kopiuj zdanie do edycji": "Kopiuj zdanie do edycji"
+  "Kopiuj zdanie do edycji": "Kopiuj zdanie do edycji",
+  "Generuj": "Generuj",
+  "Ustaw liczbę zdań i generuj": "Ustaw liczbę zdań i generuj",
+  "Zmień zakres": "Zmień zakres",
+  "Słowa do powtórzenia ({{count}})": "Słowa do powtórzenia ({{count}})"
 }

@@ -246,13 +246,11 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
           setActiveFocusWords(wrongWords);
           setSelectedMode('quiz');
         }}
-        onStartSentences={(format: 'translation' | 'correction', count: number, wrongWords: string[]) => {
+        onStartSentences={(format: 'translation' | 'correction', wrongWords: string[]) => {
+          // Szybki start: ćwiczenia dowolne od kroku 3 z ustawionymi rodzajem, zestawami i słowami słabymi.
           if (onNavigate) {
-            onNavigate('free-sentences', {
-              mode: format,
-              setIds: setIds && setIds.length > 0 ? setIds : [setId],
-              count,
-              focusWords: wrongWords,
+            onNavigate('free-practice', {
+              quickStart: { mode: format, setIds: setIds && setIds.length > 0 ? setIds : [setId], focusWords: wrongWords },
             });
           }
         }}
@@ -275,13 +273,11 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
           setActiveFocusWords(weakWords);
           setSelectedMode('quiz');
         }}
-        onStartSentences={(format: 'translation' | 'correction', count: number, weakWords: string[]) => {
+        onStartSentences={(format: 'translation' | 'correction', weakWords: string[]) => {
+          // Szybki start: ćwiczenia dowolne od kroku 3 z ustawionymi rodzajem, zestawami i słowami słabymi.
           if (onNavigate) {
-            onNavigate('free-sentences', {
-              mode: format,
-              setIds: setIds && setIds.length > 0 ? setIds : [setId],
-              count,
-              focusWords: weakWords,
+            onNavigate('free-practice', {
+              quickStart: { mode: format, setIds: setIds && setIds.length > 0 ? setIds : [setId], focusWords: weakWords },
             });
           }
         }}
@@ -544,7 +540,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
           <WhatsNextSection
             weakWords={queueState.weakWords}
             onStartQuiz={() => onStartQuiz?.(queueState.weakWords)}
-            onStartSentences={(format, count) => onStartSentences?.(format, count, queueState.weakWords)}
+            onStartSentences={(format) => onStartSentences?.(format, queueState.weakWords)}
             onBack={onBack}
             onReplay={() => {
               const shuffled = [...initialCards].sort(() => Math.random() - 0.5);

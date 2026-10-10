@@ -46,7 +46,7 @@ import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FreePracticeScreen from '../practice/FreePracticeScreen';
 import { getVocabularySetsForStudent } from '../../services/lessonRecord';
-import { freeSentencesLaunch, shortcutInitial, type FreePracticeInitial, type FreeSentencesLaunch } from '../../utils/freePractice';
+import { quickStartInitial, shortcutInitial, type FreePracticeInitial, type FreeSentencesLaunch } from '../../utils/freePractice';
 import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
@@ -417,6 +417,13 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Wybór z Ćwiczeń dowolnych (także szybki start z „Co dalej?") żyje tylko, dopóki kursant jest w tym
+  // przepływie; po wyjściu na pulpit czy inny ekran nie zostaje po nim nic, co wróciłoby przy następnym wejściu.
+  useEffect(() => {
+    const inFreeFlow = view === 'free-practice' || view === 'free-sentences' || view === 'flashcard-study' || view === 'ai-generator' || view === 'extra-practice';
+    if (!inFreeFlow) setFreeDraft(null);
+  }, [view]);
+
   const needsLessons =
     !isTeacher && (view === 'free-practice' || view === 'extra-practice' || view === 'ai-generator' || view === 'free-sentences');
   useEffect(() => {
@@ -606,18 +613,11 @@ const Dashboard: React.FC = () => {
         onNavigate={(v: any, extra?: any) => {
           if (extra?.freeLaunch) {
             setFreeLaunch(extra.freeLaunch);
-          } else if (v === 'free-sentences' && (extra?.setIds || activeSetIds || activeSetId)) {
-            const setIdsToUse = extra?.setIds ?? (activeSetIds ? activeSetIds : activeSetId ? [activeSetId] : []);
-            setFreeLaunch(freeSentencesLaunch(
-              extra?.mode ?? 'translation',
-              {
-                setIds: setIdsToUse,
-                lessonIds: extra?.lessonIds ?? [],
-                topics: [],
-              },
-              extra?.count,
-              extra?.focusWords,
-            ));
+          } else if (v === 'free-practice' && extra?.quickStart) {
+            // „Co dalej?" po fiszkach / dopasowaniu: ćwiczenia dowolne od kroku 3 (Start) z rodzajem,
+            // zestawami i słowami słabymi — bez kroków 1 i 2, ale z zachowaniem wyboru.
+            const q = extra.quickStart as { mode: 'translation' | 'correction'; setIds: string[]; focusWords?: string[] };
+            setFreeDraft(quickStartInitial(q.mode, q.setIds, q.focusWords ?? []));
           }
           if (extra && (extra.setId || extra.activeSetId)) setActiveSetId(extra.setId || extra.activeSetId);
           if (extra?.setIds) setActiveSetIds(extra.setIds);
@@ -734,12 +734,18 @@ const Dashboard: React.FC = () => {
           lessons={lessonSets ?? []}
           initial={initial}
           onStart={(launch) => {
+            // Powrót z ćwiczenia (np. „Wróć do menu" po błędzie lub limicie) zachowuje wybór i wraca do
+            // tego samego kroku: po szybkim starcie do kroku 3 (ze słowami słabymi i liczbą zdań).
+            const wasQuick = Boolean(initial?.quick) && launch.view === 'free-sentences';
             setFreeDraft({
               mode: launch.mode,
-              step: 'scope',
+              step: wasQuick ? 'start' : 'scope',
               setIds: launch.setIds,
               lessonIds: launch.view === 'free-sentences' ? launch.lessonIds : [],
               topics: [],
+              ...(wasQuick && launch.view === 'free-sentences'
+                ? { quick: true, count: launch.count, focusWords: launch.focusWords }
+                : {}),
             });
             if (launch.view === 'free-sentences') {
               setFreeLaunch(launch);

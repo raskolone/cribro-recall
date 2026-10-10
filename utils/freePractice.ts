@@ -162,12 +162,49 @@ export interface FreePracticeInitial {
   setIds?: string[];
   lessonIds?: string[];
   topics?: string[];
+  /**
+   * Szybki start (ekran „Co dalej?", skróty z jednoznacznym zakresem): ćwiczenia dowolne od kroku 3
+   * z ustawionym rodzajem, zakresem i słowami słabymi. Krok 3 pokazuje wtedy zwarte podsumowanie,
+   * suwak liczby zdań i duży przycisk „Generuj".
+   */
+  quick?: boolean;
+  /** Słowa słabe z poprzedniego ćwiczenia (tylko do odczytu; idą do generowania zdań). */
+  focusWords?: string[];
+  /** Wstępna liczba zdań w kroku 3 (domyślnie 5). */
+  count?: number;
+}
+
+/** Domyślna i graniczne wartości suwaka liczby zdań w kroku 3. */
+export const DEFAULT_SENTENCE_COUNT = 5;
+export const MIN_SENTENCE_COUNT = 1;
+export const MAX_SENTENCE_COUNT = 20;
+
+/**
+ * Szybki start od ekranu „Co dalej?": krok 3 (Start) z rodzajem, zestawami i słowami słabymi.
+ * Kroki 1 (rodzaj) i 2 (zestaw) są pominięte, ale nic nie jest zamknięte: „Zmień zakres" wraca do
+ * kroku 2, a „Wróć do menu" do kroku 1 — z zachowanym wyborem.
+ */
+export function quickStartInitial(
+  mode: 'translation' | 'correction',
+  setIds: readonly string[],
+  focusWords: readonly string[] = [],
+  lessonIds: readonly string[] = [],
+): FreePracticeInitial {
+  const words = Array.from(new Set(focusWords.map((w) => String(w ?? '').trim()).filter(Boolean)));
+  return {
+    mode,
+    step: 'start',
+    quick: true,
+    setIds: [...setIds],
+    lessonIds: [...lessonIds],
+    ...(words.length > 0 ? { focusWords: words } : {}),
+  };
 }
 
 /**
- * Skrót „Przećwicz w zdaniach AI" (zestaw, fiszki, historia lekcji): menu z Tłumaczeniem i wstępnie
- * wybranym zakresem, od razu na kroku zakresu. Nieznany albo pusty zakres → menu od początku,
- * ale nadal z Tłumaczeniem.
+ * Skrót „Przećwicz w zdaniach AI" (zestaw, fiszki, historia lekcji): gdy zakres jest jednoznaczny
+ * (jeden znany zestaw albo lekcja) — szybki start od kroku 3 z Tłumaczeniem; nieznany albo pusty
+ * zakres → menu od początku, ale nadal z Tłumaczeniem.
  */
 export function shortcutInitial(
   rawId: string | null | undefined,
@@ -178,10 +215,10 @@ export function shortcutInitial(
   if (!rawId) return fallback;
   if (shortcutKind(rawId) === 'lesson') {
     const lessonId = resolveLessonShortcut(rawId, lessons);
-    return lessonId ? { mode: 'translation', step: 'scope', lessonIds: [lessonId] } : fallback;
+    return lessonId ? quickStartInitial('translation', [], [], [lessonId]) : fallback;
   }
   const set = sets.find((candidate) => candidate.id === rawId);
-  return set && isSetSelectable(set) ? { mode: 'translation', step: 'scope', setIds: [rawId] } : fallback;
+  return set && isSetSelectable(set) ? quickStartInitial('translation', [rawId]) : fallback;
 }
 
 // --- Zakres: wielokrotny wybór zestawów ----------------------------------------------------

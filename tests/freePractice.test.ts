@@ -4,8 +4,12 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   DEFAULT_FREE_PRACTICE_MODE,
+  DEFAULT_SENTENCE_COUNT,
+  MAX_SENTENCE_COUNT,
+  MIN_SENTENCE_COUNT,
   MAX_SENTENCE_SOURCES,
   MAX_SENTENCE_TOPICS,
+  quickStartInitial,
   MAX_TOPIC_LENGTH,
   addTopic,
   canAddTopic,
@@ -226,16 +230,29 @@ test('start zdań z AI niesie zakres i format, a nie pola pracy domowej; buildFr
   }
 });
 
-test('skrót „Przećwicz w zdaniach AI": tłumaczenie + zakres od razu na kroku zakresu; nieznany zakres → menu od początku', () => {
+test('skrót „Przećwicz w zdaniach AI": jednoznaczny zakres → szybki start od kroku 3 z Tłumaczeniem; nieznany zakres → menu od początku', () => {
   const lessons = [{ id: 'v1', lessonRecordId: 'rec1' }, { id: 'generated-rec2', lessonRecordId: 'rec2' }];
   const sets = [mk('s1', 'A'), mk('s0', 'Pusty', { cardCount: 0 })];
-  assert.deepEqual(shortcutInitial('s1', lessons, sets), { mode: 'translation', step: 'scope', setIds: ['s1'] });
-  assert.deepEqual(shortcutInitial('lesson_rec1', lessons, sets), { mode: 'translation', step: 'scope', lessonIds: ['v1'] });
-  assert.deepEqual(shortcutInitial('lesson_rec2', lessons, sets), { mode: 'translation', step: 'scope', lessonIds: ['generated-rec2'] });
-  assert.deepEqual(shortcutInitial('vocab-v1', lessons, sets), { mode: 'translation', step: 'scope', lessonIds: ['v1'] });
+  assert.deepEqual(shortcutInitial('s1', lessons, sets), { mode: 'translation', step: 'start', quick: true, setIds: ['s1'], lessonIds: [] });
+  assert.deepEqual(shortcutInitial('lesson_rec1', lessons, sets), { mode: 'translation', step: 'start', quick: true, setIds: [], lessonIds: ['v1'] });
+  assert.deepEqual(shortcutInitial('lesson_rec2', lessons, sets), { mode: 'translation', step: 'start', quick: true, setIds: [], lessonIds: ['generated-rec2'] });
+  assert.deepEqual(shortcutInitial('vocab-v1', lessons, sets), { mode: 'translation', step: 'start', quick: true, setIds: [], lessonIds: ['v1'] });
   assert.deepEqual(shortcutInitial('s0', lessons, sets), { mode: 'translation' }, 'pusty zestaw nie jest do wyboru');
   assert.deepEqual(shortcutInitial('lesson_nieznana', lessons, sets), { mode: 'translation' });
   assert.deepEqual(shortcutInitial(null, lessons, sets), { mode: 'translation' });
+});
+
+test('szybki start z „Co dalej?": krok 3, rodzaj, zestawy i słowa słabe (bez powtórek i pustych), liczba zdań 1–20', () => {
+  const initial = quickStartInitial('correction', ['a', 'b'], ['hesitate', ' hesitate ', '', 'run out of']);
+  assert.deepEqual(initial, { mode: 'correction', step: 'start', quick: true, setIds: ['a', 'b'], lessonIds: [], focusWords: ['hesitate', 'run out of'] });
+  assert.ok(!('focusWords' in quickStartInitial('translation', ['a'])), 'bez słów słabych pole nie istnieje');
+  assert.equal(DEFAULT_SENTENCE_COUNT, 5);
+  assert.deepEqual([MIN_SENTENCE_COUNT, MAX_SENTENCE_COUNT], [1, 20]);
+  // start niesie count i focusWords tylko dla zdań z AI
+  const launch = buildFreeLaunch('translation', { setIds: ['a'], lessonIds: [] }, 7, ['hesitate']);
+  assert.deepEqual(launch, { view: 'free-sentences', mode: 'translation', format: 'typing', setIds: ['a'], lessonIds: [], topics: [], count: 7, focusWords: ['hesitate'] });
+  assert.ok(!Object.keys(launch).some((key) => /task|homework|status/i.test(key)));
+  assert.ok(!('focusWords' in (buildFreeLaunch('translation', { setIds: ['a'], lessonIds: [] }, 5, []) as object)));
 });
 
 test('zapis wyniku z wielu zestawów: jeden saveSession na zestaw, statystyki liczone z wyników zestawu', () => {

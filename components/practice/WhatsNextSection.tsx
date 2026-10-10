@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React from 'react';
 import i18n from 'i18next';
 import { HelpCircle, Languages, CheckCircle2, ArrowLeft, RotateCcw } from 'lucide-react';
 import Card from '../ui/Card';
 import Button from '../ui/Button';
-import SentenceCountSlider from './SentenceCountSlider';
 
 export interface WhatsNextSectionProps {
   weakWords?: string[];
   onStartQuiz: () => void;
-  onStartSentences: (format: 'translation' | 'correction', count: number) => void;
+  /** Tłumaczenie / Korekta: otwiera ćwiczenia dowolne od kroku 3 (suwak liczby zdań i „Generuj"). */
+  onStartSentences: (format: 'translation' | 'correction') => void;
   onBack: () => void;
   onReplay?: () => void;
   className?: string;
@@ -22,8 +22,6 @@ export const WhatsNextSection: React.FC<WhatsNextSectionProps> = ({
   onReplay,
   className = '',
 }) => {
-  const [translationCount, setTranslationCount] = useState(5);
-  const [correctionCount, setCorrectionCount] = useState(5);
   const uniqueWeakWords = Array.from(new Set(weakWords.filter(Boolean)));
 
   return (
@@ -102,13 +100,8 @@ export const WhatsNextSection: React.FC<WhatsNextSectionProps> = ({
               </p>
             </div>
           </div>
-          <SentenceCountSlider
-            id="whats-next-translation-slider"
-            value={translationCount}
-            onChange={setTranslationCount}
-          />
           <Button
-            onClick={() => onStartSentences('translation', translationCount)}
+            onClick={() => onStartSentences('translation')}
             className="w-full pointer-coarse:min-h-11"
             data-testid="whats-next-start-translation"
           >
@@ -132,13 +125,8 @@ export const WhatsNextSection: React.FC<WhatsNextSectionProps> = ({
               </p>
             </div>
           </div>
-          <SentenceCountSlider
-            id="whats-next-correction-slider"
-            value={correctionCount}
-            onChange={setCorrectionCount}
-          />
           <Button
-            onClick={() => onStartSentences('correction', correctionCount)}
+            onClick={() => onStartSentences('correction')}
             className="w-full pointer-coarse:min-h-11"
             data-testid="whats-next-start-correction"
           >
