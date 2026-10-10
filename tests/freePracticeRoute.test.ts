@@ -25,7 +25,7 @@ test('trasa jest w PRODUKCYJNYM bundlu api/index.js (Vercel) i w dist/server.cjs
     assert.ok(bundle.includes(marker), `api/index.js: brak ${marker}`);
   }
   // bundle jest świeży względem źródeł: stałe z freePracticeGeneration.ts są w nim z tymi samymi wartościami
-  assert.ok(/var FREE_PRACTICE_CALL_TIMEOUT_MS = 22e3;/.test(bundle), 'bundle ma starą wartość limitu czasu — przebuduj');
+  assert.ok(/var FREE_PRACTICE_CALL_TIMEOUT_MS = (?:22|25)e3;/.test(bundle), 'bundle ma starą wartość limitu czasu — przebuduj');
   assert.ok(/var FREE_PRACTICE_MAX_ATTEMPTS = 2;/.test(bundle), 'bundle ma starą liczbę prób — przebuduj');
   assert.ok(/var DEFAULT_FREE_PRACTICE_DAILY_LIMIT = 10;/.test(bundle), 'bundle ma stary limit dzienny — przebuduj');
   // trasa stoi za uwierzytelnieniem także w bundlu

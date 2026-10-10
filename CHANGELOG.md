@@ -198,6 +198,34 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### 🎯 „Ćwiczenia dowolne: rozgrzewka, potem trudniejsza praktyka" (Etapy R1–R6, 2026-10-10, niewypchnięte)
+Przebudowa „Ćwiczeń dowolnych" w jeden spójny przepływ: rozgrzewka (fiszki, dopasowanie), a następnie trudniejsza praktyka (quiz, tłumaczenie, korekta) z ekranem „Co dalej?" i personalizacją.
+- **R1 — Układ menu (`FreePracticeScreen`):**
+  - Sekcja 1: „Rozpocznij tutaj – rozgrzewka" z 2 dużymi kafelkami: Fiszki (wyróżnione, plakietka `★ Polecane na start`) i Dopasowanie.
+  - Sekcja 2: „Trudniejsza praktyka" z 3 mniejszymi kafelkami: Tłumaczenie zdań, Quiz, Korekta zdań (z dopiskiem „Najlepiej po rozgrzewce — utrwal wiedzę w praktyce").
+  - Usunięto „Własny temat" z interfejsu i przepływu klienta.
+- **R2 — Wybór zestawu i własne zestawy (`FreePracticeScreen`, `CreateCustomSetModal`):**
+  - Krok 2 podzielony na 3 zakładki: „Z moich lekcji", „Gotowe zestawy", „Moje zestawy".
+  - Wyszukiwarka, licznik wybranych zestawów (do 10) i kart. Puste zestawy zablokowane. Minimalna liczba kart: Quiz 4, Dopasowanie 2.
+  - Kreator „Utwórz własny zestaw" z wieloliniowym wklejaniem par słowo/tłumaczenie (`utils/customSetParser.ts`), walidacją i zapisem przez istniejącą ścieżkę kursanta w Firestore bez zmian w regułach (`firestore.rules`).
+- **R3 — Fiszki: logika powtórek „Nie umiem" (`utils/flashcardQueue.ts`, `FlashcardStudyScreen`):**
+  - Karta oznaczona „Nie umiem" wraca do kolejki po ok. 3 kartach i powtarza się aż do oceny „Umiem".
+  - Licznik postępu: „Opanowano N z M" (i18n).
+  - Zabezpieczenie przed pętlą: po 4 kolejnych „Nie umiem" pojawia się przycisk „Zostaw na później" (karta trafia do `weakWords`).
+  - SRS / `saveSession`: zapisuje wyłącznie PIERWSZĄ ocenę każdej karty w sesji. Lista słów słabych (`weakWords`) jest zbierana i przekazywana do ekranu „Co dalej?".
+- **R4 — Dopasowanie (`MatchingGame.tsx`):**
+  - Zaokrąglone kafelki (`rounded-2xl`) z tokenami motywu, czytelną typografią i wyraźnymi stanami (neutralny, wybrany, błąd).
+  - Przyciski wymowy UK/US wyłącznie na kafelkach angielskich (`left`), brak na kafelkach polskich.
+  - Animacja dopasowania: puls 0,3 s, a następnie zniknięcie kafelków (fade + scale, 0,35 s) z zachowaniem miejsc w siatce (brak skoku układu). Reduced-motion: natychmiastowe ukrycie.
+  - Kontener wypełnia viewport (`min-h-[calc(100dvh-5rem)]`), brak prześwitu tła. Gromadzenie słów z błędami do `wrongWords`.
+- **R5 — Ekran „Co dalej?" i personalizacja (`WhatsNextSection.tsx`, `SentenceCountSlider.tsx`):**
+  - Po zakończeniu fiszek i dopasowania pojawia się sekcja „Co dalej?" z propozycją: Quiz (bez AI, od słów słabych), Tłumaczenie zdań, Korekta zdań (z przekazaniem `focusWords` i `count` do `POST /api/free-practice/generate`), powrót do menu lub ponowna rozgrywka.
+  - Suwak liczby zdań 1–20 w kroku 3 i na ekranie „Co dalej?": natywny range, duży uchwyt ≥ 44 px, przyciski dotykowe `−` i `+` (44 px), `aria-valuetext`.
+  - Serwer: `focusWords` (max 30 słów po max 60 znaków) i `count` (1–20) zwalidowane, oczyszczone i umieszczone w bloku `<focus_words>`.
+- **R6 — Porządki, weryfikacja i dokumentacja:**
+  - Weryfikacja braku modyfikacji reguł Firestore, braku zapisów do `specialTasks` w trybie `free`.
+  - Wszystkie etapy pokryte testami jednostkowymi, `tsc --noEmit` 0 błędów, produkcyjny build bundle zweryfikowany.
+
 ### 📱 Widok mobilny kursanta: overflow, dvh/safe-area, gesty kart, cele dotykowe, tekst, akcent „Ćwiczeń dowolnych" (2026-10-09)
 Seria 7 commitów (A, ikona błędu, B, E=PWA wyżej, C, D, tekst, F). Pomiar na harnessie: prawdziwy `App` z zalogowanym kursantem i stubami Firebase (esbuild + Tailwind + Playwright, Chromium i WebKit, 360/375/390/430 i 1280 px, 21 ekranów kursanta wraz z `/hw?token=`). **Stan końcowy: 0 przepełnień dokumentu, 0 uciętych elementów (było 845), 0 celów dotykowych < 44 px, 0 tekstu < 12 px, 0 pól < 16 px.**
 - **A — overflow:** korzeń ekranu `max-w-* mx-auto` jest dzieckiem `flex-col`; auto-margines wyłącza rozciąganie, więc szerokość brała się z treści (`truncate` w długim tytule = 672 px) i `main` (`overflow-x-hidden`) obcinał ekran po prawej. Wrapper w `Dashboard` dostaje `max-md:[&>*]:w-full max-md:[&>*]:min-w-0` (od `md` układ bez zmian — część ekranów jest celowo węższa), komentarze lektora `overflow-wrap:anywhere`, karta zestawu `max-sm:w-full`, data lekcji przez `utils/displayDate.ts` zamiast surowego ISO. Ikona „Zgłoś problem" na wąskim ekranie/dotyku schowana, wejście w menu pod kołem zębatym (`utils/bugReportEvents.ts`).
