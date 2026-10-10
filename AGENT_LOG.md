@@ -7133,3 +7133,13 @@ Zrobione: push `68c2770..5c00a80` (tsc 0, testy 1547/1547, build OK, `git diff a
 Nie dokończone / do sprawdzenia: S1 krok 1 czeka na „OK” i decyzje (plan Vercela, e-mail przy wydaniu, status, token `/hw`); `POST /api/homework-v2/assign` bez sprawdzenia roli (do weryfikacji osobno).
 Decyzje architektoniczne: brak (tylko propozycje w CHANGELOG BT).
 Ryzyka: `firestore.rules`, `storage.rules`, `server.ts`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE.
+
+---
+
+2026-10-10 — Claude Code / Sonnet 5.5
+
+Zadanie: SEC2 — poprawki bezpieczeństwa z audytu SEC1 (osobny worktree `../recall-sec2` z origin/main, gałąź `sec2-security`, bez pusha, bez wdrażania reguł).
+Zrobione: p.2 homework-v2 generate/assign (admin + flaga + walidacja), p.3 notify-graded (admin + treść z dokumentu zadania), p.4 `/api/scenario/*` (admin), p.6 `/api/gemini/generate` (ciało 2 MB, limit na użytkownika, sufit tokenów); harness `tests/routes` + `npm run test:routes`; bundle `api/index.js` przebudowany osobnym commitem. Szczegóły: CHANGELOG BV.
+Nie dokończone / do sprawdzenia: p.1 (`system/**`) i p.5 (proxy openai/anthropic/deepseek) ZATRZYMANE — używa ich kursant (plan w CHANGELOG BV). Reguły niewdrożone. `npm run test:rules` ma 1 test padający już na origin/main (notatnik po ID). Nie sprawdzono na prawdziwym Firestore/Gemini/Resend.
+Decyzje architektoniczne: (1) „lektor-właściciel kursanta" nie istnieje w modelu danych (`isAdmin()` = każdy lektor), więc walidacja ogranicza się do istnienia konta; (2) limit Gemini fail-open przy awarii bazy (ochrona kosztowa, nie autoryzacja); (3) ciało gemini 2 MB zamiast 1 MB — brak pomiaru realnych promptów; (4) przebudowany `api/index.js` jest w repo, bo Vercel serwuje go z commita.
+Ryzyka: `firestore.rules`, middleware autoryzacji, ścieżki tokenowe — NIETKNIĘTE. Zmieniono, które trasy w `server.ts` używają `requireFirebaseAdmin`. Konflikt przy rebase S1: `server.ts`, `api/index.js`, `CHANGELOG.md`, `AGENT_LOG.md`.
