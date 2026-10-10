@@ -3,7 +3,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
-import { FREE_PRACTICE_CALL_TIMEOUT_MS, FREE_PRACTICE_MAX_ATTEMPTS } from '../utils/freePracticeGeneration';
+import {
+  FREE_PRACTICE_CALL_TIMEOUT_MS,
+  FREE_PRACTICE_MAX_ATTEMPTS,
+  MAX_FOCUS_WORDS,
+  MAX_FOCUS_WORD_LENGTH,
+  MAX_FREE_COUNT,
+} from '../utils/freePracticeGeneration';
 
 const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url), 'utf8');
 const strip = (src: string) => src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
@@ -25,7 +31,15 @@ test('trasa jest w PRODUKCYJNYM bundlu api/index.js (Vercel) i w dist/server.cjs
     assert.ok(bundle.includes(marker), `api/index.js: brak ${marker}`);
   }
   // bundle jest świeży względem źródeł: stałe z freePracticeGeneration.ts są w nim z tymi samymi wartościami
-  assert.ok(/var FREE_PRACTICE_CALL_TIMEOUT_MS = (?:22|25)e3;/.test(bundle), 'bundle ma starą wartość limitu czasu — przebuduj');
+  // Oczekiwane wartości biorą się Z ŹRÓDŁA (import wyżej), nie z wpisanych na sztywno liczb — zmiana stałej
+  // bez przebudowania bundla musi wywalić test. esbuild zapisuje 25_000 jako 25e3.
+  const esbuildNumber = (n: number) => (n >= 1000 && n % 1000 === 0 ? `${n / 1000}e3` : String(n));
+  assert.ok(bundle.includes(`var FREE_PRACTICE_CALL_TIMEOUT_MS = ${esbuildNumber(FREE_PRACTICE_CALL_TIMEOUT_MS)};`), `bundle ma inną wartość limitu czasu niż źródło (${FREE_PRACTICE_CALL_TIMEOUT_MS}) — przebuduj`);
+  assert.ok(bundle.includes(`var MAX_FREE_COUNT = ${MAX_FREE_COUNT};`), `bundle ma inny limit liczby zdań niż źródło (${MAX_FREE_COUNT}) — przebuduj`);
+  assert.equal(MAX_FREE_COUNT, 20, 'limit liczby zdań w jednym żądaniu: 20 (suwak 1–20)');
+  assert.ok(bundle.includes(`var MAX_FOCUS_WORDS = ${MAX_FOCUS_WORDS};`), `bundle ma inny limit słów słabych niż źródło (${MAX_FOCUS_WORDS}) — przebuduj`);
+  assert.ok(bundle.includes(`var MAX_FOCUS_WORD_LENGTH = ${MAX_FOCUS_WORD_LENGTH};`), 'bundle ma inną długość słowa słabego niż źródło — przebuduj');
+  assert.ok(bundle.includes('jsonBlock("focus_words"') && bundle.includes('too_many_focus_words'), 'bundle obsługuje focusWords (blok danych i limit)');
   assert.ok(/var FREE_PRACTICE_MAX_ATTEMPTS = 2;/.test(bundle), 'bundle ma starą liczbę prób — przebuduj');
   assert.ok(/var DEFAULT_FREE_PRACTICE_DAILY_LIMIT = 10;/.test(bundle), 'bundle ma stary limit dzienny — przebuduj');
   // trasa stoi za uwierzytelnieniem także w bundlu
