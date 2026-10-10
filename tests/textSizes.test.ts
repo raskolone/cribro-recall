@@ -68,7 +68,7 @@ test('treść ćwiczeń ma 16 px: opcje, klocki, zdanie z luk, kafelki dopasowan
   assert.match(ex, /rounded-xl border text-left text-base font-semibold/);
   assert.match(src('components/dashboard/HomeworkWarmupScrambler.tsx'), /rounded-xl border text-base font-bold/);
   assert.match(src('components/flashcards/MatchingGame.tsx'), /font-medium text-base md:text-lg/);
-  assert.match(src('components/flashcards/FlashcardStudyScreen.tsx'), /py-6 text-lg! h-auto/);
+  assert.match(src('utils/quizOptionStates.ts'), /min-h-14 px-4 py-3 rounded-2xl border-2 text-base sm:text-lg/);
   assert.match(src('components/dashboard/HomeworkWarmupCards.tsx'), /mt-4 text-base text-content italic/);
   assert.match(src('components/practice/TranslationExercise.tsx'), /rounded-full border text-base font-medium/);
 });

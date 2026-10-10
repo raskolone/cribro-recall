@@ -16,6 +16,8 @@ import FlashcardFace from './FlashcardFace';
 import { enterFromVars, enterVars, exitVars, ratingExitVars } from '../../utils/flashcardCardMotion';
 import { prefersReducedMotion } from '../../services/gsapAnimations';
 import SwipeRatingHint from './SwipeRatingHint';
+import QuizOption from './QuizOption';
+import { quizOptionState } from '../../utils/quizOptionStates';
 import { SWIPE_TOUCH_ACTION_CLASS } from '../../hooks/useCardSwipe';
 import { useRatingSwipe } from '../../hooks/useRatingSwipe';
 import ConfirmModal from '../ui/ConfirmModal';
@@ -641,7 +643,7 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
   const currentCard = cards[currentIndex];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8">
+    <div className="w-full max-w-3xl mx-auto flex flex-col gap-5 sm:gap-8 px-4 sm:px-0 pb-4 max-md:flex-1">
       <div className="flex items-center justify-between">
         <button onClick={() => { showConfirm(
             t('flashcards.confirmQuitTitle') || 'Zakończ', 
@@ -671,41 +673,39 @@ const QuizMode = ({ cards: initialCards, setId, onBack, saveSession, t, showConf
         />
       </div>
 
-      <Card className="relative flex flex-col items-center justify-center text-center p-12 border border-white/10 min-h-[200px]">
-        <div className="absolute top-4 right-4 z-10 flex gap-2">
+      {/* Na telefonie karta zaczyna treść pod rzędem przycisków wymowy (pt-16), żeby etykieta
+          i fraza nie nachodziły na mikrofon i UK/US. */}
+      <Card className="relative flex flex-col items-center justify-center text-center px-5 pb-8 pt-16 sm:p-12 border border-white/10 min-h-[200px]">
+        <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-10 flex gap-2">
           <PronunciationMic targetWord={currentCard?.term.replace(/<[^>]+>/g, '') || ''} />
           {currentCard?.term && <TTSButtons text={currentCard.term} />}
         </div>
-        <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-8">{t('flashcards.term')}</div>
-        <div className="text-4xl md:text-5xl font-bold" dangerouslySetInnerHTML={{ __html: currentCard?.term || '' }} />
+        <div className="text-sm font-mono text-content-muted uppercase tracking-widest mb-4 sm:mb-8">{t('flashcards.term')}</div>
+        <div className="text-3xl sm:text-4xl md:text-5xl font-bold break-words max-w-full" dangerouslySetInnerHTML={{ __html: currentCard?.term || '' }} />
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {options.map((option, i) => {
-          let btnClass = "py-6 text-lg! h-auto whitespace-normal break-words"; // `!`: rozmiar z <Button> (text-sm) wygrywał z text-lg
-          if (selectedOption !== null) {
-            if (option === currentCard.definition) {
-              btnClass += " bg-primary/20 border-primary text-primary";
-            } else if (option === selectedOption) {
-              btnClass += " bg-danger/20 border-danger text-danger";
-            } else {
-              btnClass += " opacity-50";
-            }
-          }
-          
-          return (
-            <Button 
-              key={i} 
-              variant="secondary"
-              className={btnClass} 
-              onClick={() => handleAnswer(option)}
-              disabled={selectedOption !== null}
-            >
-              <span dangerouslySetInnerHTML={{ __html: option }} />
-            </Button>
-          );
-        })}
+      {/* Odpowiedzi na dole (`mt-auto` na telefonie): w zasięgu kciuka, nad dolną krawędzią. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 max-md:mt-auto" role="group" aria-label={t('flashcards.definition')}>
+        {options.map((option, i) => (
+          <QuizOption
+            key={i}
+            html={option}
+            state={quizOptionState(
+              selectedOption === null ? 'answering' : 'answered',
+              option === currentCard.definition,
+              option === selectedOption,
+            )}
+            onSelect={() => handleAnswer(option)}
+          />
+        ))}
       </div>
+      <p role="status" aria-live="polite" className="sr-only">
+        {selectedOption === null
+          ? ''
+          : isCorrect
+            ? i18n.t('Poprawnie')
+            : `${i18n.t('Niepoprawnie')}. ${i18n.t('Poprawna odpowiedź')}: ${stripHtml(currentCard.definition)}`}
+      </p>
     </div>
   );
 };
