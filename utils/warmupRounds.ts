@@ -1,5 +1,6 @@
 import { HomeworkType } from '../types';
 import { CanonicalExerciseType, normalizeExercise } from './normalizeExercise';
+import { MIN_SENTENCE_WORDS, pickDistractors, resolveChunks } from './warmupChunks';
 
 /**
  * Adapter kanoniczny dla rozgrzewki (`HomeworkWarmupScrambler.tsx`).
@@ -23,8 +24,13 @@ export interface WarmupRound {
   /** Zdanie wzorcowe do ułożenia z tokenów. */
   targetSentence: string;
   hint?: string;
-  /** Zdefiniowane z góry fragmenty (chunks). Jeśli brak, używa się podziału na słowa. */
-  chunks?: string[];
+  /**
+   * Kawałki (frazy po 2–4 słowa) układane przez kursanta — ZAWSZE ustawione. Z danych rozgrzewki,
+   * `puzzleChunks` zdania albo z podziału zdania (`utils/warmupChunks.ts`); nigdy pojedyncze słowa.
+   */
+  chunks: string[];
+  /** Do 1 dodatkowego CAŁEGO kawałka z innej rundy tego samego zadania (kafelek, który nie należy do odpowiedzi). */
+  distractors: string[];
 }
 
 const countWords = (sentence: string): number =>
@@ -57,6 +63,10 @@ export function buildWarmupRounds(
       if (!polish) return;
       if (!Array.isArray(ex?.chunks) || ex.chunks.length === 0) return;
       if (typeof ex?.correctSentence !== 'string' || !ex.correctSentence.trim()) return;
+      // Kawałki z danych; pojedyncze słowa (np. „I") scalane z sąsiadem, a gdy dane nie dają
+      // użytecznych kawałków — podział zdania. Zdanie za krótkie na frazy → runda pominięta.
+      const chunks = resolveChunks([ex.chunks], ex.correctSentence);
+      if (chunks.length === 0) return;
       warmupRounds.push({
         itemIndex: idx, // Rozgrzewki mają osobną indeksację
         type: 'warmup_chunk',
@@ -64,11 +74,12 @@ export function buildWarmupRounds(
         instruction: WARMUP_INSTRUCTION,
         sourceLabel: polish,
         targetSentence: ex.correctSentence,
-        chunks: ex.chunks,
+        chunks,
+        distractors: [],
         hint: '',
       });
     });
-    return warmupRounds;
+    return withDistractors(warmupRounds);
   }
 
   // 2. Stary format (warmup === undefined): budujemy z zadań (sentences)
@@ -108,8 +119,16 @@ export function buildWarmupRounds(
 
     const trimmed = targetSentence.trim();
     const wordCount = countWords(trimmed);
-    // Ten sam próg co dotychczas: 3–20 słów
-    if (wordCount < 3 || wordCount > 20) return;
+    // Dolny próg to dwa kawałki po dwa słowa (kafelki nie są pojedynczymi słowami); górny jak dotąd.
+    if (wordCount < MIN_SENTENCE_WORDS || wordCount > 20) return;
+
+    // Kawałki: `puzzleChunks` zdania (generator zdań), `tokens` zadania word_order (gdy są frazami),
+    // w ostateczności podział zdania. Pojedyncze słowa nigdy nie stają się kafelkami.
+    const chunks = resolveChunks(
+      [Array.isArray(raw?.puzzleChunks) ? raw.puzzleChunks : undefined, exercise.type === 'word_order' ? exercise.tokens : undefined],
+      trimmed
+    );
+    if (chunks.length === 0) return;
 
     rounds.push({
       itemIndex,
@@ -119,8 +138,20 @@ export function buildWarmupRounds(
       sourceLabel,
       targetSentence: trimmed,
       hint: exercise.hint,
+      chunks,
+      distractors: [],
     });
   });
 
-  return rounds.slice(0, 3);
+  return withDistractors(rounds.slice(0, 3));
+}
+
+/** Dokłada każdej rundzie najwyżej jeden dystraktor — cały kawałek z innej rundy tego samego zadania. */
+function withDistractors(rounds: WarmupRound[]): WarmupRound[] {
+  if (rounds.length < 2) return rounds;
+  return rounds.map((round, index) => {
+    // Kolejność „następna runda najpierw" — wynik deterministyczny i różny dla kolejnych rund.
+    const others = [...rounds.slice(index + 1), ...rounds.slice(0, index)];
+    return { ...round, distractors: pickDistractors(round.chunks, others) };
+  });
 }

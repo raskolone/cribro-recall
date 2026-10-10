@@ -88,7 +88,7 @@ test('describeWarmupFailure: unikalne powody po polsku', () => {
 
 // --- buildWarmupRounds ---
 
-const sentences = [{ chunks: ['I', 'like', 'sentence'], correctSentence: 'I like sentence', polishHint: 'Lubię zdanie.' }];
+const sentences = [{ chunks: ['I', 'really', 'like', 'this', 'sentence'], correctSentence: 'I really like this sentence', polishHint: 'Naprawdę lubię to zdanie.' }];
 
 test('buildWarmupRounds: undefined -> stara rozgrzewka', () => {
   assert.equal(buildWarmupRounds(sentences, { warmup: undefined, type: 'word_order' }).length, 1);
@@ -102,7 +102,7 @@ test('buildWarmupRounds: stary kształt (polishHint, bez polishTranslation) -> j
   const old = [{ chunks: ['a b', 'c d', 'e f'], correctSentence: 'a b c d e f', polishHint: 'Stare.' }];
   const rounds = buildWarmupRounds(sentences, { warmup: old, type: 'word_order' });
   assert.equal(rounds.length, 1);
-  assert.equal(rounds[0].targetSentence, 'I like sentence');
+  assert.equal(rounds[0].targetSentence, 'I really like this sentence');
 });
 
 test('buildWarmupRounds: mieszany -> tylko elementy z polishTranslation', () => {

@@ -12,13 +12,14 @@ import {
 } from 'lucide-react';
 import i18n from 'i18next';
 import { buildWarmupRounds, WarmupRound } from '../../utils/warmupRounds';
+import { hashString, stableShuffle } from '../../utils/warmupChunks';
 import { classifyUnscrambleAttempt, UnscrambleResult } from '../../utils/unscrambleGrading';
 import { HomeworkType } from '../../types';
 
 export interface WarmupAttemptResult {
   /** Indeks elementu w oryginalnej tablicy `sentences` — identyfikator zgodny z istniejącym modelem odpowiedzi. */
   itemIndex: number;
-  /** Rzeczywista odpowiedź kursanta, w kolejności, w jakiej ułożył słowa. */
+  /** Rzeczywista odpowiedź kursanta: kawałki (frazy) w kolejności, w jakiej je ułożył. */
   answerOrder: string[];
   result: UnscrambleResult;
 }
@@ -37,21 +38,25 @@ interface HomeworkWarmupScramblerProps {
   finishLabel?: string;
 }
 
-function extractWords(sentence: string): string[] {
-  if (!sentence) return [];
-  const clean = sentence.trim().replace(/\s+/g, ' ');
-  return clean.split(' ').filter(Boolean);
+/** Kafelek puli: kawałek odpowiedzi albo dystraktor (cały kawałek z innej rundy tego samego zadania). */
+interface BankTile {
+  id: number;
+  text: string;
+  isDistractor: boolean;
 }
 
-// Kolorowe, estetyczne palety kafelków w stylu Nocturne Green & Emerald
-const TILE_COLORS = [
-  'bg-emerald-500/15 border-emerald-500/35 text-emerald-300 hover:bg-emerald-500/25',
-  'bg-teal-500/15 border-teal-500/35 text-teal-300 hover:bg-teal-500/25',
-  'bg-cyan-500/15 border-cyan-500/35 text-cyan-300 hover:bg-cyan-500/25',
-  'bg-rose-500/15 border-rose-500/35 text-rose-300 hover:bg-rose-500/25',
-  'bg-indigo-500/15 border-indigo-500/35 text-indigo-300 hover:bg-indigo-500/25',
-];
+const roundKey = (round: WarmupRound): string => `${round.itemIndex}|${round.targetSentence}`;
 
+/**
+ * Rozgrzewka klockowa: polskie zdanie jako polecenie, angielska odpowiedź składana z kafelków-
+ * KAWAŁKÓW (frazy po 2–4 słowa, `utils/warmupChunks.ts`). Lekka forma: bez punktów i kar, można
+ * pominąć w każdej chwili.
+ *
+ * Kafelki są STABILNE: kolejność puli ustalana raz na rundę (ziarno z treści rundy i sesji, nie
+ * z tożsamości propsów), wybrany kafelek zostaje w puli jako puste miejsce, a strefa odpowiedzi ma
+ * stałą wysokość (niewidoczny „miernik" z kompletną odpowiedzią), więc nic się nie przesuwa po
+ * kliknięciu. Ruch tylko CSS, wyłączany przy prefers-reduced-motion.
+ */
 export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = ({
   sentences,
   task,
@@ -60,11 +65,22 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   onAttemptResult,
   finishLabel = 'Rozpocznij pracę domową',
 }) => {
-  const warmupItems: WarmupRound[] = useMemo(() => buildWarmupRounds(sentences, task), [sentences, task]);
+  // Rodzic bywa przerenderowany z nową (równoważną) tożsamością `task`/`sentences` — np. migawka
+  // bazy po zapisie próby albo `task={{ type: 'translation' }}` w JSX. Rundy mają więc stabilną
+  // tożsamość dopóki ich TREŚĆ się nie zmieni; inaczej pula tasowałaby się przy każdym renderze,
+  // a wybrane indeksy wskazywałyby inne kafelki.
+  const computedRounds = buildWarmupRounds(sentences, task);
+  const roundsSignature = JSON.stringify(
+    computedRounds.map((r) => [r.itemIndex, r.targetSentence, r.sourceLabel, r.hint, r.chunks, r.distractors])
+  );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const warmupItems: WarmupRound[] = useMemo(() => computedRounds, [roundsSignature]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Ziarno sesji: pula wygląda inaczej przy kolejnym podejściu, ale nie zmienia się w trakcie rundy.
+  const sessionSeedRef = useRef<number>(Math.floor(Math.random() * 2 ** 31));
 
-  // Aktualnie wybrane kafelki (indeksy ze shuffled banku)
-  const [selectedWordIndices, setSelectedWordIndices] = useState<number[]>([]);
+  // Aktualnie wybrane kafelki (id kafelków puli, w kolejności wyboru)
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [result, setResult] = useState<UnscrambleResult | null>(null);
   const [showHint, setShowHint] = useState(false);
 
@@ -83,6 +99,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   }, [warmupItems, onSkip]);
 
   const currentItem = warmupItems[currentIndex];
+  const currentKey = currentItem ? roundKey(currentItem) : '';
 
   // Zwalnia blokadę przejścia dopiero, gdy runda wskazywana przez currentIndex
   // faktycznie się wyrenderowała — chroni przed drugim, szybkim dotknięciem
@@ -91,47 +108,47 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
     transitionLockRef.current = false;
   }, [currentIndex]);
 
-  // Słowa lub fragmenty wzorcowe
-  const targetWords = useMemo(() => {
-    if (!currentItem) return [];
-    if (currentItem.chunks && currentItem.chunks.length > 0) {
-      return currentItem.chunks;
-    }
-    return extractWords(currentItem.targetSentence);
-  }, [currentItem]);
+  // Odpowiedź wzorcowa: kawałki w poprawnej kolejności
+  const targetChunks = useMemo(() => (currentItem ? currentItem.chunks : []), [currentItem]);
 
-  // Pomieszany bank słów z unikalnymi identyfikatorami
-  const shuffledBank = useMemo(() => {
-    if (!targetWords || targetWords.length === 0) return [];
-    const bank = targetWords.map((word, originalIdx) => ({
-      word,
-      originalIdx,
-    }));
-    // Fisher-Yates shuffle
-    for (let i = bank.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [bank[i], bank[j]] = [bank[j], bank[i]];
-    }
-    return bank;
-  }, [targetWords]);
+  // Pula: kawałki odpowiedzi + dystraktory, w stałej dla rundy kolejności
+  const bank: BankTile[] = useMemo(() => {
+    if (!currentItem || currentItem.chunks.length === 0) return [];
+    const tiles: BankTile[] = [
+      ...currentItem.chunks.map((text) => ({ text, isDistractor: false })),
+      ...currentItem.distractors.map((text) => ({ text, isDistractor: true })),
+    ].map((tile, id) => ({ ...tile, id }));
+    const seed = hashString(`${currentKey}|${sessionSeedRef.current}`);
+    return stableShuffle(tiles, seed, (order) => {
+      const answerOrder = order.filter((t) => !t.isDistractor).map((t) => t.text);
+      return order.every((t) => !t.isDistractor) && answerOrder.every((text, i) => text === currentItem.chunks[i]);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentKey]);
+
+  // Miernik wysokości strefy odpowiedzi: pełna poprawna odpowiedź, najdłuższe kawałki pierwsze
+  // (najgorszy przypadek zawijania), niewidoczna i poza dostępnością.
+  const sizerChunks = useMemo(() => [...targetChunks].sort((a, b) => b.length - a.length), [targetChunks]);
 
   if (!currentItem || warmupItems.length === 0) {
     return null;
   }
 
+  const tileById = (id: number) => bank.find((tile) => tile.id === id);
   const isDone = result === 'correct' || result === 'close';
+  const answerLength = targetChunks.length;
 
-  // Sprawdzamy czy ułożone słowa tworzą prawidłowe (lub "bliskie") zdanie
-  const handleSelectTile = (bankIndex: number) => {
-    if (isDone || selectedWordIndices.includes(bankIndex)) return;
+  // Sprawdzamy czy ułożone kawałki tworzą prawidłowe (lub "bliskie") zdanie
+  const handleSelectTile = (tileId: number) => {
+    if (isDone || selectedIds.includes(tileId) || selectedIds.length >= answerLength) return;
 
-    const nextSelected = [...selectedWordIndices, bankIndex];
-    setSelectedWordIndices(nextSelected);
+    const nextSelected = [...selectedIds, tileId];
+    setSelectedIds(nextSelected);
 
-    // Jeśli wybrano wszystkie kafelki, klasyfikujemy próbę
-    if (nextSelected.length === shuffledBank.length) {
-      const answerOrder = nextSelected.map((idx) => shuffledBank[idx].word);
-      const classification = classifyUnscrambleAttempt(answerOrder, targetWords);
+    // Gdy liczba wybranych kafelków równa się długości odpowiedzi, klasyfikujemy próbę
+    if (nextSelected.length === answerLength) {
+      const answerOrder = nextSelected.map((id) => tileById(id)?.text ?? '');
+      const classification = classifyUnscrambleAttempt(answerOrder, targetChunks);
       setResult(classification);
 
       onAttemptResult?.({
@@ -139,18 +156,20 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
         answerOrder,
         result: classification,
       });
-      // `incorrect` zostaje bez specjalnego ekranu — kursant widzi ułożone,
-      // niepasujące kafelki i może użyć "Resetuj" (istniejące zachowanie retry).
+      // `incorrect` zostaje bez ekranu wyniku — kursant widzi ułożone, niepasujące kafelki
+      // i może cofnąć kafelek albo użyć "Resetuj" (istniejące zachowanie retry).
     }
   };
 
   const handleRemoveTile = (positionInSelected: number) => {
     if (isDone) return;
-    setSelectedWordIndices((prev) => prev.filter((_, i) => i !== positionInSelected));
+    setSelectedIds((prev) => prev.filter((_, i) => i !== positionInSelected));
+    // Cofnięcie kafelka zdejmuje wskazówkę o nietrafionej odpowiedzi — kursant układa dalej.
+    setResult(null);
   };
 
   const handleReset = () => {
-    setSelectedWordIndices([]);
+    setSelectedIds([]);
     setResult(null);
   };
 
@@ -159,19 +178,12 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
     transitionLockRef.current = true;
 
     if (currentIndex < warmupItems.length - 1) {
-      // Reset stanu rundy w TYM SAMYM evencie co zmiana indeksu — jeśli reset
-      // trafiał do osobnego useEffect uruchamianego po zmianie currentIndex,
-      // pierwszy render nowej (krótszej) rundy widział jeszcze indeksy kafelków
-      // z poprzedniej (dłuższej) rundy, więc `shuffledBank[bankIndex]` wypadało
-      // poza zakres nowego banku i renderowanie kończyło się crashem
-      // "Cannot read properties of undefined (reading 'word')".
-      setSelectedWordIndices([]);
+      // Reset stanu rundy w TYM SAMYM evencie co zmiana indeksu — osobny useEffect po zmianie
+      // currentIndex dawał pierwszy render nowej rundy z identyfikatorami kafelków poprzedniej.
+      setSelectedIds([]);
       setResult(null);
       setShowHint(false);
       setCurrentIndex((prev) => prev + 1);
-      // Odblokowane dopiero, gdy nowa runda faktycznie się wyrenderuje (patrz
-      // useEffect niżej) — zwolnienie od razu tutaj nie chroniłoby przed
-      // szybkim podwójnym dotknięciem w tym samym momencie.
     } else if (!completeOnceRef.current) {
       completeOnceRef.current = true;
       onComplete();
@@ -179,149 +191,166 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   };
 
   const isLast = currentIndex === warmupItems.length - 1;
+  const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, options) as string;
+
+  // Wspólny wygląd chipa (kawałka) — jedna definicja dla puli, strefy odpowiedzi i miernika.
+  const chipBase =
+    'px-3.5 py-2 rounded-xl border text-base font-bold leading-snug text-left pointer-coarse:min-h-11 pointer-coarse:min-w-11';
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-5 space-y-5 animate-in fade-in duration-300">
+    <div className="max-w-2xl mx-auto px-4 py-5 space-y-5 animate-in fade-in duration-300 motion-reduce:animate-none">
       {/* Pasek górny rozgrzewki */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/35 text-primary text-xs font-bold uppercase tracking-wider">
-            <Flame size={14} className="text-primary animate-pulse" />
-            Rozgrzewka językowa
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/35 text-text-hi text-xs font-bold uppercase tracking-wider">
+            <Flame size={14} className="text-primary" aria-hidden="true" />
+            {t('Rozgrzewka językowa')}
           </span>
-          <span className="text-[12px] font-mono text-content-muted">
-            {currentIndex + 1} z {warmupItems.length}
+          <span className="text-[12px] font-mono text-text-2" data-testid="warmup-progress">
+            {t('{{current}} z {{total}}', { current: currentIndex + 1, total: warmupItems.length })}
           </span>
         </div>
 
         <button
           type="button"
           onClick={onSkip}
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line-strong pointer-coarse:min-h-11 bg-base-100/60 hover:bg-base-100 hover:text-white text-content-muted text-xs font-semibold transition-all cursor-pointer"
-          title="Przejdź od razu do właściwych zadań"
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-line-strong pointer-coarse:min-h-11 bg-surface-flat hover:border-primary/50 text-text-hi text-xs font-semibold transition-colors motion-reduce:transition-none cursor-pointer"
+          title={t('Przejdź od razu do właściwych zadań')}
         >
-          <span>Pomiń rozgrzewkę</span>
-          <SkipForward size={13} />
+          <span>{t('Pomiń rozgrzewkę')}</span>
+          <SkipForward size={13} aria-hidden="true" />
         </button>
       </div>
 
       {/* Główna karta rozgrzewki */}
-      <div className="rounded-2xl border border-emerald-500/30 bg-base-200/80 p-5 sm:p-7 shadow-lg relative overflow-hidden backdrop-blur-md">
-        {/* Subtelny ambient glow */}
-        <div className="absolute -top-20 -right-20 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
-
-        {/* Informacja o braku oceny (ADHD-friendly: zero presji) — nagłówek odpowiada rzeczywistemu typowi zadania, nie zawsze "rozsypance" */}
-        <div className="flex items-center justify-between mb-4">
-          <span className="text-[12px] font-mono text-emerald-400 font-bold uppercase tracking-wider flex items-center gap-1.5">
-            <Zap size={13} className="text-emerald-400" />
-            Niepunktowane • {currentItem.heading}
+      <div className="rounded-2xl border border-line-strong bg-surface-flat p-5 sm:p-7 relative overflow-hidden">
+        {/* Informacja o braku oceny (zero presji) — nagłówek odpowiada zadaniu rozgrzewki */}
+        <div className="flex items-center justify-between mb-4 gap-3">
+          <span className="text-[12px] font-mono text-primary font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <Zap size={13} aria-hidden="true" />
+            {t('Niepunktowane')} • {t(currentItem.heading)}
           </span>
 
           {currentItem.hint && (
             <button
               type="button"
               onClick={() => setShowHint((v) => !v)}
-              className="inline-flex items-center gap-1 text-[12px] text-content-muted hover:text-primary font-bold transition-colors cursor-pointer"
+              aria-expanded={showHint}
+              className="inline-flex items-center gap-1 pointer-coarse:min-h-11 text-[12px] text-text-2 hover:text-text-hi font-bold transition-colors motion-reduce:transition-none cursor-pointer"
             >
-              <Lightbulb size={12} />
-              <span>{showHint ? 'Ukryj podpowiedź' : 'Podpowiedź'}</span>
+              <Lightbulb size={12} aria-hidden="true" />
+              <span>{showHint ? t('Ukryj podpowiedź') : t('Podpowiedź')}</span>
             </button>
           )}
         </div>
 
-        {/* Zdanie źródłowe (polskie zdanie do przetłumaczenia / zdanie z błędem), gdy istnieje */}
+        {/* Zdanie źródłowe: polskie zdanie do przetłumaczenia */}
         {currentItem.sourceLabel && (
-          <div className="p-4 rounded-xl bg-base-100/90 border border-line-strong mb-3 shadow-inner">
-            <p className="text-base sm:text-lg font-bold text-white leading-relaxed">
+          <div className="p-4 rounded-xl bg-base-100/60 border border-line-strong mb-3">
+            <p className="text-base sm:text-lg font-bold text-text-hi leading-relaxed" data-testid="warmup-source">
               {currentItem.sourceLabel}
             </p>
           </div>
         )}
 
-        {/* Polecenie zgodne z rzeczywistym typem zadania (te same statyczne klucze i18n co HomeworkExercise.tsx) */}
-        <div className="p-3 rounded-xl bg-base-100/60 border border-line-strong/60 mb-5">
-          <p className="text-xs sm:text-sm text-content-muted leading-relaxed">
-            {currentItem.instruction}
-          </p>
+        {/* Polecenie */}
+        <div className="p-3 rounded-xl border border-line-soft mb-5">
+          <p className="text-sm text-text-2 leading-relaxed">{t(currentItem.instruction)}</p>
           {showHint && currentItem.hint && (
-            <p className="text-xs text-content mt-2.5 pt-2.5 border-t border-white/10 flex items-center gap-1.5">
-              <span className="font-semibold text-text-hi">Wskazówka:</span> {currentItem.hint}
+            <p className="text-sm text-text-hi mt-2.5 pt-2.5 border-t border-line-soft flex items-center gap-1.5">
+              <span className="font-semibold">{t('Wskazówka')}:</span> {currentItem.hint}
             </p>
           )}
         </div>
 
-        {/* Obszar ułożonego zdania (Builder Slot) */}
-        <div className="space-y-2 mb-6">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-content-muted">Twoje zdanie:</span>
-            {selectedWordIndices.length > 0 && !isDone && (
+        {/* Strefa odpowiedzi — o stałej wysokości (miernik z kompletną odpowiedzią) */}
+        <div className="space-y-2 mb-5">
+          <div className="flex items-center justify-between min-h-6">
+            <span className="text-sm font-bold text-text-2">{t('Twoja odpowiedź')}</span>
+            {selectedIds.length > 0 && !isDone && (
               <button
                 type="button"
                 onClick={handleReset}
-                className="inline-flex items-center gap-1 text-[12px] text-content-muted hover:text-white transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 pointer-coarse:min-h-11 text-[12px] text-text-2 hover:text-text-hi font-semibold transition-colors motion-reduce:transition-none cursor-pointer"
               >
-                <RotateCcw size={11} /> Resetuj
+                <RotateCcw size={11} aria-hidden="true" /> {t('Resetuj')}
               </button>
             )}
           </div>
 
           <div
-            className={`min-h-[4.5rem] rounded-xl border-2 p-3 flex flex-wrap gap-2 items-center transition-all ${
+            data-testid="warmup-answer-zone"
+            className={`grid min-h-[4.5rem] rounded-xl border-2 transition-colors motion-reduce:transition-none ${
               result === 'correct'
-                ? 'border-emerald-500 bg-emerald-950/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+                ? 'border-primary bg-primary/10'
                 : result === 'close'
-                ? 'border-info bg-info/10 shadow-[0_0_20px_rgba(111,168,240,0.15)]'
-                : 'border-dashed border-line-strong bg-base-100/50'
+                ? 'border-info bg-info/10'
+                : 'border-dashed border-line-strong bg-base-100/40'
             }`}
           >
-            {selectedWordIndices.length === 0 && (
-              <span className="text-sm text-content-muted/60 px-2 py-1 select-none flex items-center gap-2">
-                <Shuffle size={14} /> Dotykaj kafelków poniżej, aby ułożyć zdanie…
-              </span>
-            )}
+            {/* Miernik: niewidoczny, rezerwuje wysokość pełnej odpowiedzi */}
+            <div aria-hidden="true" data-testid="warmup-answer-sizer" className="invisible col-start-1 row-start-1 flex flex-wrap content-start gap-2 p-3">
+              {sizerChunks.map((text, i) => (
+                <span key={`sizer-${i}`} className={`${chipBase} border-transparent`}>
+                  {text}
+                </span>
+              ))}
+            </div>
 
-            {selectedWordIndices.map((bankIndex, pos) => {
-              const item = shuffledBank[bankIndex];
-              if (!item) return null;
-              return (
-                <button
-                  key={`selected-${bankIndex}-${pos}`}
-                  type="button"
-                  data-testid="warmup-selected-tile"
-                  onClick={() => handleRemoveTile(pos)}
-                  className="px-3.5 py-2 rounded-xl bg-primary/20 border border-primary/50 text-primary text-[15px] font-bold shadow-sm transition-transform active:scale-95 cursor-pointer hover:border-danger/60 hover:bg-danger/15 hover:text-danger flex items-center gap-1"
-                  title="Kliknij, aby cofnąć słowo"
-                >
-                  <span>{item.word}</span>
-                </button>
-              );
-            })}
+            <div className="col-start-1 row-start-1 flex flex-wrap content-start items-start gap-2 p-3">
+              {selectedIds.length === 0 && (
+                <span className="text-sm text-text-2 px-2 py-2 select-none flex items-center gap-2">
+                  <Shuffle size={14} aria-hidden="true" /> {t('Dotykaj fraz poniżej, aby ułożyć zdanie')}
+                </span>
+              )}
+
+              {selectedIds.map((tileId, pos) => {
+                const tile = tileById(tileId);
+                if (!tile) return null;
+                return (
+                  <button
+                    key={`selected-${tileId}`}
+                    type="button"
+                    data-testid="warmup-selected-tile"
+                    onClick={() => handleRemoveTile(pos)}
+                    disabled={isDone}
+                    title={t('Dotknij, aby cofnąć frazę')}
+                    className={`${chipBase} border-primary bg-primary/10 text-text-hi transition-colors motion-reduce:transition-none cursor-pointer hover:border-danger disabled:cursor-default disabled:hover:border-primary`}
+                  >
+                    {tile.text}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Bank dostępnych kafelków ze słowami */}
+        {/* Pula kafelków: wybrany kafelek zostaje na swoim miejscu jako puste miejsce */}
         <div className="space-y-2">
-          <span className="text-xs font-bold text-content-muted">Dostępne słowa:</span>
-          <div className="flex flex-wrap gap-2 p-3 rounded-xl bg-base-100/40 border border-line">
-            {shuffledBank.map((item, bankIndex) => {
-              const isUsed = selectedWordIndices.includes(bankIndex);
-              const colorClass = TILE_COLORS[bankIndex % TILE_COLORS.length];
-
+          <span className="text-sm font-bold text-text-2">{t('Dostępne frazy')}</span>
+          <div data-testid="warmup-bank" className="flex flex-wrap items-start gap-2 p-3 rounded-xl bg-base-100/40 border border-line-soft">
+            {bank.map((tile) => {
+              const isUsed = selectedIds.includes(tile.id);
               return (
-                <button
-                  key={`bank-${bankIndex}`}
-                  type="button"
-                  data-testid="warmup-bank-tile"
-                  disabled={isUsed || isDone}
-                  onClick={() => handleSelectTile(bankIndex)}
-                  className={`px-3.5 py-2 rounded-xl border text-base font-bold pointer-coarse:min-h-11 pointer-coarse:min-w-11 transition-all duration-150 active:scale-95 cursor-pointer ${
-                    isUsed
-                      ? 'opacity-20 border-transparent bg-base-100/20 text-content-muted cursor-not-allowed scale-90'
-                      : `${colorClass} shadow-sm hover:scale-105`
-                  }`}
+                <div
+                  key={`bank-${tile.id}`}
+                  className={`rounded-xl border border-dashed ${isUsed ? 'border-line-soft' : 'border-transparent'}`}
                 >
-                  {item.word}
-                </button>
+                  <button
+                    type="button"
+                    data-testid="warmup-bank-tile"
+                    data-used={isUsed ? 'true' : undefined}
+                    disabled={isUsed || isDone}
+                    aria-hidden={isUsed ? true : undefined}
+                    tabIndex={isUsed ? -1 : undefined}
+                    onClick={() => handleSelectTile(tile.id)}
+                    className={`${chipBase} border-line-strong bg-surface-flat text-text-hi transition-colors motion-reduce:transition-none cursor-pointer hover:border-primary disabled:cursor-default disabled:hover:border-line-strong ${
+                      isUsed ? 'invisible' : ''
+                    } ${isDone && !isUsed ? 'opacity-60' : ''}`}
+                  >
+                    {tile.text}
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -329,14 +358,20 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
 
         {/* Wynik próby — aria-live, żeby czytnik ekranu ogłosił zmianę bez polegania wyłącznie na kolorze */}
         <div role="status" aria-live="polite">
+          {result === 'incorrect' && (
+            <p className="mt-4 text-sm text-text-2" data-testid="warmup-incorrect">
+              {t('To jeszcze nie to — dotknij frazy, żeby ją cofnąć, albo użyj Resetuj')}
+            </p>
+          )}
+
           {result === 'correct' && (
-            <div className="mt-6 p-4 rounded-xl bg-emerald-500/15 border border-emerald-500/40 flex flex-col sm:flex-row items-center justify-between gap-3 animate-in zoom-in-95 duration-200">
+            <div className="mt-5 p-4 rounded-xl bg-primary/10 border border-primary flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2.5">
-                <CheckCircle2 size={22} className="text-emerald-400 shrink-0" />
+                <CheckCircle2 size={22} className="text-primary shrink-0" aria-hidden="true" />
                 <div>
-                  <span className="font-bold text-emerald-300 text-sm block">{i18n.t('Świetnie ułożone!')} 🔥</span>
-                  <span className="text-xs text-emerald-200/80">
-                    {isLast ? 'Rozgrzewka zakończona, przejdź do zadań' : 'Gotowy na kolejne zdanie?'}
+                  <span className="font-bold text-text-hi text-sm block">{t('Świetnie ułożone!')}</span>
+                  <span className="text-xs text-text-2">
+                    {isLast ? t('Rozgrzewka zakończona, przejdź do zadań') : t('Gotowy na kolejne zdanie?')}
                   </span>
                 </div>
               </div>
@@ -345,26 +380,24 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 type="button"
                 data-testid="warmup-next-button"
                 onClick={handleNext}
-                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto min-h-11 px-5 py-2.5 rounded-xl bg-primary text-accent-ink font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer hover:brightness-110 transition-[filter] motion-reduce:transition-none"
               >
-                <span className="whitespace-nowrap">{isLast ? finishLabel : 'Następne zdanie'}</span>
-                <ArrowRight size={15} className="shrink-0" />
+                <span className="whitespace-nowrap">{isLast ? t(finishLabel) : t('Następne zdanie')}</span>
+                <ArrowRight size={15} className="shrink-0" aria-hidden="true" />
               </button>
             </div>
           )}
 
           {result === 'close' && (
-            <div className="mt-6 p-4 rounded-xl bg-info/15 border border-info/40 flex flex-col gap-3 animate-in zoom-in-95 duration-200">
+            <div className="mt-5 p-4 rounded-xl bg-info/10 border border-info flex flex-col gap-3">
               <div className="flex items-start gap-2.5">
-                <Sparkles size={22} className="text-info shrink-0 mt-0.5" />
+                <Sparkles size={22} className="text-info shrink-0 mt-0.5" aria-hidden="true" />
                 <div className="space-y-1.5">
-                  <span className="font-bold text-info text-sm block">
-                    {i18n.t('Byłeś/Byłaś blisko!')}
-                  </span>
-                  <p className="text-xs text-content">
-                    {i18n.t('Miałeś/Miałaś wszystkie właściwe słowa — tylko szyk był inny. Poprawna kolejność:')}
+                  <span className="font-bold text-text-hi text-sm block">{t('Byłeś/Byłaś blisko!')}</span>
+                  <p className="text-sm text-text-2">
+                    {t('Miałeś/Miałaś wszystkie właściwe frazy — tylko szyk był inny. Poprawna kolejność')}:
                   </p>
-                  <p className="text-sm font-semibold text-white bg-black/20 rounded-lg px-3 py-2">
+                  <p className="text-sm font-semibold text-text-hi rounded-lg border border-line-soft px-3 py-2">
                     {currentItem.targetSentence}
                   </p>
                 </div>
@@ -374,10 +407,10 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 type="button"
                 data-testid="warmup-next-button"
                 onClick={handleNext}
-                className="w-full sm:w-auto self-end px-5 py-2.5 rounded-xl bg-info hover:bg-info/85 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto self-end min-h-11 px-5 py-2.5 rounded-xl bg-info text-accent-ink font-extrabold text-sm flex items-center justify-center gap-2 cursor-pointer hover:brightness-110 transition-[filter] motion-reduce:transition-none"
               >
-                <span className="whitespace-nowrap">{isLast ? finishLabel : 'Następne zdanie'}</span>
-                <ArrowRight size={15} className="shrink-0" />
+                <span className="whitespace-nowrap">{isLast ? t(finishLabel) : t('Następne zdanie')}</span>
+                <ArrowRight size={15} className="shrink-0" aria-hidden="true" />
               </button>
             </div>
           )}
@@ -389,9 +422,9 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
         <button
           type="button"
           onClick={onSkip}
-          className="text-xs font-semibold text-content-muted hover:text-white transition-colors cursor-pointer underline underline-offset-4 pointer-coarse:min-h-11 pointer-coarse:inline-flex pointer-coarse:items-center"
+          className="text-sm font-semibold text-text-2 hover:text-text-hi transition-colors motion-reduce:transition-none cursor-pointer underline underline-offset-4 pointer-coarse:min-h-11 pointer-coarse:inline-flex pointer-coarse:items-center"
         >
-          Przejdź od razu do głównych ćwiczeń (bez rozgrzewki)
+          {t('Przejdź od razu do głównych ćwiczeń (bez rozgrzewki)')}
         </button>
       </div>
     </div>

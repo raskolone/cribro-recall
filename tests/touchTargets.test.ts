@@ -62,7 +62,7 @@ test('znane małe cele mają wariant na dotyk (min. 44 px)', () => {
     ['components/ui/Button.tsx', /sm: 'px-5 py-2 text-xs pointer-coarse:min-h-11'/],
     ['components/dashboard/TodayScreen.tsx', /h-8 px-2\.5 rounded-lg pointer-coarse:h-11/],
     ['components/dashboard/StudentHomeworkScreen.tsx', /flex-1 min-h-\[2\.5rem\] rounded-lg text-xs font-bold pointer-coarse:min-h-11/],
-    ['components/dashboard/HomeworkWarmupScrambler.tsx', /px-3\.5 py-2 rounded-xl border text-base font-bold pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
+    ['components/dashboard/HomeworkWarmupScrambler.tsx', /px-3\.5 py-2 rounded-xl border text-base font-bold leading-snug text-left pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
     ['components/flashcards/FlashcardStudyScreen.tsx', /text-xs px-2 py-1 rounded bg-white\/5 hover:bg-white\/10 text-text-2 pointer-coarse:min-h-11/],
     ['components/flashcards/FlashcardSetsScreen.tsx', /text-sm font-medium pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
     ['components/ui/PronunciationMic.tsx', /pointer-coarse:min-h-11 pointer-coarse:min-w-11/],
