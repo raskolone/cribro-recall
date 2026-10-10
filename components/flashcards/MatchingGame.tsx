@@ -612,10 +612,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
               )}
               {matched && !isHidden && <Check aria-hidden="true" className="absolute top-2 left-2 w-4 h-4 text-primary" />}
               {wrong && <X aria-hidden="true" className="absolute top-2 left-2 w-4 h-4 text-danger" />}
-              <span
-                className="font-medium text-base md:text-lg leading-snug break-words"
-                dangerouslySetInnerHTML={{ __html: tile.text }}
-              />
+              <span className="font-medium text-base md:text-lg leading-snug break-words">{tile.text}</span>
               {matched && <span className="sr-only">{i18n.t('Dopasowano')}</span>}
               {wrong && <span className="sr-only">{i18n.t('Błędna para')}</span>}
             </div>

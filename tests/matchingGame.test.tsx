@@ -250,3 +250,22 @@ test('trafione kafelki znikają z zachowaniem miejsca w siatce (opacity-0 invisi
   assert.match(tile('left-c0').className, /invisible/);
 });
 
+
+test('tekst kafelka z tagiem HTML pokazuje się dosłownie jako tekst, bez elementów z tekstu', () => {
+  const cards: MatchCardInput[] = [
+    { id: 'c0', term: '<b>bold</b>', definition: '<img src=x onerror="window.__xss = 1">' },
+    ...mkCards(5).slice(1),
+  ];
+  const { tile, container } = setup(cards);
+  assert.equal(tile('left-c0').textContent?.includes('<b>bold</b>'), true, 'tag widać jako tekst');
+  assert.equal(tile('right-c0').textContent?.includes('<img src=x onerror="window.__xss = 1">'), true);
+  assert.equal(container.querySelector('[data-tile-key] b'), null, 'z tekstu nie powstał element <b>');
+  assert.equal(container.querySelector('[data-tile-key] img'), null, 'z tekstu nie powstał element <img>');
+  assert.equal((dom.window as any).__xss, undefined);
+});
+
+test('MatchingGame nie używa dangerouslySetInnerHTML', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../components/flashcards/MatchingGame.tsx', import.meta.url), 'utf8');
+  assert.doesNotMatch(src, /dangerouslySetInnerHTML/);
+});

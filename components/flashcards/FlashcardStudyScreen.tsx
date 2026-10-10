@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
 import { useFlashcards } from '../../context/FlashcardContext';
@@ -18,6 +18,7 @@ import { prefersReducedMotion } from '../../services/gsapAnimations';
 import SwipeRatingHint from './SwipeRatingHint';
 import QuizOption from './QuizOption';
 import { mergeSetCards, splitSessionBySet } from '../../utils/multiSetSession';
+import { htmlToPlainText } from '../../utils/plainText';
 import { quizOptionState } from '../../utils/quizOptionStates';
 import { SWIPE_TOUCH_ACTION_CLASS } from '../../hooks/useCardSwipe';
 import { useRatingSwipe } from '../../hooks/useRatingSwipe';
@@ -1065,10 +1066,22 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
 // --- Matching Mode Component ---
 // Gra żyje w MatchingGame (plansza tasowana raz na rundę, efekty GSAP, gwiazdki);
 // tu zostaje tylko zapis sesji — dokładnie to, co zapisywała dotąd.
-const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language, onComplete}: any) => (
+const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language, onComplete}: any) => {
+  // Kafelki pokazują tekst bez HTML-a, więc zapisany rich-text (`<b>`, `&amp;`) sprowadzamy do zwykłego
+  // tekstu tutaj. `wrongWords` wracają do zapisanej postaci terminu — Quiz dopasowuje słowa do kart po niej.
+  const plainCards = useMemo(
+    () => cards.map((c: Flashcard) => ({ ...c, term: htmlToPlainText(c.term), definition: htmlToPlainText(c.definition) })),
+    [cards],
+  );
+  const storedTermByPlain = useMemo(
+    () => new Map<string, string>(cards.map((c: Flashcard) => [htmlToPlainText(c.term), c.term] as [string, string])),
+    [cards],
+  );
+  const toStored = (words: string[] | undefined) => (words || []).map(w => storedTermByPlain.get(w) ?? w);
+  return (
   <div className="w-full flex-1 flex flex-col min-h-[calc(100dvh-5rem)]">
     <MatchingGame
-      cards={cards}
+      cards={plainCards}
       onBack={onBack}
       onQuit={() => showConfirm(
         t('flashcards.confirmQuitTitle') || (language === 'pl' ? 'Zakończ Sesję' : 'Quit Session'),
@@ -1076,21 +1089,23 @@ const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, close
         () => { closeConfirm(); onBack(); }
       )}
       onFinish={async (r) => {
+        const wrongWords = toStored(r.wrongWords);
         await saveSession({
           setId,
           mode: 'matching',
           totalCards: r.pairs,
           correctCount: r.pairs,
           scorePercent: r.score
-        }, r.wrongWords || []);
+        }, wrongWords);
         if (onComplete) {
-          onComplete(r.wrongWords || []);
+          onComplete(wrongWords);
         }
       }}
       onPracticeSentences={onNavigate ? () => onNavigate('ai-generator', { setId: setId, initialMode: 'flashcards', autoGenerate: true }) : undefined}
     />
   </div>
-);
+  );
+};
 
 // --- Intro Mode Component ---
 const IntroMode = ({ cards, onBack, t, showConfirm, closeConfirm, language }: any) => {
