@@ -149,7 +149,7 @@ test('kolejność akcji w generatorze: Sprawdź jest główną, Dalej/Zakończ d
   const a = src.indexOf('<SentenceActionBar');
   const bar = src.slice(a, a + 900);
   assert.match(bar, /previous=\{\{ label: i18n\.t\('Poprzednie'\), onClick: handlePrev, disabled: idx === 0 \}\}/);
-  assert.match(bar, /label: i18n\.t\('Sprawdź'\), onClick: handleEvaluateSingle/);
+  assert.match(bar, /label: i18n\.t\('Sprawdź'\), shortcutHint: i18n\.t\('Enter: Sprawdź'\), onClick: handleEvaluateSingle/);
   assert.match(bar, /secondary=\{evaluated \? undefined : forward\}/);
   assert.match(src, /label: evaluated \? i18n\.t\('Zakończ i podsumuj'\) : i18n\.t\('Zakończ'\)/);
 });

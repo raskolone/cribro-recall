@@ -7095,3 +7095,12 @@ Zrobione: nowe `utils/sentenceSession.ts`, `hooks/useSentenceSession.ts`; `compo
 Nie dokończone / do sprawdzenia: dane kursantki NIE były ruszane — kryteria odnalezienia dotkniętych `practiceLogs` w CHANGELOG BP (do osobnej decyzji, czy i jak je naprawiać); prawdziwy Gemini/Firestore/iPhone niesprawdzone.
 Decyzje architektoniczne: (1) przyczyna to brak czyszczenia statusów i wyników po indeksie przy starcie nowej rundy, nie przenoszenie stanu między zdaniami wewnątrz rundy; (2) stan po id, a nie samo dopisanie `reset` — reset naprawiłby tylko znane ścieżki, id odcina rundy z założenia (także późną ocenę starej rundy); (3) odczyty po indeksie zostają jako widoki pochodne, żeby nie przepisywać ~40 miejsc renderu; zapisy idą po id; (4) `id` nadawane zawsze od nowa (`stampExercises` nadpisuje), bo ten sam obiekt zadania lektora potrafi wrócić w kolejnej rundzie; (5) `TranslationExercise` bez zmian (generator zwraca w nim liczbowe `id` z indeksu, więc nie dodawałem pola); (6) test na komponencie przez hook, bo montaż generatora wymagałby podmiany Firebase i kontekstów (konteksty nie są eksportowane) — zamiast tego test strukturalny pilnuje, że generator używa hooka i nadaje id; (7) stan nadal tylko w pamięci — odświeżenie wraca na pulpit (bez szkicu, poza zakresem).
 Ryzyka: `firestore.rules`, `storage.rules`, `server.ts`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Nie zmieniano `normalizeExercise` ani stylu feedbacku.
+
+---
+
+2026-10-10 — Claude Code / Sonnet 5.5
+
+Zadanie: H2-A — skrót Enter w ćwiczeniach ze zdaniami (osobny commit, bez pusha; część B w osobnym commicie).
+Zrobione: `utils/enterKeyAction.ts` (nowy), `AIExerciseGeneratorScreen.tsx` (nasłuch + fokus po zmianie zdania), `SentencePracticeParts.tsx` (`shortcutHint`), `pl.json`/`en.json`, `tests/enterKeyAction.test.ts` (11).
+Decyzje architektoniczne: nasłuch na dokumencie, bo po feedbacku pole znika i stary `onKeyDown` w polu nigdy nie działał; cooldown 450 ms zamiast licznika zdań (prosty, testowalny); `preventDefault` także przy pustym polu, żeby Enter nie wstawiał linii na desktopie; dotyk wykrywany `matchMedia('(pointer: coarse)')`.
+Ryzyka: reguły, `server.ts`, autoryzacja — NIETKNIĘTE.

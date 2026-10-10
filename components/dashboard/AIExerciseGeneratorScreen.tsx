@@ -14,6 +14,7 @@ import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from 
 import TTSButtons from '../flashcards/TTSButtons';
 import { useSentenceSession } from '../../hooks/useSentenceSession';
 import { stampExercises } from '../../utils/sentenceSession';
+import { describeEnterTarget, enterKeyAction, isCoarsePointer } from '../../utils/enterKeyAction';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
 import { isStudentTodoStatus, isV1Task, studentTasksQuery } from '../../utils/homework';
 import { getApprovedVocabularyText } from '../../utils/vocabulary';
@@ -2272,6 +2273,53 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
 
   const toggleHint = (index: number) => sentences.toggleHint(index);
 
+  // Enter w ćwiczeniach ze zdaniami (tłumaczenie, korekta): Sprawdź / Dalej. Logika w utils/enterKeyAction.ts.
+  const enterCtxRef = useRef<any>(null);
+  const lastEnterActionRef = useRef<number | null>(null);
+  {
+    const idx = activeSentenceIndex;
+    const isLastFixed = idx === exercises.length - 1 && practiceMode === 'fixed';
+    enterCtxRef.current = {
+      active: step === 'practice' && warmupPhase === 'exercises' && exerciseFormat !== 'puzzle' && Boolean(exercises[idx]),
+      evaluating: evaluationStatuses[idx] === 'evaluating',
+      evaluated: evaluationStatuses[idx] === 'evaluated',
+      answered: Boolean(studentAnswers[idx]?.trim()),
+      canForward: isLastFixed ? true : !isGeneratingMore,
+      check: handleEvaluateSingle,
+      next: isLastFixed ? handleFinishAll : handleNext,
+    };
+  }
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      const ctx = enterCtxRef.current;
+      if (!ctx?.active || e.key !== 'Enter') return;
+      const target = describeEnterTarget(e.target);
+      const coarsePointer = isCoarsePointer();
+      const now = Date.now();
+      const action = enterKeyAction({
+        key: e.key, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey, altKey: e.altKey,
+        repeat: e.repeat, isComposing: e.isComposing || (e as any).keyCode === 229,
+        target, coarsePointer,
+        evaluating: ctx.evaluating, evaluated: ctx.evaluated, answered: ctx.answered, canForward: ctx.canForward,
+        msSinceLastAction: lastEnterActionRef.current === null ? null : now - lastEnterActionRef.current,
+      });
+      // W polu odpowiedzi Enter nigdy nie wstawia nowej linii (poza dotykiem i Shift+Enter).
+      if (action !== 'none' || (target === 'answer' && !e.shiftKey && !coarsePointer && !e.isComposing)) e.preventDefault();
+      if (action === 'none') return;
+      lastEnterActionRef.current = now;
+      if (action === 'check') void ctx.check(); else void ctx.next();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, []);
+
+  // Po przejściu na inne zdanie fokus wraca do pola odpowiedzi (desktop; na dotyku nie wywołujemy klawiatury ekranowej).
+  useEffect(() => {
+    if (step !== 'practice' || warmupPhase !== 'exercises' || isCoarsePointer()) return;
+    const field = document.querySelector<HTMLTextAreaElement>('[data-testid="sentence-answer"]');
+    if (field && !field.disabled) field.focus({ preventScroll: true });
+  }, [activeSentenceIndex, step, warmupPhase]);
+
   const calcAvg = evaluationResults.length > 0
     ? Math.round(evaluationResults.reduce((acc, r) => {
         const itemScore = Number(r?.score);
@@ -4341,18 +4389,6 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                       onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
                       placeholder={exerciseFormat === 'correction' ? i18n.t('Wpisz w pełni poprawione zdanie po angielsku') : i18n.t('Wpisz swoje tłumaczenie tutaj')}
                       disabled={evaluationStatuses[activeSentenceIndex] === 'evaluating'}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                          e.preventDefault();
-                          if (evaluationStatuses[activeSentenceIndex] !== 'evaluated') {
-                            if (studentAnswers[activeSentenceIndex]?.trim()) {
-                              handleEvaluateSingle();
-                            }
-                          } else {
-                            handleNext();
-                          }
-                        }
-                      }}
                     />
                   </div>
                 )}
@@ -4369,15 +4405,15 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                 const evaluated = evaluationStatuses[idx] === 'evaluated';
                 const loadingMore = isGeneratingMore && idx === exercises.length - 1;
                 const forward = isLastFixed
-                  ? { label: evaluated ? i18n.t('Zakończ i podsumuj') : i18n.t('Zakończ'), onClick: handleFinishAll, disabled: !evaluated && (!answered || isGeneratingMore), loading: !evaluated && isGeneratingMore }
-                  : { label: i18n.t('Dalej'), onClick: handleNext, disabled: (!evaluated && !answered) || isGeneratingMore, loading: loadingMore };
+                  ? { label: evaluated ? i18n.t('Zakończ i podsumuj') : i18n.t('Zakończ'), shortcutHint: evaluated ? i18n.t('Enter: Dalej') : undefined, onClick: handleFinishAll, disabled: !evaluated && (!answered || isGeneratingMore), loading: !evaluated && isGeneratingMore }
+                  : { label: i18n.t('Dalej'), shortcutHint: evaluated ? i18n.t('Enter: Dalej') : undefined, onClick: handleNext, disabled: (!evaluated && !answered) || isGeneratingMore, loading: loadingMore };
                 return (
                   <SentenceActionBar
                     previous={{ label: i18n.t('Poprzednie'), onClick: handlePrev, disabled: idx === 0 }}
                     primary={
                       evaluated
                         ? forward
-                        : { label: i18n.t('Sprawdź'), onClick: handleEvaluateSingle, disabled: !answered, loading: evaluationStatuses[idx] === 'evaluating' }
+                        : { label: i18n.t('Sprawdź'), shortcutHint: i18n.t('Enter: Sprawdź'), onClick: handleEvaluateSingle, disabled: !answered, loading: evaluationStatuses[idx] === 'evaluating' }
                     }
                     secondary={evaluated ? undefined : forward}
                   />

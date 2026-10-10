@@ -95,6 +95,8 @@ interface ActionConfig {
   disabled?: boolean;
   loading?: boolean;
   testId?: string;
+  /** Podpowiedź skrótu (np. „Enter: Sprawdź”) — widoczna tylko przy myszy/klawiaturze, nie na dotyku. */
+  shortcutHint?: string;
 }
 
 const base =
@@ -114,10 +116,16 @@ const ActionButton: React.FC<{ kind: keyof typeof buttonClass; action: ActionCon
     onClick={action.onClick}
     disabled={action.disabled || action.loading}
     aria-busy={action.loading || undefined}
+    aria-keyshortcuts={action.shortcutHint ? 'Enter' : undefined}
     className={`${buttonClass[kind]} ${focusRing} ${className ?? ''}`}
   >
     {action.loading && <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />}
     {action.label}
+    {action.shortcutHint && !action.disabled && !action.loading && (
+      <span data-testid="shortcut-hint" aria-hidden="true" className="hidden pointer-fine:inline text-xs font-medium">
+        {action.shortcutHint}
+      </span>
+    )}
   </button>
 );
 
