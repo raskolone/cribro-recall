@@ -204,6 +204,7 @@ import { resolveDailyLimit, type UsageDb } from "./utils/freePracticeQuota";
 import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 import { buildGradedHomeworkEmail } from "./services/homeworkEmail";
+import { validateAssignInput, validateGenerateInput } from "./utils/homeworkV2Input";
 import {
   ingestAttempts,
   serializeLearningProfile,
@@ -1881,7 +1882,7 @@ export function createApp() {
   /* ═══════════════════════════════════════════════════════════════════
      SILNIK PRAC DOMOWYCH V2 (GEMINI 2.5 FLASH)
      ═══════════════════════════════════════════════════════════════════ */
-  app.post('/api/homework-v2/generate', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/homework-v2/generate', requireFirebaseAdmin, async (req, res) => {
     try {
       // Ta sama kanoniczna bramka co Functions (`endpoints.ts`,
       // `requireHomeworkEngineV2`) — jedno źródło interpretacji env zamiast
@@ -1891,20 +1892,17 @@ export function createApp() {
         return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
       }
 
-      const studentUid = String(req.body?.studentUid || '').trim();
-      if (!studentUid) return res.status(400).json({ error: 'Nie wskazano kursanta.' });
-
-      const lessonIds = Array.isArray(req.body?.lessonIds) ? req.body.lessonIds : [];
-      if (lessonIds.length === 0) return res.status(400).json({ error: 'Nie wskazano lekcji.' });
-
-      const itemCount = Number(req.body?.itemCount) || 6;
-      const plannedMinutes = Number(req.body?.plannedMinutes) || 0;
+      const input = validateGenerateInput(req.body);
+      if (input.ok === false) return res.status(400).json({ error: input.error });
+      const { studentUid, lessonIds, itemCount, plannedMinutes } = input.value;
       const requestedTypes = req.body?.types;
-      const teacherId = (req as any).userUid;
+      // Wyłącznie `requireFirebaseAdmin` ustawia `adminUid` (rola lektora/admina z bazy lub tokenu).
+      const teacherId = (req as any).adminUid;
 
       const rawLessons = Array.isArray(req.body?.rawLessons) ? req.body.rawLessons : undefined;
       let cefr = String(req.body?.cefr || 'B1');
       let recentMistakes: string[] = [];
+      let studentMissing = false;
 
       try {
         const adminApp = getAdminApp();
@@ -1912,11 +1910,14 @@ export function createApp() {
         const studentSnap = await adminDb.collection('users').doc(studentUid).get();
         if (studentSnap.exists) {
           cefr = String(studentSnap.data()?.level || cefr);
+        } else {
+          studentMissing = true;
         }
         recentMistakes = await getRecentMistakes(studentUid);
       } catch (dbErr) {
         console.warn('[server] pomijam zapytanie Admin DB przy generowaniu prac domowych v2:', dbErr);
       }
+      if (studentMissing) return res.status(404).json({ error: 'Kursant nie istnieje.' });
 
       const context = await assembleContext({
         studentUid,
@@ -1954,19 +1955,21 @@ export function createApp() {
     }
   });
 
-  app.post('/api/homework-v2/assign', requireFirebaseAuth, async (req, res) => {
+  app.post('/api/homework-v2/assign', requireFirebaseAdmin, async (req, res) => {
     try {
-      const rawExercises = Array.isArray(req.body?.exercises) ? req.body.exercises : [];
-      const studentUids = Array.isArray(req.body?.studentUids) ? req.body.studentUids : [];
+      // Ta sama bramka co `generate` i Cloud Functions — bez niej wyłączony silnik v2 nadal zapisywałby zadania.
+      if (!isHomeworkEngineV2Enabled()) {
+        return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
+      }
+
+      const input = validateAssignInput(req.body);
+      if (input.ok === false) return res.status(400).json({ error: input.error });
+      const { studentUids, exercises: rawExercises, title, dueDate, groupId } = input.value;
       const studentNames = (typeof req.body?.studentNames === 'object' && req.body?.studentNames !== null) ? req.body.studentNames : {};
       const studentEmails = (typeof req.body?.studentEmails === 'object' && req.body?.studentEmails !== null) ? req.body.studentEmails : {};
       const studentUsernames = (typeof req.body?.studentUsernames === 'object' && req.body?.studentUsernames !== null) ? req.body.studentUsernames : {};
-      const title = String(req.body?.title || 'Praca domowa').trim();
-      const dueDate = String(req.body?.dueDate || '').trim();
-      const groupId = String(req.body?.groupId || '').trim();
-      const teacherId = (req as any).userUid;
-
-      if (studentUids.length === 0) return res.status(400).json({ error: 'Nie wskazano kursantów.' });
+      // `teacherId` zawsze z zweryfikowanego tokenu, nigdy z ciała żądania.
+      const teacherId = (req as any).adminUid;
 
       const exercises = selectSendableExercises(rawExercises);
       if (exercises.length === 0) {
@@ -1975,16 +1978,28 @@ export function createApp() {
 
       const adminApp = getAdminApp();
       const adminDb = getFirestore(adminApp, FIRESTORE_DATABASE_ID);
+
+      // Każdy uid musi wskazywać istniejące konto kursanta (nie dokument grupy). Sprawdzamy WSZYSTKIE
+      // przed pierwszym zapisem, żeby błędny uid nie zostawił po sobie częściowo przypisanego zestawu.
+      const profiles = await adminDb.getAll(...studentUids.map((uid) => adminDb.collection('users').doc(uid)));
+      const missing = studentUids.filter((_, i) => !profiles[i].exists || profiles[i].data()?.isGroup === true);
+      if (missing.length > 0) {
+        return res.status(400).json({ error: 'Wskazani kursanci nie istnieją.', missingCount: missing.length });
+      }
+
       const nowIso = new Date().toISOString();
       const homeworkSetId = newHomeworkSetId();
 
       const created: string[] = [];
 
-      for (const studentUid of studentUids) {
+      for (const [index, studentUid] of studentUids.entries()) {
+        const dbEmail = profiles[index].data()?.email;
         const payload = buildV2TaskPayload({
           studentUid,
           studentName: studentNames[studentUid],
-          studentEmail: studentEmails[studentUid],
+          // Adres, na który później wychodzi powiadomienie, pochodzi z profilu w bazie; wartość z żądania
+          // tylko gdy profil nie ma e-maila (np. konto bez adresu).
+          studentEmail: typeof dbEmail === 'string' && dbEmail.includes('@') ? dbEmail : studentEmails[studentUid],
           studentUsername: studentUsernames[studentUid],
           exercises,
           teacherId,

@@ -8,6 +8,7 @@
  *
  * Uruchamianie: `npm run test:routes` (emulatory wstają i gasną same; projekt `demo-` bez logowania).
  */
+import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
 
@@ -44,7 +45,7 @@ export async function createUser(
   opts: { role?: string; email?: string; profile?: Record<string, unknown> } = {},
 ): Promise<TestUser> {
   counter += 1;
-  const email = opts.email ?? `user${counter}-${Date.now()}@example.test`;
+  const email = opts.email ?? `user${counter}-${randomUUID()}@example.test`;
   const res = await fetch(`http://${authHost()}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=fake`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
