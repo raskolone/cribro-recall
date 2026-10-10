@@ -5,7 +5,7 @@
  * słów. Źródła kawałków, w kolejności zaufania: pole `chunks` z danych rozgrzewki (nowy format),
  * `puzzleChunks` zdania (generator zdań), `tokens` zadania word_order, a gdy żadne nie nadaje się
  * do użycia (same słowa, całe zdanie, kawałki niezłożone w zdanie) — deterministyczny podział
- * zdania (`chunkSentence`). Dystraktory to CAŁE kawałki z innych rund tego samego zadania.
+ * zdania (`chunkSentence`). Dystraktor (najwyżej jeden, zniekształcony kawałek tego samego zdania) żyje w `warmupTileSet.ts`.
  */
 
 export const MIN_CHUNK_WORDS = 2;
@@ -150,33 +150,6 @@ export function resolveChunks(candidates: ReadonlyArray<readonly string[] | unde
   }
   const generated = chunkSentence(sentence);
   return isUsableChunking(generated, sentence) ? generated : [];
-}
-
-const key = (chunk: string): string => normalizeText(chunk).toLowerCase().replace(/[.,!?;:"„”]/g, '');
-
-/**
- * Dystraktory: do `max` CAŁYCH kawałków z INNYCH rund tego samego zadania — nigdy nowe słowa ani
- * rozbite frazy. Pomija kawałki, które występują też w tej rundzie (dubel ukryłby błąd), oraz
- * powtórzenia. Wybór deterministyczny (kolejne rundy po kolei, pierwszy pasujący kawałek).
- */
-export function pickDistractors(
-  ownChunks: readonly string[],
-  otherRounds: ReadonlyArray<{ chunks: readonly string[] }>,
-  max: number = MAX_DISTRACTORS,
-): string[] {
-  const taken = new Set(ownChunks.map(key));
-  const out: string[] = [];
-  for (const round of otherRounds) {
-    for (const chunk of round.chunks) {
-      if (out.length >= max) return out;
-      const k = key(chunk);
-      if (!k || taken.has(k) || countWords(chunk) < MIN_CHUNK_WORDS) continue;
-      taken.add(k);
-      out.push(chunk);
-      break;
-    }
-  }
-  return out;
 }
 
 /** Deterministyczny, rozsądnie losowy generator (mulberry32) — tasowanie stabilne dla danego ziarna. */

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 // Import poboczny — inicjalizuje singleton i18next, z którego korzysta
 // `normalizeExercise.ts`.
 import '../i18n';
-import { buildWarmupRounds } from '../utils/warmupRounds';
+import { buildWarmupRounds, buildWarmupRoundsReport, filterValidRounds, validateWarmupRound } from '../utils/warmupRounds';
+import { distortionsOf } from '../utils/warmupTileSet';
 import { checkWarmupExerciseItem } from '../utils/exerciseSentenceChecks';
 
 /**
@@ -211,29 +212,31 @@ test('zdanie z mniej niż czterema słowami nie tworzy rundy (nie da się ułoż
   assert.equal(buildWarmupRounds([], { warmup: [{ chunks: ['I like', 'tea'], correctSentence: 'I like tea', polishTranslation: 'Lubię herbatę.' }] }).length, 0);
 });
 
-test('dystraktory: najwyżej jeden, CAŁY kawałek z INNEJ rundy tego samego zadania, nigdy z tej samej rundy ani nowe słowa', () => {
+test('dystraktory: najwyżej jeden, zniekształcony kawałek TEGO SAMEGO zdania, nigdy fraza z innej rundy', () => {
   const task = {
     warmup: [
       { chunks: ['I have to', 'meet the deadline', 'by tomorrow'], correctSentence: 'I have to meet the deadline by tomorrow', polishTranslation: 'a' },
       { chunks: ['She usually', 'walks to work', 'with her sister'], correctSentence: 'She usually walks to work with her sister', polishTranslation: 'b' },
-      { chunks: ['We often', 'eat lunch', 'in the park'], correctSentence: 'We often eat lunch in the park', polishTranslation: 'c' },
+      { chunks: ['I would like', 'to have a hammock', 'on my spacious balcony.'], correctSentence: 'I would like to have a hammock on my spacious balcony.', polishTranslation: 'c' },
     ],
   };
   const rounds = buildWarmupRounds([], task);
   assert.equal(rounds.length, 3);
-  const all = rounds.flatMap((r) => r.chunks);
   for (const round of rounds) {
     assert.ok(round.distractors.length <= 1);
     for (const d of round.distractors) {
       assert.ok(!round.chunks.includes(d), 'dystraktor nie dubluje kawałka tej rundy');
-      assert.ok(all.includes(d), 'to cały kawałek z danych zadania');
-      assert.ok(rounds.filter((r) => r !== round).some((r) => r.chunks.includes(d)), 'z innej rundy tego samego zadania');
+      assert.ok(
+        round.chunks.some((chunk) => distortionsOf(chunk).includes(d)),
+        'to zniekształcenie kawałka tej samej rundy'
+      );
+      assert.ok(!rounds.filter((r) => r !== round).some((r) => r.chunks.includes(d)), 'nie jest kawałkiem innej rundy');
     }
+    assert.deepEqual(validateWarmupRound(round), { ok: true, distractor: round.distractors[0] ?? null });
   }
-  assert.ok(rounds.every((r) => r.distractors.length === 1));
+  assert.deepEqual(rounds[0].distractors, [], 'bez bezpiecznego kandydata — brak dystraktora');
+  assert.equal(rounds[2].distractors.length, 1, 'zdanie z „would like” i „to have a hammock” ma kandydata');
   assert.ok(noSingleWords(rounds));
-  // jedna runda → brak dystraktorów (nie ma skąd)
-  assert.deepEqual(buildWarmupRounds([], { warmup: [task.warmup[0]] })[0].distractors, []);
 });
 
 test('trzy stany pola warmup: undefined = stara rozgrzewka ze zdań, [] = brak, lista = nowa', () => {
@@ -264,4 +267,25 @@ test('ścieżka tokenowa /hw?token=: odpowiedź serwera bez angielskich zdań �
   assert.equal(buildWarmupRounds(directTask.sentences, { ...directTask, warmup: [listItem] }).length, 1);
   assert.equal(buildWarmupRounds(directTask.sentences, { ...directTask, warmup: undefined }).length, 0, 'bez odpowiedzi na linku nie ma starej rozgrzewki');
   assert.equal(buildWarmupRounds(directTask.sentences, { ...directTask, warmup: [] }).length, 0);
+});
+
+test('H3: runda z zestawem kafelków spoza niezmiennika jest odfiltrowana (obrona w głębi), poprawna zostaje', () => {
+  const good = buildWarmupRounds([], { warmup: [{ chunks: ['I have to', 'meet the deadline', 'by tomorrow'], correctSentence: 'I have to meet the deadline by tomorrow', polishTranslation: 'a' }] })[0];
+  const foreign = { ...good, itemIndex: 7, distractors: ['She usually'] };
+  const missing = { ...good, itemIndex: 8, chunks: good.chunks.slice(0, 2) };
+  const { rounds, skipped } = filterValidRounds([good, foreign, missing]);
+  assert.deepEqual(rounds, [good]);
+  assert.deepEqual(skipped, [
+    { itemIndex: 7, reason: 'foreign_tile' },
+    { itemIndex: 8, reason: 'chunks_dont_form_sentence' },
+  ]);
+});
+
+test('H3: pomijane rundy są raportowane z powodem (buildWarmupRoundsReport), a stare dane bez dystraktora działają', () => {
+  const same = { chunks: ['I have to', 'meet the deadline'], correctSentence: 'I have to meet the deadline', polishTranslation: 'To samo polecenie' };
+  const other = { chunks: ['She usually', 'walks to work'], correctSentence: 'She usually walks to work', polishTranslation: 'To samo polecenie' };
+  const report = buildWarmupRoundsReport([], { warmup: [same, other] });
+  assert.deepEqual(report.rounds, []);
+  assert.deepEqual(report.skipped.map((s) => s.reason), ['conflicting_prompt', 'conflicting_prompt']);
+  assert.equal(buildWarmupRoundsReport([], { warmup: [same] }).rounds[0].distractors.length <= 1, true);
 });

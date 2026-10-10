@@ -61,6 +61,14 @@
   --shadow-glow: 0 0 0 1px rgba(13, 138, 95, 0.25);
   --shadow-glow-strong: 0 0 0 2px rgba(13, 138, 95, 0.35);
   --shadow-btn: 0 1px 2px rgba(16, 24, 40, 0.10);
+
+  /* Kafelki układanki (rozgrzewka): 5 spokojnych odcieni, tekst zawsze text-hi (≥ 4,5:1, patrz
+     tests/warmupTileColors.test.ts). Dekoracja — przydział nie zależy od roli kafelka. */
+  --color-tile-1: #d3efe2; --color-tile-line-1: #3e8f72;
+  --color-tile-2: #d6e6f8; --color-tile-line-2: #4b82bf;
+  --color-tile-3: #e4def7; --color-tile-line-3: #7a69c4;
+  --color-tile-4: #f7e6c4; --color-tile-line-4: #a67c1f;
+  --color-tile-5: #f8dce4; --color-tile-line-5: #c0587a;
 }
 
 /* ── WYJĄTEK OD ODWRÓCENIA CZERNI: PRZYCIEMNIENIE ZA OKNEM DIALOGOWYM ──
@@ -277,6 +285,13 @@
 }
 
 @theme {
+  /* Kafelki układanki — ciemne odcienie; wersja jasna w bloku :root[data-theme="light"] wyżej. */
+  --color-tile-1: #123a2c; --color-tile-line-1: #2f8f6b;
+  --color-tile-2: #162f52; --color-tile-line-2: #3f78c4;
+  --color-tile-3: #2d2552; --color-tile-line-3: #7a64c8;
+  --color-tile-4: #4a3410; --color-tile-line-4: #b98a2c;
+  --color-tile-5: #4a2230; --color-tile-line-5: #c4607c;
+
   /* --- Aliasy zastane. Odpowiadają tokenom Nocturne, zostają bez zmian:
          primary = --accent, content = --text, content-muted = --text-mute,
          base-200 = --surface-flat. Używane ~2700 razy w komponentach. --- */

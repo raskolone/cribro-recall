@@ -27,9 +27,10 @@ before(async () => {
 
 import { buildWarmupRounds } from '../utils/warmupRounds';
 import { countWords } from '../utils/warmupChunks';
+import { distortionsOf } from '../utils/warmupTileSet';
 
-// Runda 1 (8 słów → 3 kawałki + dystraktor z rundy 2 = 4 kafelki) wyraźnie większa od rundy 2
-// (5 słów → 2 kawałki + dystraktor = 3 kafelki) — scenariusz z hotfixa: pula przelicza się przy
+// Runda 1 (8 słów → 3 kawałki + dystraktor = 4 kafelki) wyraźnie większa od rundy 2
+// (5 słów → 2 kawałki, ew. z dystraktorem) — scenariusz z hotfixa: pula przelicza się przy
 // zmianie `currentIndex`, a stary reset w osobnym useEffect uruchamiał się PO renderze, więc
 // pierwszy render mniejszej rundy 2 czytał jeszcze identyfikatory kafelków z większej rundy 1
 // i kafelek wypadał poza zakres.
@@ -147,12 +148,13 @@ test('STABILNOŚĆ: strefa odpowiedzi ma stałą wysokość — niewidoczny mier
   cleanup();
 });
 
-test('dystraktor to cały kawałek z INNEJ rundy tego samego zadania, najwyżej jeden, zawsze jego brak w odpowiedzi', () => {
+test('dystraktor to zniekształcony kawałek TEGO SAMEGO zdania, najwyżej jeden, zawsze jego brak w odpowiedzi', () => {
   const { getAllByTestId } = renderScrambler();
   const texts = getAllByTestId('warmup-bank-tile').map((el) => el.textContent!);
   const extra = texts.filter((t) => !ROUND_1_CHUNKS.includes(t));
   assert.equal(extra.length, 1);
-  assert.ok(ROUND_2_CHUNKS.includes(extra[0]), 'z drugiej rundy tego samego zadania');
+  assert.ok(!ROUND_2_CHUNKS.includes(extra[0]), 'nie jest kawałkiem innej rundy');
+  assert.ok(ROUND_1_CHUNKS.some((c) => distortionsOf(c).includes(extra[0])), 'zniekształcenie kawałka tej samej rundy');
   assert.equal(texts.length, ROUND_1_CHUNKS.length + 1);
   // ułożenie samych kawałków odpowiedzi (bez dystraktora) → poprawnie, a dystraktor zostaje w puli
   for (const chunk of ROUND_1_CHUNKS) pick(getAllByTestId, chunk);
@@ -243,3 +245,67 @@ test('kawałki lektora bez końcowej kropki zostają kawałkami lektora (nie są
   assert.deepEqual(texts, ['I have to', 'by tomorrow morning', 'meet the deadline']);
   cleanup();
 });
+
+// ── H3: niezmiennik zestawu kafelków, kolory kafelków, zbędny kafelek po sprawdzeniu ──
+
+const HAMMOCK_PL = 'Chciałbym mieć hamak na moim przestronnym balkonie.';
+const hammockItem = { chunks: ['I would like', 'to have a hammock', 'on my spacious balcony.'], correctSentence: 'I would like to have a hammock on my spacious balcony.', polishTranslation: HAMMOCK_PL };
+const furnitureItem = { chunks: ['We chose', 'simple furniture', 'for our small,', 'cramped apartment.'], correctSentence: 'We chose simple furniture for our small, cramped apartment.', polishTranslation: 'Wybraliśmy proste meble do naszego małego, ciasnego mieszkania.' };
+
+const tileClasses = (el: Element) => (el.getAttribute('class') ?? '').split(/\s+/).filter((c) => /^(bg-tile-|border-tile-line-)/.test(c)).sort().join(' ');
+
+test('H3: ćwiczenie z rozjechaną parą (objaw z telefonu) jest pomijane: bez kafelków, bez zapisu wyniku', () => {
+  const skips: number[] = [];
+  const attempts: unknown[] = [];
+  const { queryAllByTestId, container } = renderScrambler({
+    sentences: [],
+    task: { warmup: [{ ...furnitureItem, polishTranslation: HAMMOCK_PL }, hammockItem] },
+    onSkip: () => skips.push(1),
+    onAttemptResult: (a: unknown) => attempts.push(a),
+  });
+  assert.equal(queryAllByTestId('warmup-bank-tile').length, 0, 'nie pokazujemy ćwiczenia');
+  assert.ok(!container.textContent!.includes('We chose'));
+  assert.ok(skips.length >= 1, 'rozgrzewka przechodzi dalej bez błędu');
+  assert.equal(attempts.length, 0, 'nic nie zapisano');
+  cleanup();
+});
+
+test('H3: zestaw kafelków zawsze = kawałki zdania + najwyżej jeden zniekształcony kawałek tego samego zdania', () => {
+  const { getAllByTestId, getByTestId } = renderScrambler({ sentences: [], task: { warmup: [furnitureItem, hammockItem] } });
+  // runda 1 = zdanie o meblach
+  assert.equal(getByTestId('warmup-source').textContent, furnitureItem.polishTranslation);
+  const texts = getAllByTestId('warmup-bank-tile').map((el) => el.textContent!);
+  assert.deepEqual([...texts].sort(), [...furnitureItem.chunks].sort(), 'tylko kawałki tego zdania (brak bezpiecznego kandydata na dystraktor)');
+  cleanup();
+});
+
+test('H3: kafelek zachowuje kolor po przeniesieniu do odpowiedzi i po zwróceniu na listę; kolory nie zdradzają dystraktora', () => {
+  const { getAllByTestId, queryByTestId } = renderScrambler({ sentences: [], task: { warmup: [hammockItem, furnitureItem] } });
+  const bankTiles = getAllByTestId('warmup-bank-tile');
+  const colorOf = new Map(bankTiles.map((el) => [el.textContent!, tileClasses(el)]));
+  assert.ok([...colorOf.values()].every((c) => /bg-tile-\d border-tile-line-\d/.test(c)));
+  const [first] = bankTiles.map((el) => el.textContent!);
+  pick(getAllByTestId, first);
+  const selected = getAllByTestId('warmup-selected-tile');
+  assert.equal(tileClasses(selected[0]), colorOf.get(first), 'ten sam kolor w polu odpowiedzi');
+  fireEvent.click(selected[0]);
+  const back = getAllByTestId('warmup-bank-tile').find((el) => el.textContent === first && el.getAttribute('data-used') !== 'true')!;
+  assert.equal(tileClasses(back), colorOf.get(first), 'ten sam kolor po zwróceniu');
+  // przed sprawdzeniem nic w DOM nie oznacza dystraktora
+  assert.equal(queryByTestId('warmup-extra-tile'), null);
+  assert.ok(getAllByTestId('warmup-bank-tile').every((el) => !el.hasAttribute('data-distractor')));
+  cleanup();
+});
+
+test('H3: po sprawdzeniu pokazujemy, który kafelek był zbędny (tekstem)', () => {
+  const { getAllByTestId, getByTestId } = renderScrambler({ sentences: [], task: { warmup: [hammockItem, furnitureItem] } });
+  const extra = rounds_of(hammockItem).distractors[0];
+  assert.ok(extra, 'ćwiczenie z hamakiem ma dystraktor');
+  for (const chunk of hammockItem.chunks) pick(getAllByTestId, chunk);
+  assert.ok(getByTestId('warmup-extra-tile').textContent!.includes(extra));
+  cleanup();
+});
+
+function rounds_of(item: typeof hammockItem) {
+  return buildWarmupRounds([], { warmup: [item] })[0];
+}

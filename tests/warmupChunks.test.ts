@@ -11,7 +11,6 @@ import {
   isUsableChunking,
   joinsTo,
   mergeSmallChunks,
-  pickDistractors,
   resolveChunks,
   seededRandom,
   stableShuffle,
@@ -83,17 +82,6 @@ test('resolveChunks: dane z frazami zostają, lista słów i niespójne kawałki
   assert.ok(!joinsTo(['I have to', 'meet the deadline'], 'I have to meet the DEADLINE'), 'wielkość liter nadal ma znaczenie');
   assert.ok(!joinsTo(['I have to', 'meet'], 'I have to meet the deadline'), 'brakujące słowa nie przechodzą');
   assert.deepEqual(resolveChunks([['I have to', 'meet the deadline', 'by tomorrow morning']], 'I have to meet the deadline by tomorrow morning.'), ['I have to', 'meet the deadline', 'by tomorrow morning'], 'dane lektora bez kropki zostają');
-});
-
-test('dystraktory: cały kawałek z innych rund, bez dubli, najwyżej max, deterministycznie', () => {
-  const own = ['I have to', 'meet the deadline'];
-  const others = [{ chunks: ['I have to', 'by tomorrow'] }, { chunks: ['She usually', 'walks to work'] }];
-  assert.deepEqual(pickDistractors(own, others), ['by tomorrow'], 'kawałek obecny w odpowiedzi pominięty');
-  assert.deepEqual(pickDistractors(own, others, 2), ['by tomorrow', 'She usually']);
-  assert.deepEqual(pickDistractors(own, others, 0), []);
-  assert.deepEqual(pickDistractors(own, []), []);
-  assert.deepEqual(pickDistractors(own, [{ chunks: ['tea'] }]), [], 'pojedynczego słowa nigdy');
-  assert.deepEqual(pickDistractors(own, others), pickDistractors(own, others));
 });
 
 test('stabilne tasowanie: to samo ziarno = ta sama kolejność, inne ziarno = (zwykle) inna, nigdy rozwiązanie', () => {

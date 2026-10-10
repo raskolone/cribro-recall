@@ -493,7 +493,9 @@ ZADANIE: jesteś surowym recenzentem zdań do ćwiczeń. Oceń każdą parę zda
 Dla każdej pary odpowiedz:
 - ok = true tylko wtedy, gdy angielskie zdanie jest naturalne (native speaker mógłby je naprawdę powiedzieć),
   poprawne gramatycznie, logiczne znaczeniowo (podmiot może wykonać czynność; rzeczy nie "chcą", "lubią" ani "myślą")
-  ORAZ polskie tłumaczenie brzmi po polsku (naturalnie, nie kalka słowo w słowo);
+  ORAZ polskie tłumaczenie brzmi po polsku (naturalnie, nie kalka słowo w słowo)
+  ORAZ polskie zdanie znaczy TO SAMO co angielskie z tej samej pary (to samo zdarzenie, te same osoby i rzeczy) —
+  polskie zdanie opisujące coś innego niż angielskie to błąd pary, nawet gdy oba brzmią dobrze;
 - ok = false w każdym innym przypadku; w polu reason w kilku słowach po polsku napisz, co jest nie tak.
 
 PARY:

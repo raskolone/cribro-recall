@@ -1,6 +1,7 @@
 import { HomeworkType } from '../types';
 import { CanonicalExerciseType, normalizeExercise } from './normalizeExercise';
-import { MIN_SENTENCE_WORDS, pickDistractors, resolveChunks } from './warmupChunks';
+import { MIN_SENTENCE_WORDS, resolveChunks } from './warmupChunks';
+import { findConflictingPrompts, pickSafeDistractor, validateTileSet, TileSetFailure } from './warmupTileSet';
 
 /**
  * Adapter kanoniczny dla rozgrzewki (`HomeworkWarmupScrambler.tsx`).
@@ -29,8 +30,19 @@ export interface WarmupRound {
    * `puzzleChunks` zdania albo z podziału zdania (`utils/warmupChunks.ts`); nigdy pojedyncze słowa.
    */
   chunks: string[];
-  /** Do 1 dodatkowego CAŁEGO kawałka z innej rundy tego samego zadania (kafelek, który nie należy do odpowiedzi). */
+  /** Najwyżej 1 dystraktor: zniekształcony kawałek TEGO SAMEGO zdania (`utils/warmupTileSet.ts`), nigdy fraza z innego zdania. */
   distractors: string[];
+}
+
+/** Runda pominięta przed pokazaniem kursantowi — nic nie jest zapisywane, powód trafia do logu. */
+export interface SkippedWarmupRound {
+  itemIndex: number;
+  reason: TileSetFailure | 'conflicting_prompt';
+}
+
+export interface WarmupRoundsReport {
+  rounds: WarmupRound[];
+  skipped: SkippedWarmupRound[];
 }
 
 const countWords = (sentence: string): number =>
@@ -40,10 +52,11 @@ const countWords = (sentence: string): number =>
 const WARMUP_HEADING = 'Ułóż zdanie';
 const WARMUP_INSTRUCTION = 'Ułóż zdanie po angielsku z kafelków.';
 
-export function buildWarmupRounds(
-  sentences: any[],
-  task?: any | null
-): WarmupRound[] {
+export function buildWarmupRounds(sentences: any[], task?: any | null): WarmupRound[] {
+  return buildWarmupRoundsReport(sentences, task).rounds;
+}
+
+export function buildWarmupRoundsReport(sentences: any[], task?: any | null): WarmupRoundsReport {
   // 1. Nowy format: jeśli jest zdefiniowane pole warmup w SpecialTask (tablica)
   // Niepusta tablica bez ani jednego elementu z polishTranslation (stary kształt
   // z polishHint) to brak pola — wraca stara rozgrzewka, nic nie migrujemy.
@@ -53,7 +66,7 @@ export function buildWarmupRounds(
     task.warmup.some((ex: any) => typeof ex?.polishTranslation === 'string' && ex.polishTranslation.trim());
   if (task && Array.isArray(task.warmup) && (task.warmup.length === 0 || hasPolishItem)) {
     if (task.warmup.length === 0) {
-      return []; // pusta rozgrzewka = brak rozgrzewki (świadoma decyzja lektora)
+      return { rounds: [], skipped: [] }; // pusta rozgrzewka = brak rozgrzewki (świadoma decyzja lektora)
     }
     const warmupRounds: WarmupRound[] = [];
     task.warmup.forEach((ex: any, idx: number) => {
@@ -79,11 +92,11 @@ export function buildWarmupRounds(
         hint: '',
       });
     });
-    return withDistractors(warmupRounds);
+    return finalizeRounds(warmupRounds);
   }
 
   // 2. Stary format (warmup === undefined): budujemy z zadań (sentences)
-  if (!Array.isArray(sentences) || sentences.length === 0) return [];
+  if (!Array.isArray(sentences) || sentences.length === 0) return { rounds: [], skipped: [] };
 
   const rounds: WarmupRound[] = [];
 
@@ -143,15 +156,48 @@ export function buildWarmupRounds(
     });
   });
 
-  return withDistractors(rounds.slice(0, 3));
+  return finalizeRounds(rounds.slice(0, 3));
 }
 
-/** Dokłada każdej rundzie najwyżej jeden dystraktor — cały kawałek z innej rundy tego samego zadania. */
-function withDistractors(rounds: WarmupRound[]): WarmupRound[] {
-  if (rounds.length < 2) return rounds;
-  return rounds.map((round, index) => {
-    // Kolejność „następna runda najpierw" — wynik deterministyczny i różny dla kolejnych rund.
-    const others = [...rounds.slice(index + 1), ...rounds.slice(0, index)];
-    return { ...round, distractors: pickDistractors(round.chunks, others) };
+/**
+ * Ostatni etap: pomija rundy z rozjechanym poleceniem (to samo polskie zdanie, różne angielskie),
+ * dokłada każdej rundzie najwyżej jeden dystraktor — zniekształcenie kawałka z TEGO SAMEGO zdania
+ * — i sprawdza niezmiennik zestawu kafelków. Runda, która go nie spełnia, odpada.
+ */
+function finalizeRounds(candidates: WarmupRound[]): WarmupRoundsReport {
+  const conflicting = findConflictingPrompts(candidates);
+  const rounds: WarmupRound[] = [];
+  const skipped: SkippedWarmupRound[] = [];
+  for (const round of candidates) {
+    if (conflicting.has(round.itemIndex)) {
+      skipped.push({ itemIndex: round.itemIndex, reason: 'conflicting_prompt' });
+      continue;
+    }
+    const distractor = pickSafeDistractor(round.chunks, round.targetSentence);
+    const withTiles: WarmupRound = { ...round, distractors: distractor ? [distractor] : [] };
+    const check = validateWarmupRound(withTiles);
+    if ('reason' in check) skipped.push({ itemIndex: round.itemIndex, reason: check.reason });
+    else rounds.push(withTiles);
+  }
+  return { rounds, skipped };
+}
+
+/** Niezmiennik zestawu kafelków rundy (kafelki = kawałki + najwyżej jeden dystraktor z tego samego zdania). */
+export const validateWarmupRound = (round: WarmupRound) =>
+  validateTileSet({
+    targetSentence: round.targetSentence,
+    chunks: round.chunks,
+    tiles: [...round.chunks, ...round.distractors],
   });
+
+/** Zostawia tylko rundy spełniające niezmiennik — obrona w głębi dla rund pochodzących spoza `buildWarmupRounds`. */
+export function filterValidRounds(rounds: readonly WarmupRound[]): { rounds: WarmupRound[]; skipped: SkippedWarmupRound[] } {
+  const ok: WarmupRound[] = [];
+  const skipped: SkippedWarmupRound[] = [];
+  for (const round of rounds) {
+    const check = validateWarmupRound(round);
+    if ('reason' in check) skipped.push({ itemIndex: round.itemIndex, reason: check.reason });
+    else ok.push(round);
+  }
+  return { rounds: ok, skipped };
 }
