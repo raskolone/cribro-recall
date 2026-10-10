@@ -490,3 +490,92 @@ test('zdania z AI: zestawy „z lekcji" nie dublują grupy Lekcje; w fiszkach zo
   noLessons.toScope();
   assert.equal(noLessons.rows().some((r) => r.getAttribute('data-set-id') === 's2'), true);
 });
+
+// --- Własny temat (zdania z AI) -----------------------------------------------------------------
+
+test('własny temat: pole tylko w tłumaczeniu i korekcie, nie w fiszkach/quizie/dopasowaniu', () => {
+  for (const mode of ['translation', 'correction']) {
+    const { toScope, getByTestId, container } = setup({ initial: { mode: mode as any } });
+    toScope();
+    assert.ok(getByTestId('free-practice-topics'), mode);
+    const input = getByTestId('free-practice-topic-input') as HTMLInputElement;
+    assert.equal(input.type, 'text');
+    assert.equal(input.maxLength, 80);
+    assert.ok(container.querySelector(`label[for="${input.id}"]`), 'pole ma etykietę');
+    assert.ok(input.getAttribute('aria-describedby'), 'opis pola');
+    cleanup();
+  }
+  for (const mode of ['flashcards', 'quiz', 'matching']) {
+    const { toScope, queryByTestId } = setup({ initial: { mode: mode as any } });
+    toScope();
+    assert.equal(queryByTestId('free-practice-topics'), null, mode);
+    cleanup();
+  }
+});
+
+test('własny temat: Dodaj i Enter tworzą chip, chip usuwa się krzyżykiem, licznik źródeł rośnie', () => {
+  const { toScope, getByTestId, getAllByTestId, queryAllByTestId, container } = setup({ initial: undefined });
+  toScope();
+  const input = getByTestId('free-practice-topic-input') as HTMLInputElement;
+  const add = getByTestId('free-practice-topic-add') as HTMLButtonElement;
+  assert.equal(add.disabled, true, 'pusty temat — Dodaj wyłączone');
+  fireEvent.change(input, { target: { value: 'podróże służbowe' } });
+  assert.equal(add.disabled, false);
+  assert.equal(getByTestId('free-practice-counter').textContent, 'Źródła: 1 z 5', 'wpisany temat liczy się od razu');
+  fireEvent.click(add);
+  assert.equal(input.value, '', 'pole wyczyszczone po dodaniu');
+  fireEvent.change(input, { target: { value: 'rozmowa o pracę' } });
+  fireEvent.keyDown(input, { key: 'Enter' });
+  assert.deepEqual(getAllByTestId('free-practice-topic-chip').map((c) => c.textContent), ['podróże służbowe', 'rozmowa o pracę']);
+  assert.equal(getByTestId('free-practice-counter').textContent, 'Źródła: 2 z 5');
+  fireEvent.click(container.querySelector('button[aria-label="Usuń temat podróże służbowe"]')!);
+  assert.deepEqual(getAllByTestId('free-practice-topic-chip').map((c) => c.textContent), ['rozmowa o pracę']);
+  fireEvent.click(getByTestId('free-practice-clear'));
+  assert.equal(queryAllByTestId('free-practice-topic-chip').length, 0, '„Wyczyść wybór" czyści też tematy');
+});
+
+test('własny temat: sam temat wystarcza do startu; temat wpisany, ale niedodany, nie ginie przy „Dalej"', () => {
+  const { toScope, getByTestId, next, starts } = setup({ initial: undefined });
+  toScope();
+  assert.equal(next().disabled, true);
+  fireEvent.change(getByTestId('free-practice-topic-input'), { target: { value: 'planowanie urlopu' } });
+  assert.equal(next().disabled, false, 'sam wpisany temat odblokowuje „Dalej"');
+  fireEvent.click(next());
+  assert.ok(getByTestId('free-practice-summary').textContent!.includes('planowanie urlopu'), 'podsumowanie pokazuje temat');
+  fireEvent.click(next());
+  assert.deepEqual(starts[0], { view: 'free-sentences', mode: 'translation', format: 'typing', setIds: [], lessonIds: [], topics: ['planowanie urlopu'] });
+});
+
+test('własny temat: max 3 tematy i łączny limit 5 źródeł — pole się wyłącza, zestawy i lekcje liczą się do limitu', () => {
+  const { toScope, getByTestId, box, container } = setup({ initial: undefined });
+  toScope();
+  const input = getByTestId('free-practice-topic-input') as HTMLInputElement;
+  for (const topic of ['a1', 'b2', 'c3', 'd4']) {
+    fireEvent.change(input, { target: { value: topic } });
+    fireEvent.click(getByTestId('free-practice-topic-add'));
+  }
+  assert.equal(container.querySelectorAll('[data-testid="free-practice-topic-chip"]').length, 3);
+  assert.equal(input.disabled, true, 'po trzech tematach pole wyłączone');
+  assert.equal(getByTestId('free-practice-counter').textContent, 'Źródła: 3 z 5');
+  fireEvent.click(box('s1'));
+  fireEvent.click(lessonBox(container, 'l1'));
+  assert.equal(getByTestId('free-practice-counter').textContent, 'Źródła: 5 z 5');
+  assert.equal(lessonBox(container, 'l2').disabled, true, 'limit 5 obejmuje tematy');
+});
+
+test('własny temat: przy starcie wraca wybór z poprzedniej sesji (initial.topics)', () => {
+  const { getByTestId, getAllByTestId } = setup({ initial: { mode: 'translation', step: 'scope', topics: ['travel'] } });
+  assert.deepEqual(getAllByTestId('free-practice-topic-chip').map((c) => c.textContent), ['travel']);
+  assert.equal(getByTestId('free-practice-counter').textContent, 'Źródła: 1 z 5');
+});
+
+test('własny temat: pole ≥ 16 px, cele dotykowe ≥ 44 px, bez odwołań do pracy domowej', () => {
+  const src = readFileSync(new URL('../components/practice/FreePracticeScreen.tsx', import.meta.url), 'utf8');
+  const field = src.slice(src.indexOf('data-testid="free-practice-topic-input"'), src.indexOf('data-testid="free-practice-topic-add"'));
+  assert.match(field, /text-base/);
+  assert.match(field, /min-h-12/);
+  assert.match(src, /h-11 w-11 shrink-0 items-center justify-center rounded-full/);
+  const { container, toScope } = setup({ initial: undefined });
+  toScope();
+  assert.doesNotMatch(container.textContent!, /prac\w* domow|homework/i);
+});

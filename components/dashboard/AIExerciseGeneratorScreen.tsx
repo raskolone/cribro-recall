@@ -6,7 +6,7 @@ import { useFlashcards } from '../../context/FlashcardContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSettings } from '../../context/SettingsContext';
 import { collection, getDocs, query, orderBy, limit, addDoc, where, documentId, doc, updateDoc, setDoc, writeBatch, serverTimestamp, onSnapshot } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
 import { getDoc } from 'firebase/firestore';
 import { generateTranslationExercises, evaluateTranslations, getUserWeaknesses, logMistakesToFirebase, formatAIModelName } from '../../services/geminiService';
 import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
@@ -18,6 +18,7 @@ import { getApprovedVocabularyText } from '../../utils/vocabulary';
 import { recordExerciseResults, getStudentAiContext } from '../../services/learningProfile';
 import { normalizeLevel } from '../../utils/learningCurve';
 import { shouldMarkTaskSubmitted, specialTaskIdFrom } from '../../utils/specialTaskSubmission';
+import { FreePracticeApiError, freePracticeErrorKey, requestFreeSentences } from '../../services/freePracticeApi';
 import { resolveFreeScopeWords, type LessonLike } from '../../utils/freeSentenceScope';
 import type { FreeSentencesLaunch } from '../../utils/freePractice';
 
@@ -890,6 +891,8 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   const [isEvaluating, setIsEvaluating] = useState<boolean>(false);
   const [activeGeneratingModel, setActiveGeneratingModel] = useState<string>('openai/gpt-5.6-luna');
   const [lastUsedWords, setLastUsedWords] = useState<string[]>([]);
+  // Tryb `free`: dzienny limit generowań wyczerpany (liczba i chwila odnowienia z serwera).
+  const [freeLimit, setFreeLimit] = useState<{ limit?: number; resetsAt?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [debugLogs, setDebugLogs] = useState<string>('');
   const addLog = (msg: string) => { console.log(msg); setDebugLogs(prev => prev + "\n" + msg); };
@@ -1365,6 +1368,66 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     }
   };
 
+  /**
+   * Tryb `free`: zdania z AI idą przez serwer (`POST /api/free-practice/generate`) — prompt składa
+   * serwer z danych kursanta w ogranicznikach, a dzienny limit liczy serwer. Klient dostarcza tylko
+   * zakres (słowa z zestawów i lekcji, tematy, identyfikatory lekcji); poziom, historię błędów i
+   * krzywą uczenia serwer odczytuje sam. Wynik trafia do stanu ćwiczenia; błąd z limitem dziennym
+   * ustawia `freeLimit`, pozostałe — `error`.
+   */
+  const generateFreeSentences = async (isAppending: boolean): Promise<void> => {
+    if (!freeLaunch) return;
+    setFreeLimit(null);
+    const words = await resolveFreeScopeWords(
+      { setIds: freeLaunch.setIds, lessonIds: freeLaunch.lessonIds },
+      { getFlashcards, lessons: vocabularySets },
+    );
+    const lessonRecordIds = freeLaunch.lessonIds
+      .map((id) => vocabularySets.find((set) => set.id === id)?.lessonRecordId)
+      .filter((id): id is string => Boolean(id));
+    setLastUsedWords(words);
+    try {
+      const result = await requestFreeSentences(
+        {
+          format: freeLaunch.mode === 'correction' ? 'correction' : 'translation',
+          topics: freeLaunch.topics,
+          words,
+          lessonRecordIds,
+          count: practiceMode === 'time' ? 10 : numSentences,
+          excludeSentences: usedSentencesRef.current.slice(-40),
+        },
+        {
+          fetch: (input, init) => fetch(input, init),
+          getToken: async () => auth.currentUser?.getIdToken(),
+        },
+      );
+      const generated = result.exercises;
+      generated.forEach((item) => {
+        if (item.englishTranslation) usedSentencesRef.current.push(item.englishTranslation);
+        if (item.polishSentence) usedSentencesRef.current.push(item.polishSentence);
+        if (item.erroneousSentence) usedSentencesRef.current.push(item.erroneousSentence);
+      });
+      if (isAppending) {
+        setExercises((prev) => [...prev, ...generated]);
+        setStudentAnswers((prev) => [...prev, ...new Array(generated.length).fill('')]);
+        setShowHints((prev) => [...prev, ...new Array(generated.length).fill(false)]);
+      } else {
+        setExercises(generated);
+        setStudentAnswers(new Array(generated.length).fill(''));
+        setShowHints(new Array(generated.length).fill(false));
+        setWarmupPhase('invite');
+        setStep('practice');
+      }
+    } catch (err) {
+      if (err instanceof FreePracticeApiError && !isAppending) {
+        if (err.code === 'daily_limit') setFreeLimit({ limit: err.limit, resetsAt: err.resetsAt });
+        else setError(i18n.t(freePracticeErrorKey(err.code)));
+        return;
+      }
+      throw err;
+    }
+  };
+
   // Generate exercises using Gemini
   const handleGenerate = async (isAppending = false, specialPromptOverride?: string) => {
     if (!isFree && selectedSetId?.startsWith('special-task-')) {
@@ -1421,6 +1484,10 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
     }
 
     try {
+      if (isFree && freeLaunch) {
+        await generateFreeSentences(isAppending);
+        return;
+      }
       let wordsToUse: string[] = [];
       let lessonContextString = '';
       let pastExercisesContext = "";
@@ -1514,12 +1581,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       if (selectedSetId !== 'general') {
         fetchPromises.push((async () => {
           try {
-            if (isFree && freeLaunch) {
-              wordsToUse = await resolveFreeScopeWords(
-                { setIds: freeLaunch.setIds, lessonIds: freeLaunch.lessonIds },
-                { getFlashcards, lessons: vocabularySets },
-              );
-            } else if (selectedSetId === 'basket') {
+            if (selectedSetId === 'basket') {
               if (basketWords.length === 0) {
                 setIsLoading(false);
                 setError(language === 'pl' ? 'Twój koszyk jest pusty! Dodaj najpierw słówka z lekcji przyciskiem +' : 'Basket is empty! Add words from lessons using +');
@@ -2447,17 +2509,26 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
             <div className="flex items-start gap-3">
               <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-danger" aria-hidden="true" />
               <div className="min-w-0 space-y-1">
-                <h2 className="text-base font-bold">{i18n.t('Nie udało się przygotować ćwiczenia')}</h2>
-                <p className="text-sm text-text-2 break-words">{error || i18n.t('Spróbuj ponownie za chwilę')}</p>
+                <h2 className="text-base font-bold">
+                  {freeLimit ? i18n.t('Dzienny limit wykorzystany') : i18n.t('Nie udało się przygotować ćwiczenia')}
+                </h2>
+                <p className="text-sm text-text-2 break-words">
+                  {freeLimit
+                    ? i18n.t(freePracticeErrorKey('daily_limit'), { limit: freeLimit.limit ?? '' })
+                    : error || i18n.t('Spróbuj ponownie za chwilę')}
+                </p>
+                {freeLimit && <p className="text-sm text-text-2">{i18n.t('Fiszki, Dopasowanie i Quiz działają bez limitu')}</p>}
               </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button type="button" variant="secondary" onClick={() => returnToSetup()} className="min-h-12 flex-1 text-text-hi!">
                 {i18n.t('Wróć do menu')}
               </Button>
-              <Button type="button" onClick={() => { setError(null); handleGenerate(false); }} className="min-h-12 flex-1">
-                {i18n.t('Spróbuj ponownie')}
-              </Button>
+              {!freeLimit && (
+                <Button type="button" onClick={() => { setError(null); handleGenerate(false); }} className="min-h-12 flex-1">
+                  {i18n.t('Spróbuj ponownie')}
+                </Button>
+              )}
             </div>
           </div>
         ) : (

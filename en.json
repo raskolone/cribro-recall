@@ -655,5 +655,19 @@
   "Wróć do menu": "Back to the menu",
   "Przejdź do zdań": "Go to the sentences",
   "Ładowanie ćwiczeń...": "Loading exercises...",
-  "Zestawy": "Sets"
+  "Zestawy": "Sets",
+  "Własny temat": "Your own topic",
+  "Twój temat": "Your topic",
+  "Dodaj temat": "Add topic",
+  "Wybrane tematy": "Selected topics",
+  "Usuń temat {{topic}}": "Remove topic {{topic}}",
+  "Fiszki, Dopasowanie i Quiz działają bez limitu": "Flashcards, Matching and Quiz have no daily limit",
+  "Dzienny limit wykorzystany": "Daily limit reached",
+  "Wpisz temat, na przykład podróże albo rozmowa o pracę — maksymalnie {{max}} tematy, do {{length}} znaków każdy": "Type a topic, for example travel or a job interview — up to {{max}} topics, {{length}} characters each",
+  "Wykorzystano dzienny limit zdań z AI ({{limit}}) — limit odnowi się o północy": "You have used your daily limit of AI sentence exercises ({{limit}}) — it resets at midnight",
+  "Usługa AI jest chwilowo niedostępna — spróbuj ponownie za chwilę": "The AI service is temporarily unavailable — please try again in a moment",
+  "Brak połączenia z serwerem — sprawdź internet i spróbuj ponownie": "Cannot reach the server — check your connection and try again",
+  "Sesja wygasła — zaloguj się ponownie": "Your session has expired — please sign in again",
+  "Nie udało się przygotować ćwiczenia z tego zakresu — zmień zakres i spróbuj ponownie": "Could not prepare an exercise from this scope — change the scope and try again",
+  "Serwer nie przygotował poprawnych zdań — spróbuj ponownie za chwilę": "The server could not prepare valid sentences — please try again in a moment"
 }

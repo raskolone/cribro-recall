@@ -657,5 +657,19 @@
   "Wróć do menu": "Wróć do menu",
   "Przejdź do zdań": "Przejdź do zdań",
   "Ładowanie ćwiczeń...": "Ładowanie ćwiczeń...",
-  "Zestawy": "Zestawy"
+  "Zestawy": "Zestawy",
+  "Własny temat": "Własny temat",
+  "Twój temat": "Twój temat",
+  "Dodaj temat": "Dodaj temat",
+  "Wybrane tematy": "Wybrane tematy",
+  "Usuń temat {{topic}}": "Usuń temat {{topic}}",
+  "Fiszki, Dopasowanie i Quiz działają bez limitu": "Fiszki, Dopasowanie i Quiz działają bez limitu",
+  "Dzienny limit wykorzystany": "Dzienny limit wykorzystany",
+  "Wpisz temat, na przykład podróże albo rozmowa o pracę — maksymalnie {{max}} tematy, do {{length}} znaków każdy": "Wpisz temat, na przykład podróże albo rozmowa o pracę — maksymalnie {{max}} tematy, do {{length}} znaków każdy",
+  "Wykorzystano dzienny limit zdań z AI ({{limit}}) — limit odnowi się o północy": "Wykorzystano dzienny limit zdań z AI ({{limit}}) — limit odnowi się o północy",
+  "Usługa AI jest chwilowo niedostępna — spróbuj ponownie za chwilę": "Usługa AI jest chwilowo niedostępna — spróbuj ponownie za chwilę",
+  "Brak połączenia z serwerem — sprawdź internet i spróbuj ponownie": "Brak połączenia z serwerem — sprawdź internet i spróbuj ponownie",
+  "Sesja wygasła — zaloguj się ponownie": "Sesja wygasła — zaloguj się ponownie",
+  "Nie udało się przygotować ćwiczenia z tego zakresu — zmień zakres i spróbuj ponownie": "Nie udało się przygotować ćwiczenia z tego zakresu — zmień zakres i spróbuj ponownie",
+  "Serwer nie przygotował poprawnych zdań — spróbuj ponownie za chwilę": "Serwer nie przygotował poprawnych zdań — spróbuj ponownie za chwilę"
 }
