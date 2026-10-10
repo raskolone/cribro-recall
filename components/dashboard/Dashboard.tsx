@@ -15,13 +15,13 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useSettings } from '../../context/SettingsContext';
 import { useVocabulary } from '../../context/VocabularyContext';
 import { useFlashcards } from '../../context/FlashcardContext';
-import { ExerciseType } from '../../types';
+import { ExerciseType, VocabularySet } from '../../types';
 import Button from '../ui/Button';
 import { ChevronDown, Sparkles, Menu } from 'lucide-react';
 import AssignedTasks from './AssignedTasks';
 import i18n from "i18next";
 
-type View = 'dashboard' | 'extra-practice' | 'free-practice' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios' | 'scratchpad';
+type View = 'dashboard' | 'extra-practice' | 'free-practice' | 'free-sentences' | 'student-today' | 'practice' | 'settings' | 'flashcard-sets' | 'flashcard-edit' | 'flashcard-study' | 'flashcard-stats' | 'admin' | 'admin-stats' | 'admin-history' | 'admin-profile' | 'admin-tests' | 'admin-debugging' | 'presentation' | 'ai-generator' | 'lesson-history' | 'tests' | 'topic-database' | 'student-stats' | 'homework' | 'mailing' | 'admin-mailing' | 'students-database' | 'admin-students-database' | 'students' | 'lesson-scenarios' | 'admin-scenarios' | 'scratchpad';
 
 import AdminPanel from '../admin/AdminPanel';
 import StandaloneStudentDatabaseScreen from '../admin/StandaloneStudentDatabaseScreen';
@@ -45,6 +45,8 @@ import AdminStatsScreen from '../admin/AdminStatsScreen';
 import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
 import FlashcardStudyScreen from '../flashcards/FlashcardStudyScreen';
 import FreePracticeScreen from '../practice/FreePracticeScreen';
+import { getVocabularySetsForStudent } from '../../services/lessonRecord';
+import { shortcutInitial, type FreePracticeInitial, type FreeSentencesLaunch } from '../../utils/freePractice';
 import FlashcardEditScreen from '../flashcards/FlashcardEditScreen';
 import FlashcardStatsScreen from '../flashcards/FlashcardStatsScreen';
 import FlashcardPresentationScreen from '../flashcards/FlashcardPresentationScreen';
@@ -134,6 +136,7 @@ const TEACHER_ONLY_VIEWS = new Set<View>([
   'admin-tests',
   'admin-debugging',
   'ai-generator',
+  'free-sentences',
   'mailing',
   'admin-mailing',
   'students-database',
@@ -199,6 +202,11 @@ const Dashboard: React.FC = () => {
   // Ćwiczenie z kilku zestawów (Ćwiczenia dowolne). Nie jest zapisywane w stanie panelu:
   // po odświeżeniu zostaje pierwszy zestaw (`activeSetId`).
   const [activeSetIds, setActiveSetIds] = useState<string[] | null>(null);
+  // Ćwiczenia dowolne: ostatni wybór (powrót z ćwiczenia wraca do kroku zakresu), start zdań z AI
+  // i lekcje kursanta (źródło zdań). Nic z tego nie trafia do stanu panelu — po F5 menu startuje od zera.
+  const [freeDraft, setFreeDraft] = useState<FreePracticeInitial | null>(null);
+  const [freeLaunch, setFreeLaunch] = useState<FreeSentencesLaunch | null>(null);
+  const [lessonSets, setLessonSets] = useState<VocabularySet[] | null>(null);
   // Wybór kursanta we wszystkich kafelkach „Widoku kursanta" naraz — bez
   // tego przełączenie się między kafelkami zerowałoby wybór za każdym razem.
   const [adminSelectedUserId, setAdminSelectedUserId] = useState<string | null>(restoredPanelState.adminSelectedUserId ?? null);
@@ -408,6 +416,19 @@ const Dashboard: React.FC = () => {
       setActiveSetId(newSetId);
     }
   };
+
+  const needsLessons =
+    !isTeacher && (view === 'free-practice' || view === 'extra-practice' || view === 'ai-generator' || view === 'free-sentences');
+  useEffect(() => {
+    if (!needsLessons || !user?.id || lessonSets !== null) return;
+    let cancelled = false;
+    getVocabularySetsForStudent(user.id)
+      .then((result) => !cancelled && setLessonSets(result))
+      .catch(() => !cancelled && setLessonSets([]));
+    return () => {
+      cancelled = true;
+    };
+  }, [needsLessons, user?.id, lessonSets]);
 
   const [isExerciseActive, setIsExerciseActive] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -661,20 +682,58 @@ const Dashboard: React.FC = () => {
       }
       return homeworkV1;
     }
-    if (view === 'free-practice' && !isTeacher) {
-      // Ćwiczenia dowolne: wybór rodzaju i zestawu, start przez istniejący moduł fiszek
-      // (`flashcard-study`). Nic tu nie dotyka prac domowych — zapis wyniku robi
-      // `saveSession` w module nauki, jak przy ćwiczeniu z „Mojego słownictwa".
+    // Ćwiczenia dowolne: JEDNO menu dla kursanta. Wejścia: pulpit (`free-practice`) oraz skróty
+    // „Przećwicz w zdaniach AI" (`ai-generator` z zestawu / lekcji, historyczne `extra-practice`) —
+    // te otwierają to samo menu z Tłumaczeniem i wstępnie wybranym zakresem. Nic tu nie dotyka prac
+    // domowych: fiszki zapisuje `saveSession` w module nauki, a zdania z AI idą przez generator
+    // w trybie `free`, który nie zna `specialTasks`.
+    if (view === 'free-sentences' && !isTeacher && freeLaunch) {
+      return (
+        <AIExerciseGeneratorScreen
+          mode="free"
+          freeLaunch={freeLaunch}
+          freeLessons={lessonSets ?? []}
+          onExitFree={() => handleNavigate('free-practice')}
+        />
+      );
+    }
+    if (
+      !isTeacher &&
+      (view === 'free-practice' || view === 'extra-practice' || view === 'ai-generator' || view === 'free-sentences')
+    ) {
+      const fromShortcut = view === 'ai-generator';
+      const shortcutId = fromShortcut ? activeSetId : null;
+      if (shortcutId && /^(lesson_|vocab-)/.test(shortcutId) && lessonSets === null) {
+        return (
+          <p role="status" aria-live="polite" className="p-6 text-center text-sm text-text-2">
+            {i18n.t('Ładowanie ćwiczeń...')}
+          </p>
+        );
+      }
+      const initial = fromShortcut ? shortcutInitial(shortcutId, lessonSets ?? [], sets) : (view === 'free-practice' ? freeDraft : null) ?? undefined;
       return (
         <FreePracticeScreen
+          key={`${view}:${shortcutId ?? ''}`}
           sets={sets}
+          lessons={lessonSets ?? []}
+          initial={initial}
           onStart={(launch) => {
+            setFreeDraft({
+              mode: launch.mode,
+              step: 'scope',
+              setIds: launch.setIds,
+              lessonIds: launch.view === 'free-sentences' ? launch.lessonIds : [],
+            });
+            if (launch.view === 'free-sentences') {
+              setFreeLaunch(launch);
+              handleNavigate('free-sentences');
+              return;
+            }
             (window as any)._initialStudyMode = launch.mode;
             handleNavigate(launch.view, { setId: launch.setId, setIds: launch.setIds });
           }}
           onBack={() => handleNavigate('dashboard')}
           onOpenVocabulary={() => handleNavigate('flashcard-sets')}
-          onOpenExtraPractice={() => handleNavigate('extra-practice')}
         />
       );
     }

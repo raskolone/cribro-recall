@@ -1,21 +1,19 @@
 /**
- * „Ćwiczenia dowolne" — kursant uruchamia ćwiczenie z pulpitu, poza pracą domową.
+ * „Ćwiczenia dowolne" — jedno menu ćwiczeń poza pracą domową.
  *
- * Logika bez UI i bez Firebase: lista rodzajów, kroki przepływu, wybór wielu zestawów
- * i cel uruchomienia. Rodzaje oparte na zestawach (Fiszki, Quiz, Dopasowanie) to tryby, które moduł
- * fiszek (`FlashcardStudyScreen`) już ma — nic nowego w samych ćwiczeniach. Start nie niesie żadnego
- * pola pracy domowej (`taskId`, `specialTasks`…), a zapis wyniku robi ta sama ścieżka co dotąd
- * (`FlashcardContext.saveSession`: `sessions`, `practiceLogs`), która nie dotyka `specialTasks`.
+ * Logika bez UI i bez Firebase: lista rodzajów, kroki przepływu, wybór źródeł i cel uruchomienia.
+ * Pięć rodzajów w dwóch grupach:
+ *  - oparte na zestawach (Fiszki, Quiz, Dopasowanie) — tryby, które moduł fiszek
+ *    (`FlashcardStudyScreen`) już ma; zakres = wielokrotny wybór istniejących zestawów, bez AI;
+ *  - zdania z AI (Tłumaczenie, Korekta) — generator zdań w trybie `free`
+ *    (`AIExerciseGeneratorScreen mode="free"`); zakres = zestawy i lekcje (oraz tematy).
  *
- * „Fiszki Intro" i „Pisanie" zniknęły z tego menu, ale zostają w module fiszek (używa ich m.in.
- * ekran „Moje słownictwo"). Korekta i Tłumaczenie zdań są na liście jako kafelki „wkrótce"
- * (`available: false`) — start dostaną z fazą generowania zdań przez AI.
- *
- * Zdania z AI (`AIExerciseGeneratorScreen`) celowo NIE są rodzajem z tej listy: ten
- * ekran po ukończeniu ustawia `specialTasks/{id}.status = 'submitted'`, gdy źródłem
- * jest zadanie lektora (`special-task-…`), więc nie spełniałby warunku „nie zmienia
- * statusu pracy domowej".
+ * Start nie niesie żadnego pola pracy domowej (`taskId`, `specialTasks`…). Zapis wyniku fiszek robi
+ * `FlashcardContext.saveSession`, a generator w trybie `free` nie woła aktualizacji `specialTasks`
+ * (patrz `utils/specialTaskSubmission.ts`).
  */
+
+import { resolveLessonShortcut, shortcutKind, type LessonLike } from './freeSentenceScope';
 
 export type FreePracticeMode = 'flashcards' | 'quiz' | 'matching' | 'correction' | 'translation';
 
@@ -32,26 +30,34 @@ export interface FreePracticeType {
   descriptionKey: string;
   icon: FreePracticeIcon;
   accent: FreePracticeAccent;
-  /** `false` = kafelek „wkrótce": widoczny, wyłączony, z opisem. */
-  available: boolean;
 }
 
 /** Kolejność = kolejność na ekranie. Pierwszy jest domyślnie wybrany. */
 export const FREE_PRACTICE_TYPES: readonly FreePracticeType[] = [
-  { mode: 'flashcards', titleKey: 'Fiszki', descriptionKey: 'Odwracaj karty i sprawdzaj, co pamiętasz', icon: 'layers', accent: 'primary', available: true },
-  { mode: 'quiz', titleKey: 'Quiz', descriptionKey: 'Szybki test wielokrotnego wyboru', icon: 'listChecks', accent: 'info', available: true },
-  { mode: 'matching', titleKey: 'Dopasowanie', descriptionKey: 'Połącz słowo z jego znaczeniem', icon: 'link', accent: 'accent-2', available: true },
-  { mode: 'correction', titleKey: 'Korekta zdań', descriptionKey: 'Znajdź błąd w zdaniu i popraw go', icon: 'spellCheck', accent: 'warn', available: false },
-  { mode: 'translation', titleKey: 'Tłumaczenie zdań', descriptionKey: 'Przetłumacz zdania na angielski', icon: 'languages', accent: 'info', available: false },
+  { mode: 'translation', titleKey: 'Tłumaczenie zdań', descriptionKey: 'Przetłumacz zdania na angielski', icon: 'languages', accent: 'info' },
+  { mode: 'correction', titleKey: 'Korekta zdań', descriptionKey: 'Znajdź błąd w zdaniu i popraw go', icon: 'spellCheck', accent: 'warn' },
+  { mode: 'flashcards', titleKey: 'Fiszki', descriptionKey: 'Odwracaj karty i sprawdzaj, co pamiętasz', icon: 'layers', accent: 'primary' },
+  { mode: 'matching', titleKey: 'Dopasowanie', descriptionKey: 'Połącz słowo z jego znaczeniem', icon: 'link', accent: 'accent-2' },
+  { mode: 'quiz', titleKey: 'Quiz', descriptionKey: 'Szybki test wielokrotnego wyboru', icon: 'listChecks', accent: 'info' },
 ];
 
 export const DEFAULT_FREE_PRACTICE_MODE: FreePracticeMode = FREE_PRACTICE_TYPES[0].mode;
 
-/** Tryby, które da się dziś uruchomić (moduł fiszek). */
+/** Tryby modułu fiszek (zakres: zestawy, bez AI). */
 export const STUDY_MODES: readonly FreePracticeMode[] = ['flashcards', 'quiz', 'matching'];
 
-export function isFreePracticeModeAvailable(mode: FreePracticeMode): boolean {
-  return FREE_PRACTICE_TYPES.some((type) => type.mode === mode && type.available);
+/** Tryby zdań z AI (zakres: zestawy, lekcje, tematy). */
+export const SENTENCE_MODES: readonly FreePracticeMode[] = ['translation', 'correction'];
+
+export function isSentenceMode(mode: FreePracticeMode): boolean {
+  return SENTENCE_MODES.includes(mode);
+}
+
+/** Format ćwiczenia w generatorze zdań: „Sprawdź się" (tłumaczenie) albo „Napraw zdanie" (korekta). */
+export type SentenceFormat = 'typing' | 'correction';
+
+export function sentenceFormatFor(mode: FreePracticeMode): SentenceFormat {
+  return mode === 'correction' ? 'correction' : 'typing';
 }
 
 // --- Kroki przepływu -----------------------------------------------------------------------
@@ -74,7 +80,7 @@ export function previousStep(step: FreePracticeStep): FreePracticeStep {
 
 // --- Start ---------------------------------------------------------------------------------
 
-/** Dokąd prowadzi start ćwiczenia — wyłącznie widok nauki fiszek, zestawy i tryb. */
+/** Start ćwiczenia z zestawów — widok nauki fiszek, zestawy i tryb. */
 export interface FreePracticeLaunch {
   view: 'flashcard-study';
   /** Pierwszy wybrany zestaw (zgodność z modułem, który zna jeden `setId`). */
@@ -87,6 +93,71 @@ export interface FreePracticeLaunch {
 export function freePracticeLaunch(mode: FreePracticeMode, setIds: readonly string[]): FreePracticeLaunch {
   const ids = [...setIds];
   return { view: 'flashcard-study', setId: ids[0] ?? '', setIds: ids, mode };
+}
+
+/** Zakres zdań z AI: zestawy, lekcje (id zestawów słownictwa z lekcji) i tematy wpisane ręcznie. */
+export interface SentenceScope {
+  setIds: string[];
+  lessonIds: string[];
+  topics: string[];
+}
+
+export const EMPTY_SENTENCE_SCOPE: SentenceScope = { setIds: [], lessonIds: [], topics: [] };
+
+/** Start zdań z AI — generator w trybie `free`. Żadnego pola zadania lektora. */
+export interface FreeSentencesLaunch extends SentenceScope {
+  view: 'free-sentences';
+  mode: 'translation' | 'correction';
+  format: SentenceFormat;
+}
+
+export function freeSentencesLaunch(mode: 'translation' | 'correction', scope: SentenceScope): FreeSentencesLaunch {
+  return {
+    view: 'free-sentences',
+    mode,
+    format: sentenceFormatFor(mode),
+    setIds: [...scope.setIds],
+    lessonIds: [...scope.lessonIds],
+    topics: [...scope.topics],
+  };
+}
+
+export type AnyFreeLaunch = FreePracticeLaunch | FreeSentencesLaunch;
+
+export function buildFreeLaunch(mode: FreePracticeMode, scope: SentenceScope): AnyFreeLaunch {
+  return mode === 'translation' || mode === 'correction'
+    ? freeSentencesLaunch(mode, scope)
+    : freePracticeLaunch(mode, scope.setIds);
+}
+
+// --- Stan początkowy menu (powrót z ćwiczenia, skrót z innego ekranu) ---------------------------
+
+/** Wstępny stan menu: powrót z ćwiczenia albo skrót „Przećwicz w zdaniach AI" z innego ekranu. */
+export interface FreePracticeInitial {
+  mode?: FreePracticeMode;
+  step?: FreePracticeStep;
+  setIds?: string[];
+  lessonIds?: string[];
+}
+
+/**
+ * Skrót „Przećwicz w zdaniach AI" (zestaw, fiszki, historia lekcji): menu z Tłumaczeniem i wstępnie
+ * wybranym zakresem, od razu na kroku zakresu. Nieznany albo pusty zakres → menu od początku,
+ * ale nadal z Tłumaczeniem.
+ */
+export function shortcutInitial(
+  rawId: string | null | undefined,
+  lessons: readonly LessonLike[],
+  sets: ReadonlyArray<SetLike>,
+): FreePracticeInitial {
+  const fallback: FreePracticeInitial = { mode: 'translation' };
+  if (!rawId) return fallback;
+  if (shortcutKind(rawId) === 'lesson') {
+    const lessonId = resolveLessonShortcut(rawId, lessons);
+    return lessonId ? { mode: 'translation', step: 'scope', lessonIds: [lessonId] } : fallback;
+  }
+  const set = sets.find((candidate) => candidate.id === rawId);
+  return set && isSetSelectable(set) ? { mode: 'translation', step: 'scope', setIds: [rawId] } : fallback;
 }
 
 // --- Zakres: wielokrotny wybór zestawów ----------------------------------------------------
@@ -181,19 +252,36 @@ export function summarizeSelection<T extends SetLike>(sets: readonly T[], select
 /** Minimalna liczba kart, żeby tryb miał sens (quiz potrzebuje wariantów odpowiedzi, dopasowanie par). */
 export const MIN_CARDS: Partial<Record<FreePracticeMode, number>> = { flashcards: 1, quiz: 4, matching: 2 };
 
-export type StartBlocker = 'unavailable' | 'no-sets' | 'too-few-cards';
+/** Łączny limit źródeł (zestawy + lekcje + tematy) w jednym ćwiczeniu ze zdań — prompt nie może puchnąć. */
+export const MAX_SENTENCE_SOURCES = 5;
+/** Tematy wpisane ręcznie: liczba i długość jednego (to samo ogranicza serwer). */
+export const MAX_SENTENCE_TOPICS = 3;
+export const MAX_TOPIC_LENGTH = 80;
+
+export type StartBlocker = 'no-sets' | 'too-few-cards' | 'no-scope' | 'too-many-sources';
+
+export function sentenceSourceCount(scope: SentenceScope): number {
+  return scope.setIds.length + scope.lessonIds.length + scope.topics.length;
+}
 
 export function startBlocker(mode: FreePracticeMode, summary: SelectionSummary): { blocker: StartBlocker | null; min: number } {
   const min = MIN_CARDS[mode] ?? 0;
-  if (!isFreePracticeModeAvailable(mode)) return { blocker: 'unavailable', min };
   if (summary.sets === 0) return { blocker: 'no-sets', min };
   if (summary.cards < min) return { blocker: 'too-few-cards', min };
   return { blocker: null, min };
 }
 
+/** Blokada startu dla zdań z AI: trzeba wybrać choć jedno źródło, nie więcej niż limit. */
+export function sentenceStartBlocker(scope: SentenceScope): StartBlocker | null {
+  const count = sentenceSourceCount(scope);
+  if (count === 0) return 'no-scope';
+  if (count > MAX_SENTENCE_SOURCES) return 'too-many-sources';
+  return null;
+}
+
 /**
- * Klawiatura w grupie rodzajów (`role="radiogroup"`): strzałki przechodzą cyklicznie po rodzajach
- * dostępnych (kafelki „wkrótce" są pomijane), Home/End na początek i koniec.
+ * Klawiatura w grupie rodzajów (`role="radiogroup"`): strzałki przechodzą cyklicznie po rodzajach,
+ * Home/End na początek i koniec.
  * Inny klawisz → `null` (zostaje przeglądarce).
  */
 export function nextFreePracticeMode(
@@ -201,7 +289,7 @@ export function nextFreePracticeMode(
   key: string,
   types: readonly FreePracticeType[] = FREE_PRACTICE_TYPES,
 ): FreePracticeMode | null {
-  const enabled = types.filter((type) => type.available);
+  const enabled = types;
   const index = enabled.findIndex((type) => type.mode === current);
   if (index < 0 || enabled.length === 0) return null;
   switch (key) {

@@ -30,6 +30,11 @@ interface HomeworkWarmupScramblerProps {
   onSkip: () => void;
   /** Wywoływany raz na każdą ukończoną (w pełni ułożoną) próbę — wywołujący decyduje, jak i czy zapisać próbę trwale. */
   onAttemptResult?: (attempt: WarmupAttemptResult) => void;
+  /**
+   * Podpis przycisku po ostatnim zdaniu. Domyślnie „Rozpocznij pracę domową" (rozgrzewka pracy
+   * domowej); Ćwiczenia dowolne podają własny, bez odwołania do pracy domowej.
+   */
+  finishLabel?: string;
 }
 
 function extractWords(sentence: string): string[] {
@@ -53,6 +58,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   onComplete,
   onSkip,
   onAttemptResult,
+  finishLabel = 'Rozpocznij pracę domową',
 }) => {
   const warmupItems: WarmupRound[] = useMemo(() => buildWarmupRounds(sentences, task), [sentences, task]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -341,7 +347,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 onClick={handleNext}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span className="whitespace-nowrap">{isLast ? 'Rozpocznij pracę domową' : 'Następne zdanie'}</span>
+                <span className="whitespace-nowrap">{isLast ? finishLabel : 'Następne zdanie'}</span>
                 <ArrowRight size={15} className="shrink-0" />
               </button>
             </div>
@@ -370,7 +376,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                 onClick={handleNext}
                 className="w-full sm:w-auto self-end px-5 py-2.5 rounded-xl bg-info hover:bg-info/85 text-white font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <span className="whitespace-nowrap">{isLast ? 'Rozpocznij pracę domową' : 'Następne zdanie'}</span>
+                <span className="whitespace-nowrap">{isLast ? finishLabel : 'Następne zdanie'}</span>
                 <ArrowRight size={15} className="shrink-0" />
               </button>
             </div>

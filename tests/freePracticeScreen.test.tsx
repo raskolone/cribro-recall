@@ -8,8 +8,8 @@ import React from 'react';
 import { render, cleanup, fireEvent } from '@testing-library/react';
 import i18n from '../i18n';
 import FreePracticeScreen from '../components/practice/FreePracticeScreen';
-import type { FreePracticeLaunch } from '../utils/freePractice';
-import { MAX_FREE_PRACTICE_SETS } from '../utils/freePractice';
+import type { AnyFreeLaunch } from '../utils/freePractice';
+import { MAX_FREE_PRACTICE_SETS, MAX_SENTENCE_SOURCES } from '../utils/freePractice';
 import type { FlashcardSet } from '../types';
 
 before(async () => {
@@ -42,16 +42,24 @@ const sets: FlashcardSet[] = [
   mkSet('g2', 'Ogólne A2', { isGeneral: true }),
 ];
 
+const lessons = [
+  { id: 'l1', title: 'Lekcja 12.10', topic: 'Podróże' },
+  { id: 'l2', title: 'Lekcja 19.10', topic: 'Praca' },
+  { id: 'l3', title: 'Lekcja 26.10', topic: 'Zdrowie' },
+];
+
 const setup = (props: Partial<React.ComponentProps<typeof FreePracticeScreen>> = {}) => {
-  const starts: FreePracticeLaunch[] = [];
-  const calls = { back: 0, vocabulary: 0, sentences: 0 };
+  const starts: AnyFreeLaunch[] = [];
+  const calls = { back: 0, vocabulary: 0 };
+  // Domyślnie startujemy od fiszek (zakres = zestawy); testy domyślnego rodzaju podają `initial: undefined`.
   const utils = render(
     <FreePracticeScreen
       sets={sets}
+      lessons={lessons}
+      initial={{ mode: 'flashcards' }}
       onStart={(launch) => starts.push(launch)}
       onBack={() => calls.back++}
       onOpenVocabulary={() => calls.vocabulary++}
-      onOpenExtraPractice={() => calls.sentences++}
       {...props}
     />,
   );
@@ -73,7 +81,7 @@ const setup = (props: Partial<React.ComponentProps<typeof FreePracticeScreen>> =
 };
 
 test('kolejność kroków: 1 rodzaj → 2 zakres → 3 start, z widocznym postępem i powrotem', () => {
-  const { stepCounter, next, prev, getByTestId, queryByTestId, container, toScope } = setup();
+  const { stepCounter, next, prev, getByTestId, queryByTestId, container, toScope } = setup({ initial: undefined });
   assert.equal(stepCounter(), 'Krok 1 z 3');
   assert.ok(getByTestId('free-practice-step-type'));
   assert.equal(queryByTestId('free-practice-prev'), null, 'na pierwszym kroku nie ma „Wstecz"');
@@ -92,7 +100,7 @@ test('kolejność kroków: 1 rodzaj → 2 zakres → 3 start, z widocznym postę
   assert.ok(getByTestId('free-practice-step-type'));
 });
 
-test('krok 3 jest dopiero po wyborze zestawu; przycisk zmienia się na „Start" i startuje', () => {
+test('krok 3 jest dopiero po wyborze zestawu; przycisk zmienia się na „Start" i startuje (fiszki → moduł fiszek)', () => {
   const { box, next, stepCounter, starts, getByTestId, toScope } = setup();
   toScope();
   fireEvent.click(box('s1'));
@@ -104,49 +112,47 @@ test('krok 3 jest dopiero po wyborze zestawu; przycisk zmienia się na „Start"
   assert.deepEqual(starts, [{ view: 'flashcard-study', setId: 's1', setIds: ['s1'], mode: 'flashcards' }]);
 });
 
-test('menu: pięć rodzajów, bez „Fiszki Intro" i „Pisanie", domyślnie Fiszki, roving tabindex', () => {
-  const { radios, checked, container } = setup();
+test('menu: pięć rodzajów w kolejności Tłumaczenie, Korekta, Fiszki, Dopasowanie, Quiz; domyślnie Tłumaczenie, roving tabindex', () => {
+  const { radios, checked, container } = setup({ initial: undefined });
   assert.deepEqual(
     radios().map((r) => r.querySelector('span:nth-of-type(2)')!.textContent),
-    ['Fiszki', 'Quiz', 'Dopasowanie', 'Korekta zdań', 'Tłumaczenie zdań'],
+    ['Tłumaczenie zdań', 'Korekta zdań', 'Fiszki', 'Dopasowanie', 'Quiz'],
   );
   const text = container.textContent!;
   assert.ok(!text.includes('Fiszki Intro') && !text.includes('Pisanie'));
-  assert.equal(checked().getAttribute('data-mode'), 'flashcards');
+  assert.ok(!text.includes('Wkrótce') && !text.includes('Zdania z AI'), 'żadnych kafelków „wkrótce" ani starego linku');
+  assert.equal(checked().getAttribute('data-mode'), 'translation');
   assert.deepEqual(radios().map((r) => r.tabIndex), [0, -1, -1, -1, -1]);
 });
 
 test('kafelki: każdy ma ikonę (svg), opis i własny akcent; wybrany ma znacznik — nie tylko kolor', () => {
-  const { radios, tile } = setup();
+  const { radios, tile } = setup({ initial: undefined });
   for (const r of radios()) {
     assert.ok(r.querySelector('svg'), `${r.getAttribute('data-mode')}: ikona`);
     assert.ok(r.querySelectorAll('span').length >= 3, 'tytuł + opis');
   }
-  assert.ok(tile('flashcards').querySelector('[data-testid="free-practice-selected-mark"] svg'), 'znacznik wyboru z ikoną');
+  assert.ok(tile('translation').querySelector('[data-testid="free-practice-selected-mark"] svg'), 'znacznik wyboru z ikoną');
   assert.equal(tile('quiz').querySelector('[data-testid="free-practice-selected-mark"]'), null);
-  assert.match(tile('flashcards').className, /border-primary/);
+  assert.match(tile('translation').className, /border-primary/);
   assert.match(tile('quiz').className, /border-line-strong/);
   fireEvent.click(tile('quiz'));
   assert.ok(tile('quiz').querySelector('[data-testid="free-practice-selected-mark"]'));
-  assert.equal(tile('flashcards').querySelector('[data-testid="free-practice-selected-mark"]'), null);
+  assert.equal(tile('translation').querySelector('[data-testid="free-practice-selected-mark"]'), null);
 });
 
-test('korekta i tłumaczenie: kafelki „wkrótce" — wyłączone, z opisem, nie dają się wybrać', () => {
-  const { tile, checked, next, toScope, getAllByTestId } = setup();
+test('korekta i tłumaczenie to pełnoprawne kafelki: aktywne, z opisem, dają się wybrać i prowadzą do zakresu', () => {
+  const { tile, checked, toScope, getByTestId } = setup({ initial: undefined });
   for (const mode of ['correction', 'translation']) {
     const el = tile(mode);
-    assert.equal(el.getAttribute('aria-disabled'), 'true');
-    assert.equal(el.getAttribute('data-available'), 'false');
-    assert.equal(el.tabIndex, -1);
-    assert.ok(el.textContent!.includes('Wkrótce'));
+    assert.equal(el.getAttribute('aria-disabled'), null, mode);
+    assert.ok(!el.textContent!.includes('Wkrótce'));
     fireEvent.click(el);
-    assert.equal(checked().getAttribute('data-mode'), 'flashcards', 'klik nie zmienia wyboru');
+    assert.equal(checked().getAttribute('data-mode'), mode);
   }
   assert.ok(tile('correction').textContent!.includes('Znajdź błąd w zdaniu i popraw go'));
   assert.ok(tile('translation').textContent!.includes('Przetłumacz zdania na angielski'));
-  assert.equal(getAllByTestId('free-practice-soon').length, 2);
   toScope();
-  assert.ok(next());
+  assert.ok(getByTestId('free-practice-step-scope'));
 });
 
 test('fokus po wejściu trafia na nagłówek ekranu, po zmianie kroku na nagłówek kroku', () => {
@@ -160,21 +166,23 @@ test('fokus po wejściu trafia na nagłówek ekranu, po zmianie kroku na nagłó
   assert.ok(next());
 });
 
-test('klawiatura w grupie rodzajów: strzałki i Home/End po dostępnych, fokus idzie za wyborem, Tab zostaje przeglądarce', () => {
-  const { radios, checked } = setup();
+test('klawiatura w grupie rodzajów: strzałki i Home/End po wszystkich pięciu, fokus idzie za wyborem, Tab zostaje przeglądarce', () => {
+  const { radios, checked } = setup({ initial: undefined });
   const mode = () => checked().getAttribute('data-mode');
   fireEvent.keyDown(radios()[0], { key: 'ArrowRight' });
-  assert.equal(mode(), 'quiz');
+  assert.equal(mode(), 'correction');
   assert.equal(document.activeElement, checked());
   assert.deepEqual(radios().map((r) => r.tabIndex), [-1, 0, -1, -1, -1]);
   fireEvent.keyDown(checked(), { key: 'ArrowRight' });
-  assert.equal(mode(), 'matching');
-  fireEvent.keyDown(checked(), { key: 'ArrowRight' });
-  assert.equal(mode(), 'flashcards', 'zawinięcie omija kafelki „wkrótce"');
-  fireEvent.keyDown(checked(), { key: 'End' });
-  assert.equal(mode(), 'matching');
-  fireEvent.keyDown(checked(), { key: 'Home' });
   assert.equal(mode(), 'flashcards');
+  fireEvent.keyDown(checked(), { key: 'End' });
+  assert.equal(mode(), 'quiz');
+  fireEvent.keyDown(checked(), { key: 'ArrowRight' });
+  assert.equal(mode(), 'translation', 'zawinięcie na pierwszy');
+  fireEvent.keyDown(checked(), { key: 'ArrowLeft' });
+  assert.equal(mode(), 'quiz', 'zawinięcie na ostatni');
+  fireEvent.keyDown(checked(), { key: 'Home' });
+  assert.equal(mode(), 'translation');
   assert.equal(fireEvent.keyDown(radios()[0], { key: 'ArrowRight' }), false, 'strzałka: preventDefault');
   assert.equal(fireEvent.keyDown(radios()[1], { key: 'Tab' }), true, 'Tab zostaje przeglądarce');
 });
@@ -289,10 +297,9 @@ test('brak zestawów: komunikat i przejście do słownictwa, „Dalej" zablokowa
   assert.equal(calls.vocabulary, 1);
 });
 
-test('powrót: z kroku 1 na pulpit, z dalszych kroków o krok wstecz; „Zdania z AI" to osobne wejście, nie rodzaj', () => {
-  const { getByTestId, calls, starts, radios, prev, toScope, stepCounter } = setup();
-  fireEvent.click(getByTestId('free-practice-sentences'));
-  assert.equal(calls.sentences, 1);
+test('powrót: z kroku 1 na pulpit, z dalszych kroków o krok wstecz; nie ma osobnego wejścia „Zdania z AI"', () => {
+  const { getByTestId, queryByTestId, calls, starts, radios, prev, toScope, stepCounter } = setup();
+  assert.equal(queryByTestId('free-practice-sentences'), null);
   assert.equal(radios().length, 5);
   fireEvent.click(getByTestId('free-practice-back'));
   assert.equal(calls.back, 1);
@@ -317,17 +324,18 @@ test('start nie niesie żadnych pól pracy domowej', () => {
 test('ekran tłumaczy się na angielski przez i18n (kafelki, kroki, liczniki)', async () => {
   await i18n.changeLanguage('en');
   try {
-    const { getByRole, radios, stepCounter, toScope, getByTestId, box } = setup();
+    const { getByRole, radios, stepCounter, toScope, getByTestId, box } = setup({ initial: undefined });
     assert.equal(getByRole('heading', { level: 1 }).textContent, 'Free practice');
     assert.deepEqual(
       radios().map((r) => r.querySelector('span:nth-of-type(2)')!.textContent),
-      ['Flashcards', 'Quiz', 'Matching', 'Sentence correction', 'Sentence translation'],
+      ['Sentence translation', 'Sentence correction', 'Flashcards', 'Matching', 'Quiz'],
     );
     assert.equal(stepCounter(), 'Step 1 of 3');
     toScope();
     fireEvent.click(box('s1'));
-    assert.equal(getByTestId('free-practice-counter').textContent, 'Sets: 1 · Cards: 5');
+    assert.equal(getByTestId('free-practice-counter').textContent, 'Sources: 1 of 5');
     assert.ok(getByTestId('free-practice-step-scope').textContent!.includes('5 cards'));
+    assert.ok(getByTestId('free-practice-step-scope').textContent!.includes('Lessons'));
   } finally {
     cleanup();
     await i18n.changeLanguage('pl');
@@ -344,7 +352,7 @@ test('stagger: każdy kafelek wchodzi z rosnącym opóźnieniem (WAAPI), przy re
   };
   (dom.window as any).matchMedia = () => ({ matches: false });
   setup();
-  assert.ok(calls.length >= 6, `kafelki + wiersz „Zdania z AI": ${calls.length}`);
+  assert.ok(calls.length >= 5, `pięć kafelków: ${calls.length}`);
   const delays = calls.map((c) => c.delay);
   assert.deepEqual(delays, [...delays].sort((a, b) => a - b));
   assert.ok(delays[1] > delays[0]);
@@ -373,4 +381,112 @@ test('pasek przycisków przyklejony do dołu z safe-area, pola ≥ 16 px, cele d
   assert.match(src, /type="search"[\s\S]{0,400}text-base/);
   assert.match(src, /min-h-12/);
   assert.match(src, /min-h-14/); // wiersze zestawów
+});
+
+// --- Zdania z AI (Tłumaczenie, Korekta): zakres = zestawy + lekcje ----------------------------
+
+const lessonRows = (container: HTMLElement) => Array.from(container.querySelectorAll<HTMLElement>('[data-testid="free-practice-lesson"]'));
+const lessonBox = (container: HTMLElement, id: string) =>
+  lessonRows(container).find((r) => r.getAttribute('data-lesson-id') === id)!.querySelector('input') as HTMLInputElement;
+
+test('tłumaczenie: zakres to zestawy i lekcje, licznik źródeł, wyszukiwarka obejmuje oba', () => {
+  const { toScope, getByTestId, container, box, rows, getByLabelText } = setup({ initial: undefined });
+  toScope();
+  assert.ok(getByTestId('free-practice-lessons'));
+  assert.deepEqual(lessonRows(container).map((r) => r.getAttribute('data-lesson-id')), ['l1', 'l2', 'l3']);
+  const counter = () => getByTestId('free-practice-counter');
+  assert.equal(counter().textContent, 'Źródła: 0 z 5');
+  fireEvent.click(box('s1'));
+  fireEvent.click(lessonBox(container, 'l2'));
+  assert.equal(counter().textContent, 'Źródła: 2 z 5');
+  const search = getByLabelText('Szukaj zestawów i lekcji') as HTMLInputElement;
+  fireEvent.change(search, { target: { value: 'zdrowie' } });
+  assert.deepEqual(lessonRows(container).map((r) => r.getAttribute('data-lesson-id')), ['l3']);
+  assert.equal(rows().length, 0);
+  assert.equal(counter().textContent, 'Źródła: 2 z 5', 'licznik liczy też ukryte wiersze');
+});
+
+test('fiszki, quiz i dopasowanie nie pokazują lekcji — zakres tylko zestawy', () => {
+  for (const mode of ['flashcards', 'quiz', 'matching']) {
+    const { toScope, queryByTestId, getByTestId } = setup({ initial: { mode: mode as any } });
+    toScope();
+    assert.equal(queryByTestId('free-practice-lessons'), null, mode);
+    assert.match(getByTestId('free-practice-counter').textContent!, /^Zestawy: \d+ · Karty: \d+$/, mode);
+    cleanup();
+  }
+});
+
+test('zdania z AI: bez wyboru „Dalej" zablokowane z komunikatem; wystarczy sama lekcja', () => {
+  const { toScope, next, getByTestId, container } = setup({ initial: undefined });
+  toScope();
+  assert.equal(next().disabled, true);
+  assert.equal(getByTestId('free-practice-blocker').textContent, 'Wybierz co najmniej jedno źródło');
+  fireEvent.click(lessonBox(container, 'l1'));
+  assert.equal(next().disabled, false);
+});
+
+test('zdania z AI: łączny limit źródeł (zestawy + lekcje) — po osiągnięciu reszta wyłączona z komunikatem', () => {
+  const many = Array.from({ length: 6 }, (_, i) => mkSet(`m${i}`, `Zestaw ${i}`));
+  const { toScope, box, container, getByText } = setup({ initial: undefined, sets: many });
+  toScope();
+  for (let i = 0; i < 3; i++) fireEvent.click(box(`m${i}`));
+  fireEvent.click(lessonBox(container, 'l1'));
+  fireEvent.click(lessonBox(container, 'l2'));
+  assert.equal(box('m3').disabled, true, 'zestaw ponad limit');
+  assert.equal(lessonBox(container, 'l3').disabled, true, 'lekcja ponad limit');
+  assert.equal(box('m0').disabled, false, 'wybrane można odznaczyć');
+  assert.ok(getByText(`Limit źródeł w jednym ćwiczeniu: ${MAX_SENTENCE_SOURCES}`));
+  fireEvent.click(lessonBox(container, 'l1'));
+  assert.equal(box('m3').disabled, false, 'po zwolnieniu miejsca znów można dodać');
+});
+
+test('start tłumaczenia: generator dostaje zakres i format, korekty — format correction; żadnych pól pracy domowej', () => {
+  const { toScope, box, next, starts, container } = setup({ initial: undefined });
+  toScope();
+  fireEvent.click(box('s1'));
+  fireEvent.click(lessonBox(container, 'l3'));
+  fireEvent.click(next());
+  assert.ok(container.textContent!.includes('Lekcja 26.10') && container.textContent!.includes('Moje słówka'));
+  fireEvent.click(next());
+  assert.deepEqual(starts[0], { view: 'free-sentences', mode: 'translation', format: 'typing', setIds: ['s1'], lessonIds: ['l3'], topics: [] });
+  cleanup();
+
+  const second = setup({ initial: { mode: 'correction' } });
+  second.toScope();
+  fireEvent.click(second.box('s1'));
+  second.toStart();
+  assert.equal((second.starts[0] as any).format, 'correction');
+  assert.ok(!Object.keys(second.starts[0]).some((key) => /task|homework|status/i.test(key)));
+});
+
+test('skrót z innego ekranu: menu otwiera się na kroku zakresu z wybranym tłumaczeniem i zakresem', () => {
+  const { stepCounter, getByTestId, container } = setup({ initial: { mode: 'translation', step: 'scope', lessonIds: ['l2'], setIds: ['s1'] } });
+  assert.equal(stepCounter(), 'Krok 2 z 3');
+  assert.ok(getByTestId('free-practice-step-scope'));
+  assert.equal(getByTestId('free-practice-counter').textContent, 'Źródła: 2 z 5');
+  assert.equal(lessonBox(container, 'l2').checked, true);
+});
+
+test('menu nie zawiera żadnej informacji o pracy domowej', () => {
+  const { container, toScope } = setup({ initial: undefined });
+  assert.doesNotMatch(container.textContent!, /prac\w* domow|homework/i);
+  toScope();
+  assert.doesNotMatch(container.textContent!, /prac\w* domow|homework/i);
+});
+
+test('zdania z AI: zestawy „z lekcji" nie dublują grupy Lekcje; w fiszkach zostają na liście', () => {
+  const sentencesView = setup({ initial: undefined });
+  sentencesView.toScope();
+  assert.equal(sentencesView.rows().some((r) => r.getAttribute('data-set-id') === 's2'), false, 's2 = zestaw z lekcji');
+  assert.ok(sentencesView.getByTestId('free-practice-lessons'));
+  assert.ok(sentencesView.container.textContent!.includes('Zestawy'), 'nagłówek grupy zestawów, gdy są dwie grupy');
+  cleanup();
+  const study = setup();
+  study.toScope();
+  assert.equal(study.rows().some((r) => r.getAttribute('data-set-id') === 's2'), true);
+  cleanup();
+  // bez wczytanych lekcji zestawy z lekcji zostają, żeby kursant miał z czego wybierać
+  const noLessons = setup({ initial: undefined, lessons: [] });
+  noLessons.toScope();
+  assert.equal(noLessons.rows().some((r) => r.getAttribute('data-set-id') === 's2'), true);
 });

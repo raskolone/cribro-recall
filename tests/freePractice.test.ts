@@ -4,6 +4,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   DEFAULT_FREE_PRACTICE_MODE,
+  MAX_SENTENCE_SOURCES,
+  SENTENCE_MODES,
+  buildFreeLaunch,
+  freeSentencesLaunch,
+  isSentenceMode,
+  sentenceFormatFor,
+  sentenceSourceCount,
+  sentenceStartBlocker,
+  shortcutInitial,
   FREE_PRACTICE_STEPS,
   FREE_PRACTICE_TYPES,
   MAX_FREE_PRACTICE_SETS,
@@ -28,14 +37,14 @@ const read = (rel: string) => readFileSync(new URL(`../${rel}`, import.meta.url)
 const pl = JSON.parse(read('pl.json')) as Record<string, string>;
 const en = JSON.parse(read('en.json')) as Record<string, string>;
 
-test('menu ma pięć rodzajów we właściwej kolejności: Fiszki, Quiz, Dopasowanie, Korekta zdań, Tłumaczenie zdań', () => {
+test('menu ma pięć rodzajów we właściwej kolejności: Tłumaczenie, Korekta, Fiszki, Dopasowanie, Quiz', () => {
   assert.deepEqual(
     FREE_PRACTICE_TYPES.map((type) => type.mode),
-    ['flashcards', 'quiz', 'matching', 'correction', 'translation'],
+    ['translation', 'correction', 'flashcards', 'matching', 'quiz'],
   );
   assert.deepEqual(
     FREE_PRACTICE_TYPES.map((type) => type.titleKey),
-    ['Fiszki', 'Quiz', 'Dopasowanie', 'Korekta zdań', 'Tłumaczenie zdań'],
+    ['Tłumaczenie zdań', 'Korekta zdań', 'Fiszki', 'Dopasowanie', 'Quiz'],
   );
 });
 
@@ -51,21 +60,27 @@ test('„Fiszki Intro" i „Pisanie" zniknęły z menu, ale tryby zostają w mod
   assert.match(src, /selectedMode === 'writing'/);
 });
 
-test('rodzaje dostępne to dokładnie tryby modułu fiszek; korekta i tłumaczenie to kafelki „wkrótce" (wyłączone)', () => {
+test('wszystkie rodzaje są aktywne: fiszki/quiz/dopasowanie to tryby modułu fiszek, tłumaczenie i korekta to zdania z AI', () => {
   const src = read('components/flashcards/FlashcardStudyScreen.tsx');
   const union = src.match(/type StudyMode = ([^;]+);/)![1].split('|').map((p) => p.trim().replace(/'/g, ''));
-  for (const type of FREE_PRACTICE_TYPES.filter((x) => x.available)) assert.ok(union.includes(type.mode), type.mode);
-  assert.deepEqual(FREE_PRACTICE_TYPES.filter((x) => x.available).map((x) => x.mode), [...STUDY_MODES]);
-  assert.deepEqual(FREE_PRACTICE_TYPES.filter((x) => !x.available).map((x) => x.mode), ['correction', 'translation']);
+  for (const mode of STUDY_MODES) assert.ok(union.includes(mode), mode);
+  assert.deepEqual([...STUDY_MODES], ['flashcards', 'quiz', 'matching']);
+  assert.deepEqual([...SENTENCE_MODES], ['translation', 'correction']);
   assert.equal(new Set(FREE_PRACTICE_TYPES.map((type) => type.mode)).size, FREE_PRACTICE_TYPES.length);
+  assert.deepEqual([...STUDY_MODES, ...SENTENCE_MODES].sort(), FREE_PRACTICE_TYPES.map((t) => t.mode).sort());
+  // żadnych kafelków „wkrótce"
+  for (const type of FREE_PRACTICE_TYPES) assert.ok(!('available' in type), type.mode);
   // każdy rodzaj ma własną ikonę i akcent z tokenów motywu
   assert.equal(new Set(FREE_PRACTICE_TYPES.map((type) => type.icon)).size, FREE_PRACTICE_TYPES.length);
   for (const type of FREE_PRACTICE_TYPES) assert.match(type.accent, /^(primary|info|accent-2|warn)$/);
 });
 
-test('domyślny rodzaj to pierwszy na liście: fiszki', () => {
-  assert.equal(DEFAULT_FREE_PRACTICE_MODE, 'flashcards');
+test('domyślny rodzaj to pierwszy na liście: tłumaczenie zdań', () => {
+  assert.equal(DEFAULT_FREE_PRACTICE_MODE, 'translation');
   assert.equal(FREE_PRACTICE_TYPES[0].mode, DEFAULT_FREE_PRACTICE_MODE);
+  assert.ok(isSentenceMode('translation') && isSentenceMode('correction') && !isSentenceMode('quiz'));
+  assert.equal(sentenceFormatFor('translation'), 'typing', 'dawne „Sprawdź się"');
+  assert.equal(sentenceFormatFor('correction'), 'correction', 'dawne „Napraw zdanie"');
 });
 
 test('start niesie wyłącznie widok nauki fiszek, zestawy i tryb — zero pól pracy domowej', () => {
@@ -95,16 +110,15 @@ test('zestawy: własne i z lekcji osobno od słownictwa ogólnego, szkice pomini
   assert.deepEqual(groupFreePracticeSets([]), { own: [], general: [] });
 });
 
-test('klawiatura w grupie rodzajów: strzałki cyklicznie po DOSTĘPNYCH (kafelki „wkrótce" pominięte), Home/End, reszta zostaje przeglądarce', () => {
-  assert.equal(nextFreePracticeMode('flashcards', 'ArrowRight'), 'quiz');
-  assert.equal(nextFreePracticeMode('flashcards', 'ArrowDown'), 'quiz');
-  assert.equal(nextFreePracticeMode('quiz', 'ArrowLeft'), 'flashcards');
-  assert.equal(nextFreePracticeMode('quiz', 'ArrowUp'), 'flashcards');
-  assert.equal(nextFreePracticeMode('flashcards', 'ArrowLeft'), 'matching', 'zawinięcie na ostatni dostępny, nie na „wkrótce"');
-  assert.equal(nextFreePracticeMode('matching', 'ArrowRight'), 'flashcards', 'zawinięcie na pierwszy');
-  assert.equal(nextFreePracticeMode('quiz', 'Home'), 'flashcards');
-  assert.equal(nextFreePracticeMode('flashcards', 'End'), 'matching');
-  assert.equal(nextFreePracticeMode('correction', 'ArrowRight'), null, 'z niedostępnego nie startujemy');
+test('klawiatura w grupie rodzajów: strzałki cyklicznie po wszystkich rodzajach, Home/End, reszta zostaje przeglądarce', () => {
+  assert.equal(nextFreePracticeMode('translation', 'ArrowRight'), 'correction');
+  assert.equal(nextFreePracticeMode('translation', 'ArrowDown'), 'correction');
+  assert.equal(nextFreePracticeMode('correction', 'ArrowLeft'), 'translation');
+  assert.equal(nextFreePracticeMode('correction', 'ArrowUp'), 'translation');
+  assert.equal(nextFreePracticeMode('translation', 'ArrowLeft'), 'quiz', 'zawinięcie na ostatni');
+  assert.equal(nextFreePracticeMode('quiz', 'ArrowRight'), 'translation', 'zawinięcie na pierwszy');
+  assert.equal(nextFreePracticeMode('quiz', 'Home'), 'translation');
+  assert.equal(nextFreePracticeMode('translation', 'End'), 'quiz');
   for (const key of ['Enter', ' ', 'Tab', 'a', 'Escape']) assert.equal(nextFreePracticeMode('flashcards', key), null, key);
 });
 
@@ -164,14 +178,49 @@ test('licznik: liczba wybranych zestawów i suma kart; nieistniejące id ignorow
   assert.deepEqual(pruneSelection(['a', 'c', 'd', 'zzz', 'b'], list), ['a', 'b']);
 });
 
-test('start zablokowany: brak zestawów, za mało kart (quiz 4, dopasowanie 2), tryb „wkrótce"; reszta wolna', () => {
+test('start zablokowany: brak zestawów, za mało kart (quiz 4, dopasowanie 2); reszta wolna', () => {
   assert.deepEqual(startBlocker('flashcards', { sets: 0, cards: 0 }), { blocker: 'no-sets', min: 1 });
   assert.deepEqual(startBlocker('quiz', { sets: 1, cards: 3 }), { blocker: 'too-few-cards', min: 4 });
   assert.deepEqual(startBlocker('quiz', { sets: 2, cards: 4 }), { blocker: null, min: 4 });
   assert.deepEqual(startBlocker('matching', { sets: 1, cards: 1 }), { blocker: 'too-few-cards', min: 2 });
   assert.deepEqual(startBlocker('flashcards', { sets: 1, cards: 1 }), { blocker: null, min: 1 });
-  assert.equal(startBlocker('translation', { sets: 3, cards: 30 }).blocker, 'unavailable');
-  assert.equal(startBlocker('correction', { sets: 3, cards: 30 }).blocker, 'unavailable');
+});
+
+test('zdania z AI: start wymaga co najmniej jednego źródła, nie więcej niż limit; tematy liczą się do limitu', () => {
+  const scope = (setIds: string[], lessonIds: string[] = [], topics: string[] = []) => ({ setIds, lessonIds, topics });
+  assert.equal(sentenceStartBlocker(scope([])), 'no-scope', 'walidacja braku zakresu');
+  assert.equal(sentenceStartBlocker(scope(['a'])), null);
+  assert.equal(sentenceStartBlocker(scope([], ['l1'])), null, 'sama lekcja wystarcza');
+  assert.equal(sentenceStartBlocker(scope([], [], ['podróże'])), null, 'sam temat wystarcza');
+  assert.equal(MAX_SENTENCE_SOURCES, 5);
+  assert.equal(sentenceStartBlocker(scope(['a', 'b'], ['l1', 'l2'], ['t'])), null, '5 źródeł mieści się w limicie');
+  assert.equal(sentenceStartBlocker(scope(['a', 'b', 'c'], ['l1', 'l2'], ['t'])), 'too-many-sources');
+  assert.equal(sentenceSourceCount(scope(['a'], ['l1'], ['t1', 't2'])), 4);
+});
+
+test('start zdań z AI niesie zakres i format, a nie pola pracy domowej; buildFreeLaunch rozdziela rodzaje', () => {
+  const launch = freeSentencesLaunch('correction', { setIds: ['s1'], lessonIds: ['l1'], topics: ['travel'] });
+  assert.deepEqual(launch, { view: 'free-sentences', mode: 'correction', format: 'correction', setIds: ['s1'], lessonIds: ['l1'], topics: ['travel'] });
+  assert.deepEqual(Object.keys(launch).sort(), ['format', 'lessonIds', 'mode', 'setIds', 'topics', 'view']);
+  assert.ok(!Object.keys(launch).some((key) => /task|homework|status/i.test(key)));
+  const input = { setIds: ['s1'], lessonIds: [], topics: [] };
+  assert.equal(buildFreeLaunch('translation', input).view, 'free-sentences');
+  assert.equal((buildFreeLaunch('translation', input) as { format: string }).format, 'typing');
+  for (const mode of ['flashcards', 'quiz', 'matching'] as const) {
+    assert.equal(buildFreeLaunch(mode, input).view, 'flashcard-study', mode);
+  }
+});
+
+test('skrót „Przećwicz w zdaniach AI": tłumaczenie + zakres od razu na kroku zakresu; nieznany zakres → menu od początku', () => {
+  const lessons = [{ id: 'v1', lessonRecordId: 'rec1' }, { id: 'generated-rec2', lessonRecordId: 'rec2' }];
+  const sets = [mk('s1', 'A'), mk('s0', 'Pusty', { cardCount: 0 })];
+  assert.deepEqual(shortcutInitial('s1', lessons, sets), { mode: 'translation', step: 'scope', setIds: ['s1'] });
+  assert.deepEqual(shortcutInitial('lesson_rec1', lessons, sets), { mode: 'translation', step: 'scope', lessonIds: ['v1'] });
+  assert.deepEqual(shortcutInitial('lesson_rec2', lessons, sets), { mode: 'translation', step: 'scope', lessonIds: ['generated-rec2'] });
+  assert.deepEqual(shortcutInitial('vocab-v1', lessons, sets), { mode: 'translation', step: 'scope', lessonIds: ['v1'] });
+  assert.deepEqual(shortcutInitial('s0', lessons, sets), { mode: 'translation' }, 'pusty zestaw nie jest do wyboru');
+  assert.deepEqual(shortcutInitial('lesson_nieznana', lessons, sets), { mode: 'translation' });
+  assert.deepEqual(shortcutInitial(null, lessons, sets), { mode: 'translation' });
 });
 
 test('zapis wyniku z wielu zestawów: jeden saveSession na zestaw, statystyki liczone z wyników zestawu', () => {
@@ -228,6 +277,8 @@ test('i18n: każdy tekst ekranu i punktu wejścia ma wpis w pl.json i en.json (b
 test('kod wyboru i punktu wejścia nie zna Firestore ani zadań (specialTasks, taskId)', () => {
   for (const file of [
     'utils/freePractice.ts',
+    'utils/freeSentenceScope.ts',
+    'utils/specialTaskSubmission.ts',
     'components/practice/FreePracticeScreen.tsx',
     'components/dashboard/FreePracticeEntry.tsx',
   ]) {
@@ -254,26 +305,26 @@ test('ścieżka uruchamianego ćwiczenia (moduł fiszek + saveSession) nie pisze
   assert.match(save, /users\/\$\{userId\}\/practiceLogs/);
 });
 
-test('zdania AI nie są rodzajem na liście — ten ekran potrafi oznaczyć pracę domową jako oddaną', () => {
-  const generator = read('components/dashboard/AIExerciseGeneratorScreen.tsx');
-  assert.match(generator, /selectedSetId\?\.startsWith\('special-task-'\)/);
-  assert.match(generator, /status: 'submitted'/);
-  assert.ok(FREE_PRACTICE_TYPES.every((type) => !/ai|sentence|zdani/i.test(type.mode)));
-});
-
 // --- Wpięcie w Dashboard --------------------------------------------------------------
 
-test('Dashboard: widok free-practice tylko dla kursanta, start przez flashcard-study, powrót na pulpit', () => {
+test('Dashboard: jedno menu dla kursanta — pulpit i skróty „Przećwicz w zdaniach AI" prowadzą do FreePracticeScreen', () => {
   const src = read('components/dashboard/Dashboard.tsx');
-  assert.match(src, /type View = [^;]*'free-practice'/);
-  assert.match(src, /view === 'free-practice' && !isTeacher/);
+  assert.match(src, /type View = [^;]*'free-practice'[^;]*'free-sentences'/);
   assert.match(src, /onOpenFreePractice: \(\) => handleNavigate\('free-practice'\)/);
-  const branch = src.slice(src.indexOf("view === 'free-practice' && !isTeacher"));
-  const block = branch.slice(0, branch.indexOf("if (view === 'settings')"));
+  const start = src.indexOf("view === 'free-sentences' && !isTeacher && freeLaunch");
+  const block = src.slice(start, src.indexOf("if (view === 'settings')"));
+  // wszystkie cztery widoki kursanta → to samo menu
+  assert.match(block, /view === 'free-practice' \|\| view === 'extra-practice' \|\| view === 'ai-generator' \|\| view === 'free-sentences'/);
+  assert.match(block, /<FreePracticeScreen/);
   assert.match(block, /_initialStudyMode = launch\.mode/);
   assert.match(block, /handleNavigate\(launch\.view, \{ setId: launch\.setId, setIds: launch\.setIds \}\)/);
   assert.match(block, /onBack=\{\(\) => handleNavigate\('dashboard'\)\}/);
-  // Ćwiczenie uruchomione stąd wraca na pulpit tak samo jak z „Mojego słownictwa".
+  // zdania z AI: generator w trybie free, bez zadania lektora i bez wejścia w generator kursanta
+  assert.match(block, /<AIExerciseGeneratorScreen[\s\S]{0,120}mode="free"/);
+  assert.match(block, /onExitFree=\{\(\) => handleNavigate\('free-practice'\)\}/);
+  assert.doesNotMatch(block, /taskId|specialTasks/);
+  // generator bez trybu zostaje dla lektora
+  assert.match(src, /view !== 'extra-practice' && view !== 'ai-generator'/);
   assert.match(src, /<FlashcardStudyScreen[\s\S]{0,200}onBack=\{\(\) => handleNavigate\('dashboard'\)\}/);
 });
 

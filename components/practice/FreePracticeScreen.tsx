@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, ChevronRight, Languages, Layers, Link2, ListChecks, Search, Sparkles, SpellCheck, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, Languages, Layers, Link2, ListChecks, Search, SpellCheck, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { FlashcardSet } from '../../types';
 import Button from '../ui/Button';
@@ -9,37 +9,46 @@ import {
   FREE_PRACTICE_STEPS,
   FREE_PRACTICE_TYPES,
   MAX_FREE_PRACTICE_SETS,
+  MAX_SENTENCE_SOURCES,
+  buildFreeLaunch,
   filterSetsByQuery,
-  freePracticeLaunch,
   groupFreePracticeSets,
+  isSentenceMode,
   isSetSelectable,
   nextFreePracticeMode,
   nextStep,
   previousStep,
   pruneSelection,
+  sentenceSourceCount,
+  sentenceStartBlocker,
   setCardCount,
   startBlocker,
   stepNumber,
   summarizeSelection,
   toggleSetSelection,
+  type AnyFreeLaunch,
   type FreePracticeAccent,
   type FreePracticeIcon,
-  type FreePracticeLaunch,
+  type FreePracticeInitial,
   type FreePracticeMode,
   type FreePracticeStep,
+  type SentenceScope,
+  type StartBlocker,
 } from '../../utils/freePractice';
+import { filterLessonsByQuery, pruneLessonSelection, type LessonLike } from '../../utils/freeSentenceScope';
 
 interface FreePracticeScreenProps {
   /** Zestawy kursanta (własne, z lekcji i słownictwo ogólne) — `useFlashcards().sets`. */
   sets: ReadonlyArray<FlashcardSet>;
-  /** Start wybranego ćwiczenia; rodzic przechodzi do widoku nauki fiszek. */
-  onStart: (launch: FreePracticeLaunch) => void;
+  /** Lekcje kursanta (zestawy słownictwa z lekcji) — źródło dla zdań z AI. */
+  lessons?: ReadonlyArray<LessonLike>;
+  /** Start wybranego ćwiczenia; rodzic przechodzi do modułu fiszek albo do generatora zdań. */
+  onStart: (launch: AnyFreeLaunch) => void;
   /** Powrót na pulpit. */
   onBack: () => void;
   /** Brak zestawów → przejście do słownictwa, gdzie można je utworzyć. */
   onOpenVocabulary?: () => void;
-  /** Osobny ekran generatora zdań AI („Praktyka dodatkowa") — nie jest rodzajem z listy. */
-  onOpenExtraPractice?: () => void;
+  initial?: FreePracticeInitial;
 }
 
 const focusRing =
@@ -70,17 +79,21 @@ const ACCENT_CLASSES: Record<FreePracticeAccent, { chip: string }> = {
  * grupa radio (strzałki, Home/End), zestawy to pola wyboru. Na telefonie pasek z przyciskiem
  * „Dalej / Start" jest przyklejony do dołu okna.
  */
+const NO_LESSONS: ReadonlyArray<LessonLike> = [];
+
 const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   sets,
+  lessons = NO_LESSONS,
   onStart,
   onBack,
   onOpenVocabulary,
-  onOpenExtraPractice,
+  initial,
 }) => {
   const { t } = useTranslation();
-  const [step, setStep] = useState<FreePracticeStep>('type');
-  const [mode, setMode] = useState<FreePracticeMode>(DEFAULT_FREE_PRACTICE_MODE);
-  const [selected, setSelected] = useState<string[]>([]);
+  const [step, setStep] = useState<FreePracticeStep>(initial?.step ?? 'type');
+  const [mode, setMode] = useState<FreePracticeMode>(initial?.mode ?? DEFAULT_FREE_PRACTICE_MODE);
+  const [selected, setSelected] = useState<string[]>(initial?.setIds ?? []);
+  const [selectedLessons, setSelectedLessons] = useState<string[]>(initial?.lessonIds ?? []);
   const [query, setQuery] = useState('');
   const radioRefs = useRef<Partial<Record<FreePracticeMode, HTMLButtonElement | null>>>({});
   const titleRef = useRef<HTMLHeadingElement>(null);
@@ -92,10 +105,21 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   const activeType = FREE_PRACTICE_TYPES.find((type) => type.mode === mode) ?? FREE_PRACTICE_TYPES[0];
   // Lista zestawów potrafi się zmienić w trakcie (np. synchronizacja) — wybór tylko z istniejących.
   const validSelected = useMemo(() => pruneSelection(selected, sets), [selected, sets]);
+  const validLessons = useMemo(() => pruneLessonSelection(selectedLessons, lessons), [selectedLessons, lessons]);
   const summary = useMemo(() => summarizeSelection(sets, validSelected), [sets, validSelected]);
-  const { blocker, min } = startBlocker(mode, summary);
-  const { own, general } = groupFreePracticeSets(sets);
+  const sentences = isSentenceMode(mode);
+  const scope: SentenceScope = { setIds: validSelected, lessonIds: validLessons, topics: [] };
+  const sourceCount = sentenceSourceCount(scope);
+  const study = startBlocker(mode, summary);
+  const min = study.min;
+  const blocker: StartBlocker | null = sentences ? sentenceStartBlocker(scope) : study.blocker;
+  const grouped = groupFreePracticeSets(sets);
+  // Zdania z AI: zestawy „z lekcji" są w grupie „Lekcje" (z kontekstem lekcji), więc nie dublujemy ich
+  // w zestawach — tak samo robił dotychczasowy generator. Bez wczytanych lekcji zostają na liście.
+  const own = sentences && lessons.length > 0 ? grouped.own.filter((set) => !set.isLessonVocabulary) : grouped.own;
+  const general = grouped.general;
   const hasSets = own.length > 0 || general.length > 0;
+  const hasLessons = sentences && lessons.length > 0;
 
   useStaggerIn(panelRef, step);
 
@@ -122,7 +146,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
 
   const start = () => {
     if (blocker) return;
-    onStart(freePracticeLaunch(mode, validSelected));
+    onStart(buildFreeLaunch(mode, scope));
   };
 
   const primaryAction = () => {
@@ -130,7 +154,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
     else setStep(nextStep(step));
   };
 
-  const primaryDisabled = step === 'scope' ? blocker !== null : step === 'start' ? blocker !== null : false;
+  const primaryDisabled = step === 'type' ? false : blocker !== null;
   const primaryLabel = step === 'start' ? t('Start') : t('Dalej');
 
   const stepLabel = (s: FreePracticeStep) => (s === 'type' ? t('Rodzaj') : s === 'scope' ? t('Materiał') : t('Start'));
@@ -138,9 +162,13 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   const blockerMessage =
     blocker === 'no-sets'
       ? t('Wybierz co najmniej jeden zestaw')
-      : blocker === 'too-few-cards'
-        ? t('Ten rodzaj potrzebuje co najmniej {{min}} kart', { min })
-        : null;
+      : blocker === 'no-scope'
+        ? t('Wybierz co najmniej jedno źródło')
+        : blocker === 'too-many-sources'
+          ? t('Wybierz najwyżej {{max}} źródeł', { max: MAX_SENTENCE_SOURCES })
+          : blocker === 'too-few-cards'
+            ? t('Ten rodzaj potrzebuje co najmniej {{min}} kart', { min })
+            : null;
 
   // --- Krok 1: rodzaj ------------------------------------------------------------------------
   const renderTypeStep = () => (
@@ -160,7 +188,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
         onKeyDown={onRadioKeyDown}
       >
         {FREE_PRACTICE_TYPES.map((type) => {
-          const selectedTile = type.available && type.mode === mode;
+          const selectedTile = type.mode === mode;
           const Icon = ICONS[type.icon];
           const accent = ACCENT_CLASSES[type.accent];
           return (
@@ -173,17 +201,13 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
               role="radio"
               data-stagger
               data-mode={type.mode}
-              data-available={type.available}
               aria-checked={selectedTile}
-              aria-disabled={type.available ? undefined : true}
               tabIndex={selectedTile ? 0 : -1}
-              onClick={() => type.available && setMode(type.mode)}
+              onClick={() => setMode(type.mode)}
               className={`relative flex flex-col items-start gap-2 min-h-32 p-3.5 sm:p-4 rounded-2xl border-2 text-left transition-colors motion-reduce:transition-none ${focusRing} ${
                 selectedTile
                   ? 'border-primary bg-primary/10 text-text-hi cursor-pointer'
-                  : type.available
-                    ? 'border-line-strong bg-surface-flat text-text-hi hover:border-primary/50 cursor-pointer'
-                    : 'border-dashed border-line-strong bg-surface-flat text-text-3 cursor-default'
+                  : 'border-line-strong bg-surface-flat text-text-hi hover:border-primary/50 cursor-pointer'
               }`}
             >
               <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${accent.chip}`}>
@@ -199,45 +223,19 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                   <Check size={14} strokeWidth={3} aria-hidden="true" />
                 </span>
               )}
-              {!type.available && (
-                <span
-                  data-testid="free-practice-soon"
-                  className="absolute top-2.5 right-2.5 rounded-full border border-line-strong px-2 py-0.5 text-[12px] font-semibold text-text-2"
-                >
-                  {t('Wkrótce')}
-                </span>
-              )}
             </button>
           );
         })}
       </div>
-
-      {onOpenExtraPractice && (
-        <div data-stagger className="pt-2 border-t border-line-soft">
-          <button
-            type="button"
-            onClick={onOpenExtraPractice}
-            data-testid="free-practice-sentences"
-            className={`w-full min-h-14 flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-left text-content-muted hover:text-text-hi hover:bg-base-100/40 cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
-          >
-            <span className="flex items-center gap-3 min-w-0">
-              <Sparkles size={16} className="shrink-0" aria-hidden="true" />
-              <span className="min-w-0">
-                <span className="block text-sm font-semibold">{t('Zdania z AI')}</span>
-                <span className="block text-xs text-content-muted">
-                  {t('Osobny ekran z generatorem zdań — może dotyczyć także zadań od lektora')}
-                </span>
-              </span>
-            </span>
-            <ChevronRight size={16} className="shrink-0" aria-hidden="true" />
-          </button>
-        </div>
-      )}
     </div>
   );
 
   // --- Krok 2: zakres ------------------------------------------------------------------------
-  const limitReached = validSelected.length >= MAX_FREE_PRACTICE_SETS;
+  // Fiszki, quiz i dopasowanie: do 10 zestawów. Zdania z AI: łącznie do 5 źródeł (zestawy + lekcje).
+  const limitReached = sentences ? sourceCount >= MAX_SENTENCE_SOURCES : validSelected.length >= MAX_FREE_PRACTICE_SETS;
+  const limitMax = sentences ? MAX_SENTENCE_SOURCES : MAX_FREE_PRACTICE_SETS;
+  const setsMax = sentences ? Math.max(0, MAX_SENTENCE_SOURCES - validLessons.length) : MAX_FREE_PRACTICE_SETS;
+  const lessonsMax = Math.max(0, MAX_SENTENCE_SOURCES - validSelected.length);
 
   const renderSetRow = (set: FlashcardSet) => {
     const count = setCardCount(set);
@@ -260,7 +258,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             className="peer sr-only"
             checked={checked}
             disabled={disabled}
-            onChange={() => setSelected((current) => toggleSetSelection(pruneSelection(current, sets), set.id))}
+            onChange={() => setSelected((current) => toggleSetSelection(pruneSelection(current, sets), set.id, setsMax))}
           />
           <span
             aria-hidden="true"
@@ -284,10 +282,54 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
     );
   };
 
+  const renderLessonRow = (lesson: LessonLike) => {
+    const checked = validLessons.includes(lesson.id);
+    const disabled = !checked && limitReached;
+    return (
+      <li key={lesson.id} data-stagger>
+        <label
+          data-testid="free-practice-lesson"
+          data-lesson-id={lesson.id}
+          data-checked={checked}
+          className={`relative flex min-h-14 items-center gap-3 rounded-xl border-2 px-3.5 py-2.5 transition-colors motion-reduce:transition-none ${
+            checked ? 'border-primary bg-primary/10' : 'border-line-strong bg-surface-flat'
+          } ${disabled ? 'cursor-default' : 'cursor-pointer hover:border-primary/50'}`}
+        >
+          <input
+            type="checkbox"
+            className="peer sr-only"
+            checked={checked}
+            disabled={disabled}
+            onChange={() =>
+              setSelectedLessons((current) => toggleSetSelection(pruneLessonSelection(current, lessons), lesson.id, lessonsMax))
+            }
+          />
+          <span
+            aria-hidden="true"
+            className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-2 peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-offset-2 peer-focus-visible:ring-offset-base-200 ${
+              checked ? 'border-primary bg-primary text-accent-ink' : 'border-text-mute bg-transparent text-transparent'
+            }`}
+          >
+            <Check size={16} strokeWidth={3} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-semibold break-words text-text-hi">{lesson.title || lesson.topic}</span>
+            {lesson.title && lesson.topic && <span className="block text-sm text-text-2 truncate">{lesson.topic}</span>}
+          </span>
+        </label>
+      </li>
+    );
+  };
+
   const visibleOwn = filterSetsByQuery(own, query);
   const visibleGeneral = filterSetsByQuery(general, query);
   const searching = query.trim().length > 0;
-  const nothingFound = searching && visibleOwn.length === 0 && visibleGeneral.length === 0;
+  const visibleLessons = hasLessons ? filterLessonsByQuery(lessons, query) : [];
+  const nothingFound = searching && visibleOwn.length === 0 && visibleGeneral.length === 0 && visibleLessons.length === 0;
+  const searchLabel = sentences ? t('Szukaj zestawów i lekcji') : t('Szukaj zestawów');
+  const counterText = sentences
+    ? t('Źródła {{count}} z {{max}}', { count: sourceCount, max: MAX_SENTENCE_SOURCES })
+    : t('Zestawy {{sets}} · Karty {{cards}}', { sets: summary.sets, cards: summary.cards });
 
   const renderScopeStep = () => (
     <div className="space-y-4">
@@ -300,7 +342,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
         {t('Materiał')}
       </h2>
 
-      {!hasSets ? (
+      {!hasSets && !hasLessons ? (
         <div
           data-testid="free-practice-empty"
           className="text-center py-10 px-4 rounded-2xl border border-dashed border-line-strong text-content-muted space-y-4"
@@ -320,7 +362,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
         <>
           <div data-stagger className="relative">
             <label htmlFor={searchId} className="sr-only">
-              {t('Szukaj zestawów')}
+              {searchLabel}
             </label>
             <Search size={18} aria-hidden="true" className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-text-2" />
             <input
@@ -329,7 +371,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
               data-testid="free-practice-search"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder={t('Szukaj zestawów')}
+              placeholder={searchLabel}
               autoComplete="off"
               className={`w-full min-h-12 rounded-xl border-2 border-line-strong bg-surface-flat pl-10 pr-10 text-base text-text-hi placeholder:text-text-3 ${focusRing}`}
             />
@@ -347,13 +389,16 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
 
           <div data-stagger className="flex min-h-11 items-center justify-between gap-3">
             <p data-testid="free-practice-counter" role="status" aria-live="polite" className="text-sm font-semibold text-text-hi">
-              {t('Zestawy {{sets}} · Karty {{cards}}', { sets: summary.sets, cards: summary.cards })}
+              {counterText}
             </p>
-            {validSelected.length > 0 && (
+            {sourceCount > 0 && (
               <button
                 type="button"
                 data-testid="free-practice-clear"
-                onClick={() => setSelected([])}
+                onClick={() => {
+                  setSelected([]);
+                  setSelectedLessons([]);
+                }}
                 className={`min-h-11 px-3 rounded-lg text-sm font-semibold text-text-2 hover:text-text-hi cursor-pointer ${focusRing}`}
               >
                 {t('Wyczyść wybór')}
@@ -361,7 +406,11 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             )}
           </div>
           {limitReached && (
-            <p className="text-sm text-text-2">{t('Limit zestawów w jednym ćwiczeniu {{max}}', { max: MAX_FREE_PRACTICE_SETS })}</p>
+            <p className="text-sm text-text-2">
+              {sentences
+                ? t('Limit źródeł w jednym ćwiczeniu {{max}}', { max: limitMax })
+                : t('Limit zestawów w jednym ćwiczeniu {{max}}', { max: limitMax })}
+            </p>
           )}
 
           {nothingFound ? (
@@ -371,9 +420,29 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
           ) : (
             <div className="space-y-4">
               {visibleOwn.length > 0 && (
-                <ul aria-labelledby="free-practice-sets-label" className="space-y-2">
-                  {visibleOwn.map(renderSetRow)}
-                </ul>
+                <div className="space-y-2">
+                  {visibleLessons.length > 0 && (
+                    <h3 id="free-practice-own-sets-label" className="px-1 text-sm font-semibold text-text-2">
+                      {t('Zestawy')}
+                    </h3>
+                  )}
+                  <ul
+                    aria-labelledby={visibleLessons.length > 0 ? 'free-practice-own-sets-label' : 'free-practice-sets-label'}
+                    className="space-y-2"
+                  >
+                    {visibleOwn.map(renderSetRow)}
+                  </ul>
+                </div>
+              )}
+              {visibleLessons.length > 0 && (
+                <div data-testid="free-practice-lessons" className="space-y-2">
+                  <h3 id="free-practice-lessons-label" className="px-1 text-sm font-semibold text-text-2">
+                    {t('Lekcje')}
+                  </h3>
+                  <ul aria-labelledby="free-practice-lessons-label" className="space-y-2">
+                    {visibleLessons.map(renderLessonRow)}
+                  </ul>
+                </div>
               )}
               {visibleGeneral.length > 0 && (
                 <details data-testid="free-practice-general" open={searching ? true : undefined} className="group">
@@ -401,7 +470,12 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   const renderStartStep = () => {
     const Icon = ICONS[activeType.icon];
     const accent = ACCENT_CLASSES[activeType.accent];
-    const chosen = validSelected.map((id) => sets.find((set) => set.id === id)).filter((set): set is FlashcardSet => Boolean(set));
+    const chosenSets = validSelected.map((id) => sets.find((set) => set.id === id)).filter((set): set is FlashcardSet => Boolean(set));
+    const chosenLessons = validLessons.map((id) => lessons.find((lesson) => lesson.id === id)).filter((l): l is LessonLike => Boolean(l));
+    const chosen = [
+      ...chosenSets.map((set) => ({ id: set.id, title: set.title })),
+      ...chosenLessons.map((lesson) => ({ id: lesson.id, title: lesson.title || lesson.topic || '' })),
+    ];
     return (
       <div className="space-y-4">
         <h2
@@ -419,10 +493,10 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             </span>
             <div className="min-w-0">
               <p className="text-base font-bold text-text-hi">{t(activeType.titleKey)}</p>
-              <p className="text-sm text-text-2">{t('Zestawy {{sets}} · Karty {{cards}}', { sets: summary.sets, cards: summary.cards })}</p>
+              <p className="text-sm text-text-2">{counterText}</p>
             </div>
           </div>
-          <ul className="flex flex-wrap gap-2" aria-label={t('Wybrane zestawy')}>
+          <ul className="flex flex-wrap gap-2" aria-label={sentences ? t('Wybrane źródła') : t('Wybrane zestawy')}>
             {chosen.map((set) => (
               <li key={set.id} className="max-w-full truncate rounded-full border border-line-strong px-3 py-1 text-sm text-text-hi">
                 {set.title}
@@ -465,7 +539,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             {t('Ćwiczenia dowolne')}
           </h1>
           <p className="text-sm text-content-muted mt-1">
-            {t('Wybierz rodzaj ćwiczenia i materiał — wyniki nie wpływają na prace domowe')}
+            {t('Wybierz rodzaj ćwiczenia i materiał')}
           </p>
         </div>
 
