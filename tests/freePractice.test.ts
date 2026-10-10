@@ -23,6 +23,7 @@ import {
   FREE_PRACTICE_TYPES,
   MAX_FREE_PRACTICE_SETS,
   STUDY_MODES,
+  categorizeFreePracticeSets,
   filterSetsByQuery,
   freePracticeLaunch,
   groupFreePracticeSets,
@@ -115,7 +116,14 @@ test('zestawy: własne i z lekcji osobno od słownictwa ogólnego, szkice pomini
   assert.deepEqual(own.map((set) => set.id), ['a', 'b']);
   assert.deepEqual(general.map((set) => set.id), ['g1', 'g2']);
   assert.deepEqual(groupFreePracticeSets([]), { own: [], general: [] });
+
+  const categorized = categorizeFreePracticeSets(sets);
+  assert.deepEqual(categorized.lessons.map((set) => set.id), ['b']);
+  assert.deepEqual(categorized.general.map((set) => set.id), ['g1', 'g2']);
+  assert.deepEqual(categorized.user.map((set) => set.id), ['a']);
+  assert.deepEqual(categorizeFreePracticeSets([]), { lessons: [], general: [], user: [] });
 });
+
 
 test('klawiatura w grupie rodzajów: strzałki cyklicznie po wszystkich rodzajach, Home/End, reszta zostaje przeglądarce', () => {
   assert.equal(nextFreePracticeMode('flashcards', 'ArrowRight'), 'matching');

@@ -1,5 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, Check, ChevronRight, Languages, Layers, Link2, ListChecks, Search, SpellCheck, X } from 'lucide-react';
+import { ArrowLeft, Check, ChevronRight, Languages, Layers, Link2, ListChecks, Plus, Search, SpellCheck, X } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { FlashcardSet } from '../../types';
 import Button from '../ui/Button';
@@ -11,6 +11,7 @@ import {
   MAX_FREE_PRACTICE_SETS,
   MAX_SENTENCE_SOURCES,
   buildFreeLaunch,
+  categorizeFreePracticeSets,
   filterSetsByQuery,
   groupFreePracticeSets,
   isSentenceMode,
@@ -36,6 +37,9 @@ import {
   type StartBlocker,
 } from '../../utils/freePractice';
 import { filterLessonsByQuery, pruneLessonSelection, type LessonLike } from '../../utils/freeSentenceScope';
+import CreateCustomSetModal from './CreateCustomSetModal';
+
+export type SetTab = 'lessons' | 'general' | 'user';
 
 interface FreePracticeScreenProps {
   /** Zestawy kursanta (własne, z lekcji i słownictwo ogólne) — `useFlashcards().sets`. */
@@ -48,6 +52,8 @@ interface FreePracticeScreenProps {
   onBack: () => void;
   /** Brak zestawów → przejście do słownictwa, gdzie można je utworzyć. */
   onOpenVocabulary?: () => void;
+  /** Tworzenie własnego zestawu bez AI. */
+  onCreateSet?: (name: string, pairs: Array<{ term: string; definition: string }>) => Promise<string>;
   initial?: FreePracticeInitial;
 }
 
@@ -87,6 +93,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   onStart,
   onBack,
   onOpenVocabulary,
+  onCreateSet,
   initial,
 }) => {
   const { t } = useTranslation();
@@ -117,13 +124,18 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   const study = startBlocker(mode, summary);
   const min = study.min;
   const blocker: StartBlocker | null = sentences ? sentenceStartBlocker(scope) : study.blocker;
-  const grouped = groupFreePracticeSets(sets);
-  // Zdania z AI: zestawy „z lekcji" są w grupie „Lekcje" (z kontekstem lekcji), więc nie dublujemy ich
-  // w zestawach — tak samo robił dotychczasowy generator. Bez wczytanych lekcji zostają na liście.
-  const own = sentences && lessons.length > 0 ? grouped.own.filter((set) => !set.isLessonVocabulary) : grouped.own;
-  const general = grouped.general;
-  const hasSets = own.length > 0 || general.length > 0;
+  const categorized = useMemo(() => categorizeFreePracticeSets(sets), [sets]);
+  const initialTab = useMemo<SetTab>(() => {
+    if (categorized.lessons.length > 0 || (sentences && lessons.length > 0)) return 'lessons';
+    if (categorized.user.length > 0) return 'user';
+    if (categorized.general.length > 0) return 'general';
+    return 'lessons';
+  }, [categorized, sentences, lessons]);
+  const [activeTab, setActiveTab] = useState<SetTab>(initialTab);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const hasSets = sets.filter((s) => !s.isDraft).length > 0;
   const hasLessons = sentences && lessons.length > 0;
+
 
   useStaggerIn(panelRef, step);
 
@@ -360,15 +372,37 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
     );
   };
 
-  const visibleOwn = filterSetsByQuery(own, query);
-  const visibleGeneral = filterSetsByQuery(general, query);
+  const lessonSetsForScope = sentences && lessons.length > 0 ? [] : categorized.lessons;
+  const visibleLessonsSets = filterSetsByQuery(lessonSetsForScope, query);
+  const visibleGeneralSets = filterSetsByQuery(categorized.general, query);
+  const visibleUserSets = filterSetsByQuery(categorized.user, query);
   const searching = query.trim().length > 0;
   const visibleLessons = hasLessons ? filterLessonsByQuery(lessons, query) : [];
-  const nothingFound = searching && visibleOwn.length === 0 && visibleGeneral.length === 0 && visibleLessons.length === 0;
+  const totalVisibleCount =
+    visibleLessonsSets.length +
+    visibleGeneralSets.length +
+    visibleUserSets.length +
+    (sentences ? visibleLessons.length : 0);
+  const nothingFound = searching && totalVisibleCount === 0;
   const searchLabel = sentences ? t('Szukaj zestawów i lekcji') : t('Szukaj zestawów');
   const counterText = sentences
     ? t('Źródła {{count}} z {{max}}', { count: sourceCount, max: MAX_SENTENCE_SOURCES })
     : t('Zestawy {{sets}} · Karty {{cards}}', { sets: summary.sets, cards: summary.cards });
+
+  const selectedLessonsCount =
+    validSelected.filter((id) => categorized.lessons.some((s) => s.id === id)).length +
+    (sentences ? validLessons.length : 0);
+  const selectedGeneralCount = validSelected.filter((id) => categorized.general.some((s) => s.id === id)).length;
+  const selectedUserCount = validSelected.filter((id) => categorized.user.some((s) => s.id === id)).length;
+
+  const activeTabCount =
+    activeTab === 'lessons'
+      ? visibleLessonsSets.length + (sentences ? visibleLessons.length : 0)
+      : activeTab === 'general'
+        ? visibleGeneralSets.length
+        : activeTab === 'user'
+          ? visibleUserSets.length
+          : totalVisibleCount;
 
   const renderScopeStep = () => (
     <div className="space-y-4">
@@ -381,23 +415,32 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
         {t('Materiał')}
       </h2>
 
-
-
       {!hasSets && !hasLessons ? (
         <div
           data-testid="free-practice-empty"
           className="text-center py-10 px-4 rounded-2xl border border-dashed border-line-strong text-content-muted space-y-4"
         >
           <p className="text-sm">{t('Nie masz jeszcze żadnych zestawów')}</p>
-          {onOpenVocabulary && (
+          <div className="flex flex-wrap items-center justify-center gap-3">
             <button
               type="button"
-              onClick={onOpenVocabulary}
-              className={`inline-flex items-center justify-center min-h-11 px-4 rounded-xl border border-line-strong bg-base-100/60 hover:bg-base-100 text-text-hi text-sm font-semibold cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
+              data-testid="free-practice-empty-create"
+              onClick={() => setIsCreateModalOpen(true)}
+              className={`inline-flex items-center justify-center gap-2 min-h-11 px-4 rounded-xl bg-primary text-accent-ink text-sm font-bold shadow-sm transition-colors motion-reduce:transition-none cursor-pointer ${focusRing}`}
             >
-              {t('Przejdź do słownictwa')}
+              <Plus size={16} aria-hidden="true" />
+              {t('Utwórz własny zestaw')}
             </button>
-          )}
+            {onOpenVocabulary && (
+              <button
+                type="button"
+                onClick={onOpenVocabulary}
+                className={`inline-flex items-center justify-center min-h-11 px-4 rounded-xl border border-line-strong bg-base-100/60 hover:bg-base-100 text-text-hi text-sm font-semibold cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
+              >
+                {t('Przejdź do słownictwa')}
+              </button>
+            )}
+          </div>
         </div>
       ) : (
         <>
@@ -421,7 +464,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                 type="button"
                 onClick={() => setQuery('')}
                 aria-label={t('Wyczyść wyszukiwanie')}
-                className={`absolute right-1 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-lg text-text-2 hover:text-text-hi cursor-pointer ${focusRing}`}
+                className={`absolute right-1 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-lg text-text-2 hover:text-text-hi cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
               >
                 <X size={18} aria-hidden="true" />
               </button>
@@ -440,7 +483,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
                   setSelected([]);
                   setSelectedLessons([]);
                 }}
-                className={`min-h-11 px-3 rounded-lg text-sm font-semibold text-text-2 hover:text-text-hi cursor-pointer ${focusRing}`}
+                className={`min-h-11 px-3 rounded-lg text-sm font-semibold text-text-2 hover:text-text-hi cursor-pointer transition-colors motion-reduce:transition-none ${focusRing}`}
               >
                 {t('Wyczyść wybór')}
               </button>
@@ -454,51 +497,234 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
             </p>
           )}
 
+          {/* Zakładki kategorii zestawów oraz przycisk tworzenia */}
+          <div data-stagger className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            <div
+              role="tablist"
+              aria-label={t('Kategorie zestawów')}
+              className="flex items-center gap-1 p-1 rounded-xl bg-surface-flat border border-line-strong overflow-x-auto"
+            >
+              <button
+                type="button"
+                role="tab"
+                data-testid="free-practice-tab-lessons"
+                aria-selected={activeTab === 'lessons'}
+                onClick={() => setActiveTab('lessons')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors motion-reduce:transition-none cursor-pointer ${focusRing} ${
+                  activeTab === 'lessons'
+                    ? 'bg-primary text-accent-ink shadow-xs'
+                    : 'text-text-2 hover:text-text-hi hover:bg-base-100/50'
+                }`}
+              >
+                <span>{t('Z moich lekcji')}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-xs font-mono ${
+                    activeTab === 'lessons' ? 'bg-black/20 text-white' : 'bg-surface text-text-3'
+                  }`}
+                >
+                  {visibleLessonsSets.length + (sentences ? visibleLessons.length : 0)}
+                </span>
+                {selectedLessonsCount > 0 && (
+                  <span className="flex h-2 w-2 rounded-full bg-accent-ink ring-1 ring-white/50" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                data-testid="free-practice-tab-general"
+                aria-selected={activeTab === 'general'}
+                onClick={() => setActiveTab('general')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors motion-reduce:transition-none cursor-pointer ${focusRing} ${
+                  activeTab === 'general'
+                    ? 'bg-primary text-accent-ink shadow-xs'
+                    : 'text-text-2 hover:text-text-hi hover:bg-base-100/50'
+                }`}
+              >
+                <span>{t('Gotowe zestawy')}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-xs font-mono ${
+                    activeTab === 'general' ? 'bg-black/20 text-white' : 'bg-surface text-text-3'
+                  }`}
+                >
+                  {visibleGeneralSets.length}
+                </span>
+                {selectedGeneralCount > 0 && (
+                  <span className="flex h-2 w-2 rounded-full bg-accent-ink ring-1 ring-white/50" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                role="tab"
+                data-testid="free-practice-tab-user"
+                aria-selected={activeTab === 'user'}
+                onClick={() => setActiveTab('user')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-colors motion-reduce:transition-none cursor-pointer ${focusRing} ${
+                  activeTab === 'user'
+                    ? 'bg-primary text-accent-ink shadow-xs'
+                    : 'text-text-2 hover:text-text-hi hover:bg-base-100/50'
+                }`}
+              >
+                <span>{sentences && (visibleLessons.length > 0 || hasLessons) ? t('Zestawy') : t('Moje zestawy')}</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-xs font-mono ${
+                    activeTab === 'user' ? 'bg-black/20 text-white' : 'bg-surface text-text-3'
+                  }`}
+                >
+                  {visibleUserSets.length}
+                </span>
+                {selectedUserCount > 0 && (
+                  <span className="flex h-2 w-2 rounded-full bg-accent-ink ring-1 ring-white/50" />
+                )}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              data-testid="free-practice-create-set-button"
+              onClick={() => setIsCreateModalOpen(true)}
+              className={`inline-flex items-center justify-center gap-1.5 min-h-10 px-3 rounded-xl border border-primary/40 bg-primary/10 hover:bg-primary/20 text-primary text-xs sm:text-sm font-semibold transition-colors motion-reduce:transition-none cursor-pointer ${focusRing}`}
+            >
+              <Plus size={16} aria-hidden="true" />
+              <span>{t('Utwórz własny zestaw')}</span>
+            </button>
+          </div>
+
           {nothingFound ? (
             <p role="status" data-testid="free-practice-nothing" className="py-6 text-center text-sm text-text-2">
               {t('Nic nie znaleziono')}
             </p>
           ) : (
             <div className="space-y-4">
-              {visibleOwn.length > 0 && (
-                <div className="space-y-2">
-                  {visibleLessons.length > 0 && (
-                    <h3 id="free-practice-own-sets-label" className="px-1 text-sm font-semibold text-text-2">
-                      {t('Zestawy')}
+              {/* Sekcja 1: Z moich lekcji */}
+              {activeTab === 'lessons' &&
+                (visibleLessons.length > 0 || visibleLessonsSets.length > 0) && (
+                  <div data-testid="free-practice-tab-content-lessons" className="space-y-4">
+                    {visibleLessons.length > 0 && (
+                      <div data-testid="free-practice-lessons" className="space-y-2">
+                        <h3 id="free-practice-lessons-label" className="px-1 text-sm font-semibold text-text-2">
+                          {t('Lekcje')}
+                        </h3>
+                        <ul aria-labelledby="free-practice-lessons-label" className="space-y-2">
+                          {visibleLessons.map(renderLessonRow)}
+                        </ul>
+                      </div>
+                    )}
+                    {visibleLessonsSets.length > 0 && (
+                      <div className="space-y-2">
+                        {visibleLessons.length > 0 && (
+                          <h3 id="free-practice-lesson-sets-label" className="px-1 text-sm font-semibold text-text-2">
+                            {t('Zestawy słownictwa z lekcji')}
+                          </h3>
+                        )}
+                        <ul
+                          aria-labelledby={visibleLessons.length > 0 ? 'free-practice-lesson-sets-label' : 'free-practice-sets-label'}
+                          className="space-y-2"
+                        >
+                          {visibleLessonsSets.map(renderSetRow)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              {activeTab === 'lessons' && visibleLessons.length === 0 && visibleLessonsSets.length === 0 && (
+                <p className="py-6 text-center text-sm text-text-2">{t('Brak zestawów w tej kategorii')}</p>
+              )}
+
+              {/* Sekcja 2: Moje zestawy */}
+              {activeTab === 'user' && (
+                <div data-testid="free-practice-tab-content-user" className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 id="free-practice-own-sets-label" className="text-sm font-semibold text-text-2">
+                      {sentences && (visibleLessons.length > 0 || hasLessons) ? t('Zestawy') : t('Moje zestawy')}
                     </h3>
+                    <button
+                      type="button"
+                      data-testid="free-practice-create-set"
+                      onClick={() => setIsCreateModalOpen(true)}
+                      className={`inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer ${focusRing}`}
+                    >
+                      <Plus size={14} aria-hidden="true" />
+                      {t('Utwórz własny zestaw')}
+                    </button>
+                  </div>
+                  {visibleUserSets.length > 0 ? (
+                    <ul aria-labelledby="free-practice-own-sets-label" className="space-y-2">
+                      {visibleUserSets.map(renderSetRow)}
+                    </ul>
+                  ) : (
+                    activeTab === 'user' && (
+                      <div className="rounded-xl border border-dashed border-line-strong p-6 text-center text-sm text-text-2">
+                        <p className="font-semibold text-text-hi">{t('Brak własnych zestawów')}</p>
+                        <p className="mt-1 text-xs text-text-3">
+                          {t('Utwórz swój pierwszy zestaw słówek klikając przycisk powyżej')}
+                        </p>
+                      </div>
+                    )
                   )}
-                  <ul
-                    aria-labelledby={visibleLessons.length > 0 ? 'free-practice-own-sets-label' : 'free-practice-sets-label'}
-                    className="space-y-2"
-                  >
-                    {visibleOwn.map(renderSetRow)}
-                  </ul>
                 </div>
               )}
-              {visibleLessons.length > 0 && (
-                <div data-testid="free-practice-lessons" className="space-y-2">
-                  <h3 id="free-practice-lessons-label" className="px-1 text-sm font-semibold text-text-2">
-                    {t('Lekcje')}
-                  </h3>
-                  <ul aria-labelledby="free-practice-lessons-label" className="space-y-2">
-                    {visibleLessons.map(renderLessonRow)}
-                  </ul>
+
+              {/* Sekcja 3: Gotowe zestawy */}
+              {activeTab === 'general' && (
+                <div data-testid="free-practice-tab-content-general" className="space-y-2">
+                  {visibleGeneralSets.length > 0 ? (
+                    <details data-testid="free-practice-general" open={searching || activeTab === 'general' ? true : undefined} className="group">
+                      <summary
+                        className={`min-h-11 flex items-center gap-2 px-1 text-sm font-semibold text-text-2 hover:text-text-hi cursor-pointer select-none transition-colors motion-reduce:transition-none ${focusRing}`}
+                      >
+                        <ChevronRight
+                          size={14}
+                          className="shrink-0 transition-transform motion-reduce:transition-none group-open:rotate-90"
+                          aria-hidden="true"
+                        />
+                        {t('Gotowe zestawy')} ({visibleGeneralSets.length})
+                      </summary>
+                      <ul aria-label={t('Gotowe zestawy')} className="space-y-2 mt-2">{visibleGeneralSets.map(renderSetRow)}</ul>
+                    </details>
+                  ) : (
+                    activeTab === 'general' && (
+                      <p className="py-6 text-center text-sm text-text-2">{t('Brak zestawów w tej kategorii')}</p>
+                    )
+                  )}
                 </div>
               )}
-              {visibleGeneral.length > 0 && (
-                <details data-testid="free-practice-general" open={searching ? true : undefined} className="group">
-                  <summary
-                    className={`min-h-11 flex items-center gap-2 px-1 text-sm font-semibold text-text-2 hover:text-text-hi cursor-pointer select-none ${focusRing}`}
-                  >
-                    <ChevronRight
-                      size={14}
-                      className="shrink-0 transition-transform motion-reduce:transition-none group-open:rotate-90"
-                      aria-hidden="true"
-                    />
-                    {t('Słownictwo ogólne')} ({visibleGeneral.length})
-                  </summary>
-                  <ul className="space-y-2 mt-2">{visibleGeneral.map(renderSetRow)}</ul>
-                </details>
+
+              {/* Informacja o wynikach w innych zakładkach podczas wyszukiwania */}
+              {activeTabCount === 0 && !nothingFound && searching && (
+                <div className="rounded-xl border border-line-strong bg-surface-flat p-4 text-center text-sm text-text-2 space-y-2">
+                  <p>{t('Brak wyników w tej zakładce dla „{{query}}"', { query })}</p>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {visibleLessonsSets.length + (sentences ? visibleLessons.length : 0) > 0 && activeTab !== 'lessons' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('lessons')}
+                        className="text-xs font-semibold text-primary underline"
+                      >
+                        {t('Zobacz w')} {t('Z moich lekcji')} ({visibleLessonsSets.length + (sentences ? visibleLessons.length : 0)})
+                      </button>
+                    )}
+                    {visibleGeneralSets.length > 0 && activeTab !== 'general' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('general')}
+                        className="text-xs font-semibold text-primary underline"
+                      >
+                        {t('Zobacz w')} {t('Gotowe zestawy')} ({visibleGeneralSets.length})
+                      </button>
+                    )}
+                    {visibleUserSets.length > 0 && activeTab !== 'user' && (
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('user')}
+                        className="text-xs font-semibold text-primary underline"
+                      >
+                        {t('Zobacz w')} {t('Moje zestawy')} ({visibleUserSets.length})
+                      </button>
+                    )}
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -650,8 +876,27 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
           </p>
         )}
       </div>
+
+      <CreateCustomSetModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSave={async (setName, pairs) => {
+          let newId: string;
+          if (onCreateSet) {
+            newId = await onCreateSet(setName, pairs);
+          } else {
+            newId = `set-custom-${Date.now()}`;
+          }
+          if (newId) {
+            setSelected((prev) => (prev.includes(newId) ? prev : [...prev, newId].slice(0, setsMax)));
+            setActiveTab('user');
+          }
+          return newId;
+        }}
+      />
     </section>
   );
+
 };
 
 export default FreePracticeScreen;

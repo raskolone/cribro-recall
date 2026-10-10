@@ -178,6 +178,7 @@ interface SetLike {
   lessonTopic?: string;
   isGeneral?: boolean;
   isDraft?: boolean;
+  isLessonVocabulary?: boolean;
   cardCount?: number;
   flashcards?: readonly unknown[];
 }
@@ -200,6 +201,35 @@ export const MAX_FREE_PRACTICE_SETS = 10;
  * Własne zestawy i z lekcji idą na wierzch, słownictwo ogólne (długa, stała lista)
  * osobno — ekran chowa je w rozwijanej sekcji. Szkice (`isDraft`) nie są do nauki.
  */
+export interface CategorizedSets<T> {
+  lessons: T[];
+  general: T[];
+  user: T[];
+}
+
+/**
+ * Podział na 3 kategorie:
+ * 1) "Z moich lekcji" (`isLessonVocabulary`)
+ * 2) "Gotowe zestawy" (`isGeneral`)
+ * 3) "Moje zestawy" (własne zestawy kursanta, bez szkiców)
+ */
+export function categorizeFreePracticeSets<T extends SetLike>(sets: readonly T[]): CategorizedSets<T> {
+  const lessons: T[] = [];
+  const general: T[] = [];
+  const user: T[] = [];
+  for (const set of sets) {
+    if (!set || set.isDraft) continue;
+    if (set.isLessonVocabulary) {
+      lessons.push(set);
+    } else if (set.isGeneral) {
+      general.push(set);
+    } else {
+      user.push(set);
+    }
+  }
+  return { lessons, general, user };
+}
+
 export function groupFreePracticeSets<T extends SetLike>(sets: readonly T[]): { own: T[]; general: T[] } {
   const own: T[] = [];
   const general: T[] = [];
@@ -209,6 +239,7 @@ export function groupFreePracticeSets<T extends SetLike>(sets: readonly T[]): { 
   }
   return { own, general };
 }
+
 
 const fold = (text: string) =>
   text

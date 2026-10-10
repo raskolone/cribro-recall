@@ -148,7 +148,7 @@ const TEACHER_ONLY_VIEWS = new Set<View>([
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
-  const { sets } = useFlashcards();
+  const { sets, createSet, saveFlashcards } = useFlashcards();
   const { words, difficultWords, dueWords, frequency, lastPractice, lastRevisionDate } = useVocabulary();
   const { language } = useLanguage();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
@@ -735,6 +735,25 @@ const Dashboard: React.FC = () => {
           }}
           onBack={() => handleNavigate('dashboard')}
           onOpenVocabulary={() => handleNavigate('flashcard-sets')}
+          onCreateSet={async (setName, pairs) => {
+            const newSetId = await createSet({
+              title: setName,
+              description: '',
+              isPublic: false,
+              cardCount: pairs.length,
+            });
+            await saveFlashcards(
+              newSetId,
+              pairs.map((p, idx) => ({
+                term: p.term,
+                termLanguage: 'en',
+                definition: p.definition,
+                definitionLanguage: 'pl',
+                position: idx,
+              }))
+            );
+            return newSetId;
+          }}
         />
       );
     }
