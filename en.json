@@ -765,5 +765,14 @@
   "Generuj": "Generate",
   "Ustaw liczbę zdań i generuj": "Set the number of sentences and generate",
   "Zmień zakres": "Change scope",
-  "Słowa do powtórzenia ({{count}})": "Words to review ({{count}})"
+  "Słowa do powtórzenia ({{count}})": "Words to review ({{count}})",
+  "Brak sprawdzonych prac": "No reviewed homework yet",
+  "Gdy lektor sprawdzi Twoją odesłaną pracę domową i wystawi ocenę lub komentarz, pojawi się ona w tym miejscu.": "When your teacher reviews your submitted homework, grades and feedback will appear here.",
+  "Zobacz ocenę i feedback": "View grade and feedback",
+  "Nowe": "New",
+  "Sprawdzono: {{date}}": "Reviewed: {{date}}",
+  "{{count}} dobrych": "{{count}} correct",
+  "{{count}} do poprawy": "{{count}} to improve",
+  "Pokaż starsze ({{count}})": "Show older ({{count}})",
+  "Ukryj starsze": "Hide older"
 }

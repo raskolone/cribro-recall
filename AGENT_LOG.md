@@ -7104,3 +7104,12 @@ Zadanie: H2-A — skrót Enter w ćwiczeniach ze zdaniami (osobny commit, bez pu
 Zrobione: `utils/enterKeyAction.ts` (nowy), `AIExerciseGeneratorScreen.tsx` (nasłuch + fokus po zmianie zdania), `SentencePracticeParts.tsx` (`shortcutHint`), `pl.json`/`en.json`, `tests/enterKeyAction.test.ts` (11).
 Decyzje architektoniczne: nasłuch na dokumencie, bo po feedbacku pole znika i stary `onKeyDown` w polu nigdy nie działał; cooldown 450 ms zamiast licznika zdań (prosty, testowalny); `preventDefault` także przy pustym polu, żeby Enter nie wstawiał linii na desktopie; dotyk wykrywany `matchMedia('(pointer: coarse)')`.
 Ryzyka: reguły, `server.ts`, autoryzacja — NIETKNIĘTE.
+
+---
+
+2026-10-10 — Claude Code / Sonnet 5.5
+
+Zadanie: H2-B — kafelki sprawdzonych prac domowych (osobny commit po części A, bez pusha).
+Zrobione: `components/dashboard/GradedHomeworkTiles.tsx`, `utils/gradedHomeworkList.ts`, `StudentHomeworkScreen.tsx` (lista → komponent), `pl.json`/`en.json`, testy `gradedHomeworkList` (10), poprawki `studentShellOverflow` i (w commicie A) `sentencePractice`.
+Decyzje architektoniczne: użyto istniejącego pola `feedbackReadByStudent` + odczyt starego klucza `dismissed_graded_hw_*`, bez nowych zapisów; „Nowe" liczone od `reviewedAt`; tonu wyniku użyto z `utils/scoreTone.ts` (85/50) z tekstem w `text-hi`. Uwaga: commit A początkowo przeszedł tylko własne testy — pełny `npm test` po A wykazał pękniętą regułę strukturalną w `sentencePractice.test.tsx`, poprawioną w tym samym (lokalnym) commicie.
+Ryzyka: reguły, `server.ts`, autoryzacja — NIETKNIĘTE.

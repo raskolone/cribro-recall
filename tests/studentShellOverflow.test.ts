@@ -14,7 +14,8 @@ test('wrapper ekranów w Dashboardzie wymusza w-full i min-w-0 na korzeniu ekran
 
 test('komentarz lektora i tytuły zestawów łamią się zamiast wypychać układ', () => {
   const hw = src('components/dashboard/StudentHomeworkScreen.tsx');
-  const feedbackLines = hw.split('\n').filter((l) => l.includes('leading-relaxed whitespace-pre-wrap') || l.includes('line-clamp-2 break-words'));
+  const tiles = src('components/dashboard/GradedHomeworkTiles.tsx');
+  const feedbackLines = `${hw}\n${tiles}`.split('\n').filter((l) => l.includes('leading-relaxed whitespace-pre-wrap') || l.includes('line-clamp-2 break-words'));
   assert.ok(feedbackLines.length >= 2);
   for (const l of feedbackLines) assert.match(l, /\[overflow-wrap:anywhere\]/);
   assert.match(src('components/dashboard/StudentHomeworkGradedModal.tsx'), /whitespace-pre-wrap break-words \[overflow-wrap:anywhere\]/);

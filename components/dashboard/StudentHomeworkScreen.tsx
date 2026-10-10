@@ -35,6 +35,7 @@ import { recordExerciseResults } from '../../services/learningProfile';
 import { useDraftAnswers } from '../../hooks/useDraftAnswers';
 import { normalizeLevel } from '../../utils/learningCurve';
 import HomeworkExercise from './HomeworkExercise';
+import GradedHomeworkTiles from './GradedHomeworkTiles';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import i18n from 'i18next';
 import HomeworkWarmupCards from './HomeworkWarmupCards';
@@ -1658,102 +1659,32 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
               </span>
             </div>
 
-            {gradedTasks.length === 0 ? (
-              <div className="rounded-2xl border border-white/10 bg-base-200/40 p-5 text-center text-xs text-content-muted leading-relaxed">
-                <Award className="w-7 h-7 text-primary/40 mx-auto mb-2" />
-                <p className="font-semibold text-white/90 text-sm">
-                  {language === 'pl' ? 'Brak sprawdzonych prac' : 'No reviewed homework yet'}
-                </p>
-                <p className="mt-1 text-content-muted">
-                  {language === 'pl'
-                    ? 'Gdy lektor sprawdzi Twoją odesłaną pracę domową i wystawi ocenę lub komentarz, pojawi się ona w tym miejscu.'
-                    : 'When your teacher reviews your submitted homework, grades and feedback will appear here.'}
-                </p>
-              </div>
-            ) : (
-              <ul className="rounded-2xl border border-primary/25 bg-base-200/40 divide-y divide-white/[0.06] overflow-hidden">
-                {gradedTasks.map((task) => {
-                  const rows = getExerciseReviewRows(task);
-                  const correctCount = rows.filter((r) => r.isCorrect).length;
-                  const errorCount = rows.filter((r) => !r.isCorrect).length;
-
-                  return (
-                    <li key={task.id}>
-                      <div
-                        onClick={() => {
-                          setViewingGradedTask(task);
-                          if (task.id && user?.id) {
-                            try {
-                              localStorage.setItem(`dismissed_graded_hw_${user.id}_${task.id}`, 'true');
-                            } catch (e) {}
-                            updateDoc(doc(db, 'specialTasks', task.id), {
-                              feedbackReadByStudent: true,
-                            }).catch(() => {});
-                          }
-                        }}
-                        className="w-full min-h-[4rem] p-4 text-left active:bg-white/[0.04] hover:bg-white/[0.02] cursor-pointer transition-colors space-y-2.5"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <span className="block text-[15px] font-bold text-white leading-snug truncate">
-                              {task.title}
-                            </span>
-                            <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-content-muted mt-0.5">
-                              <span className="font-semibold text-primary flex items-center gap-1">
-                                <CheckCheck size={13} /> {L.statusGraded}
-                              </span>
-                              {task.reviewedAt && (
-                                <span className="inline-flex items-center gap-1 font-mono text-[12px] text-content-muted">
-                                  · Sprawdzono: {formatTaskDateTime(task.reviewedAt)}
-                                </span>
-                              )}
-                              {task.submittedAt && (
-                                <span className="inline-flex items-center gap-1 font-mono text-[12px] text-content-muted">
-                                  · Odesłano: {formatTaskDateTime(task.submittedAt)}
-                                </span>
-                              )}
-                            </span>
-                          </div>
-
-                          {task.grade !== undefined && (
-                            <span className="flex items-center gap-1 font-mono text-[13px] font-bold text-primary shrink-0 px-2.5 py-1 rounded-full bg-primary/15 border border-primary/30">
-                              <Award size={14} />
-                              {task.grade}%
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Quick Summary Badges & Teacher Comment Snippet */}
-                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                          <div className="flex items-center gap-2 text-xs font-mono">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/25">
-                              <Check size={11} className="stroke-[3]" /> {correctCount} dobrych
-                            </span>
-                            {errorCount > 0 && (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-500/25">
-                                <AlertTriangle size={11} /> {errorCount} do poprawy
-                              </span>
-                            )}
-                          </div>
-
-                          <span className="text-xs font-bold text-primary flex items-center gap-1 hover:underline">
-                            <span>Zobacz ocenę i feedback</span>
-                            <ChevronRight size={14} />
-                          </span>
-                        </div>
-
-                        {task.teacherFeedback && (
-                          <p className="text-xs text-primary/85 bg-primary/[0.06] border border-primary/15 px-3 py-2 rounded-xl line-clamp-2 break-words [overflow-wrap:anywhere] italic font-sans flex items-start gap-2">
-                            <MessageSquareQuote size={13} className="shrink-0 mt-0.5 text-primary" />
-                            <span className="min-w-0">"{task.teacherFeedback}"</span>
-                          </p>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+            <GradedHomeworkTiles
+              tasks={gradedTasks}
+              summarize={(task) => {
+                const rows = getExerciseReviewRows(task);
+                return { correct: rows.filter((r) => r.isCorrect).length, errors: rows.filter((r) => !r.isCorrect).length };
+              }}
+              seenLocally={(task) => {
+                if (!task.id || !user?.id) return false;
+                try {
+                  return localStorage.getItem(`dismissed_graded_hw_${user.id}_${task.id}`) === 'true';
+                } catch (e) {
+                  return false;
+                }
+              }}
+              onOpen={(task) => {
+                setViewingGradedTask(task);
+                if (task.id && user?.id) {
+                  try {
+                    localStorage.setItem(`dismissed_graded_hw_${user.id}_${task.id}`, 'true');
+                  } catch (e) {}
+                  updateDoc(doc(db, 'specialTasks', task.id), {
+                    feedbackReadByStudent: true,
+                  }).catch(() => {});
+                }
+              }}
+            />
           </section>
         </>
       )}

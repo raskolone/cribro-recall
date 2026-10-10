@@ -767,5 +767,14 @@
   "Generuj": "Generuj",
   "Ustaw liczbę zdań i generuj": "Ustaw liczbę zdań i generuj",
   "Zmień zakres": "Zmień zakres",
-  "Słowa do powtórzenia ({{count}})": "Słowa do powtórzenia ({{count}})"
+  "Słowa do powtórzenia ({{count}})": "Słowa do powtórzenia ({{count}})",
+  "Brak sprawdzonych prac": "Brak sprawdzonych prac",
+  "Gdy lektor sprawdzi Twoją odesłaną pracę domową i wystawi ocenę lub komentarz, pojawi się ona w tym miejscu.": "Gdy lektor sprawdzi Twoją odesłaną pracę domową i wystawi ocenę lub komentarz, pojawi się ona w tym miejscu.",
+  "Zobacz ocenę i feedback": "Zobacz ocenę i feedback",
+  "Nowe": "Nowe",
+  "Sprawdzono: {{date}}": "Sprawdzono: {{date}}",
+  "{{count}} dobrych": "{{count}} dobrych",
+  "{{count}} do poprawy": "{{count}} do poprawy",
+  "Pokaż starsze ({{count}})": "Pokaż starsze ({{count}})",
+  "Ukryj starsze": "Ukryj starsze"
 }
