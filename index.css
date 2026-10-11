@@ -799,6 +799,16 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
 }
 .game-tile > :not(.sr-only):not(.game-tile__mark) { position: relative; z-index: 2; }
 
+/* Własny pastel kafelka w spoczynku (wielokrotny wybór): kolor z pozycji opcji, nie z poprawności. Reguły stanów
+   poniżej (zaznaczony / poprawny / błędny / zablokowany) mają tę samą swoistość i idą później, więc je nadpisują.
+   Błędna odpowiedź ma dodatkowo przerywany obrys — różni się od poprawnej kształtem, nie tylko barwą. */
+.game-tile[data-tint="1"] { --gt-bg: var(--color-tile-1); --gt-line: var(--color-tile-line-1); }
+.game-tile[data-tint="2"] { --gt-bg: var(--color-tile-2); --gt-line: var(--color-tile-line-2); }
+.game-tile[data-tint="3"] { --gt-bg: var(--color-tile-3); --gt-line: var(--color-tile-line-3); }
+.game-tile[data-tint="4"] { --gt-bg: var(--color-tile-4); --gt-line: var(--color-tile-line-4); }
+.game-tile[data-tint="5"] { --gt-bg: var(--color-tile-5); --gt-line: var(--color-tile-line-5); }
+.game-tile[data-tint][data-state="wrong"] { border-style: dashed; }
+
 @media (hover: hover) and (pointer: fine) {
   .game-tile[data-state="rest"]:hover {
     --gt-line: var(--color-primary);

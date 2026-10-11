@@ -19,6 +19,8 @@ export interface GameTileAttrs {
   className: string;
   'data-state': GameTileState;
   'data-shade'?: GameTileShade;
+  /** Własny pastel kafelka w spoczynku (wielokrotny wybór); stany zaznaczony/poprawny/błędny/zablokowany go nadpisują. */
+  'data-tint'?: GameTileShade;
   /** Tylko kafelki przełączane (zaznaczanie): `true` / `false`; w pozostałych brak atrybutu. */
   'aria-pressed'?: boolean;
   'aria-disabled'?: true;
@@ -27,18 +29,21 @@ export interface GameTileAttrs {
 export interface GameTileOptions {
   state: GameTileState;
   shade?: GameTileShade;
+  /** Pastel w spoczynku, niezależny od wyniku (np. po pozycji opcji) — w odróżnieniu od `shade` nie zostaje po zmianie stanu. */
+  tint?: GameTileShade;
   /** Kafelek można zaznaczyć (dopasowanie, układanka) — dodaje `aria-pressed`. */
   toggle?: boolean;
   /** Dodatkowe klasy układu (np. `col-span-2`), nie stylu. */
   extraClass?: string;
 }
 
-export function gameTileAttrs({ state, shade, toggle, extraClass }: GameTileOptions): GameTileAttrs {
+export function gameTileAttrs({ state, shade, tint, toggle, extraClass }: GameTileOptions): GameTileAttrs {
   const attrs: GameTileAttrs = {
     className: ['game-tile', extraClass].filter(Boolean).join(' '),
     'data-state': state,
   };
   if (shade) attrs['data-shade'] = shade;
+  if (tint) attrs['data-tint'] = tint;
   if (toggle) attrs['aria-pressed'] = state === 'selected';
   if (state === 'locked' || state === 'correct') attrs['aria-disabled'] = true;
   return attrs;

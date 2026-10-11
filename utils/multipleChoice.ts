@@ -2,7 +2,7 @@
  * Wielokrotny wybór — czysta logika (bez Reacta): stany kafelków odpowiedzi, tasowanie opcji po wygenerowaniu,
  * odczyt zagadnienia gramatycznego. Wygląd kafelków to wspólny styl gier (`utils/gameTile.ts`).
  */
-import type { GameTileState } from './gameTile';
+import { shadeForHit, type GameTileShade, type GameTileState } from './gameTile';
 import { grammarFocusLabelKey, isGrammarFocusId, type GrammarFocusId } from './grammarFocus';
 
 export interface McOptionView {
@@ -11,6 +11,12 @@ export interface McOptionView {
   /** Tylko po odpowiedzi: ta opcja jest poprawna / ta opcja została wybrana błędnie. */
   verdict?: 'correct' | 'wrong';
 }
+
+/**
+ * Pastel kafelka opcji: wyłącznie z pozycji (1…5 po kolei), więc nie zależy od `correctIndex`
+ * ani od tego, co kursant wybrał — kolor nie zdradza odpowiedzi. Opcje są mieszane przy generowaniu.
+ */
+export const mcOptionTint = (index: number): GameTileShade => shadeForHit(index);
 
 /** Czy zadanie ma poprawny `correctIndex` (stare dane bywają bez niego — wtedy nie pokazujemy wyniku). */
 export const hasValidKey = (options: readonly unknown[], correctIndex: unknown): correctIndex is number =>

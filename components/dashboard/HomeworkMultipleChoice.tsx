@@ -4,11 +4,11 @@ import i18n from 'i18next';
 import { gameTileAttrs } from '../../utils/gameTile';
 import ExerciseInstruction from '../ui/ExerciseInstruction';
 import { splitAtGap } from '../../utils/exerciseInstruction';
-import { grammarFocusOf, hasValidKey, mcOptionViews } from '../../utils/multipleChoice';
+import { grammarFocusOf, hasValidKey, mcOptionTint, mcOptionViews } from '../../utils/multipleChoice';
 
 /**
  * Wielokrotny wybór w pracy domowej: pytanie, etykieta zagadnienia gramatycznego (z i18n, nigdy z modelu),
- * cztery opcje w siatce 2×2 (jedna kolumna dopiero poniżej 360 px); luka `___` w zdaniu to zaokrąglone pole (`.mc-gap`) i — po odpowiedzi — stan poprawna/błędna (ikona + tekst,
+ * cztery opcje w siatce 2×2 (jedna kolumna dopiero poniżej 360 px), każda we własnym pastelu z pozycji (nie z poprawności); luka `___` w zdaniu to zaokrąglone pole (`.mc-gap`) i — po odpowiedzi — stan poprawna/błędna (ikona + tekst,
  * nie sam kolor) z krótkim wyjaśnieniem. Odpowiedź to indeks wybranej opcji (jak dotąd). Po odpowiedzi
  * wybór jest ostateczny (kafelki zablokowane), o ile zadanie ma poprawny klucz.
  */
@@ -60,7 +60,7 @@ const HomeworkMultipleChoice: React.FC<HomeworkMultipleChoiceProps> = ({ item, a
       >
         {options.map((option, index) => {
           const view = views[index];
-          const attrs = gameTileAttrs({ state: view.state, toggle: !revealed, extraClass: 'game-tile--marked' });
+          const attrs = gameTileAttrs({ state: view.state, tint: mcOptionTint(index), toggle: !revealed, extraClass: 'game-tile--marked' });
           return (
             <button
               key={index}
