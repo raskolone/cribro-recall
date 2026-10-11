@@ -60,7 +60,7 @@ test('Vercel kieruje /api/* do funkcji api/index.js z maxDuration, który mieśc
 
 test('trasa jest cienka: klucz AI, stały model Gemini, limit z konfiguracji serwera, uid z zweryfikowanego tokenu', () => {
   const src = strip(read('server.ts'));
-  const route = src.slice(src.indexOf('app.post("/api/free-practice/generate"'), src.indexOf('app.post("/api/openai", requireFirebaseAuth'));
+  const route = src.slice(src.indexOf('app.post("/api/free-practice/generate"'), src.indexOf('const aiProxyGuards ='));
   assert.ok(route.length > 600);
   assert.match(route, /handleFreePracticeGenerate\(/);
   assert.match(route, /uid: \(req as any\)\.userUid as string, body: req\.body/);

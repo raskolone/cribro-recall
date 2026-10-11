@@ -204,7 +204,7 @@ import { resolveDailyLimit, type UsageDb } from "./utils/freePracticeQuota";
 import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 import { buildGradedHomeworkEmail } from "./services/homeworkEmail";
-import { GEMINI_PROXY_MAX_BODY, clampGeminiConfig, isProxyExempt, reserveProxyCall, resolveProxyLimits } from "./utils/geminiProxyGuard";
+import { AI_PROXY_USAGE_COLLECTION, ANTHROPIC_MAX_TOKENS_CEILING, GEMINI_PROXY_MAX_BODY, clampGeminiConfig, clampMaxTokens, isProxyExempt, reserveProxyCall, resolveProxyLimits } from "./utils/geminiProxyGuard";
 import { isSafeDocId, validateAssignInput, validateGenerateInput } from "./utils/homeworkV2Input";
 import { resolveGradedNotification, taskOwnerUid } from "./utils/gradedNotification";
 import {
@@ -453,14 +453,20 @@ export function createApp() {
     next();
   });
   
-  // Trasa /api/gemini/generate ma własny, niższy limit ciała (patrz utils/geminiProxyGuard.ts) —
-  // globalny parser pomija ją, a trasa parsuje sama, już PO uwierzytelnieniu.
+  // Trasy proxy AI (Gemini, OpenAI, Anthropic, DeepSeek) mają własny, niższy limit ciała (patrz
+  // utils/geminiProxyGuard.ts) — globalny parser pomija je, a trasa parsuje sama, już PO uwierzytelnieniu.
   const GEMINI_PROXY_PATH = '/api/gemini/generate';
+  const AI_PROXY_PATHS = new Set([
+    GEMINI_PROXY_PATH,
+    '/api/openai', '/api/openai/generate',
+    '/api/anthropic', '/api/anthropic/generate',
+    '/api/deepseek', '/api/deepseek/generate',
+  ]);
   const globalJsonParser = express.json({ limit: '50mb' });
   // Express dopasowuje trasy bez względu na wielkość liter i ukośnik końcowy — porównanie musi robić to samo,
   // inaczej wariant ścieżki dostawałby globalny limit 50 MB.
-  const isGeminiProxyPath = (p: string) => p.replace(/\/+$/, '').toLowerCase() === GEMINI_PROXY_PATH;
-  app.use((req, res, next) => (isGeminiProxyPath(req.path) ? next() : globalJsonParser(req, res, next)));
+  const isAiProxyPath = (p: string) => AI_PROXY_PATHS.has(p.replace(/\/+$/, '').toLowerCase());
+  app.use((req, res, next) => (isAiProxyPath(req.path) ? next() : globalJsonParser(req, res, next)));
   const jsonBodyErrorHandler = (err: any, req: any, res: any, next: any) => {
     if (err instanceof SyntaxError && 'body' in err) {
       return res.status(400).json({ error: 'Invalid JSON payload' });
@@ -5596,7 +5602,7 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
 
       const bodyPayload: any = {
         model: targetModel,
-        max_tokens: max_tokens || 4096,
+        max_tokens: clampMaxTokens(max_tokens, ANTHROPIC_MAX_TOKENS_CEILING) || 4096,
         messages: chatMessages,
         temperature: 0.7,
       };
@@ -5724,10 +5730,10 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   // wyglądają tak samo jak przed przeniesieniem.
   const GEMINI_MODEL_PATTERN = /^gemini-[a-z0-9.\-]{1,60}$/i;
 
-  const geminiProxyBodyParser = express.json({ limit: GEMINI_PROXY_MAX_BODY });
-  const geminiProxyLimits = resolveProxyLimits();
+  const aiProxyBodyParser = express.json({ limit: GEMINI_PROXY_MAX_BODY });
+  const aiProxyLimits = resolveProxyLimits();
   // Ta sama lista co w requireFirebaseAdmin (middleware celowo nietknięty w SEC2).
-  const GEMINI_PROXY_EXEMPT_EMAILS = [
+  const AI_PROXY_EXEMPT_EMAILS = [
     'maciej.wyrozumski@gmail.com',
     'marta.lukaszczyk@gmail.com',
     'maciejwyrozumski@icloud.com',
@@ -5737,15 +5743,15 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
 
   // Limit żądań na użytkownika (minuta i doba). Lektor/admin zwolnieni (rola z bazy, nie z klienta).
   // Gdy baza jest niedostępna, NIE blokujemy legalnych wywołań (fail-open + ostrzeżenie): to ochrona
-  // kosztowa, a nie autoryzacja — autoryzację robi requireFirebaseAuth.
-  const geminiProxyRateLimit = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  // kosztowa, a nie autoryzacja — autoryzację robi requireFirebaseAuth. Każda kolekcja = osobny budżet.
+  const makeAiProxyRateLimit = (collection: string, label: string) => async (req: express.Request, res: express.Response, next: express.NextFunction) => {
     const uid = (req as any).userUid as string;
     try {
       const adminDb = getFirestore(getAdminApp(), FIRESTORE_DATABASE_ID);
       const email = String((req as any).userEmail || '').toLowerCase();
       const role = (await adminDb.collection('users').doc(uid).get()).data()?.role;
-      if (isProxyExempt(role, GEMINI_PROXY_EXEMPT_EMAILS.includes(email))) return next();
-      const reservation = await reserveProxyCall(adminDb as unknown as UsageDb, uid, new Date(), geminiProxyLimits);
+      if (isProxyExempt(role, AI_PROXY_EXEMPT_EMAILS.includes(email))) return next();
+      const reservation = await reserveProxyCall(adminDb as unknown as UsageDb, uid, new Date(), aiProxyLimits, collection);
       if (reservation.ok === false) {
         res.setHeader('Retry-After', String(reservation.retryAfterSec));
         return res.status(429).json({
@@ -5757,12 +5763,14 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
         });
       }
     } catch (err: any) {
-      console.warn('[Gemini Proxy] Limit żądań niedostępny, przepuszczam:', err?.message || err);
+      console.warn(`[${label} Proxy] Limit żądań niedostępny, przepuszczam:`, err?.message || err);
     }
     next();
   };
+  const geminiProxyRateLimit = makeAiProxyRateLimit('geminiProxyUsage', 'Gemini');
+  const otherAiProxyRateLimit = makeAiProxyRateLimit(AI_PROXY_USAGE_COLLECTION, 'AI');
 
-  app.post("/api/gemini/generate", requireFirebaseAuth, geminiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
+  app.post("/api/gemini/generate", requireFirebaseAuth, aiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
     try {
       const { model, contents } = req.body || {};
       const config = clampGeminiConfig(req.body?.config);
@@ -5887,12 +5895,14 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   });
 
   // Trasy AI wymagają zalogowania.
-  app.post("/api/openai", requireFirebaseAuth, handleOpenAI);
-  app.post("/api/openai/generate", requireFirebaseAuth, handleOpenAI);
-  app.post("/api/anthropic", requireFirebaseAuth, handleAnthropic);
-  app.post("/api/anthropic/generate", requireFirebaseAuth, handleAnthropic);
-  app.post("/api/deepseek", requireFirebaseAuth, handleDeepSeek);
-  app.post("/api/deepseek/generate", requireFirebaseAuth, handleDeepSeek);
+  // Dostęp zostaje dla każdego zalogowanego (generatory fiszek kursanta), z limitem ciała i żądań.
+  const aiProxyGuards = [requireFirebaseAuth, aiProxyBodyParser, jsonBodyErrorHandler, otherAiProxyRateLimit];
+  app.post("/api/openai", ...aiProxyGuards, handleOpenAI);
+  app.post("/api/openai/generate", ...aiProxyGuards, handleOpenAI);
+  app.post("/api/anthropic", ...aiProxyGuards, handleAnthropic);
+  app.post("/api/anthropic/generate", ...aiProxyGuards, handleAnthropic);
+  app.post("/api/deepseek", ...aiProxyGuards, handleDeepSeek);
+  app.post("/api/deepseek/generate", ...aiProxyGuards, handleDeepSeek);
 
   // Blokada dla nieznanych tras /api, aby nie zwracały index.html (SPA)
   app.use('/api', (req, res) => {

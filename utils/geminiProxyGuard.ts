@@ -16,6 +16,14 @@
 import { warsawDayKey, type UsageDb } from './freePracticeQuota';
 
 export const GEMINI_PROXY_USAGE_COLLECTION = 'geminiProxyUsage';
+/** Wspólny licznik dla proxy płatnych dostawców spoza Gemini (`/api/openai`, `/api/anthropic`, `/api/deepseek`). */
+export const AI_PROXY_USAGE_COLLECTION = 'aiProxyUsage';
+/**
+ * Sufit `max_tokens` przyjmowany od klienta przez `/api/anthropic` (domyślnie serwer używa 4096, klient dziś
+ * nie wysyła tego pola wcale). OpenAI i DeepSeek nie dostają sufitu: serwer nie przekazuje tam limitu wyjścia,
+ * a doklejenie go zmieniłoby zachowanie (nowe modele OpenAI wymagają innego parametru).
+ */
+export const ANTHROPIC_MAX_TOKENS_CEILING = 8192;
 /**
  * Maksymalne ciało żądania. Klient przesyła sam tekst (żadnych `inlineData` — grep po całym froncie),
  * więc nawet bardzo duży prompt z historią lekcji mieści się w ułamku tej wartości.
@@ -58,8 +66,14 @@ export type ProxyReservation =
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
 
 /** Rezerwuje jedno wywołanie; przy przekroczeniu limitu nic nie zapisuje. */
-export async function reserveProxyCall(db: UsageDb, uid: string, now: Date, limits: ProxyLimits): Promise<ProxyReservation> {
-  const ref = db.collection(GEMINI_PROXY_USAGE_COLLECTION).doc(uid);
+export async function reserveProxyCall(
+  db: UsageDb,
+  uid: string,
+  now: Date,
+  limits: ProxyLimits,
+  collection: string = GEMINI_PROXY_USAGE_COLLECTION,
+): Promise<ProxyReservation> {
+  const ref = db.collection(collection).doc(uid);
   const minuteKey = Math.floor(now.getTime() / 60_000);
   const dayKey = warsawDayKey(now);
   return db.runTransaction(async (tx): Promise<ProxyReservation> => {
@@ -89,4 +103,9 @@ export function clampGeminiConfig<T>(config: T): T {
     return { ...c, maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS_CEILING } as T;
   }
   return config;
+}
+
+/** Przycina `max_tokens` od klienta do sufitu; brak wartości (lub nie-liczba) zostawia bez zmian. */
+export function clampMaxTokens<T>(value: T, ceiling: number): T | number {
+  return typeof value === 'number' && Number.isFinite(value) && value > ceiling ? ceiling : value;
 }

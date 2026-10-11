@@ -83,3 +83,21 @@ test('clampGeminiConfig: tnie tylko maxOutputTokens ponad sufit; reszta konfigur
   const noMax = { responseMimeType: 'application/json' };
   assert.equal(clampGeminiConfig(noMax), noMax);
 });
+
+import { ANTHROPIC_MAX_TOKENS_CEILING, clampMaxTokens } from '../utils/geminiProxyGuard';
+
+test('reserveProxyCall: osobna kolekcja = osobny budżet', async () => {
+  const { db } = fakeDb();
+  const limits = { perMinute: 1, perDay: 10 };
+  const now = at('2026-10-10T10:00:00Z');
+  assert.equal((await reserveProxyCall(db, 'u', now, limits)).ok, true);
+  assert.equal((await reserveProxyCall(db, 'u', now, limits)).ok, false);
+  assert.equal((await reserveProxyCall(db, 'u', now, limits, 'aiProxyUsage')).ok, true);
+});
+
+test('clampMaxTokens: tnie tylko ponad sufit, brak/nie-liczba bez zmian', () => {
+  assert.equal(clampMaxTokens(5_000_000, ANTHROPIC_MAX_TOKENS_CEILING), ANTHROPIC_MAX_TOKENS_CEILING);
+  assert.equal(clampMaxTokens(1000, ANTHROPIC_MAX_TOKENS_CEILING), 1000);
+  assert.equal(clampMaxTokens(undefined, ANTHROPIC_MAX_TOKENS_CEILING), undefined);
+  assert.equal(clampMaxTokens('x', ANTHROPIC_MAX_TOKENS_CEILING), 'x');
+});
