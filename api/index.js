@@ -3370,6 +3370,8 @@ CRIBRO ENGLISH`;
 
 // utils/geminiProxyGuard.ts
 var GEMINI_PROXY_USAGE_COLLECTION = "geminiProxyUsage";
+var AI_PROXY_USAGE_COLLECTION = "aiProxyUsage";
+var ANTHROPIC_MAX_TOKENS_CEILING = 8192;
 var GEMINI_PROXY_MAX_BODY = "2mb";
 var GEMINI_MAX_OUTPUT_TOKENS_CEILING = 65536;
 var DEFAULT_PER_MINUTE_LIMIT = 60;
@@ -3390,8 +3392,8 @@ function isProxyExempt(role, isAdminEmail) {
   return isAdminEmail || role === "teacher" || role === "admin" || role === "admin_student";
 }
 var num = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
-async function reserveProxyCall(db, uid, now, limits) {
-  const ref = db.collection(GEMINI_PROXY_USAGE_COLLECTION).doc(uid);
+async function reserveProxyCall(db, uid, now, limits, collection = GEMINI_PROXY_USAGE_COLLECTION) {
+  const ref = db.collection(collection).doc(uid);
   const minuteKey = Math.floor(now.getTime() / 6e4);
   const dayKey = warsawDayKey(now);
   return db.runTransaction(async (tx) => {
@@ -3416,6 +3418,9 @@ function clampGeminiConfig(config) {
     return { ...c, maxOutputTokens: GEMINI_MAX_OUTPUT_TOKENS_CEILING };
   }
   return config;
+}
+function clampMaxTokens(value, ceiling) {
+  return typeof value === "number" && Number.isFinite(value) && value > ceiling ? ceiling : value;
 }
 
 // utils/homeworkV2Input.ts
@@ -4149,9 +4154,18 @@ function createApp() {
     next();
   });
   const GEMINI_PROXY_PATH = "/api/gemini/generate";
+  const AI_PROXY_PATHS = /* @__PURE__ */ new Set([
+    GEMINI_PROXY_PATH,
+    "/api/openai",
+    "/api/openai/generate",
+    "/api/anthropic",
+    "/api/anthropic/generate",
+    "/api/deepseek",
+    "/api/deepseek/generate"
+  ]);
   const globalJsonParser = express.json({ limit: "50mb" });
-  const isGeminiProxyPath = (p) => p.replace(/\/+$/, "").toLowerCase() === GEMINI_PROXY_PATH;
-  app2.use((req, res, next) => isGeminiProxyPath(req.path) ? next() : globalJsonParser(req, res, next));
+  const isAiProxyPath = (p) => AI_PROXY_PATHS.has(p.replace(/\/+$/, "").toLowerCase());
+  app2.use((req, res, next) => isAiProxyPath(req.path) ? next() : globalJsonParser(req, res, next));
   const jsonBodyErrorHandler = (err, req, res, next) => {
     if (err instanceof SyntaxError && "body" in err) {
       return res.status(400).json({ error: "Invalid JSON payload" });
@@ -8260,7 +8274,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const timeoutId = setTimeout(() => controller.abort(), 6e4);
       const bodyPayload = {
         model: targetModel,
-        max_tokens: max_tokens || 4096,
+        max_tokens: clampMaxTokens(max_tokens, ANTHROPIC_MAX_TOKENS_CEILING) || 4096,
         messages: chatMessages,
         temperature: 0.7
       };
@@ -8362,23 +8376,23 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
     }
   };
   const GEMINI_MODEL_PATTERN = /^gemini-[a-z0-9.\-]{1,60}$/i;
-  const geminiProxyBodyParser = express.json({ limit: GEMINI_PROXY_MAX_BODY });
-  const geminiProxyLimits = resolveProxyLimits();
-  const GEMINI_PROXY_EXEMPT_EMAILS = [
+  const aiProxyBodyParser = express.json({ limit: GEMINI_PROXY_MAX_BODY });
+  const aiProxyLimits = resolveProxyLimits();
+  const AI_PROXY_EXEMPT_EMAILS = [
     "maciej.wyrozumski@gmail.com",
     "marta.lukaszczyk@gmail.com",
     "maciejwyrozumski@icloud.com",
     "wyrozumski@maciej.pro",
     "maciej@learnwithmaciej.com"
   ];
-  const geminiProxyRateLimit = async (req, res, next) => {
+  const makeAiProxyRateLimit = (collection, label) => async (req, res, next) => {
     const uid = req.userUid;
     try {
       const adminDb = getFirestore2(getAdminApp(), FIRESTORE_DATABASE_ID);
       const email = String(req.userEmail || "").toLowerCase();
       const role = (await adminDb.collection("users").doc(uid).get()).data()?.role;
-      if (isProxyExempt(role, GEMINI_PROXY_EXEMPT_EMAILS.includes(email))) return next();
-      const reservation = await reserveProxyCall(adminDb, uid, /* @__PURE__ */ new Date(), geminiProxyLimits);
+      if (isProxyExempt(role, AI_PROXY_EXEMPT_EMAILS.includes(email))) return next();
+      const reservation = await reserveProxyCall(adminDb, uid, /* @__PURE__ */ new Date(), aiProxyLimits, collection);
       if (reservation.ok === false) {
         res.setHeader("Retry-After", String(reservation.retryAfterSec));
         return res.status(429).json({
@@ -8388,11 +8402,13 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
         });
       }
     } catch (err) {
-      console.warn("[Gemini Proxy] Limit \u017C\u0105da\u0144 niedost\u0119pny, przepuszczam:", err?.message || err);
+      console.warn(`[${label} Proxy] Limit \u017C\u0105da\u0144 niedost\u0119pny, przepuszczam:`, err?.message || err);
     }
     next();
   };
-  app2.post("/api/gemini/generate", requireFirebaseAuth, geminiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
+  const geminiProxyRateLimit = makeAiProxyRateLimit("geminiProxyUsage", "Gemini");
+  const otherAiProxyRateLimit = makeAiProxyRateLimit(AI_PROXY_USAGE_COLLECTION, "AI");
+  app2.post("/api/gemini/generate", requireFirebaseAuth, aiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
     try {
       const { model, contents } = req.body || {};
       const config = clampGeminiConfig(req.body?.config);
@@ -8491,12 +8507,13 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
     if (!apiKey) console.warn("[Gemini] Brak GEMINI_API_KEY na serwerze.");
     return res.status(result.status).json(result.body);
   });
-  app2.post("/api/openai", requireFirebaseAuth, handleOpenAI);
-  app2.post("/api/openai/generate", requireFirebaseAuth, handleOpenAI);
-  app2.post("/api/anthropic", requireFirebaseAuth, handleAnthropic);
-  app2.post("/api/anthropic/generate", requireFirebaseAuth, handleAnthropic);
-  app2.post("/api/deepseek", requireFirebaseAuth, handleDeepSeek);
-  app2.post("/api/deepseek/generate", requireFirebaseAuth, handleDeepSeek);
+  const aiProxyGuards = [requireFirebaseAuth, aiProxyBodyParser, jsonBodyErrorHandler, otherAiProxyRateLimit];
+  app2.post("/api/openai", ...aiProxyGuards, handleOpenAI);
+  app2.post("/api/openai/generate", ...aiProxyGuards, handleOpenAI);
+  app2.post("/api/anthropic", ...aiProxyGuards, handleAnthropic);
+  app2.post("/api/anthropic/generate", ...aiProxyGuards, handleAnthropic);
+  app2.post("/api/deepseek", ...aiProxyGuards, handleDeepSeek);
+  app2.post("/api/deepseek/generate", ...aiProxyGuards, handleDeepSeek);
   app2.use("/api", (req, res) => {
     res.status(404).json({ error: `Nie odnaleziono endpointu API: ${req.method} ${req.originalUrl || req.path}` });
   });
