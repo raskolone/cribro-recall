@@ -856,6 +856,43 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
   .game-tile[data-state="wrong"] { animation: none; }
 }
 
+
+/* ---------------------------------------------------------------------------
+   Animacja oczekiwania na generowanie (components/ui/GeneratingAnimation.tsx).
+   Oś czasu: strzałka 0,5 s → koło 1,8 s → pauza 0,8 s → wygaszenie 0,4 s (pętla 3,5 s); kłębek „oddycha” co 3 s.
+   Procenty = utils/generatingAnimation.ts (genKeyframePercents). Animowane tylko transform, opacity
+   i stroke-dashoffset; ścieżki mają pathLength=1, więc bez JS i bez mierzenia długości.
+   --------------------------------------------------------------------------- */
+.gen-anim { color: var(--color-primary); }
+.gen-anim__ball { transform-origin: 50px 50px; animation: gen-breathe 3s ease-in-out infinite; }
+.gen-anim__arrow,
+.gen-anim__circle { stroke-dasharray: 1 1; }
+.gen-anim__arrow { animation: gen-arrow 3.5s linear infinite; }
+.gen-anim__circle { animation: gen-circle 3.5s linear infinite; }
+
+@keyframes gen-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+@keyframes gen-arrow {
+  0% { stroke-dashoffset: 1; opacity: 1; animation-timing-function: ease-out; }
+  14.2857% { stroke-dashoffset: 0; opacity: 1; }
+  88.5714% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes gen-circle {
+  0%, 14.2856% { stroke-dashoffset: 1; opacity: 0; }
+  14.2857% { stroke-dashoffset: 1; opacity: 1; animation-timing-function: ease-in-out; }
+  65.7143% { stroke-dashoffset: 0; opacity: 1; }
+  88.5714% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .gen-anim__ball,
+  .gen-anim__arrow,
+  .gen-anim__circle { animation: none; opacity: 1; stroke-dashoffset: 0; transform: none; }
+}
+
 /* Kliknięcie / wciśnięcie fizycznego przycisku ze szkła (3D button press) */
 .liquid-glass-tile:active,
 .glass-tile:active {
