@@ -4,6 +4,7 @@ import { AlertCircle, Check, Copy, HelpCircle, Languages, Lightbulb, RotateCcw, 
 import { HomeworkType } from '../../types';
 import { CanonicalExercise, ExerciseSegment, normalizeExercise } from '../../utils/normalizeExercise';
 import MatchingBoard from '../ui/MatchingBoard';
+import HomeworkMultipleChoice from './HomeworkMultipleChoice';
 import { boardSeed, cleanPairs, layoutRound, splitRounds } from '../../utils/matchingBoard';
 import { initialMatchState, resolveWrong, selectTile, tileKey, type MatchState, type MatchTile } from '../../utils/matchingGame';
 
@@ -159,29 +160,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
   // zawsze zwróciłby `state: 'invalid'`. Sprawdzamy je więc PRZED odczytaniem
   // stanu `exercise`, inaczej ważne zadanie nigdy by się nie wyrenderowało.
   if (type === 'multiple_choice') {
-    const options: string[] = item.options || [];
-    const selected = typeof answer === 'number' ? answer : -1;
-
-    return (
-      <div className="space-y-4">
-        <p className="prose-justified text-lg font-bold text-text-hi leading-snug">{item.question}</p>
-        <div className="space-y-2">
-          {options.map((option, index) => (
-            <button
-              key={index}
-              onClick={() => onChange(index)}
-              className={`w-full min-h-[3.25rem] px-4 rounded-xl border text-left text-base font-semibold transition-colors ${
-                selected === index
-                  ? 'bg-primary/15 border-primary/45 text-primary'
-                  : 'bg-base-100/50 border-white/12 text-content'
-              }`}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
-      </div>
-    );
+    return <HomeworkMultipleChoice item={item} answer={answer} onChange={onChange} />;
   }
 
   if (type === 'matching') {

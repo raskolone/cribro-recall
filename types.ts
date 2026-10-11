@@ -3,6 +3,7 @@ export * from './types/group';
 export * from './types/lessonStudio';
 export * from './types/exerciseStudio';
 import type { WheelItem } from './types/exerciseStudio';
+import type { GrammarFocusId } from './utils/grammarFocus';
 
 export type Language = 'English' | 'Spanish' | 'French' | 'Dutch';
 export type Difficulty = 'A1-A2' | 'B1-B2' | 'C1-C2';
@@ -808,6 +809,8 @@ export interface MultipleChoiceExercise {
   correctIndex: number;
   /** Dlaczego ta, a nie tamta — pokazujemy po odpowiedzi. */
   explanation?: string;
+  /** Zagadnienie gramatyczne (wartość z `GRAMMAR_FOCUS_IDS`); etykieta pochodzi z i18n, nie z modelu. Stare zadania go nie mają. */
+  grammarFocus?: GrammarFocusId;
 }
 
 /** Dopasuj pary — słowo/fraza po angielsku do znaczenia po polsku. */

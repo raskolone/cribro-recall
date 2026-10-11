@@ -783,5 +783,19 @@
   "Dopasuj pary": "Dopasuj pary",
   "Angielski": "Angielski",
   "Polski": "Polski",
-  "Zaznaczone": "Zaznaczone"
+  "Zaznaczone": "Zaznaczone",
+  "Zagadnienie": "Zagadnienie",
+  "Opcje odpowiedzi": "Opcje odpowiedzi",
+  "grammarFocus": {
+    "tense": "Czas gramatyczny",
+    "article": "Przedimek",
+    "preposition": "Przyimek",
+    "collocation": "Kolokacja",
+    "word_form": "Forma wyrazu",
+    "word_order": "Szyk zdania",
+    "modal_verb": "Czasownik modalny",
+    "conditional": "Okres warunkowy",
+    "quantifier": "Określnik ilości",
+    "phrasal_verb": "Czasownik frazowy"
+  }
 }

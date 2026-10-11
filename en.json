@@ -781,5 +781,19 @@
   "Dopasuj pary": "Match the pairs",
   "Angielski": "English",
   "Polski": "Polish",
-  "Zaznaczone": "Selected"
+  "Zaznaczone": "Selected",
+  "Zagadnienie": "Focus",
+  "Opcje odpowiedzi": "Answer options",
+  "grammarFocus": {
+    "tense": "Tense",
+    "article": "Article",
+    "preposition": "Preposition",
+    "collocation": "Collocation",
+    "word_form": "Word form",
+    "word_order": "Word order",
+    "modal_verb": "Modal verb",
+    "conditional": "Conditional",
+    "quantifier": "Quantifier",
+    "phrasal_verb": "Phrasal verb"
+  }
 }

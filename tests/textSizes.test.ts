@@ -65,7 +65,7 @@ test('żadne pole input/textarea/select z klasą rozmiaru nie ma < 16 px (xs, sm
 test('treść ćwiczeń ma 16 px: opcje, klocki, zdanie z luk, kafelki dopasowania, odpowiedzi quizu', () => {
   const ex = src('components/dashboard/HomeworkExercise.tsx');
   assert.doesNotMatch(ex, /text-\[1[45]px\]/);
-  assert.match(ex, /rounded-xl border text-left text-base font-semibold/);
+  assert.match(src('components/dashboard/HomeworkMultipleChoice.tsx'), /gameTileAttrs/);
   assert.match(src('components/dashboard/HomeworkWarmupScrambler.tsx'), /game-tile game-tile--chip/);
   assert.match(src('components/ui/MatchingBoard.tsx'), /gameTileAttrs/);
   assert.match(src('index.css'), /\.game-tile \{[\s\S]*?min-height: 3\.5rem;[\s\S]*?font-size: 1\.0625rem;/);

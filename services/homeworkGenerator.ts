@@ -28,6 +28,8 @@ import {
   runQualityGate,
 } from '../utils/exerciseQuality';
 import { EXERCISE_IRON_RULES } from '../utils/exerciseQualityRules';
+import { GRAMMAR_FOCUS_IDS, isGrammarFocusId } from '../utils/grammarFocus';
+import { shuffleOptions } from '../utils/multipleChoice';
 import { getStudentAiContext } from './learningProfile';
 import { fetchLessonFlashcards } from './lessonRecord';
 import {
@@ -722,58 +724,93 @@ export const generateWarmupCardsForSource = async (
   }
 };
 
-/** Wybór formy: pilnujemy, żeby poprawna odpowiedź naprawdę była wśród opcji. */
-const generateMultipleChoice = async (
+/**
+ * Schemat wielokrotnego wyboru. `grammarFocus` to ENUM ze stałej listy (`utils/grammarFocus.ts`) —
+ * etykietę dla kursanta dobiera i18n, nie model. Kolejność pól jest częścią kontraktu: pytanie →
+ * zagadnienie → opcje → klucz → wyjaśnienie.
+ */
+export const MULTIPLE_CHOICE_SCHEMA = {
+  type: Type.OBJECT,
+  properties: {
+    items: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          question: { type: Type.STRING, description: 'Angielskie zdanie z jedną luką „___”, łączące słownictwo z lekcji z jednym zagadnieniem gramatycznym.' },
+          grammarFocus: { type: Type.STRING, enum: [...GRAMMAR_FOCUS_IDS], description: 'Zagadnienie gramatyczne sprawdzane w tym pytaniu.' },
+          options: { type: Type.ARRAY, items: { type: Type.STRING }, description: 'DOKŁADNIE 4 opcje: jedna poprawna i trzy typowe błędy polskiego ucznia.' },
+          correctIndex: { type: Type.INTEGER, description: 'Indeks poprawnej opcji (0–3).' },
+          explanation: { type: Type.STRING, description: 'Po polsku, 1–2 zdania: reguła gramatyczna, dlaczego ta forma.' },
+        },
+        required: ['question', 'grammarFocus', 'options', 'correctIndex', 'explanation'],
+        propertyOrdering: ['question', 'grammarFocus', 'options', 'correctIndex', 'explanation'],
+      },
+    },
+  },
+  required: ['items'],
+};
+
+/** Wybór formy: słownictwo + jedno zagadnienie gramatyczne, dokładnie jedna poprawna opcja. */
+export const generateMultipleChoice = async (
   req: HomeworkGenerationRequest,
   sourceText: string,
-  briefing?: string
+  briefing?: string,
+  ask: JsonAsker = askForJson
 ): Promise<{ items: MultipleChoiceExercise[]; modelUsed: string }> => {
   const prompt = `${baseContext(req, sourceText, briefing)}
 
 ZADANIE:
-Ułóż ${req.perType} pytań wielokrotnego wyboru sprawdzających słownictwo i gramatykę
-z powyższego materiału. Każde pytanie to zdanie z luką oznaczoną "___".
-Podaj 4 opcje: jedną poprawną i trzy błędne, ale prawdopodobne (typowe błędy Polaka).
-Dodaj krótkie wyjaśnienie po polsku, dlaczego poprawna jest właśnie ta forma.
+Ułóż ${req.perType} pytań wielokrotnego wyboru. KAŻDE pytanie łączy dwie rzeczy naraz:
+(1) SŁOWNICTWO z powyższego materiału — luka dotyczy słowa lub frazy z lekcji albo ich formy,
+(2) JEDNO ZAGADNIENIE GRAMATYCZNE z listy w polu grammarFocus: ${GRAMMAR_FOCUS_IDS.join(', ')}.
+Pytanie to angielskie zdanie z jedną luką oznaczoną "___". Podaj DOKŁADNIE 4 opcje: jedną poprawną
+i trzy błędne. Wypełnij grammarFocus identyfikatorem z listy (nie opisuj go własnymi słowami — nazwę
+zagadnienia pokaże aplikacja). Dopasuj zagadnienia do poziomu kursanta i urozmaicaj je w zestawie.
 
 WYMAGANIA SZCZEGÓŁOWE DLA WYBORU FORMY:
-- Zdanie z luką musi mieć sens PO WSTAWIENIU poprawnej opcji i musi dawać dość
-  kontekstu, żeby dało się ją wybrać. Jeśli zdanie działa z dwiema opcjami
-  naraz, dopisz kontekst („... because the flight leaves at 6 a.m.") albo
-  zmień pytanie.
-- DOKŁADNIE JEDNA opcja może być poprawna. Warianty równoważne znaczeniowo
-  („I must" i „I have to" w tym samym zdaniu) to błąd konstrukcyjny.
-- Błędne opcje mają być wiarygodne: kalka z polskiego, mylony czas, zły przyimek,
-  częsty błąd ortograficzny. Nie wstawiaj opcji absurdalnych ani zbudowanych
-  z przypadkowych słów — one niczego nie sprawdzają.
-- Wszystkie cztery opcje muszą pasować do luki gramatycznie na tyle, żeby wybór
-  wymagał zrozumienia zdania, a nie odsiania jedynej opcji, która „wygląda jak
-  zdanie".
-- Wyjaśnienie po polsku ma mówić, DLACZEGO ta forma, a nie powtarzać treści
-  zdania.
-
+- Zdanie z luką musi mieć sens PO WSTAWIENIU poprawnej opcji i dawać dość kontekstu, żeby dało się
+  ją wybrać. Jeśli zdanie działa z dwiema opcjami naraz, dopisz kontekst („... because the flight
+  leaves at 6 a.m.") albo zmień pytanie.
+- DOKŁADNIE JEDNA opcja może być poprawna. Warianty równoważne znaczeniowo („I must" i „I have to"
+  w tym samym zdaniu) to błąd konstrukcyjny.
+- DYSTRAKTORY to typowe błędy POLSKIEGO uczącego się (kalka z polskiego, mylony czas, zły przyimek,
+  brak lub nadmiar przedimka, zła forma wyrazu), tej samej części mowy i tej samej formy co poprawna
+  opcja, wiarygodne, ale jednoznacznie błędne w TYM zdaniu. Żadnych opcji absurdalnych ani zbudowanych
+  z przypadkowych słów.
+- Wszystkie cztery opcje pasują do luki składniowo na tyle, żeby wybór wymagał zrozumienia zdania,
+  a nie odsiania jedynej opcji, która „wygląda jak zdanie".
+- explanation (po polsku, 1–2 zdania) mówi, DLACZEGO ta forma i jaka jest reguła z zagadnienia
+  grammarFocus — nie powtarza treści zdania.
+${buildUsedSentencesBlock(req.excludeSentences)}
 Zwróć JSON:
-{"items":[{"question":"I ___ for the sales team.","options":["am responsible","responsible","am responsable","responsible for"],"correctIndex":0,"explanation":"..."}]}`;
+{"items":[{"question":"She ___ in this office since 2019.","grammarFocus":"tense","options":["has worked","works","is working","worked"],"correctIndex":0,"explanation":"Since + punkt w czasie wymaga Present Perfect: 'has worked'."}]}`;
 
-  const { parsed, modelUsed } = await askForJson(prompt);
+  const { parsed, modelUsed } = await ask(prompt, MULTIPLE_CHOICE_SCHEMA);
   const raw = Array.isArray(parsed?.items) ? parsed.items : [];
 
   const items: MultipleChoiceExercise[] = raw
     .filter(
       (item: any) =>
         item?.question &&
+        isGrammarFocusId(item.grammarFocus) &&
         Array.isArray(item.options) &&
         item.options.length >= 2 &&
         Number.isInteger(item.correctIndex) &&
         item.correctIndex >= 0 &&
         item.correctIndex < item.options.length
     )
-    .map((item: any) => ({
-      question: String(item.question).trim(),
-      options: item.options.map((o: any) => String(o).trim()),
-      correctIndex: item.correctIndex,
-      explanation: item.explanation ? String(item.explanation) : undefined,
-    }));
+    .map((item: any) => {
+      // Mieszamy opcje u nas: model skłania się ku jednej pozycji poprawnej odpowiedzi.
+      const shuffled = shuffleOptions(item.options.map((o: any) => String(o).trim()), item.correctIndex);
+      return {
+        question: String(item.question).trim(),
+        options: shuffled.options,
+        correctIndex: shuffled.correctIndex,
+        grammarFocus: item.grammarFocus,
+        explanation: item.explanation ? String(item.explanation) : undefined,
+      };
+    });
 
   return { items, modelUsed };
 };
