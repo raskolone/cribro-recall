@@ -7,7 +7,9 @@
  * (`selectTile`), a animacje są tylko jego odbiciem.
  */
 
-export const MAX_PAIRS_PER_ROUND = 6;
+import { MAX_PAIRS_PER_ROUND } from './matchingBoard';
+
+export { MAX_PAIRS_PER_ROUND };
 
 export interface MatchCardInput {
   id: string;
@@ -38,7 +40,9 @@ export function shuffle<T>(items: readonly T[], rng: () => number = Math.random)
 }
 
 /**
- * Losuje do `maxPairs` kart (bez duplikatów id) i zwraca potasowane kafelki.
+ * Losuje do `maxPairs` kart (bez duplikatów id) i zwraca kafelki w układzie kolumn:
+ * najpierw wszystkie lewe (terminy, w wylosowanej kolejności), potem wszystkie prawe (znaczenia,
+ * przetasowane RAZ, nigdy w tej samej kolejności co lewe). Widok rysuje dwie kolumny.
  * Wejście jest kopiowane — późniejsze zmiany tablicy źródłowej nic nie zmieniają.
  */
 export function buildRound(
@@ -53,12 +57,17 @@ export function buildRound(
     return true;
   });
   const chosen = shuffle(unique, rng).slice(0, maxPairs);
-  const tiles = chosen.flatMap<MatchTile>(c => [
-    { key: tileKey('left', c.id), pairId: c.id, side: 'left', text: c.term },
-    { key: tileKey('right', c.id), pairId: c.id, side: 'right', text: c.definition },
-  ]);
-  return shuffle(tiles, rng);
+  const lefts = chosen.map<MatchTile>(c => ({ key: tileKey('left', c.id), pairId: c.id, side: 'left', text: c.term }));
+  let rights = shuffle(chosen, rng).map<MatchTile>(c => ({ key: tileKey('right', c.id), pairId: c.id, side: 'right', text: c.definition }));
+  if (chosen.length >= 2 && rights.every((t, i) => t.pairId === lefts[i].pairId)) rights = [...rights.slice(1), rights[0]];
+  return [...lefts, ...rights];
 }
+
+/** Kolumny planszy: lewe i prawe kafelki w kolejności ustalonej przy budowie rundy. */
+export const columnsOf = (tiles: readonly MatchTile[]): { left: MatchTile[]; right: MatchTile[] } => ({
+  left: tiles.filter(t => t.side === 'left'),
+  right: tiles.filter(t => t.side === 'right'),
+});
 
 // --- Stan wyboru -------------------------------------------------------------
 

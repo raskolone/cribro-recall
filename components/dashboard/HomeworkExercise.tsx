@@ -1,9 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import i18n from 'i18next';
 import { AlertCircle, Check, Copy, HelpCircle, Languages, Lightbulb, RotateCcw, Sparkles } from 'lucide-react';
 import { HomeworkType } from '../../types';
 import { CanonicalExercise, ExerciseSegment, normalizeExercise } from '../../utils/normalizeExercise';
-import { shuffleArray } from '../../utils/exerciseShuffle';
+import MatchingBoard from '../ui/MatchingBoard';
+import { boardSeed, cleanPairs, layoutRound, splitRounds } from '../../utils/matchingBoard';
+import { initialMatchState, resolveWrong, selectTile, tileKey, type MatchState, type MatchTile } from '../../utils/matchingGame';
 
 /**
  * Jedno ćwiczenie pracy domowej, w czterech odmianach.
@@ -49,97 +51,101 @@ interface MatchingPair {
   right: string;
 }
 
+/** Czas pokazania błędnej pary, zanim plansza wróci do stanu wyjściowego. */
+const WRONG_PAIR_MS = 600;
+
 /**
- * Dopasuj pary: klik w lewą kolumnę, potem w prawą. Trafiona para blokuje się
- * na zielono, chybiona miga na czerwono i wraca do stanu wyjściowego —
- * dotykowo, bez przeciągania, tak jak reszta zadań w tym komponencie.
+ * Dopasuj pary: klik w kafelek angielski i polski (kolejność dowolna). Układ jest ustalany RAZ z treści
+ * zadania (`utils/matchingBoard.ts`) i nigdy się nie zmienia; trafiona para zostaje na miejscu,
+ * zablokowana, w jednym pastelowym odcieniu. Więcej niż 5 par → kolejne rundy. Odpowiedź to lista
+ * `id` trafionych par w kolejności trafień (jak dotąd — zgodność wsteczna z zapisem i oceną).
  */
 const MatchingExerciseView: React.FC<{
   pairs: MatchingPair[];
   answer: any;
   onChange: (answer: string[]) => void;
-}> = ({ pairs, answer, onChange }) => {
-  const matched: string[] = Array.isArray(answer) ? answer : [];
-  const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
-  const [selectedRight, setSelectedRight] = useState<string | null>(null);
-  const [wrongPair, setWrongPair] = useState<{ left: string; right: string } | null>(null);
+}> = ({ pairs: rawPairs, answer, onChange }) => {
+  const pairs = useMemo(() => cleanPairs(rawPairs), [rawPairs]);
+  const seed = boardSeed(pairs);
+  // Zależność od ziarna (treści), nie od referencji tablicy: re-render rodzica niczego nie przetasowuje.
+  const layouts = useMemo(
+    () => splitRounds(pairs).map((round, index) => layoutRound(round, `${seed}#${index}`)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [seed]
+  );
 
-  const leftOrder = useMemo(() => shuffleArray(pairs), [pairs]);
-  const rightOrder = useMemo(() => shuffleArray(pairs), [pairs]);
+  const known = new Set(pairs.map((p) => p.id));
+  const hits: string[] = Array.isArray(answer) ? answer.filter((id: unknown): id is string => typeof id === 'string' && known.has(id)) : [];
 
-  const pick = (side: 'left' | 'right', id: string) => {
-    if (matched.includes(id) || wrongPair) return;
-    if (side === 'left') {
-      if (!selectedRight) {
-        setSelectedLeft(id);
-        return;
-      }
-      resolve(id, selectedRight);
-    } else {
-      if (!selectedLeft) {
-        setSelectedRight(id);
-        return;
-      }
-      resolve(selectedLeft, id);
+  const firstIncomplete = () => {
+    const index = layouts.findIndex((layout) => layout.left.some((p) => !hits.includes(p.id)));
+    return index < 0 ? Math.max(0, layouts.length - 1) : index;
+  };
+  const [roundIndex, setRoundIndex] = useState(firstIncomplete);
+  const [game, setGame] = useState<MatchState>(initialMatchState);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const layout = layouts[Math.min(roundIndex, layouts.length - 1)];
+  if (!layout) return null;
+
+  const tiles: MatchTile[] = [
+    ...layout.left.map<MatchTile>((p) => ({ key: tileKey('left', p.id), pairId: p.id, side: 'left', text: p.left })),
+    ...layout.right.map<MatchTile>((p) => ({ key: tileKey('right', p.id), pairId: p.id, side: 'right', text: p.right })),
+  ];
+  const roundDone = layout.left.every((p) => hits.includes(p.id));
+  const hasNextRound = roundIndex < layouts.length - 1;
+
+  const pick = (key: string) => {
+    if (roundDone) return;
+    const result = selectTile({ ...game, matchedPairIds: hits }, tiles, key);
+    if (result.event === 'ignored') return;
+    setGame(result.state);
+    if (result.event === 'match') {
+      const pairId = tiles.find((t) => t.key === key)!.pairId;
+      onChange([...hits, pairId]);
+    } else if (result.event === 'wrong') {
+      window.clearTimeout(timer.current);
+      timer.current = window.setTimeout(() => setGame((state) => resolveWrong(state)), WRONG_PAIR_MS);
     }
   };
 
-  const resolve = (leftId: string, rightId: string) => {
-    if (leftId === rightId) {
-      onChange([...matched, leftId]);
-      setSelectedLeft(null);
-      setSelectedRight(null);
-    } else {
-      setWrongPair({ left: leftId, right: rightId });
-      window.setTimeout(() => {
-        setWrongPair(null);
-        setSelectedLeft(null);
-        setSelectedRight(null);
-      }, 500);
-    }
-  };
-
-  const tileClass = (side: 'left' | 'right', id: string) => {
-    if (matched.includes(id)) return `${chipBase} bg-success/15 border-success/40 text-success cursor-default`;
-    if (wrongPair && wrongPair[side] === id) return `${chipBase} bg-danger/15 border-danger/40 text-danger`;
-    if ((side === 'left' && selectedLeft === id) || (side === 'right' && selectedRight === id)) {
-      return `${chipBase} bg-primary/15 border-primary/45 text-primary`;
-    }
-    return `${chipBase} bg-base-100/60 border-white/15 text-content`;
+  const goNextRound = () => {
+    setGame(initialMatchState());
+    setRoundIndex((index) => Math.min(index + 1, layouts.length - 1));
   };
 
   return (
     <div className="space-y-4">
-      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
-        <Languages size={13} />
-        {i18n.t('Dopasuj pary')}
-      </span>
-      <div className="grid grid-cols-2 gap-2.5">
-        <div className="space-y-2">
-          {leftOrder.map((pair) => (
-            <button
-              key={pair.id}
-              disabled={matched.includes(pair.id)}
-              onClick={() => pick('left', pair.id)}
-              className={`${tileClass('left', pair.id)} w-full text-left`}
-            >
-              {pair.left}
-            </button>
-          ))}
-        </div>
-        <div className="space-y-2">
-          {rightOrder.map((pair) => (
-            <button
-              key={pair.id}
-              disabled={matched.includes(pair.id)}
-              onClick={() => pick('right', pair.id)}
-              className={`${tileClass('right', pair.id)} w-full text-left`}
-            >
-              {pair.right}
-            </button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
+          <Languages size={13} />
+          {i18n.t('Dopasuj pary')}
+        </span>
+        {layouts.length > 1 && (
+          <span className="text-sm text-text-2" data-testid="matching-round">
+            {i18n.t('Runda {{n}} z {{total}}', { n: roundIndex + 1, total: layouts.length })}
+          </span>
+        )}
       </div>
+      <MatchingBoard
+        left={tiles.filter((t) => t.side === 'left')}
+        right={tiles.filter((t) => t.side === 'right')}
+        hits={hits}
+        selectedKey={game.selectedKey}
+        wrongKeys={game.wrongPair ?? []}
+        onPick={pick}
+        tileTestId="matching-tile"
+      />
+      {roundDone && hasNextRound && (
+        <button
+          type="button"
+          onClick={goNextRound}
+          className="w-full min-h-12 px-5 rounded-xl bg-primary text-accent-ink font-extrabold text-base cursor-pointer hover:brightness-110 transition-[filter] motion-reduce:transition-none"
+        >
+          {i18n.t('Następna runda')}
+        </button>
+      )}
     </div>
   );
 };

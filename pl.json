@@ -777,5 +777,11 @@
   "{{count}} dobrych": "{{count}} dobrych",
   "{{count}} do poprawy": "{{count}} do poprawy",
   "Pokaż starsze ({{count}})": "Pokaż starsze ({{count}})",
-  "Ukryj starsze": "Ukryj starsze"
+  "Ukryj starsze": "Ukryj starsze",
+  "Runda {{n}} z {{total}}": "Runda {{n}} z {{total}}",
+  "Następna runda": "Następna runda",
+  "Dopasuj pary": "Dopasuj pary",
+  "Angielski": "Angielski",
+  "Polski": "Polski",
+  "Zaznaczone": "Zaznaczone"
 }

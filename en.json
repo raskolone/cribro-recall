@@ -775,5 +775,11 @@
   "{{count}} dobrych": "{{count}} correct",
   "{{count}} do poprawy": "{{count}} to improve",
   "Pokaż starsze ({{count}})": "Show older ({{count}})",
-  "Ukryj starsze": "Hide older"
+  "Ukryj starsze": "Hide older",
+  "Runda {{n}} z {{total}}": "Round {{n}} of {{total}}",
+  "Następna runda": "Next round",
+  "Dopasuj pary": "Match the pairs",
+  "Angielski": "English",
+  "Polski": "Polish",
+  "Zaznaczone": "Selected"
 }

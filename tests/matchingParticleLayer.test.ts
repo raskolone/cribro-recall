@@ -9,7 +9,7 @@ const src = readFileSync(new URL('../components/flashcards/MatchingGame.tsx', im
 const code = src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 
 test('cząsteczki trafiają do dedykowanej warstwy, nie do korzenia planszy', () => {
-  const burst = code.slice(code.indexOf('const spawnBurst'), code.indexOf('const animateSelect'));
+  const burst = code.slice(code.indexOf('const spawnBurst'), code.indexOf('const settleWrong'));
   assert.match(burst, /const root = particleLayerRef\.current;/);
   assert.match(burst, /root\.appendChild\(dot\)/);
   assert.doesNotMatch(burst, /rootRef\.current/);
@@ -24,9 +24,9 @@ test('warstwa cząsteczek jest PIERWSZYM dzieckiem korzenia i absolutna — siat
   assert.ok(layer > 0 && layer < firstContent, 'warstwa przed nagłówkiem planszy');
   assert.match(afterRoot, /data-testid="match-particles" aria-hidden="true" className="pointer-events-none absolute inset-0 z-30"/);
   // siatka kafelków jest ostatnim elementem korzenia (po niej nie ma już rodzeństwa)
-  const grid = code.indexOf('grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-3 md:gap-4 flex-1 items-start');
+  const grid = code.indexOf('<MatchingBoard');
   const tail = code.slice(grid);
-  assert.ok(tail.indexOf('})}\n      </div>\n    </div>\n  );') > 0, 'po siatce zamyka się korzeń');
+  assert.ok(tail.indexOf('/>\n      </div>\n    </div>\n  );') > 0, 'po planszy zamyka się korzeń');
 });
 
 test('reduced-motion: bez cząsteczek (spawnBurst kończy się od razu)', () => {

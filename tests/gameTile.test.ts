@@ -63,7 +63,7 @@ test('.game-tile: kontur 2 px, min. 56 px, połysk ze wspólnego tokenu menu gł
 });
 
 test('.game-tile: stany nie zmieniają rozmiaru ani położenia (bez transform/scale/margin/padding)', () => {
-  const states = css.slice(css.indexOf('.game-tile[data-state="rest"]:hover'), css.indexOf('/* Wersja zwarta'));
+  const states = css.slice(css.indexOf('.game-tile[data-state="rest"]:hover'), css.indexOf('/* Kafelek ze stałym miejscem'));
   assert.doesNotMatch(states, /transform:|scale\(|margin|padding|width:|height:/);
 });
 

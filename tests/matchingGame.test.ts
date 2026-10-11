@@ -76,6 +76,15 @@ describe('buildRound', () => {
     assert.equal(tiles.map(t => t.key).join(), before);
     assert.notEqual(JSON.stringify(cards), snapshot);
   });
+  test('układ kolumn: lewe kafelki przed prawymi, prawa kolejność różna od lewej', () => {
+    for (let seed = 1; seed < 30; seed++) {
+      const tiles = buildRound(mkCards(5), seeded(seed));
+      assert.deepEqual(tiles.map(t => t.side), ['left', 'left', 'left', 'left', 'left', 'right', 'right', 'right', 'right', 'right']);
+      const lefts = tiles.filter(t => t.side === 'left').map(t => t.pairId).join();
+      const rights = tiles.filter(t => t.side === 'right').map(t => t.pairId).join();
+      assert.notEqual(lefts, rights, 'prawa kolumna nie zdradza rozwiązania');
+    }
+  });
   test('kolejna runda (inne losowanie) daje inną kolejność', () => {
     const a = buildRound(mkCards(6), seeded(4)).map(t => t.key).join();
     const b = buildRound(mkCards(6), seeded(5)).map(t => t.key).join();
