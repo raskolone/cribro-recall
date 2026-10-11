@@ -5,6 +5,7 @@ import { HomeworkType } from '../../types';
 import { CanonicalExercise, ExerciseSegment, normalizeExercise } from '../../utils/normalizeExercise';
 import MatchingBoard from '../ui/MatchingBoard';
 import HomeworkMultipleChoice from './HomeworkMultipleChoice';
+import ExerciseInstruction from '../ui/ExerciseInstruction';
 import { boardSeed, cleanPairs, layoutRound, splitRounds } from '../../utils/matchingBoard';
 import { initialMatchState, resolveWrong, selectTile, tileKey, type MatchState, type MatchTile } from '../../utils/matchingGame';
 
@@ -119,10 +120,7 @@ const MatchingExerciseView: React.FC<{
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
-          <Languages size={13} />
-          {i18n.t('Dopasuj pary')}
-        </span>
+        <ExerciseInstruction type="matching" />
         {layouts.length > 1 && (
           <span className="text-sm text-text-2" data-testid="matching-round">
             {i18n.t('Runda {{n}} z {{total}}', { n: roundIndex + 1, total: layouts.length })}
@@ -189,10 +187,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       <div className="space-y-4">
         {/* Nagłówek zadania tłumaczenia */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
-            <Languages size={13} />
-            {i18n.t('Przetłumacz zdanie')}
-          </span>
+          <ExerciseInstruction type="translation" />
 
           {hintText && (
             <button
@@ -257,10 +252,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       <div className="space-y-4">
         {/* Nagłówek deterministyczny — to układanka gramatyczna, nie tłumaczenie,
             więc nie pokazujemy polskiego zdania ani żadnej podpowiedzi treściowej. */}
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/30 text-primary text-xs font-bold uppercase tracking-wider">
-          <Languages size={13} />
-          {i18n.t('Uporządkuj słowa w poprawne zdanie:')}
-        </span>
+        <ExerciseInstruction type="word_order" />
 
         {/* Ułożone zdanie: dotknięcie fragmentu zdejmuje go z powrotem. */}
         <div className="min-h-[5rem] rounded-xl border border-dashed border-white/20 bg-base-100/40 p-2.5 flex flex-wrap gap-2 items-start">
@@ -317,6 +309,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       const fallbackText = segments.map((s) => (s.kind === 'text' ? s.text : '')).join('');
       return (
         <div className="space-y-4">
+          <ExerciseInstruction type="fill_in_the_blank" />
           {fallbackText && (
             <div className="p-4 sm:p-5 rounded-2xl bg-base-100/70 border border-white/10 shadow-inner">
               <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
@@ -340,6 +333,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       const currentValue = typeof answer === 'string' ? answer : '';
       return (
         <div className="space-y-4">
+          <ExerciseInstruction type="fill_in_the_blank" />
           <p lang="en" className="prose-justified text-lg sm:text-xl font-bold text-text-hi leading-relaxed">
             {segments.map((segment, index) =>
               segment.kind === 'text' ? (
@@ -372,6 +366,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
 
     return (
       <div className="space-y-4">
+        <ExerciseInstruction type="fill_in_the_blank" />
         {/* Treść ćwiczenia jest angielska, a strona deklaruje polski. Bez tego
             przeglądarka dzieliłaby angielskie słowa według polskich wzorców. */}
         <p lang="en" className="prose-justified text-base text-content leading-loose">
@@ -432,10 +427,7 @@ const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer,
       <div className="space-y-4">
         {/* Nagłówek typu z odznaką i wskazówką */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-base-200 border border-line-strong text-content-muted text-xs font-bold uppercase tracking-wider">
-            <AlertCircle size={13} className="shrink-0 text-content-muted" />
-            {i18n.t('Popraw zdanie')}
-          </span>
+          <ExerciseInstruction type="find_errors" />
 
           {hintText && (
             <button

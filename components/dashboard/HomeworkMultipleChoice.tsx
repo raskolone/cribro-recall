@@ -2,11 +2,13 @@ import React from 'react';
 import { Check, X } from 'lucide-react';
 import i18n from 'i18next';
 import { gameTileAttrs } from '../../utils/gameTile';
+import ExerciseInstruction from '../ui/ExerciseInstruction';
+import { splitAtGap } from '../../utils/exerciseInstruction';
 import { grammarFocusOf, hasValidKey, mcOptionViews } from '../../utils/multipleChoice';
 
 /**
  * Wielokrotny wybór w pracy domowej: pytanie, etykieta zagadnienia gramatycznego (z i18n, nigdy z modelu),
- * cztery opcje w siatce 2×2 (także na 360 px) i — po odpowiedzi — stan poprawna/błędna (ikona + tekst,
+ * cztery opcje w siatce 2×2 (jedna kolumna dopiero poniżej 360 px); luka `___` w zdaniu to zaokrąglone pole (`.mc-gap`) i — po odpowiedzi — stan poprawna/błędna (ikona + tekst,
  * nie sam kolor) z krótkim wyjaśnieniem. Odpowiedź to indeks wybranej opcji (jak dotąd). Po odpowiedzi
  * wybór jest ostateczny (kafelki zablokowane), o ile zadanie ma poprawny klucz.
  */
@@ -25,10 +27,12 @@ const HomeworkMultipleChoice: React.FC<HomeworkMultipleChoiceProps> = ({ item, a
   const revealed = views.some((v) => v.verdict);
   const focus = grammarFocusOf(item);
   const correct = revealed && selected === item.correctIndex;
+  const gap = splitAtGap(item.question);
   const explanation = typeof item.explanation === 'string' ? item.explanation.trim() : '';
 
   return (
     <div className="space-y-4">
+      <ExerciseInstruction type="multiple_choice" />
       {focus && (
         <span
           data-testid="mc-focus"
@@ -37,12 +41,22 @@ const HomeworkMultipleChoice: React.FC<HomeworkMultipleChoiceProps> = ({ item, a
           {i18n.t('Zagadnienie')}: {i18n.t(focus.labelKey)}
         </span>
       )}
-      <p className="prose-justified text-lg font-bold text-text-hi leading-snug">{item.question}</p>
+      <p data-testid="mc-question" className="prose-justified text-xl font-bold text-text-hi leading-relaxed">
+        {gap ? (
+          <>
+            {gap.before}
+            <span data-testid="mc-gap" role="img" aria-label={i18n.t('luka w zdaniu')} className="mc-gap" />
+            {gap.after}
+          </>
+        ) : (
+          item.question
+        )}
+      </p>
       <div
         data-testid="mc-grid"
         role="group"
         aria-label={i18n.t('Opcje odpowiedzi')}
-        className="grid grid-cols-2 auto-rows-fr gap-3"
+        className="grid grid-cols-2 max-[359px]:grid-cols-1 auto-rows-fr gap-3"
       >
         {options.map((option, index) => {
           const view = views[index];

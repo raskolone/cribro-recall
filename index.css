@@ -743,6 +743,19 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
    Kontur 2 px, pastelowe tło, min. 56 px, połysk szkła z menu głównego (statyczny, bez animacji).
    Stany nie zmieniają rozmiaru ani położenia kafelka (tylko kolor, obwódka, cień).
    --------------------------------------------------------------------------- */
+.mc-gap {
+  display: inline-block;
+  box-sizing: border-box;
+  min-width: 4.5rem;
+  height: 1.5em;
+  margin: 0 0.3em;
+  vertical-align: -0.3em;
+  border: 2px dashed var(--color-primary);
+  border-radius: 0.6rem;
+  background: color-mix(in srgb, var(--color-primary) 16%, var(--color-surface-flat));
+  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
 .game-tile {
   --gt-bg: var(--color-game-rest);
   --gt-line: var(--color-game-rest-line);

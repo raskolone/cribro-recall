@@ -1,6 +1,7 @@
 import React, { forwardRef, useId } from 'react';
 import { AlertCircle, Copy, Lightbulb, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
+import ExerciseInstruction from '../ui/ExerciseInstruction';
 
 /**
  * Elementy ekranu „Tłumaczenie zdań" / „Korekta zdań": karta zdania, pole odpowiedzi i pasek
@@ -33,10 +34,11 @@ export const SentencePromptCard: React.FC<{
       data-variant={variant}
       className={`w-full space-y-3 rounded-2xl border-2 p-4 text-left ${correction ? 'border-card-warm-line bg-card-warm' : 'border-line-strong bg-surface-flat'}`}
     >
+      <ExerciseInstruction type={variant} />
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-line-strong px-2.5 py-0.5 font-mono text-xs font-bold text-text-hi">
           {correction && <AlertCircle className="h-3.5 w-3.5 shrink-0 text-card-warm-line" aria-hidden="true" />}
-          {correction ? t('Znajdź i popraw błąd w zdaniu') : `${t('Zdanie')} ${index + 1}`}
+          {`${t('Zdanie')} ${index + 1}`}
         </span>
         {hint && (
           <button
@@ -52,7 +54,6 @@ export const SentencePromptCard: React.FC<{
           </button>
         )}
       </div>
-      {correction && <span className="sr-only">{`${t('Zdanie')} ${index + 1}`}</span>}
       <p className={`font-bold leading-snug text-text-hi ${correction ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} text-center`}>{sentence}</p>
       {correction && onCopy && (
         <button

@@ -809,5 +809,12 @@
     "pairs": "Pairs matched: {{count}}",
     "empty": "Start with your first exercise.",
     "next": "Show the next stat"
-  }
+  },
+  "Przetłumacz zdanie na angielski": "Translate the sentence into English",
+  "Wybierz poprawną odpowiedź": "Choose the correct answer",
+  "Uzupełnij lukę": "Fill in the gap",
+  "Znajdź błąd i popraw zdanie": "Find the mistake and correct the sentence",
+  "Dopasuj polskie i angielskie odpowiedniki": "Match the Polish and English pairs",
+  "Ułóż wyrazy w poprawne zdanie": "Put the words in the correct order",
+  "luka w zdaniu": "gap in the sentence"
 }
