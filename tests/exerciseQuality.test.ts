@@ -242,7 +242,7 @@ test('korekta: jeden błąd przechodzi', () =>
 // --- sędzia: prompt i parsowanie ---------------------------------------------------------------
 
 test('parseJudgeVerdicts: wszystkie kryteria true = ok; jedno false = odrzucenie; brak kryterium = odrzucenie', () => {
-  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true };
+  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true };
   const verdicts = parseJudgeVerdicts(
     { verdicts: [full, { ...full, index: 1, equivalence: false, reason: 'inna sytuacja' }, { index: 2, reason: '', naturalness: true }] },
     4
@@ -254,13 +254,21 @@ test('parseJudgeVerdicts: wszystkie kryteria true = ok; jedno false = odrzucenie
   assert.equal(verdicts[3], null);
 });
 
+test('parseJudgeVerdicts: grammar=false odrzuca element (np. dwie poprawne opcje w wyborze wielokrotnym)', () => {
+  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true };
+  const [ok, bad] = parseJudgeVerdicts({ verdicts: [full, { ...full, index: 1, grammar: false, reason: 'dwie opcje poprawne' }] }, 2);
+  assert.equal(ok?.ok, true);
+  assert.equal(bad?.ok, false);
+  assert.equal(bad?.criteria.grammar, false);
+});
+
 test('parseJudgeVerdicts: nieczytelna odpowiedź = brak wyroków', () => {
   assert.deepEqual(parseJudgeVerdicts('nie json', 2), [null, null]);
 });
 
 test('prompt sędziego zawiera kryteria a)–e) i wszystkie elementy', () => {
   const prompt = buildJudgePrompt([pair('A b.', 'A b.'), mc()], 'B1');
-  for (const key of ['naturalness', 'equivalence', 'uniqueness', 'level_vocab', 'context']) assert.ok(prompt.includes(key), key);
+  for (const key of ['naturalness', 'equivalence', 'uniqueness', 'level_vocab', 'context', 'grammar']) assert.ok(prompt.includes(key), key);
   assert.ok(prompt.includes('0. [para PL↔EN]') && prompt.includes('1. [wielokrotny wybór]'));
 });
 
@@ -303,6 +311,7 @@ const judgeText = (prompt: string, bad: string[]) => {
       uniqueness: true,
       level_vocab: true,
       context: true,
+      grammar: true,
     })),
   });
 };

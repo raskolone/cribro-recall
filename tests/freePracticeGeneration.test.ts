@@ -251,7 +251,7 @@ const modelThatReturns = (replies: Array<string | Error>) => {
     if (args.schema === JUDGE_SCHEMA) {
       judgeCalls.push(args);
       const count = (args.prompt.match(/^\d+\. \[/gm) ?? []).length;
-      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true })) }), modelUsed: FREE_PRACTICE_MODEL };
+      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true })) }), modelUsed: FREE_PRACTICE_MODEL };
     }
     calls.push(args);
     const next = replies[Math.min(calls.length - 1, replies.length - 1)];

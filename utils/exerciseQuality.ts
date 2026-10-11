@@ -255,7 +255,7 @@ ELEMENTY:
 ${items.map(renderForJudge).join('\n')}
 
 Zwróć JSON z jednym wpisem na element (index = numer elementu):
-{"verdicts":[{"index":0,"reason":"","naturalness":true,"equivalence":true,"uniqueness":true,"level_vocab":true,"context":true}]}`;
+{"verdicts":[{"index":0,"reason":"","naturalness":true,"equivalence":true,"uniqueness":true,"level_vocab":true,"context":true,"grammar":true}]}`;
 
 /** `propertyOrdering`: najpierw uzasadnienie, potem wyroki — model „myśli” zanim oceni (thinkingBudget = 0). */
 export const JUDGE_SCHEMA = {
@@ -273,6 +273,7 @@ export const JUDGE_SCHEMA = {
           uniqueness: { type: Type.BOOLEAN },
           level_vocab: { type: Type.BOOLEAN },
           context: { type: Type.BOOLEAN },
+          grammar: { type: Type.BOOLEAN },
         },
         required: ['index', 'reason', ...QUALITY_CRITERIA],
         propertyOrdering: ['index', 'reason', ...QUALITY_CRITERIA],
