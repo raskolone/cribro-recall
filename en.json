@@ -796,5 +796,18 @@
     "quantifier": "Quantifier",
     "phrasal_verb": "Phrasal verb"
   },
-  "Przygotowuję ćwiczenie…": "Preparing your exercise…"
+  "Przygotowuję ćwiczenie…": "Preparing your exercise…",
+  "motivation": {
+    "exercises_one": "You've completed {{count}} exercise",
+    "exercises_other": "You've completed {{count}} exercises",
+    "congrats_one": "Congrats! {{count}} exercise done",
+    "congrats_other": "Congrats! {{count}} exercises done",
+    "translated": "Translated sentences: {{count}}",
+    "corrected": "Corrected sentences: {{count}}",
+    "flashcards": "Flashcards reviewed: {{count}}",
+    "homework": "Homework completed: {{count}}",
+    "pairs": "Pairs matched: {{count}}",
+    "empty": "Start with your first exercise.",
+    "next": "Show the next stat"
+  }
 }

@@ -798,5 +798,22 @@
     "quantifier": "Określnik ilości",
     "phrasal_verb": "Czasownik frazowy"
   },
-  "Przygotowuję ćwiczenie…": "Przygotowuję ćwiczenie…"
+  "Przygotowuję ćwiczenie…": "Przygotowuję ćwiczenie…",
+  "motivation": {
+    "exercises_one": "Masz już za sobą {{count}} ćwiczenie",
+    "exercises_few": "Masz już za sobą {{count}} ćwiczenia",
+    "exercises_many": "Masz już za sobą {{count}} ćwiczeń",
+    "exercises_other": "Masz już za sobą {{count}} ćwiczenia",
+    "congrats_one": "Gratulacje! {{count}} ćwiczenie za Tobą",
+    "congrats_few": "Gratulacje! {{count}} ćwiczenia za Tobą",
+    "congrats_many": "Gratulacje! {{count}} ćwiczeń za Tobą",
+    "congrats_other": "Gratulacje! {{count}} ćwiczenia za Tobą",
+    "translated": "Przetłumaczone zdania: {{count}}",
+    "corrected": "Poprawione zdania: {{count}}",
+    "flashcards": "Powtórzone fiszki: {{count}}",
+    "homework": "Ukończone prace domowe: {{count}}",
+    "pairs": "Trafione pary: {{count}}",
+    "empty": "Zacznij od pierwszego ćwiczenia.",
+    "next": "Pokaż kolejną statystykę"
+  }
 }

@@ -42,6 +42,9 @@ import { animateDropletTransition } from '../../services/gsapAnimations';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
 import Card from '../ui/Card';
 import GeneratingAnimation from '../ui/GeneratingAnimation';
+import MotivationStatLine from '../ui/MotivationStatLine';
+import { buildMotivationItems, computeMotivationCounts, mergeMotivationCounts, type PracticeLogLike } from '../../utils/motivationStats';
+import { getMotivationCounts } from '../../utils/motivationStatsCache';
 import Toast, { useToast } from '../ui/Toast';
 import PuzzleExercise from './PuzzleExercise';
 import { SentenceActionBar, SentenceAnswerInput, SentencePromptCard } from '../practice/SentencePracticeParts';
@@ -297,14 +300,6 @@ function getPolishVocative(name: string): string {
   return cleanName;
 }
 
-function getPolishSentencesPlural(count: number): string {
-  if (count === 1) return 'zdanie';
-  const lastTwo = count % 100;
-  const last = count % 10;
-  if (lastTwo >= 12 && lastTwo <= 14) return 'zdań';
-  if (last >= 2 && last <= 4) return 'zdania';
-  return 'zdań';
-}
 
 
 const AILoadingButton = ({ isLoading, onClick, children, className, disabled, loadingText, variant = 'primary' }: any) => {
@@ -367,11 +362,14 @@ const FREE_SCOPE_ID = 'free-scope';
 const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ initialSetId = null, autoGenerate = false, onStartPractice, onExerciseStateChange, onOpenSidebar, onChangeView, onShowOnboarding, mode, freeLaunch, freeLessons, onExitFree }) => {
   const isFree = mode === 'free';
   const { language } = useLanguage();
-  const { sets, getFlashcards } = useFlashcards();
+  const { sets, getFlashcards, sessions: flashcardSessions } = useFlashcards();
+  // Logi do statystyk motywacyjnych: z odczytu practiceLogs, który ten ekran i tak robi przy wejściu (bez nowych odczytów).
+  const [statLogs, setStatLogs] = useState<PracticeLogLike[] | null>(null);
   const { user, updateUserStreak } = useAuth();
   const { soundSettings } = useSettings();
   const isTeacher = user?.role === 'admin' || user?.role === 'teacher';
   const canViewAiModels = canUserViewAiMonitor(user);
+  // Licznik trzymany dla zapisów po ćwiczeniu (nie jest już wyświetlany — patrz statystyki motywacyjne).
   const [translatedSentencesCount, setTranslatedSentencesCount] = useState<number>(user?.translatedSentencesCount || 0);
 
   useEffect(() => {
@@ -379,7 +377,6 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       setTranslatedSentencesCount(user.translatedSentencesCount);
     }
   }, [user?.translatedSentencesCount]);
-
   // Per-user Vocabulary Basket & Exercise Cache Keys
   const userBasketKey = user?.id ? `ai_vocab_basket_${user.id}` : 'ai_vocab_basket_guest';
   const userCacheKey = user?.id ? `ai_exercise_cache_${user.id}` : 'ai_exercise_cache_guest';
@@ -530,6 +527,7 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
   useEffect(() => {
     if (user?.id) {
       getDocs(collection(db, `users/${user.id}/practiceLogs`)).then(snapshot => {
+        setStatLogs(snapshot.docs.map(d => d.data() as PracticeLogLike));
         let total = 0;
         const dateSet = new Set<string>();
 
@@ -609,11 +607,14 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
           updateDoc(doc(db, 'users', user.id), updatesToUser).catch(console.error);
         }
       }).catch(() => {
+        // Bez logów nie ma statystyk motywacyjnych z tego odczytu — ekran działa dalej (linia zachęty).
+        setStatLogs([]);
         if (typeof user?.translatedSentencesCount === 'number') {
           setTranslatedSentencesCount(user.translatedSentencesCount);
         }
       });
     } else {
+      setStatLogs([]);
       try {
         const stored = localStorage.getItem(`user_translated_count_${user?.id || 'demo'}`);
         if (stored !== null) {
@@ -624,6 +625,17 @@ const AIExerciseGeneratorScreen: React.FC<AIExerciseGeneratorScreenProps> = ({ i
       } catch (e) {}
     }
   }, [user?.id, user?.translatedSentencesCount, user?.streakCount]);
+
+  const motivationItems = useMemo(
+    () =>
+      buildMotivationItems(
+        mergeMotivationCounts(
+          getMotivationCounts(user?.id),
+          statLogs ? computeMotivationCounts({ logs: statLogs, sessions: flashcardSessions }) : null
+        )
+      ),
+    [user?.id, statLogs, flashcardSessions]
+  );
 
   // Settings states
   const [activeTab, setActiveTab] = useState<'ai' | 'other'>('ai');
@@ -2482,18 +2494,9 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                               : (language === 'pl' ? 'Czas na trening' : 'Time for training');
                           })()}
                         </h2>
-                        <p className="text-xs sm:text-sm text-primary font-semibold flex items-center justify-center gap-1.5">
-                          <Sparkles className="w-4 h-4 text-primary shrink-0 animate-pulse" />
-                          <span>
-                            {language === 'pl' 
-                              ? (translatedSentencesCount === 0
-                                  ? 'Przetłumacz swoje pierwsze zdanie, aby rozpocząć! Powodzenia!'
-                                  : `Przetłumaczyłeś już ${translatedSentencesCount} ${getPolishSentencesPlural(translatedSentencesCount)}. Świetna robota!`)
-                              : (translatedSentencesCount === 0
-                                  ? 'Translate your first sentence to get started! Good luck!'
-                                  : `You have translated ${translatedSentencesCount} ${translatedSentencesCount === 1 ? 'sentence' : 'sentences'}. Great job!`)}
-                          </span>
-                        </p>
+                        <div className="flex justify-center">
+                          <MotivationStatLine items={motivationItems} pending={statLogs === null} className="max-w-full" />
+                        </div>
                       </div>
                     </div>
 
@@ -4151,10 +4154,11 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                   exit={{ opacity: 0, scale: 0.85 }}
                   className="absolute -right-2 -top-10 md:-right-8 md:-top-12 z-20"
                 >
-                  <div className="bg-primary text-accent-ink px-3.5 py-1.5 rounded-2xl rounded-bl-none shadow-md font-bold text-xs flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5" />
-                    {language === 'pl' ? 'Świetnie Ci idzie! Oby tak dalej!' : 'Great job! Keep it up!'}
-                  </div>
+                  {motivationItems.length > 0 && (
+                    <div className="max-w-[16rem] rounded-2xl rounded-bl-none border-2 border-primary bg-surface-flat px-3.5 py-1 shadow-md">
+                      <MotivationStatLine items={motivationItems} autoRotate={false} />
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>

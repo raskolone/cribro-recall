@@ -15,6 +15,10 @@ import { SpecialTask, PracticeLog, User, StudentTest } from '../../types';
 import { isStudentTodoStatus, studentTasksQuery } from '../../utils/homework';
 import { formatPolishGreeting } from '../../utils/polishVocative';
 import StudentHeroAction from './StudentHeroAction';
+import MotivationStatLine from '../ui/MotivationStatLine';
+import { useFlashcards } from '../../context/FlashcardContext';
+import { buildMotivationItems, computeMotivationCounts } from '../../utils/motivationStats';
+import { setMotivationCounts } from '../../utils/motivationStatsCache';
 
 interface StudentHeroHeaderProps {
   studentId: string;
@@ -66,6 +70,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
 }) => {
   const { language, tText } = useLanguage();
   const { user: currentUser } = useAuth();
+  const { sessions } = useFlashcards();
 
   const [studentUser, setStudentUser] = useState<User | null>(null);
   const [tasks, setTasks] = useState<SpecialTask[]>([]);
@@ -168,6 +173,19 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
   }, [practiceLogs]);
 
   const totalTasksDone = completedHomeworkTasks.length + completedTestsCount + standaloneExercisesCount;
+
+  // Statystyki motywacyjne: z nasłuchów, które panel i tak ma (practiceLogs, prace) + sesje fiszek z kontekstu.
+  // Zero nowych odczytów i zapisów. Sesje kontekstu należą do zalogowanego konta — przy podglądzie cudzego panelu
+  // (lektor) ich nie używamy, żeby nie pokazać cudzych liczb jako swoich.
+  const ownPanel = Boolean(currentUser?.id) && currentUser?.id === targetId;
+  const motivationCounts = useMemo(
+    () => computeMotivationCounts({ logs: practiceLogs, sessions: ownPanel ? sessions : undefined, homeworkDone: completedHomeworkTasks.length }),
+    [practiceLogs, sessions, ownPanel, completedHomeworkTasks.length]
+  );
+  const motivationItems = useMemo(() => buildMotivationItems(motivationCounts), [motivationCounts]);
+  useEffect(() => {
+    if (ownPanel && !isLoading) setMotivationCounts(targetId, motivationCounts);
+  }, [ownPanel, isLoading, targetId, motivationCounts]);
   const currentStreak = studentUser?.streakCount ?? streakCount;
 
   // Sync statistics back to Firestore so every student document is guaranteed to be up-to-date in DB
@@ -208,9 +226,7 @@ export const StudentHeroHeader: React.FC<StudentHeroHeaderProps> = ({
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-text-hi">
           {greeting}
         </h1>
-        <p className="text-sm sm:text-base text-primary font-semibold">
-          {language === 'pl' ? 'Dobrze Ci idzie!' : "You're doing great!"}
-        </p>
+        <MotivationStatLine items={motivationItems} pending={isLoading} className="pt-1" />
       </div>
 
       {/* Kafelek akcji: praca domowa albo „nic nie czeka"; pod nim wejście do Ćwiczeń dowolnych */}
