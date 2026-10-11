@@ -788,10 +788,18 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Baza tematów i inne wspólne ustawienia
-    match /system/{document=**} {
+    // Dokumenty `system/*`. Dwa pierwsze (baza tematów i ustawienia AI prac
+    // domowych) nie zawierają sekretów, więc czyta je każdy zalogowany.
+    // Cała reszta (ai, mailing, notion i przyszłe dokumenty) tylko dla admina.
+    // Zapis wszędzie przez isAdmin(), jak dotychczas.
+    match /system/topic_database {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+    }
+    match /system/homeworkAiSettings {
+      allow read: if isAuthenticated();
+    }
+    match /system/{document=**} {
+      allow read, write: if isAdmin();
     }
   }
 }

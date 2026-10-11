@@ -679,3 +679,75 @@ test('transkrypcja: kursant czyta swoją lekcję, ale nie cudzą', async () => {
   await assertSucceeds(getDoc(doc(student('ala'), 'users/ala/lessonRecords/lek-6')));
   await assertFails(getDoc(doc(student('bob'), 'users/ala/lessonRecords/lek-6')));
 });
+
+// ———————————————————— Dokumenty systemowe (system/**) ————————————————————
+
+const seedSystem = () =>
+  seed(async (db) => {
+    await setDoc(doc(db, 'system/ai'), { geminiApiKey: 'sekret' });
+    await setDoc(doc(db, 'system/mailing'), { resendApiKey: 'sekret' });
+    await setDoc(doc(db, 'system/notion'), { token: 'sekret' });
+    await setDoc(doc(db, 'system/topic_database'), { topics: [] });
+    await setDoc(doc(db, 'system/homeworkAiSettings'), { model: 'x' });
+    await setDoc(doc(db, 'system/x'), { a: 1 });
+  });
+
+/** Lektor rozpoznawany po roli w dokumencie użytkownika (bez adresu admina). */
+const teacherByRole = async () => {
+  await seed((db) => setDoc(doc(db, 'users/lektor-rola'), { role: 'teacher' }));
+  return env.authenticatedContext('lektor-rola', { email: 'lektor@example.com' }).firestore();
+};
+
+test('system: kursant nie czyta dokumentów z sekretami (ai, mailing, notion)', async () => {
+  await seedSystem();
+  for (const id of ['ai', 'mailing', 'notion']) {
+    await assertFails(getDoc(doc(student('ala'), `system/${id}`)));
+  }
+});
+
+test('system: kursant czyta topic_database i homeworkAiSettings, ale ich nie zapisuje', async () => {
+  await seedSystem();
+  for (const id of ['topic_database', 'homeworkAiSettings']) {
+    await assertSucceeds(getDoc(doc(student('ala'), `system/${id}`)));
+    await assertFails(setDoc(doc(student('ala'), `system/${id}`), { a: 2 }));
+    await assertFails(updateDoc(doc(student('ala'), `system/${id}`), { a: 2 }));
+    await assertFails(deleteDoc(doc(student('ala'), `system/${id}`)));
+  }
+});
+
+test('system: niezalogowany nie czyta niczego pod system/', async () => {
+  await seedSystem();
+  const anon = env.unauthenticatedContext().firestore();
+  for (const id of ['ai', 'mailing', 'notion', 'topic_database', 'homeworkAiSettings', 'x']) {
+    await assertFails(getDoc(doc(anon, `system/${id}`)));
+  }
+});
+
+test('system: kursant nie czyta nieznanego dokumentu system/x ani listy kolekcji', async () => {
+  await seedSystem();
+  await assertFails(getDoc(doc(student('ala'), 'system/x')));
+  await assertFails(getDocs(collection(student('ala'), 'system')));
+  await assertFails(setDoc(doc(student('ala'), 'system/x'), { a: 2 }));
+});
+
+test('system: lektor czyta i zapisuje homeworkAiSettings', async () => {
+  await seedSystem();
+  const db = await teacherByRole();
+  await assertSucceeds(getDoc(doc(db, 'system/homeworkAiSettings')));
+  await assertSucceeds(setDoc(doc(db, 'system/homeworkAiSettings'), { model: 'y' }));
+});
+
+test('system: admin czyta i zapisuje wszystkie dokumenty', async () => {
+  await seedSystem();
+  const admin = teacherByEmail();
+  for (const id of ['ai', 'mailing', 'notion', 'topic_database', 'homeworkAiSettings', 'x']) {
+    await assertSucceeds(getDoc(doc(admin, `system/${id}`)));
+    await assertSucceeds(setDoc(doc(admin, `system/${id}`), { zmienione: true }));
+  }
+});
+
+test('system: konto z podobnym adresem do lektora nie czyta sekretów', async () => {
+  await seedSystem();
+  await assertFails(getDoc(doc(lookalike(), 'system/mailing')));
+  await assertFails(setDoc(doc(lookalike(), 'system/homeworkAiSettings'), { a: 1 }));
+});
