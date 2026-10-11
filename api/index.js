@@ -3085,13 +3085,13 @@ function recordAttempts(profile, attempts, now) {
   return next;
 }
 var windowAccuracy = (profile) => {
-  const window = profile.recentOutcomes.slice(-DECISION_WINDOW);
-  if (window.length === 0) return 0;
-  return window.filter(Boolean).length / window.length;
+  const window2 = profile.recentOutcomes.slice(-DECISION_WINDOW);
+  if (window2.length === 0) return 0;
+  return window2.filter(Boolean).length / window2.length;
 };
 function evaluateLevelChange(profile, now) {
-  const window = profile.recentOutcomes.slice(-DECISION_WINDOW);
-  if (window.length < DECISION_WINDOW || profile.attemptsSinceLevelChange < DECISION_WINDOW) {
+  const window2 = profile.recentOutcomes.slice(-DECISION_WINDOW);
+  if (window2.length < DECISION_WINDOW || profile.attemptsSinceLevelChange < DECISION_WINDOW) {
     return {
       level: profile.currentLevel,
       changed: false,
@@ -3451,6 +3451,14 @@ async function handleFreePracticeGenerate(deps, input) {
     };
   }
 }
+
+// config/featureFlags.ts
+var HIDDEN_EXERCISE_TYPES = ["fill_in_the_blank"];
+var EXERCISE_TYPE_ALIASES = {
+  gap_from_context: "fill_in_the_blank"
+};
+var isExerciseTypeHidden = (type) => HIDDEN_EXERCISE_TYPES.includes(EXERCISE_TYPE_ALIASES[type] ?? type);
+var withoutHiddenExerciseTypes = (types) => types.filter((type) => !isExerciseTypeHidden(type));
 
 // functions/src/homeworkV2/assignment.ts
 var selectSendableExercises = (rawExercises) => (Array.isArray(rawExercises) ? rawExercises : []).filter(
@@ -5687,7 +5695,10 @@ function createApp() {
       const input = validateGenerateInput(req.body);
       if (input.ok === false) return res.status(400).json({ error: input.error });
       const { studentUid, lessonIds, itemCount, plannedMinutes } = input.value;
-      const requestedTypes = req.body?.types;
+      const requestedTypes = withoutHiddenExerciseTypes(
+        Array.isArray(req.body?.types) && req.body.types.length > 0 ? req.body.types : EXERCISE_TYPES_V2
+      );
+      if (requestedTypes.length === 0) return res.status(400).json({ error: "Nie wybrano \u017Cadnego dost\u0119pnego typu zadania." });
       const teacherId = req.adminUid;
       const rawLessons = Array.isArray(req.body?.rawLessons) ? req.body.rawLessons : void 0;
       let cefr = String(req.body?.cefr || "B1");
