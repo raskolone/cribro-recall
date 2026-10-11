@@ -201,7 +201,8 @@ import { getRecentMistakes } from "./functions/src/homeworkV2/learningProfile";
 import { FREE_PRACTICE_CALL_TIMEOUT_MS, FREE_PRACTICE_MODEL, type CallModel } from "./utils/freePracticeGeneration";
 import { handleFreePracticeGenerate } from "./utils/freePracticeHandler";
 import { resolveDailyLimit, type UsageDb } from "./utils/freePracticeQuota";
-import { SCHEMA_VERSION } from "./functions/src/homeworkV2/contracts";
+import { EXERCISE_TYPES_V2, SCHEMA_VERSION, type ExerciseTypeV2 } from "./functions/src/homeworkV2/contracts";
+import { withoutHiddenExerciseTypes } from "./config/featureFlags";
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from "./functions/src/homeworkV2/assignment";
 import { buildGradedHomeworkEmail } from "./services/homeworkEmail";
 import { AI_PROXY_USAGE_COLLECTION, ANTHROPIC_MAX_TOKENS_CEILING, GEMINI_PROXY_MAX_BODY, clampGeminiConfig, clampMaxTokens, isProxyExempt, reserveProxyCall, resolveProxyLimits } from "./utils/geminiProxyGuard";
@@ -1911,7 +1912,12 @@ export function createApp() {
       const input = validateGenerateInput(req.body);
       if (input.ok === false) return res.status(400).json({ error: input.error });
       const { studentUid, lessonIds, itemCount, plannedMinutes } = input.value;
-      const requestedTypes = req.body?.types;
+      // Ukryte typy (`HIDDEN_EXERCISE_TYPES`) nie idą do plannera — także gdy
+      // klient nie poda `types` (planner wziąłby wtedy wszystkie trzy).
+      const requestedTypes = withoutHiddenExerciseTypes(
+        Array.isArray(req.body?.types) && req.body.types.length > 0 ? (req.body.types as ExerciseTypeV2[]) : EXERCISE_TYPES_V2
+      );
+      if (requestedTypes.length === 0) return res.status(400).json({ error: 'Nie wybrano żadnego dostępnego typu zadania.' });
       // Wyłącznie `requireFirebaseAdmin` ustawia `adminUid` (rola lektora/admina z bazy lub tokenu).
       const teacherId = (req as any).adminUid;
 

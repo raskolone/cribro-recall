@@ -100,6 +100,31 @@ export const isLessonStudioEnabled = (): boolean => {
   return LESSON_STUDIO_MVP;
 };
 
+/**
+ * Typy ćwiczeń ukryte w generatorze prac domowych.
+ *
+ * Ukrycie dotyczy WYŁĄCZNIE tworzenia: lektor nie wybierze tego typu w kreatorze
+ * (v1 i v2), a model nie dostanie go na liście do wygenerowania. Kod, typy i
+ * komponent zostają — prace już przypisane (`normalizeExercise`, ocena, widok
+ * kursanta) działają bez zmian. Przywrócenie typu = usunięcie go z tej listy.
+ *
+ * Nazwy kanoniczne jak w `normalizeExercise`; aliasy silnika v2 w
+ * `EXERCISE_TYPE_ALIASES`.
+ */
+export const HIDDEN_EXERCISE_TYPES: readonly string[] = ['fill_in_the_blank'];
+
+/** Nazwy spoza `HomeworkType`, które oznaczają ten sam typ (silnik v2). */
+const EXERCISE_TYPE_ALIASES: Readonly<Record<string, string>> = {
+  gap_from_context: 'fill_in_the_blank',
+};
+
+export const isExerciseTypeHidden = (type: string): boolean =>
+  HIDDEN_EXERCISE_TYPES.includes(EXERCISE_TYPE_ALIASES[type] ?? type);
+
+/** Zostawia tylko typy, które lektor może wybrać i które wolno wysłać do modelu. */
+export const withoutHiddenExerciseTypes = <T extends string>(types: readonly T[]): T[] =>
+  types.filter((type) => !isExerciseTypeHidden(type));
+
 export const MODULE_VISIBILITY: ModuleVisibility = {
   streak: false,
   generalVocabularyGenerator: true,

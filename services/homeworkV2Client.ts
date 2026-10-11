@@ -1,7 +1,8 @@
 import { addDoc, collection, doc, updateDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { auth, db, functions } from '../firebase';
-import { HOMEWORK_ENGINE_V2 } from '../config/featureFlags';
+import { HOMEWORK_ENGINE_V2, withoutHiddenExerciseTypes } from '../config/featureFlags';
+import { EXERCISE_TYPES_V2 } from './homeworkV2/contracts';
 import type { ExerciseContractV2, GradingVerdictV2, MasteryState } from './homeworkV2/contracts';
 import { buildV2TaskPayload, newHomeworkSetId, selectSendableExercises } from '../functions/src/homeworkV2/assignment';
 import { aiMonitor } from './aiMonitorService';
@@ -119,9 +120,17 @@ const assertEnabled = (): void => {
 
 /** Układa zestaw do podglądu. Nic nie zapisuje w bazie. */
 export const generateHomeworkSetV2 = async (
-  request: GenerateSetRequest
+  rawRequest: GenerateSetRequest
 ): Promise<GenerateSetResponse> => {
   assertEnabled();
+
+  // Ukryte typy (`HIDDEN_EXERCISE_TYPES`) nie trafiają do modelu, także gdy
+  // wywołujący nie poda `types` — wtedy planner wziąłby wszystkie trzy.
+  const types = withoutHiddenExerciseTypes(
+    rawRequest.types && rawRequest.types.length > 0 ? rawRequest.types : EXERCISE_TYPES_V2
+  );
+  if (types.length === 0) throw new Error('Nie wybrano żadnego dostępnego typu zadania.');
+  const request: GenerateSetRequest = { ...rawRequest, types };
 
   const reqId = aiMonitor.startRequest({
     taskName: `Generowanie pracy domowej v2 (${request.itemCount} zadań)`,

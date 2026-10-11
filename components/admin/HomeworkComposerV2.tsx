@@ -25,6 +25,10 @@ import {
 import { assignHomeworkSetV2, generateHomeworkSetV2 } from '../../services/homeworkV2Client';
 import HomeworkEmailConfirmationModal from './HomeworkEmailConfirmationModal';
 import { showAppAlert } from '../../utils/appAlert';
+import { withoutHiddenExerciseTypes } from '../../config/featureFlags';
+
+/** Typy do wyboru w kreatorze — bez ukrytych w `HIDDEN_EXERCISE_TYPES`. */
+const OFFERED_TYPES_V2 = withoutHiddenExerciseTypes(EXERCISE_TYPES_V2);
 
 /**
  * Kreator prac domowych v2 — jeden ekran podglądu i przycisk Wyślij.
@@ -76,7 +80,7 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
   const [studentId, setStudentId] = useState(initialStudentId || '');
   const [lessons, setLessons] = useState<LessonRecord[]>([]);
   const [selectedLessonIds, setSelectedLessonIds] = useState<string[]>([]);
-  const [types, setTypes] = useState<ExerciseTypeV2[]>([...EXERCISE_TYPES_V2]);
+  const [types, setTypes] = useState<ExerciseTypeV2[]>([...OFFERED_TYPES_V2]);
   const [itemCount, setItemCount] = useState(6);
   const [plannedMinutes, setPlannedMinutes] = useState(15);
   const [dueDate, setDueDate] = useState(() => todayPlusDays(7));
@@ -558,7 +562,7 @@ const HomeworkComposerV2: React.FC<HomeworkComposerV2Props> = ({ initialStudentI
         )}
 
         <div className="flex flex-wrap gap-2">
-          {EXERCISE_TYPES_V2.map((type) => {
+          {OFFERED_TYPES_V2.map((type) => {
             const active = types.includes(type);
             return (
               <button

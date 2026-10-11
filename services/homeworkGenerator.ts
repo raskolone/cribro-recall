@@ -28,6 +28,7 @@ import {
   runQualityGate,
 } from '../utils/exerciseQuality';
 import { EXERCISE_IRON_RULES } from '../utils/exerciseQualityRules';
+import { isExerciseTypeHidden, withoutHiddenExerciseTypes } from '../config/featureFlags';
 import { GRAMMAR_FOCUS_IDS, isGrammarFocusId } from '../utils/grammarFocus';
 import { shuffleOptions } from '../utils/multipleChoice';
 import { getStudentAiContext } from './learningProfile';
@@ -188,13 +189,13 @@ export const HOMEWORK_TYPE_LABELS: Record<
 };
 
 /** Typy oferowane w kreatorze pracy domowej. */
-export const OFFERED_HOMEWORK_TYPES: HomeworkType[] = [
+export const OFFERED_HOMEWORK_TYPES: HomeworkType[] = withoutHiddenExerciseTypes<HomeworkType>([
   'translation',
   'find_errors',
   'multiple_choice',
   'fill_in_the_blank',
   'matching',
-];
+]);
 
 /**
  * Składa materiał źródłowy w jeden tekst.
@@ -1107,6 +1108,9 @@ const buildRunners = (
   matching: withMatchingQualityGate((subReq) => generateMatching(subReq, sourceText, briefing), level, ask),
 });
 
+/** Typy, które w ogóle trafiają do modelu — bez ukrytych w `HIDDEN_EXERCISE_TYPES`. */
+export const typesSentToGenerator = (types: HomeworkType[]): HomeworkType[] => withoutHiddenExerciseTypes(types);
+
 /**
  * Generuje wszystkie wybrane typy równolegle.
  *
@@ -1131,7 +1135,7 @@ export const generateHomeworkSet = async (
 
   const runners = buildRunners(sourceText, briefing, level);
 
-  const selected = req.types.filter((type) => runners[type]);
+  const selected = typesSentToGenerator(req.types).filter((type) => runners[type]);
 
   for (const type of selected) {
     try {
@@ -1217,7 +1221,7 @@ export const regenerateItems = async (req: RegenerateItemsRequest): Promise<Rege
   const results: RegenerationTypeResult[] = [];
 
   for (const group of groups) {
-    const run = runners[group.type];
+    const run = isExerciseTypeHidden(group.type) ? undefined : runners[group.type];
     if (!run) {
       results.push({ type: group.type, replacements: [], error: 'Ten typ zadań nie obsługuje ponownego generowania.' });
       continue;
