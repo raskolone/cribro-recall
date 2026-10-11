@@ -1,5 +1,5 @@
 import React, { forwardRef, useId } from 'react';
-import { AlertCircle, Lightbulb, Loader2 } from 'lucide-react';
+import { AlertCircle, Copy, Lightbulb, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 /**
@@ -21,7 +21,9 @@ export const SentencePromptCard: React.FC<{
   hint?: string;
   hintOpen: boolean;
   onToggleHint: () => void;
-}> = ({ variant, index, sentence, context, hint, hintOpen, onToggleHint }) => {
+  /** Tylko korekta: wstawia zdanie z błędem do pola odpowiedzi (przycisk wewnątrz karty, pod zdaniem). */
+  onCopy?: () => void;
+}> = ({ variant, index, sentence, context, hint, hintOpen, onToggleHint, onCopy }) => {
   const { t } = useTranslation();
   const hintId = useId();
   const correction = variant === 'correction';
@@ -29,11 +31,11 @@ export const SentencePromptCard: React.FC<{
     <div
       data-testid="sentence-prompt"
       data-variant={variant}
-      className={`w-full space-y-2 rounded-2xl border bg-surface-flat p-4 text-left ${correction ? 'border-warn' : 'border-line-strong'}`}
+      className={`w-full space-y-3 rounded-2xl border-2 p-4 text-left ${correction ? 'border-card-warm-line bg-card-warm' : 'border-line-strong bg-surface-flat'}`}
     >
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 rounded-full border border-line-strong px-2.5 py-0.5 font-mono text-xs font-bold text-text-hi">
-          {correction && <AlertCircle className="h-3.5 w-3.5 shrink-0 text-warn" aria-hidden="true" />}
+          {correction && <AlertCircle className="h-3.5 w-3.5 shrink-0 text-card-warm-line" aria-hidden="true" />}
           {correction ? t('Znajdź i popraw błąd w zdaniu') : `${t('Zdanie')} ${index + 1}`}
         </span>
         {hint && (
@@ -52,13 +54,25 @@ export const SentencePromptCard: React.FC<{
       </div>
       {correction && <span className="sr-only">{`${t('Zdanie')} ${index + 1}`}</span>}
       <p className={`font-bold leading-snug text-text-hi ${correction ? 'text-lg sm:text-xl' : 'text-xl sm:text-2xl'} text-center`}>{sentence}</p>
+      {correction && onCopy && (
+        <button
+          type="button"
+          data-testid="copy-sentence"
+          onClick={onCopy}
+          className={`flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border-2 border-card-warm-line bg-surface-flat px-4 text-base font-bold text-text-hi cursor-pointer hover:brightness-95 transition-[filter] motion-reduce:transition-none sm:mx-auto sm:w-auto ${focusRing}`}
+          title={t('Wstaw zdanie z błędem, aby poprawić tylko błąd')}
+        >
+          <Copy className="h-[18px] w-[18px] shrink-0" aria-hidden="true" />
+          {t('Kopiuj zdanie do edycji')}
+        </button>
+      )}
       {correction && context && context !== sentence && (
-        <p className="border-t border-line-soft pt-2 text-sm text-text-2">
-          <span className="font-semibold text-text-hi">{t('Kontekst i znaczenie')}: </span>
+        <p className="border-t border-card-warm-line/40 pt-2 text-sm text-text-hi">
+          <span className="font-semibold">{t('Kontekst i znaczenie')}: </span>
           <span className="italic">{context}</span>
         </p>
       )}
-      <div id={hintId} hidden={!hintOpen || !hint} data-testid="hint-panel" className="rounded-lg border border-line-strong px-3 py-2 text-sm leading-snug text-text-2">
+      <div id={hintId} hidden={!hintOpen || !hint} data-testid="hint-panel" className={`rounded-lg border px-3 py-2 text-sm leading-snug ${correction ? 'border-card-warm-line/60 text-text-hi' : 'border-line-strong text-text-2'}`}>
         {hint}
       </div>
     </div>
@@ -68,8 +82,8 @@ export const SentencePromptCard: React.FC<{
 /** Pole odpowiedzi: jasna powierzchnia z tokenów, wyraźna obwódka, focus, placeholder AA, tekst 16 px. */
 export const SentenceAnswerInput = forwardRef<
   HTMLTextAreaElement,
-  React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string }
->(({ label, className, ...props }, ref) => {
+  React.TextareaHTMLAttributes<HTMLTextAreaElement> & { label: string; /** `cool` = miętowe tło (korekta zdań). */ tone?: 'default' | 'cool' }
+>(({ label, className, tone = 'default', ...props }, ref) => {
   const id = useId();
   return (
     <div className="w-full space-y-1.5 text-left">
@@ -81,7 +95,7 @@ export const SentenceAnswerInput = forwardRef<
         id={id}
         rows={2}
         data-testid="sentence-answer"
-        className={`block min-h-20 w-full resize-y rounded-xl border-2 border-text-mute bg-surface-flat px-3.5 py-3 text-base leading-snug text-text-hi placeholder:text-text-3 transition-colors motion-reduce:transition-none focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-default disabled:border-line-strong disabled:text-text-2 ${className ?? ''}`}
+        className={`block min-h-20 w-full resize-y rounded-xl border-2 ${tone === 'cool' ? 'border-card-cool-line bg-card-cool' : 'border-text-mute bg-surface-flat'} px-3.5 py-3 text-base leading-snug text-text-hi placeholder:text-text-3 transition-colors motion-reduce:transition-none focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/40 disabled:cursor-default disabled:border-line-strong disabled:text-text-2 ${className ?? ''}`}
         {...props}
       />
     </div>

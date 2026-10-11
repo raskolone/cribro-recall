@@ -106,3 +106,8 @@ export const resultsView = <R>(exercises: ReadonlyArray<MaybeStamped>, session: 
   });
   return out;
 };
+
+
+/** Zdanie z błędem bieżącego zadania korekty — to, co wkleja „Kopiuj zdanie do edycji”. Brak zdania → pusty tekst. */
+export const sentenceToCopy = (exercise: { erroneousSentence?: string } | null | undefined): string =>
+  typeof exercise?.erroneousSentence === 'string' ? exercise.erroneousSentence.trim() : '';

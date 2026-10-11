@@ -79,6 +79,11 @@
   /* Połysk szkła — ten sam co w kafelkach menu głównego (.glass-tile::after). */
   --glass-sheen: radial-gradient(ellipse 80% 32% at 50% 0%, rgba(255, 255, 255, 0.40) 0%, transparent 100%);
   --glass-sheen-edge: inset 0 1px 0.5px #ffffff;
+
+  /* Ćwiczenie „Popraw zdanie”: karta zdania z błędem — ciepły brzoskwiniowo-różowy, pole odpowiedzi — miętowy.
+     Tekst zawsze text-hi (kontrast: tests/sentencePractice.test.tsx). */
+  --color-card-warm: #fde9e2;   --color-card-warm-line: #b9573a;
+  --color-card-cool: #e2f5ee;   --color-card-cool-line: #2a7d63;
 }
 
 /* ── WYJĄTEK OD ODWRÓCENIA CZERNI: PRZYCIEMNIENIE ZA OKNEM DIALOGOWYM ──
@@ -309,6 +314,9 @@
   --color-game-locked: #131e2d; --color-game-locked-line: #566a82;
   --glass-sheen: radial-gradient(ellipse 80% 32% at 50% 0%, rgba(255, 255, 255, 0.10) 0%, transparent 100%);
   --glass-sheen-edge: inset 0 1px 0.5px rgba(255, 255, 255, 0.22);
+
+  --color-card-warm: #3b2322;   --color-card-warm-line: #d98a72;
+  --color-card-cool: #112f27;   --color-card-cool-line: #3da488;
 
   /* --- Aliasy zastane. Odpowiadają tokenom Nocturne, zostają bez zmian:
          primary = --accent, content = --text, content-muted = --text-mute,

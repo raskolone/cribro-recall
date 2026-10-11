@@ -13,7 +13,7 @@ import { HOMEWORK_GENERATION_MODELS } from '../../services/aiModels';
 import { generateSpeech, createSpeechAudio, formatTextForTTS, playSpeech } from '../../services/ttsService';
 import TTSButtons from '../flashcards/TTSButtons';
 import { useSentenceSession } from '../../hooks/useSentenceSession';
-import { stampExercises } from '../../utils/sentenceSession';
+import { sentenceToCopy, stampExercises } from '../../utils/sentenceSession';
 import { describeEnterTarget, enterKeyAction, isCoarsePointer } from '../../utils/enterKeyAction';
 import { TranslationExercise, TranslationEvaluationResult, FlashcardSet, LessonRecord, VocabularySet, PracticeLog, canUserViewAiMonitor } from '../../types';
 import { isStudentTodoStatus, isV1Task, studentTasksQuery } from '../../utils/homework';
@@ -57,7 +57,6 @@ import {
   Lightbulb, 
   CheckCircle, 
   Wrench,
-  Copy,
   XCircle, 
   RefreshCw, 
   ArrowRight,
@@ -2320,6 +2319,20 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
     if (field && !field.disabled) field.focus({ preventScroll: true });
   }, [activeSentenceIndex, step, warmupPhase]);
 
+  /** „Kopiuj zdanie do edycji”: wkleja zdanie z błędem BIEŻĄCEGO zadania; fokus tylko poza dotykiem (bez wymuszania klawiatury). */
+  const copyErroneousSentence = (idx: number) => {
+    const text = sentenceToCopy(exercises[idx]);
+    if (!text) return;
+    handleAnswerChange(idx, text);
+    if (isCoarsePointer()) return;
+    requestAnimationFrame(() => {
+      const field = document.querySelector<HTMLTextAreaElement>('[data-testid="sentence-answer"]');
+      if (!field || field.disabled) return;
+      field.focus({ preventScroll: true });
+      field.setSelectionRange(text.length, text.length);
+    });
+  };
+
   const calcAvg = evaluationResults.length > 0
     ? Math.round(evaluationResults.reduce((acc, r) => {
         const itemScore = Number(r?.score);
@@ -4298,6 +4311,7 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                   hint={exercises[activeSentenceIndex].hint}
                   hintOpen={Boolean(showHints[activeSentenceIndex])}
                   onToggleHint={() => toggleHint(activeSentenceIndex)}
+                  onCopy={sentenceToCopy(exercises[activeSentenceIndex]) ? () => copyErroneousSentence(activeSentenceIndex) : undefined}
                 />
               ) : exerciseFormat !== 'puzzle' ? (
                 <SentencePromptCard
@@ -4373,17 +4387,8 @@ Oceń, czy kursant poprawnie usunął błąd i czy całe zdanie jest teraz popra
                   />
                 ) : (
                   <div className="w-full space-y-2">
-                    {exerciseFormat === 'correction' && exercises[activeSentenceIndex].erroneousSentence && (
-                      <button
-                        type="button"
-                        onClick={() => handleAnswerChange(activeSentenceIndex, exercises[activeSentenceIndex].erroneousSentence || '')}
-                        className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-2 text-sm font-bold text-text-hi hover:text-primary transition-colors motion-reduce:transition-none cursor-pointer"
-                        title={i18n.t('Wstaw zdanie z błędem, aby poprawić tylko błąd')}
-                      >
-                        <Copy className="w-3.5 h-3.5" aria-hidden="true" /> {i18n.t('Kopiuj zdanie do edycji')}
-                      </button>
-                    )}
                     <SentenceAnswerInput
+                      tone={exerciseFormat === 'correction' ? 'cool' : 'default'}
                       label={exerciseFormat === 'correction' ? i18n.t('Twoja poprawiona wersja') : i18n.t('Twoje tłumaczenie na angielski')}
                       value={studentAnswers[activeSentenceIndex] || ''}
                       onChange={(e) => handleAnswerChange(activeSentenceIndex, e.target.value)}
