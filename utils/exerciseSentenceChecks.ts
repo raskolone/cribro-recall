@@ -5,6 +5,8 @@
  * pilnuje, żeby prośba, której model nie posłuchał, nie dotarła do kursanta.
  */
 
+import { findPersonMismatch, hasKnownCalque } from './pairConsistency';
+
 /**
  * Postać zdania do porównań: bez wielkości liter, interpunkcji i nadmiarowych
  * spacji, z ujednoliconymi apostrofami.
@@ -217,7 +219,9 @@ export type WarmupExerciseRejection =
   | 'invalid_word_count_in_chunk'
   | 'duplicate_chunks'
   | 'chunks_dont_match_sentence'
-  | 'topic_as_subject';
+  | 'topic_as_subject'
+  | 'person_mismatch'
+  | 'calque';
 
 /** Powód, dla którego rozgrzewka (cała lub jej element) nie trafiła do pracy. */
 export type WarmupFailureReason =
@@ -235,6 +239,8 @@ export const WARMUP_FAILURE_LABELS: Record<WarmupFailureReason, string> = {
   duplicate_chunks: 'powtórzony fragment w jednym zdaniu',
   chunks_dont_match_sentence: 'fragmenty nie składają się na zdanie',
   topic_as_subject: 'tytuł tematu użyty jako podmiot zdania',
+  person_mismatch: 'polskie i angielskie zdanie różnią się osobą (np. moje / your)',
+  calque: 'kalka językowa w jednym ze zdań',
   sentence_repeated: 'zdanie powtarza zdanie z pracy',
   unnatural_sentence: 'nienaturalne zdanie',
   no_items: 'model nie zwrócił żadnych zdań',
@@ -345,6 +351,10 @@ export const checkWarmupExerciseItem = (raw: unknown, topics: string[] = []): Wa
   if (startsWithTopicAsSubject(chunks[0], topics)) {
     return { ok: false, reason: 'topic_as_subject' };
   }
+
+  // Kontrola lokalna pary PL↔EN (`utils/exerciseQuality.ts`): osoba i znane kalki.
+  if (findPersonMismatch(assembled, polishTranslation)) return { ok: false, reason: 'person_mismatch' };
+  if (hasKnownCalque(assembled, polishTranslation)) return { ok: false, reason: 'calque' };
 
   return {
     ok: true,

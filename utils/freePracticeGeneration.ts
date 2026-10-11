@@ -28,6 +28,16 @@ import {
 import { MAX_SENTENCE_SOURCES, MAX_SENTENCE_TOPICS, MAX_TOPIC_LENGTH } from './freePractice';
 import { MAX_SCOPE_WORDS } from './freeSentenceScope';
 import { sanitizeFreeText } from './sanitizeFreeText';
+import {
+  JUDGE_SCHEMA,
+  buildJudgePrompt,
+  buildRejectedBlock,
+  parseJudgeVerdicts,
+  runQualityGate,
+  type QualityGateRejection,
+  type QualityItem,
+} from './exerciseQuality';
+import { EXERCISE_IRON_RULES } from './exerciseQualityRules';
 
 export const FREE_PRACTICE_MODEL = 'gemini-2.5-flash';
 /** Limit czasu JEDNEGO wywołania modelu; dwie próby + odczyty bazy muszą zmieścić się w `maxDuration` funkcji. */
@@ -227,7 +237,9 @@ export function buildGenerationPrompt({ request, context, retryNote }: PromptInp
 - Jeśli w <error_history> są błędy kursanta, część zdań ćwiczy właśnie te problemy; im lepiej kursant sobie radzi, tym trudniejsze słownictwo i konstrukcje.
 - english_sentence: naturalne zdanie po angielsku. polish_translation: naturalna polszczyzna, nie kalka. hint: krótka podpowiedź po polsku z kluczowymi słowami angielskimi i wskazówką gramatyczną. puzzleChunks: zdanie pocięte na 3–5 sensownych fragmentów (krótkie zdania na pojedyncze słowa lub pary, długie na fragmenty 2–4 słowa); złączone dają dokładnie english_sentence.
 
-${CRIBRO_SENTENCE_NATURALNESS}`
+${CRIBRO_SENTENCE_NATURALNESS}
+
+${EXERCISE_IRON_RULES}`
       : `ZADANIE: Ułóż ${request.count} ${request.count === 1 ? 'zadanie' : 'zadań'} „Popraw zdanie" dla kursanta na poziomie ${level}.
 Kursant dostaje zdanie z jednym błędem i przepisuje je poprawnie. Oprzyj zadania na słowach słabych z <focus_words> (priorytet), tematach z <student_topics>, słowach z <student_words> i <lesson_context>.
 Jeśli w <error_history> są błędy kursanta, część zadań dotyczy właśnie takich błędów.
@@ -235,7 +247,9 @@ POLA: explanation — zwięzłe wyjaśnienie reguły po polsku; hint — subteln
 
 ${FIX_SENTENCE_RULES}
 
-${CRIBRO_SENTENCE_NATURALNESS}`;
+${CRIBRO_SENTENCE_NATURALNESS}
+
+${EXERCISE_IRON_RULES}`;
 
   return [
     'ROLA: Jesteś autorem ćwiczeń do nauki angielskiego dla polskiego kursanta. Zdania mają być logiczne, naturalne i realistyczne.',
@@ -438,22 +452,52 @@ const retryNoteFor = (request: FreeGenerationRequest, rejected: string[]): strin
 };
 
 /**
+ * Budżet czasu jednej generacji. Trasa ma `maxDuration` 60 s, a pojedyncze wywołanie modelu może
+ * trwać do `FREE_PRACTICE_CALL_TIMEOUT_MS`, więc sędzia startuje tylko wtedy, gdy zmieści się
+ * w limicie, a dogenerowanie — gdy zmieści się jeszcze jedno generowanie plus sędzia.
+ */
+export const FREE_PRACTICE_BUDGET_MS = 58_000;
+
+/** Element ćwiczenia dowolnego w kształcie kontrolowanym przez `utils/exerciseQuality.ts`. */
+export const toFreeQualityItem = (exercise: FreeExercise): QualityItem =>
+  exercise.format === 'error_hunt'
+    ? {
+        kind: 'fix_sentence',
+        incorrect: exercise.erroneousSentence ?? '',
+        correct: exercise.englishTranslation,
+        // W korekcie `polishSentence` bywa zastępcze (zdanie z błędem, gdy brak polskiego znaczenia).
+        ...(exercise.polishSentence !== exercise.erroneousSentence ? { pl: exercise.polishSentence } : {}),
+      }
+    : { kind: 'pair', en: exercise.englishTranslation, pl: exercise.polishSentence };
+
+/**
  * Jedna główna próba i najwyżej JEDNO ponowienie — tylko gdy odpowiedź nie dała ani jednego
  * poprawnego zadania (zepsuty JSON, brak pól, same odrzucone). Częściowy, ale poprawny wynik
- * przyjmujemy bez drugiego wywołania (koszt). Zadania powtarzające zdania z `excludeSentences`
- * są odsiewane.
+ * przyjmujemy bez drugiego wywołania generującego (koszt). Zadania powtarzające zdania z
+ * `excludeSentences` są odsiewane.
+ *
+ * KAŻDY wynik przechodzi kontrolę jakości (`runQualityGate`): lokalną i sędziego (jedno zbiorcze
+ * wywołanie `callModel` ze schematem `JUDGE_SCHEMA`). Odrzucone elementy są dogenerowywane (maks. 2 razy,
+ * o ile zostaje czas); niesprawdzonych (sędzia nie odpowiedział) kursantowi NIE pokazujemy.
  */
 export async function generateFreePracticeExercises(args: {
   request: FreeGenerationRequest;
   context: StudentContext;
   callModel: CallModel;
+  /** Zegar w ms — wstrzykiwany w testach budżetu czasu. */
+  clock?: () => number;
 }): Promise<GenerationResult> {
   const { request, context, callModel } = args;
+  const clock = args.clock ?? Date.now;
+  const startedAt = clock();
+  const remaining = () => FREE_PRACTICE_BUDGET_MS - (clock() - startedAt);
   const schema = request.format === 'translation' ? TRANSLATION_SCHEMA : CORRECTION_SCHEMA;
   let retryNote: string | undefined;
+  let lastModel = FREE_PRACTICE_MODEL;
 
-  for (let attempt = 1; attempt <= FREE_PRACTICE_MAX_ATTEMPTS; attempt++) {
-    const prompt = buildGenerationPrompt({ request, context, retryNote });
+  /** Jedno wywołanie generujące + walidacja kształtu + odsianie powtórek. */
+  const produce = async (count: number, note: string | undefined, attempt: number) => {
+    const prompt = buildGenerationPrompt({ request: { ...request, count }, context, retryNote: note });
     let reply: ModelReply;
     try {
       reply = await callModel({ prompt, schema, attempt });
@@ -461,6 +505,7 @@ export async function generateFreePracticeExercises(args: {
       // Błąd sieci/limitu po stronie dostawcy: bez ponowienia — slot wraca, kursant ponawia sam.
       throw new FreeGenerationError('model_failed', err instanceof Error ? err.message : 'Model niedostępny.');
     }
+    lastModel = reply.modelUsed;
 
     const parsed = parseModelJson(reply.text);
     let exercises: FreeExercise[];
@@ -479,10 +524,37 @@ export async function generateFreePracticeExercises(args: {
       item.erroneousSentence,
     ]);
     // Zadania z identycznym angielskim zdaniem w jednej partii też zostają odsiane (powyżej).
-    exercises = exercises.slice(0, request.count);
+    return { exercises: exercises.slice(0, count), rejected };
+  };
 
-    if (exercises.length > 0) return { exercises, modelUsed: reply.modelUsed, attempts: attempt };
-    retryNote = retryNoteFor(request, rejected);
+  const judge = async (items: QualityItem[]) => {
+    if (remaining() < FREE_PRACTICE_CALL_TIMEOUT_MS) throw new Error('Brak czasu na kontrolę jakości.');
+    const reply = await callModel({ prompt: buildJudgePrompt(items, safeLevel(context.level)), schema: JUDGE_SCHEMA, attempt: 1 });
+    return parseJudgeVerdicts(parseModelJson(reply.text), items.length);
+  };
+
+  for (let attempt = 1; attempt <= FREE_PRACTICE_MAX_ATTEMPTS; attempt++) {
+    const first = await produce(request.count, retryNote, attempt);
+
+    if (first.exercises.length > 0) {
+      const gate = await runQualityGate({
+        items: first.exercises,
+        target: request.count,
+        toQuality: toFreeQualityItem,
+        judge,
+        refill: async (missing: number, rejected: QualityGateRejection[]) => {
+          // Jedno generowanie + sędzia musi się jeszcze zmieścić w budżecie czasu.
+          if (remaining() < 2 * FREE_PRACTICE_CALL_TIMEOUT_MS) return [];
+          const more = await produce(missing, `${retryNote ?? ''}${buildRejectedBlock(rejected)}`, attempt);
+          // Powtórki względem już przyjętych odsiewa `runQualityGate` (duplikaty w zestawie).
+          return more.exercises;
+        },
+      });
+      if (gate.items.length > 0) return { exercises: gate.items, modelUsed: lastModel, attempts: attempt };
+    }
+    // Ponowienie tylko, jeśli zmieści się w budżecie czasu.
+    if (attempt < FREE_PRACTICE_MAX_ATTEMPTS && remaining() < 2 * FREE_PRACTICE_CALL_TIMEOUT_MS) break;
+    retryNote = retryNoteFor(request, first.rejected);
   }
 
   throw new FreeGenerationError('invalid_output', 'Model nie zwrócił poprawnych zdań.');

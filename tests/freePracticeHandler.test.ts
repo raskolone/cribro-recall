@@ -1,5 +1,6 @@
 // Cała kolejność trasy /api/free-practice/generate na atrapach: limit dzienny, zwrot slotu,
 // zwolnienie lektora, równoległość, personalizacja po stronie serwera, logi bez treści tematów.
+import { JUDGE_SCHEMA } from '../utils/exerciseQuality';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { handleFreePracticeGenerate, hashUid, type HandlerDeps } from '../utils/freePracticeHandler';
@@ -64,8 +65,8 @@ class FakeDb implements UsageDb {
 const sentences = (n = 3) =>
   JSON.stringify({
     sentences: Array.from({ length: n }, (_, i) => ({
-      english_sentence: `I travel by train number ${i + 1}.`,
-      polish_translation: `Podróżuję pociągiem numer ${i + 1}.`,
+      english_sentence: `Train ${i + 1}: I travel by train.`,
+      polish_translation: `Pociąg ${i + 1}: podróżuję pociągiem.`,
       hint: 'travel — Present Simple',
       target_word_used: 'travel',
       puzzleChunks: ['I travel', 'by train', `number ${i + 1}`],
@@ -80,7 +81,11 @@ function setup(over: Partial<HandlerDeps> = {}, seed: Record<string, any> = {}, 
   const prompts: string[] = [];
   const logs: Array<Record<string, string | number>> = [];
   let calls = 0;
-  const callModel: CallModel = async ({ prompt }) => {
+  const callModel: CallModel = async ({ prompt, schema }) => {
+    if (schema === JUDGE_SCHEMA) {
+      const count = (prompt.match(/^\d+\. \[/gm) ?? []).length;
+      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true })) }), modelUsed: FREE_PRACTICE_MODEL };
+    }
     prompts.push(prompt);
     const next = replies[Math.min(calls++, replies.length - 1)];
     if (next instanceof Error) throw next;
@@ -219,8 +224,12 @@ test('brak klucza AI na serwerze: 503 i brak rezerwacji slotu', async () => {
 });
 
 test('RÓWNOLEGŁE żądania tego samego kursanta (wolny model): nigdy więcej udanych niż limit', async () => {
-  const slow: CallModel = async () => {
+  const slow: CallModel = async ({ prompt, schema }) => {
     await new Promise((r) => setTimeout(r, 5));
+    if (schema === JUDGE_SCHEMA) {
+      const count = (prompt.match(/^\d+\. \[/gm) ?? []).length;
+      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true })) }), modelUsed: FREE_PRACTICE_MODEL };
+    }
     return { text: sentences(), modelUsed: FREE_PRACTICE_MODEL };
   };
   const { deps, db } = setup({ callModel: slow, limit: 4 });

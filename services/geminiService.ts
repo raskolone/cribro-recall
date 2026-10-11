@@ -14,6 +14,7 @@ import { toPolishVocative, detectPolishGender } from '../utils/polishVocative';
 import { buildUsedSentencesBlock, filterRepeatedSentences } from '../utils/exerciseSentenceChecks';
 import { formatWeaknessesList, NO_WEAKNESSES, type WeaknessRow } from '../utils/weaknesses';
 import { CRIBRO_SENTENCE_NATURALNESS } from './cribroSentenceRules';
+import { EXERCISE_IRON_RULES } from '../utils/exerciseQualityRules';
 
 
 export const extractJSON = (text: string): string => {
@@ -1009,7 +1010,9 @@ Third, examine [STUDENT MISTAKES (AREAS TO IMPROVE)]. Review the frequent errors
 - HINT REQUIREMENT: Pole \`hint\` musi ZAWSZE zawierać kluczowe trudne słowa z danego zdania (angielskie) wraz z tłumaczeniem, plus krótką wskazówkę co do użytej struktury gramatycznej.
 - ANTI-REPETITION: Do NOT generate sentences structurally identical or extremely similar to those in [PAST EXERCISES TO AVOID REPEATS].
 
-${CRIBRO_SENTENCE_NATURALNESS}`;
+${CRIBRO_SENTENCE_NATURALNESS}
+
+${EXERCISE_IRON_RULES}`;
 
   const buildPromptForCount = (count: number, usedList: string[]) => {
     const step4and5 = `STEP 4: APPLY SELECTED GENERATION SCOPE

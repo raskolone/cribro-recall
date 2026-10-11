@@ -23,6 +23,7 @@ import {
   type StudentContext,
 } from '../utils/freePracticeGeneration';
 import { MAX_SENTENCE_SOURCES, MAX_SENTENCE_TOPICS, MAX_TOPIC_LENGTH } from '../utils/freePractice';
+import { JUDGE_SCHEMA } from '../utils/exerciseQuality';
 
 /** `ok === true` nie zawęża typu przy wyłączonym strictNullChecks — wyciągamy wartość jawnie. */
 const valueOf = (parsed: ParsedRequest): FreeGenerationRequest => {
@@ -53,8 +54,8 @@ const request = (over: Partial<FreeGenerationRequest> = {}): FreeGenerationReque
 const translationJson = (n: number, prefix = 'S') =>
   JSON.stringify({
     sentences: Array.from({ length: n }, (_, i) => ({
-      english_sentence: `${prefix} I booked a flight number ${i + 1}.`,
-      polish_translation: `${prefix} Zarezerwowałem lot numer ${i + 1}.`,
+      english_sentence: `${prefix} Number ${i + 1}: I booked a flight.`,
+      polish_translation: `${prefix} Numer ${i + 1}: zarezerwowałem lot.`,
       hint: 'book a flight — Past Simple',
       target_word_used: 'book',
       puzzleChunks: ['I booked', 'a flight', `number ${i + 1}`],
@@ -244,13 +245,20 @@ test('schematy odpowiedzi wymuszają strukturę i kolejność pól', () => {
 
 const modelThatReturns = (replies: Array<string | Error>) => {
   const calls: Array<{ prompt: string; schema: unknown; attempt: number }> = [];
+  const judgeCalls: Array<{ prompt: string; schema: unknown; attempt: number }> = [];
   const callModel: CallModel = async (args) => {
+    // Sędzia jakości: atrapa przepuszcza wszystko i nie zużywa odpowiedzi generatora.
+    if (args.schema === JUDGE_SCHEMA) {
+      judgeCalls.push(args);
+      const count = (args.prompt.match(/^\d+\. \[/gm) ?? []).length;
+      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true })) }), modelUsed: FREE_PRACTICE_MODEL };
+    }
     calls.push(args);
     const next = replies[Math.min(calls.length - 1, replies.length - 1)];
     if (next instanceof Error) throw next;
     return { text: next, modelUsed: FREE_PRACTICE_MODEL };
   };
-  return { calls, callModel };
+  return { calls, judgeCalls, callModel };
 };
 
 test('poprawna odpowiedź za pierwszym razem: jedno wywołanie, zdania w kształcie generatora', async () => {
@@ -296,7 +304,7 @@ test('wynik przycięty do żądanej liczby, a powtórki z excludeSentences odsia
   assert.equal(result.exercises.length, 3);
   const { callModel: again } = modelThatReturns([translationJson(2, 'S'), translationJson(2, 'T')]);
   const excluded = await generateFreePracticeExercises({
-    request: request({ count: 2, excludeSentences: ['S I booked a flight number 1.', 'S Zarezerwowałem lot numer 2.'] }),
+    request: request({ count: 2, excludeSentences: ['S Number 1: I booked a flight.', 'S Numer 2: zarezerwowałem lot.'] }),
     context,
     callModel: again,
   });

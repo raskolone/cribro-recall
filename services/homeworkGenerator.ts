@@ -17,7 +17,17 @@ import {
 } from './geminiService';
 import { getApprovedVocabularyText, splitVocabularyLines } from '../utils/vocabulary';
 import { HOMEWORK_GENERATION_MODELS, PRIMARY_MODEL, assertHomeworkModelAllowed } from './aiModels';
-import { WarmupVerdict, applyWarmupVerdicts, markAllUnverified, parseWarmupVerdicts } from '../utils/warmupJudge';
+import {
+  JUDGE_SCHEMA,
+  JudgeVerdict,
+  QualityGateRejection,
+  QualityItem,
+  buildJudgePrompt,
+  buildRejectedBlock,
+  parseJudgeVerdicts,
+  runQualityGate,
+} from '../utils/exerciseQuality';
+import { EXERCISE_IRON_RULES } from '../utils/exerciseQualityRules';
 import { getStudentAiContext } from './learningProfile';
 import { fetchLessonFlashcards } from './lessonRecord';
 import {
@@ -240,6 +250,8 @@ const SYSTEM_INSTRUCTION =
  */
 const QUALITY_RULES = `
 ${CRIBRO_SENTENCE_NATURALNESS}
+
+${EXERCISE_IRON_RULES}
 
 ZASADY JAKOŚCI — OBOWIĄZUJĄ W KAŻDYM ZADANIU:
 1. SENS PRZED SŁOWNICTWEM. Zdanie ma opisywać sytuację, która mogła się wydarzyć.
@@ -477,49 +489,52 @@ export interface WarmupGenerationResult {
   reasons: WarmupFailureReason[];
 }
 
+type JsonAsker = (prompt: string, responseSchema?: object) => Promise<{ parsed: any; modelUsed: string }>;
+
 /**
- * Kontrola jakości: jedno wywołanie na cały zestaw. Zwraca wyroki w kolejności
- * wejścia; błąd wywołania leci do góry (wywołujący oznacza elementy `unverified`).
+ * Sędzia jakości (drugi stopień kontroli): jedno zbiorcze wywołanie Gemini 2.5 Flash na cały
+ * zestaw, kryteria a)–e) per element (`utils/exerciseQuality.ts`). Błąd wywołania leci do góry —
+ * `runQualityGate` oznacza wtedy elementy jako niezweryfikowane i niczego nie pokazuje jako sprawdzone.
  */
-export const judgeWarmupSentences = async (
-  items: WarmupExercise[]
-): Promise<Array<WarmupVerdict | null>> => {
-  const list = items
-    .map((item, index) => `${index}. EN: ${item.correctSentence}\n   PL: ${item.polishTranslation}`)
-    .join('\n');
-  const prompt = `${SYSTEM_INSTRUCTION}
-
-ZADANIE: jesteś surowym recenzentem zdań do ćwiczeń. Oceń każdą parę zdań poniżej.
-Dla każdej pary odpowiedz:
-- ok = true tylko wtedy, gdy angielskie zdanie jest naturalne (native speaker mógłby je naprawdę powiedzieć),
-  poprawne gramatycznie, logiczne znaczeniowo (podmiot może wykonać czynność; rzeczy nie "chcą", "lubią" ani "myślą")
-  ORAZ polskie tłumaczenie brzmi po polsku (naturalnie, nie kalka słowo w słowo)
-  ORAZ polskie zdanie znaczy TO SAMO co angielskie z tej samej pary (to samo zdarzenie, te same osoby i rzeczy) —
-  polskie zdanie opisujące coś innego niż angielskie to błąd pary, nawet gdy oba brzmią dobrze;
-- ok = false w każdym innym przypadku; w polu reason w kilku słowach po polsku napisz, co jest nie tak.
-
-PARY:
-${list}
-
-Zwróć JSON z jednym wpisem na parę (index = numer pary):
-{"verdicts":[{"index":0,"ok":true,"reason":""},{"index":1,"ok":false,"reason":"rzecz jako podmiot chcący coś robić"}]}`;
-  const { parsed } = await askForJson(prompt);
-  return parseWarmupVerdicts(parsed, items.length);
+export const judgeExerciseQuality = async (
+  items: QualityItem[],
+  level?: string,
+  ask: JsonAsker = askForJson
+): Promise<Array<JudgeVerdict | null>> => {
+  const { parsed } = await ask(`${SYSTEM_INSTRUCTION}\n\n${buildJudgePrompt(items, level)}`, JUDGE_SCHEMA);
+  return parseJudgeVerdicts(parsed, items.length);
 };
+
+const WARMUP_ITEMS = 3;
+
+/** Powód odrzucenia przez bramkę → powód pokazywany lektorowi przy rozgrzewce. */
+const warmupReasonOf = (rejection: QualityGateRejection): WarmupFailureReason =>
+  rejection.stage === 'local' && (rejection.reason === 'person_mismatch' || rejection.reason === 'calque')
+    ? rejection.reason
+    : rejection.stage === 'local' && rejection.reason === 'duplicate'
+    ? 'sentence_repeated'
+    : 'unnatural_sentence';
 
 export const generateWarmupExercises = async (
   sourceText: string,
-  accumulatedExcluded: string[]
+  accumulatedExcluded: string[],
+  deps: { ask?: JsonAsker } = {}
 ): Promise<WarmupGenerationResult> => {
+  const ask = deps.ask ?? askForJson;
   const topics = extractLessonTopics(sourceText);
-  const prompt = `${SYSTEM_INSTRUCTION}
+  const excluded = [...accumulatedExcluded];
+
+  const fetchCandidates = async (count: number, rejectedBlock: string) => {
+    const prompt = `${SYSTEM_INSTRUCTION}
 
 [MATERIAŁ Z LEKCJI — TYLKO NA NIM PRACUJESZ]:
 ${sourceText}
 
 ZADANIE:
-Ułóż do 3 angielskich zdań opartych na podanym materiale (wykorzystaj te same kluczowe słowa i frazy co w materiale).
+Ułóż do ${count} angielskich zdań opartych na podanym materiale (wykorzystaj te same kluczowe słowa i frazy co w materiale).
 Każde zdanie musi przedstawiać NOWY kontekst i sytuację - zakaz powtórzenia i parafrazy zdań z listy wykluczeń.
+
+${EXERCISE_IRON_RULES}
 
 TWARDE RAMY TREŚCI ZDANIA (ważniejsze niż użycie słownictwa):
 - Podmiotem zdania jest OSOBA: I, we, you, he, she, they, imię albo rzeczownik określający osobę (np. my sister, our neighbour).
@@ -539,19 +554,15 @@ Wymagania dla zdania:
 5. Końcowa kropka lub znak zapytania stoi w ostatnim fragmencie.
 6. Fragmenty złożone ze spacjami muszą dać dokładnie correctSentence.
 7. KOLEJNOŚĆ: najpierw ułóż poprawne angielskie zdanie (correctSentence), dopiero potem napisz polishTranslation.
-8. polishTranslation to NATURALNA polszczyzna — oddaj sens zdania, nie tłumacz słowo w słowo. To ono będzie poleceniem dla kursanta, więc musi jednoznacznie wskazywać to zdanie. Element bez polishTranslation zostanie odrzucony.
+8. polishTranslation to NATURALNA polszczyzna — oddaj sens zdania, nie tłumacz słowo w słowo. To ono będzie poleceniem dla kursanta, więc musi jednoznacznie wskazywać to zdanie i zgadzać się z angielskim co do osoby (moje = my, nie your). Element bez polishTranslation zostanie odrzucony.
 
-${buildUsedSentencesBlock(accumulatedExcluded)}
+${buildUsedSentencesBlock(excluded)}${rejectedBlock}
 
 Zwróć JSON w podanym formacie:
 {"items":[{"correctSentence":"I have to meet the deadline by tomorrow morning.","chunks":["I have to","meet the deadline","by tomorrow morning."],"polishTranslation":"Muszę dotrzymać terminu jutro rano."}]}
 `;
-
-  try {
-    const { parsed } = await askForJson(prompt);
+    const { parsed } = await ask(prompt);
     const raw = Array.isArray(parsed?.items) ? parsed.items : [];
-    if (raw.length === 0) return { items: [], rejected: 0, reasons: ['no_items'] };
-
     const reasons: WarmupFailureReason[] = [];
     const items: WarmupExercise[] = [];
     for (const item of raw) {
@@ -563,27 +574,35 @@ Zwróć JSON w podanym formacie:
         console.warn('[generateWarmupExercises] Odrzucono element rozgrzewki:', check.reason, item);
       }
     }
+    const fresh = filterRepeatedSentences(items, excluded, (item) => [item.correctSentence, item.polishTranslation]);
+    for (let i = fresh.length; i < items.length; i++) reasons.push('sentence_repeated');
+    // Wszystko, co padło w tej rozmowie z modelem, jest zakazane w dogenerowaniu.
+    excluded.push(...fresh.flatMap((item) => [item.correctSentence, item.polishTranslation]));
+    return { raw: raw.length, items: fresh, reasons };
+  };
 
-    const freshItems = filterRepeatedSentences(items, accumulatedExcluded, (item) => [
-      item.correctSentence,
-      item.polishTranslation,
-    ]);
-    for (let i = freshItems.length; i < items.length; i++) reasons.push('sentence_repeated');
+  try {
+    const first = await fetchCandidates(WARMUP_ITEMS, '');
+    if (first.raw === 0) return { items: [], rejected: 0, reasons: ['no_items'] };
 
-    const candidates = freshItems.slice(0, 3);
-    let finalItems: WarmupDraftItem[] = [];
-    if (candidates.length > 0) {
-      try {
-        const verdicts = await judgeWarmupSentences(candidates);
-        const judged = applyWarmupVerdicts(candidates, verdicts);
-        finalItems = judged.items;
-        reasons.push(...judged.reasons);
-      } catch (judgeErr) {
-        console.warn('[generateWarmupExercises] Kontrola jakości nie powiodła się — elementy oznaczone jako niezweryfikowane.', judgeErr);
-        finalItems = markAllUnverified(candidates);
-      }
-    }
-
+    const reasons: WarmupFailureReason[] = [...first.reasons];
+    const gate = await runQualityGate({
+      items: first.items.slice(0, WARMUP_ITEMS),
+      target: WARMUP_ITEMS,
+      toQuality: (e): QualityItem => ({ kind: 'pair', en: e.correctSentence, pl: e.polishTranslation }),
+      judge: (q) => judgeExerciseQuality(q, undefined, ask),
+      refill: async (missing, rejected) => {
+        const more = await fetchCandidates(missing, buildRejectedBlock(rejected));
+        reasons.push(...more.reasons);
+        return more.items;
+      },
+    });
+    reasons.push(...gate.rejected.map(warmupReasonOf));
+    // Sędzia niedostępny: elementy zostają w kreatorze z jawnym znacznikiem dla lektora (widzi je przed przypisaniem).
+    const finalItems: WarmupDraftItem[] = [
+      ...gate.items,
+      ...gate.unverified.map((item) => ({ ...item, unverified: true })),
+    ];
     return { items: finalItems, rejected: reasons.length, reasons };
   } catch (err) {
     console.error('[generateWarmupExercises] Błąd modelu lub brak wyników:', err);
@@ -618,8 +637,6 @@ const WARMUP_CARDS_SCHEMA = {
   },
   required: ['cards'],
 };
-
-type JsonAsker = (prompt: string, responseSchema?: object) => Promise<{ parsed: any; modelUsed: string }>;
 
 /**
  * Fiszki z samego tekstu / tematu: jedno wywołanie modelu (Gemini 2.5 Flash, bez sędziego).
@@ -945,20 +962,112 @@ const resolveStudentContext = async (
   return { briefing: context?.briefing, level: context?.level || req.level };
 };
 
+type TypeRunner = (subReq: HomeworkGenerationRequest) => Promise<{ items: any[]; modelUsed: string }>;
+
+/**
+ * Dokłada do runnera dwustopniową kontrolę jakości (`utils/exerciseQuality.ts`): lokalną i sędziego.
+ * Niczego, co nie przeszło obu stopni, nie zwracamy. Brakujące elementy runner dogenerowuje
+ * (maks. 2 razy) z listą odrzuconych w prompcie; jeśli nadal brakuje — wynik jest krótszy.
+ * Gdy sędzia jest niedostępny, element nie trafia do wyniku (nie pokazujemy niesprawdzonego).
+ */
+const withQualityGate = (
+  type: HomeworkType,
+  run: TypeRunner,
+  toQuality: (item: any) => QualityItem,
+  level: string,
+  ask?: JsonAsker
+): TypeRunner => async (subReq) => {
+  const first = await run(subReq);
+  const keep = first.items.slice(0, subReq.perType);
+  const gate = await runQualityGate({
+    items: keep,
+    target: subReq.perType,
+    toQuality,
+    judge: (q) => judgeExerciseQuality(q, level, ask),
+    refill: async (missing, rejected) => {
+      const more = await run({
+        ...subReq,
+        perType: missing,
+        instruction: `${subReq.instruction ?? ''}${buildRejectedBlock(rejected)}`.trim() || undefined,
+        excludeSentences: [...(subReq.excludeSentences ?? []), ...keep.flatMap((i) => collectItemSentences(type, [i]))],
+      });
+      return more.items;
+    },
+  });
+  if (gate.rejected.length > 0 || gate.unverified.length > 0) {
+    console.warn(
+      `[qualityGate] ${type}: przeszło ${gate.items.length}/${subReq.perType}, odrzucono ${gate.rejected.length}, niezweryfikowane ${gate.unverified.length}`,
+      gate.rejected
+    );
+  }
+  return { items: gate.items, modelUsed: first.modelUsed };
+};
+
+/** Dopasowanie: sędzia ocenia pary pojedynczo, a z przechodzących składamy zestaw. */
+const withMatchingQualityGate = (run: TypeRunner, level: string, ask?: JsonAsker): TypeRunner => async (subReq) => {
+  const first = await run(subReq);
+  const sets = first.items.filter((set) => Array.isArray(set?.pairs));
+  const wanted = subReq.pairCount ?? Math.max(4, Math.min(6, subReq.perType * 4));
+  const gate = await runQualityGate({
+    items: sets.flatMap((set) => set.pairs as Array<{ left: string; right: string }>),
+    target: wanted,
+    toQuality: (p): QualityItem => ({ kind: 'word_pair', left: p.left, right: p.right }),
+    judge: (q) => judgeExerciseQuality(q, level, ask),
+    refill: async (missing, rejected) => {
+      const more = await run({
+        ...subReq,
+        pairCount: missing,
+        instruction: `${subReq.instruction ?? ''}${buildRejectedBlock(rejected)}`.trim() || undefined,
+      });
+      return more.items.flatMap((set) => (Array.isArray(set?.pairs) ? set.pairs : []));
+    },
+  });
+  const pairs = gate.items.map((p, i) => ({ id: `pair-${i}`, left: p.left, right: p.right }));
+  return { items: pairs.length >= 2 ? [{ pairs }] : [], modelUsed: first.modelUsed };
+};
+
 /**
  * Runnery typów — te same funkcje, te same prompty, reguły jakości i walidacja przy pierwszym
  * generowaniu i przy regeneracji. Dostają już policzony kontekst kursanta.
+ * Tłumaczenie, „Popraw zdanie”, wybór i dopasowanie przechodzą kontrolę jakości (`withQualityGate`);
+ * tekst z lukami to jeden długi tekst — ma żelazne zasady w prompcie, ale nie sędziego (patrz raport).
  */
 const buildRunners = (
   sourceText: string,
   briefing: string | undefined,
-  level: string
-): Record<string, (subReq: HomeworkGenerationRequest) => Promise<{ items: any[]; modelUsed: string }>> => ({
-  translation: (subReq) => generateTranslations(subReq, sourceText, briefing, level),
-  find_errors: (subReq) => generateFindErrors(subReq, sourceText, briefing),
-  multiple_choice: (subReq) => generateMultipleChoice(subReq, sourceText, briefing),
+  level: string,
+  ask?: JsonAsker
+): Record<string, TypeRunner> => ({
+  translation: withQualityGate(
+    'translation',
+    (subReq) => generateTranslations(subReq, sourceText, briefing, level),
+    (item): QualityItem => ({ kind: 'pair', en: item.englishTranslation, pl: item.polishSentence }),
+    level,
+    ask
+  ),
+  find_errors: withQualityGate(
+    'find_errors',
+    (subReq) => generateFindErrors(subReq, sourceText, briefing),
+    (item): QualityItem => ({ kind: 'fix_sentence', incorrect: item.incorrectSentence, correct: item.correctSentence, pl: item.polishHint }),
+    level,
+    ask
+  ),
+  multiple_choice: withQualityGate(
+    'multiple_choice',
+    (subReq) => generateMultipleChoice(subReq, sourceText, briefing),
+    (item): QualityItem => ({
+      kind: 'multiple_choice',
+      question: item.question,
+      options: item.options,
+      correctIndex: item.correctIndex,
+      explanation: item.explanation,
+      grammarFocus: item.grammarFocus,
+    }),
+    level,
+    ask
+  ),
   fill_in_the_blank: (subReq) => generateGaps(subReq, sourceText, briefing, level),
-  matching: (subReq) => generateMatching(subReq, sourceText, briefing),
+  matching: withMatchingQualityGate((subReq) => generateMatching(subReq, sourceText, briefing), level, ask),
 });
 
 /**
