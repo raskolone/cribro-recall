@@ -4419,3 +4419,96 @@ npm run build
 - **Poza zakresem, do zaplanowania:** webhook Resend bez podpisu; SSRF w `web-research/scrape` i `og-preview`; `GET /api/groups/:id` zwraca członkom e-maile pozostałych członków; fallback po id dokumentu w `homework/direct/:token`; `isAdmin()`/`requireFirebaseAdmin` traktują lektora jak admina (zmiana hasła i ról dowolnego konta); brak `email_verified`; `UNSUBSCRIBE_SECRET` z jawnym domyślnym sekretem; `liveSessions` `update: if true`; `tempPassword` w jawnym tekście w `users/{uid}`. Szczegóły i proponowane poprawki: raport SEC2.
 - **Weryfikacja:** `tsc --noEmit` 0 błędów, `npm test` 1562/1562, `npm run test:routes` 48/48 (na starym kodzie padało 12/15 w p.2, 5/9 w p.3, 8/20 w p.4, 5/12 w p.6), `npm run build` OK, `api/index.js` przebudowany (osobny commit — trasy żyją w tym bundlu, Vercel serwuje go z repo). `npm run test:rules`: 43/44 — jeden test padał PRZED zmianami (`notatnik otwiera się po znanym ID, ale lista notatników nie`), reguł nie ruszano.
 - **Ryzyka:** `firestore.rules` NIETKNIĘTE, middleware `requireFirebaseAuth`/`requireFirebaseAdmin` NIETKNIĘTE (zmieniono tylko, które trasy go używają), ścieżki tokenowe bez logowania NIETKNIĘTE. Nowa kolekcja `geminiProxyUsage` pisana wyłącznie przez Admin SDK.
+
+### BW. U1: jakość generowanych ćwiczeń, dopasowanie par, wielokrotny wybór, wspólne kafelki, „Popraw zdanie", animacja oczekiwania, statystyki motywacyjne (2026-10-11)
+Praca w osobnym worktree z `origin/main` (bez kodu S1; numer BW, bo BV zajęło SEC2), 8 commitów lokalnie, bez pusha. Litera BU zostaje zarezerwowana dla S1 z gałęzi głównej.
+
+- **CZĘŚĆ 1 — KROK 0 (generatory i kontrole):**
+
+| generator | gdzie (prompt) | kontrola PRZED zmianą | czego brakowało |
+|---|---|---|---|
+| Rozgrzewka / układanka (`generateWarmupExercises`) | `services/homeworkGenerator.ts` | kształt (3–5 kawałków, 2–4 słowa, multizbiór), temat-jako-podmiot, powtórki; sędzia `judgeWarmupSentences` (naturalność + zgodność PL=EN) | osoba/liczba PL↔EN (moje/your), kalki; sędzia przy awarii przepuszczał z `unverified` bez dogenerowania; brak dogenerowania po odrzuceniu |
+| Tłumaczenie (`generateTranslationExercises`) | `services/geminiService.ts` (master prompt) | tylko `filterRepeatedSentences`, pętla dolosowania do liczby | jakakolwiek kontrola jakości: osoba, kalki, równoważność, sędzia |
+| Wielokrotny wybór (`generateMultipleChoice`) | `services/homeworkGenerator.ts` | indeks poprawnej w zakresie, ≥ 2 opcje | duplikaty/równoważne opcje, dokładnie 4, jedna poprawna, zagadnienie gramatyczne, sędzia |
+| Dopasowanie (`generateMatching`) | `services/homeworkGenerator.ts` | `left` i `right` niepuste, ≥ 2 pary | powtórzone strony, dwuznaczne znaczenia, sędzia |
+| Popraw zdanie (`generateFindErrors` + ćwiczenia dowolne) | `homeworkGenerator.ts`, `freePracticeGeneration.ts` | `checkFixSentenceItem` (zdanie z błędem ≠ poprawne, typ błędu z listy), retry bez-błędu | „jeden błąd” (odległość słów), osoba PL↔EN, sędzia naturalności poprawnej wersji |
+| Ćwiczenia dowolne: tłumaczenie (`generateFreePracticeExercises`, trasa serwera) | `utils/freePracticeGeneration.ts` | walidacja kształtu, linki/znaczniki, powtórki, 1 retry gdy pusto | wszystko jak wyżej; budżet czasu 60 s trasy |
+| Tekst z lukami (`generateFillInTheBlankExercises`) | `services/geminiService.ts` | brak (tylko JSON.parse) | żelazne zasady dopisane do promptu; BEZ sędziego (jeden długi tekst, nie lista elementów) — luka znana |
+| „Ułóż zdanie” (`generateWordOrder`) | `homeworkGenerator.ts` | — (funkcja nieużywana przez `buildRunners`) | nie podpięta do żadnego kreatora; bez zmian |
+| Silnik v2 (`functions/src/homeworkV2`) | osobny pakiet Cloud Functions | własne `openai.ts` | POZA zakresem U1 (inny pakiet; zawiera ścieżkę OpenAI) — do osobnej decyzji |
+
+- **Żelazne zasady (jeden moduł):** `utils/exerciseQualityRules.ts` (`EXERCISE_IRON_RULES` a)–e) + `JUDGE_CRITERIA_TEXT`) dopisany do promptów rozgrzewki, tłumaczenia (`geminiService`), wyboru, dopasowania, „Popraw zdanie" (kreator i ćwiczenia dowolne). Kontrola dwustopniowa `utils/exerciseQuality.ts`: (1) lokalna — kształt, duplikaty, powtórzona struktura (3 pierwsze słowa), język pola (angielski w polu PL i odwrotnie), osoba PL↔EN (`utils/pairConsistency.ts`: moje=my, twoja≠my, ona≠he, „my … your" przy samym „moje"; „swój" i zaimki dopełnienia wyłączone), znane kalki („, co jest świetne", „na twoim progu", „mieć dobry czas", „zrobić decyzję"…), MC: dokładnie 4 różne opcje i różne zdania po wstawieniu, korekta: różnica ≤ 3 słów; (2) sędzia Gemini 2.5 Flash, JEDNO zbiorcze wywołanie na zestaw, kryteria naturalność / równoważność / jednoznaczność / poziom / kontekst per element (`JUDGE_SCHEMA`, uzasadnienie przed wyrokami). Odrzucone elementy → dogenerowanie (maks. 2 razy, z listą „czego unikać"). Sędzia niedostępny → element NIE trafia do wyniku (w kreatorze rozgrzewka zachowuje stary znacznik `unverified` widoczny dla lektora w podglądzie). Ćwiczenia dowolne: ta sama bramka w `generateFreePracticeExercises` przez wstrzyknięte `callModel` (bez zmian w `server.ts`), z budżetem czasu 58 s pod `maxDuration` 60 s trasy; niesprawdzone zdania nie dochodzą do kursanta.
+- **Test z objawem:** „Moje biuro jest bardzo blisko, co jest świetne." / „My office is on your doorstep, which is great." najpierw FAILOWAŁ na starej `checkWarmupExerciseItem` (zwracała `ok: true`), po zmianie jest odrzucany (`person_mismatch`). Złote przypadki: 10 złych (m.in. hamak/meble, moje/your, kalki) i 10 dobrych; 8 złych łapie kontrola lokalna, 2 (hamak/meble, czas przeszły/przyszły) tylko sędzia — tu testowany atrapą (prawdziwego Gemini nie wołano). Podgląd kreatora („Sprawdź i przypisz": edycja, usuwanie, regeneracja zaznaczonych) już istnieje — nie ruszano.
+- **CZĘŚĆ 2 — dopasowanie par:** przyczyna skakania: `MatchingExerciseView` tasował kolumny przez `useMemo(…, [pairs])`, a `pairs` rodzic buduje `.filter()` przy KAŻDYM renderze (zapis odpowiedzi po trafieniu = nowe tasowanie; zmierzone: 10/10 re-renderów rodzica zmienia kolejność). Teraz układ jest deterministyczny z treści zadania (`utils/matchingBoard.ts`: ziarno, `layoutRound`, `splitRounds`), lewa kolumna EN w kolejności zadania, prawa PL przetasowana RAZ i nigdy w tej samej kolejności; max 5 par na rundę (6 → 3+3, 7 → 4+3), przycisk „Następna runda". Jeden wspólny `components/ui/MatchingBoard.tsx` w pracy domowej i w grze fiszek (`MatchingGame`); trafione kafelki zostają na miejscu, zablokowane, w jednym odcieniu pary (kolejne trafienia → kolejne odcienie z palety 5, kolor pojawia się dopiero po trafieniu); wcześniejsze znikanie (`opacity-0 invisible`), skalowanie GSAP przy zaznaczeniu i wybuch iskier na parę usunięte (iskry końcowe zostają). UK/US tylko na kafelkach EN, `wrongWords` bez zmian, reduced-motion: sam kolor. Odpowiedź w pracy domowej bez zmian (lista `id` w kolejności trafień) — stare zapisy działają.
+- **Czcionka:** DM Sans 700 (już ładowana w `index.html`: 400/500/700, z latin-ext); nowa czcionka NIE została dodana (0 B, bez wpływu na precache PWA).
+- **CZĘŚĆ 3 — wielokrotny wybór:** siatka 2×2 (`grid-cols-2 auto-rows-fr`) także na 360 px, równe kafelki ≥ 56 px, tekst zawija się; `grammarFocus` w schemacie structured output jako ENUM (`utils/grammarFocus.ts`, 10 wartości), etykieta z i18n (`grammarFocus.<id>`) — model etykiet nie generuje; prompt łączy słownictwo z zagadnieniem, dystraktory = typowe błędy polskiego ucznia, opcje mieszane po stronie aplikacji (`shuffleOptions`). Po odpowiedzi: poprawna/błędna ikoną i tekstem + wyjaśnienie z treści zadania; wybór jest wtedy ostateczny (zmiana zachowania względem swobodnego przełączania w pracy domowej — decyzja zgodna z punktem „stan odpowiedzi"; `reveal={false}` wyłącza). Stare zadania bez `grammarFocus`/`explanation`/`correctIndex` działają.
+- **CZĘŚĆ 4 — wspólny kafelek:** `.game-tile` (index.css) + `utils/gameTile.ts` (czysta funkcja `gameTileAttrs`): kontur 2 px, pastelowe tło z tokenów `--color-game-*`, ten sam promień, min. 56 px (wariant zwarty układanki: 44 px), połysk szkła = ten sam token `--glass-sheen` co kafelki menu głównego (`.glass-tile::after` przepisane na token, wartości identyczne; statyczny), stany: spoczynek / hover (tylko `hover: hover`) / focus-visible / wciśnięty / zaznaczony (`aria-pressed`) / poprawny / błędny (krótkie wstrząśnięcie, wyłączone przy reduced-motion) / zablokowany (`aria-disabled`). Użyty w dopasowaniu, MC, układance, quizie fiszek. Stany nie zmieniają rozmiaru ani położenia (test CSS). Znaleziona i naprawiona pułapka: reguła `.game-tile > *` łamała `.sr-only` (wskakiwał w przepływ i zawijał tekst) — wykluczone.
+- **CZĘŚĆ 5 — „Popraw zdanie":** karta zdania z błędem w odcieniu brzoskwiniowo-różowym (`--color-card-warm`), pole odpowiedzi miętowe (`--color-card-cool`), oba motywy; „Kopiuj zdanie do edycji" = duży przycisk (≥ 48 px, ikona + tekst) WEWNĄTRZ karty, pod zdaniem; wkleja zdanie BIEŻĄCEGO zadania (`sentenceToCopy`), fokus tylko poza dotykiem (`isCoarsePointer`). H1 (stan po id) i H2 (Enter) bez zmian (testy zielone).
+- **CZĘŚĆ 6 — animacja oczekiwania:** `components/ui/GeneratingAnimation.tsx` (SVG + CSS, `pathLength=1`, tylko `transform`/`opacity`/`stroke-dashoffset`, 0 JS na klatkę; oś: strzałka 0,5 s → koło 1,8 s → pauza 0,8 s → wygaszenie 0,4 s, kłębek „oddycha" 3 s), `role="status"`, `aria-live="polite"`, SVG `aria-hidden`, tekst „Przygotowuję ćwiczenie…" / „Preparing your exercise…" z i18n, bez paska i liczb, max 280 px, `dvh`. Kłębka SVG w repo nie było (w kodzie tylko ścieżka „tangled" dla starej animacji) — narysowany własny (`utils/generatingAnimation.ts`). Podmienione: `AIGenerationLoader` (GSAP, tekst „Upraszczanie i porządkowanie…") w generatorze zdań. Martwy kod: usunięty `AIGenerationLoader` + ścieżki, nieużywany `InlineAILoading` (pasek z procentami). Pastylki „Trwa sprawdzanie…" i przyciski z shimmerem (`AILoadingButton`) to wskaźniki w przycisku, nie ekran oczekiwania na zadanie — bez zmian. Model dla lektora (`canViewAiModels`) wyświetla się teraz jednym wierszem POD animacją (poza komponentem).
+- **CZĘŚĆ 7 — statystyki motywacyjne:**
+
+| statystyka | źródło (istniejące dane) | koszt odczytu | wiarygodność / uwagi |
+|---|---|---|---|
+| ćwiczenia (+ wariant „Gratulacje!") | wpisy `practiceLogs` poza `homework`/`test`/`Aktywność` + zakończone sesje fiszek (`sessions`, kontekst) | 0 nowych (nasłuch panelu + sesje z `FlashcardContext`) | dobra; wpis powstaje przy zakończeniu; sprzed H1 możliwe zdublowane wpisy (zawyżenie), danych nie poprawiano |
+| przetłumaczone zdania | suma `totalWords` wpisów `ai_translation` | 0 nowych | dobra; NIE używam `translatedSentencesCount` z dokumentu użytkownika — liczą go dwa miejsca różnymi regułami (panel: ai_translation+homework, generator: wszystkie logi), więc bywa nieprawdziwy |
+| poprawione zdania | suma `totalWords` wpisów `sentence_correction` | 0 nowych | dobra; korekty w pracach domowych nie są rozróżnialne w logu pracy — pominięte |
+| powtórzone fiszki | suma `totalCards` sesji `flashcards`/`quiz`/`writing` | 0 nowych | dobra (sesja zapisywana po zakończeniu) |
+| ukończone prace domowe | zadania w statusie `submitted`/`graded` (nasłuch panelu) | 0 nowych | dobra |
+| trafione pary | suma `totalCards` sesji `matching` (= liczba par rundy) | 0 nowych | dobra |
+| dni z rzędu (streak) | — | — | POMINIĘTE na życzenie |
+| testy; „recall" osobno | — | — | pominięte jako osobne statystyki (nie były wymagane); wpisy `test` nie wchodzą do licznika ćwiczeń, `recall` wchodzi |
+
+  Pokazywane tylko liczby ≥ 1; brak danych → statyczna linia „Zacznij od pierwszego ćwiczenia." Zero nowych zapisów, kolekcji i zmian reguł; wynik w pamięci sesji (`utils/motivationStatsCache.ts`, lustro w `localStorage` w try/catch). Jedno miejsce statycznego zdania zastąpione w panelu kursanta (`StudentHeroHeader`), na górze generatora i w dymku generatora; teksty neutralne rodzajowo, odmiana przez `Intl.PluralRules` + klucze `motivation.*_one/_few/_many/_other` (1 ćwiczenie, 2–4/22–24 ćwiczenia, 5+/12–14/112 ćwiczeń). Rotacja co 7 s (przenikanie 0,5 s), pauza po najechaniu/fokusie/dotknięciu (po dotknięciu 15 s), dotknięcie = następna statystyka, `prefers-reduced-motion`: bez rotacji, kolejna statystyka przy każdym wejściu. Stała wysokość (CLS 0 zmierzone), jedna linia na 360 px (rozmiar czcionki `clamp`). Uwaga: `StudentHeroHeader` już wcześniej zapisywał `translatedSentencesCount`/`completedTasksCount` do dokumentu kursanta (istniejąca synchronizacja, nietknięta) — nowa logika nic nie zapisuje. Aby mieć wiarygodny licznik „zdań" bez dwóch reguł, trzeba by zapisywać agregat przy ukończeniu ćwiczenia — NIE zrobiono w tym zadaniu.
+- **Tabele kontrastów (WCAG, liczone w testach; AA tekst ≥ 4,5:1, elementy graficzne ≥ 3:1):**
+
+```
+motyw | powierzchnia | text-hi | text-3 (placeholder) | obrys vs strona | obrys vs powierzchnia
+dark | karta ciepła | 14.49 | 5.00 | 7.10 | 5.40
+dark | pole miętowe | 14.39 | 4.96 | 6.23 | 4.70
+light | karta ciepła | 17.22 | 8.84 | 3.93 | 4.00
+light | pole miętowe | 17.80 | 9.14 | 4.19 | 4.40
+motyw | stan | tekst na tle | obrys vs tło strony | obrys vs tło kafelka
+dark | rest | 14.54 | 5.84 | 4.46
+dark | correct | 11.67 | 13.46 | 8.24
+dark | wrong | 14.09 | 6.66 | 4.93
+dark | locked | 5.79 | 3.43 | 3.02
+dark | para 1 | 12.60 | 4.77 | 3.16
+dark | para 2 | 13.44 | 4.26 | 3.00
+dark | para 3 | 14.02 | 4.07 | 2.99
+dark | para 4 | 11.73 | 6.11 | 3.76
+dark | para 5 | 13.44 | 4.82 | 3.40
+dark | selected (akcent vs spoczynek) | – | – | 10.28
+light | rest | 18.22 | 3.76 | 4.05
+light | correct | 16.54 | 4.56 | 4.44
+light | wrong | 16.16 | 4.68 | 4.46
+light | locked | 8.47 | 2.90 | 2.82
+light | para 1 | 16.54 | 3.28 | 3.20
+light | para 2 | 15.88 | 3.37 | 3.15
+light | para 3 | 15.46 | 3.80 | 3.46
+light | para 4 | 16.40 | 3.19 | 3.09
+light | para 5 | 15.70 | 3.59 | 3.32
+light | selected (akcent vs spoczynek) | – | – | 4.90
+motyw | linia | tło strony | kontrast
+dark | #72f0b4 | #09101c | 13.46
+light | #0b7953 | #e5ecf5 | 4.56
+motyw | tło | text-hi | ikona (akcent)
+dark | --color-bg | 19.05 | 13.46
+dark | --color-surface-flat | 17.21 | 12.16
+light | --color-bg | 16.95 | 4.56
+light | --color-surface-flat | 20.17 | 5.42
+motyw | odcień | tło | text-hi | kontrast | obrys vs karta
+dark | 1 | #123a2c | #ffffff | 12.60 | 4.31
+dark | 2 | #162f52 | #ffffff | 13.44 | 3.85
+dark | 3 | #2d2552 | #ffffff | 14.02 | 3.68
+dark | 4 | #4a3410 | #ffffff | 11.73 | 5.52
+dark | 5 | #4a2230 | #ffffff | 13.44 | 4.35
+light | 1 | #d3efe2 | #020617 | 16.54 | 3.91
+light | 2 | #d6e6f8 | #020617 | 15.88 | 4.00
+light | 3 | #e4def7 | #020617 | 15.46 | 4.52
+light | 4 | #f7e6c4 | #020617 | 16.40 | 3.80
+light | 5 | #f8dce4 | #020617 | 15.70 | 4.27
+```
+  Uwaga: obrys odcieni par w ciemnym motywie względem WŁASNEGO wypełnienia to 2,99–3,16:1, względem tła strony ≥ 4,07:1 (granica kafelka od otoczenia spełnia 3:1; test wymaga ≥ 3:1 względem strony lub wypełnienia).
+- **Przeglądarka (Playwright Chromium + WebKit; harness bez Vite w scratchpadzie, komponenty z propsów, atrapy zamiast Gemini/Firestore; 360/390/430/1280 px, jasny i ciemny):** dopasowanie (przed / zaznaczone / błąd / trafienia; kolejność kafelków identyczna w każdym stanie, min. kafelek 56 px, 0 przepełnień poziomych, 0 celów < 44 px), MC (siatka 2×2 równych kafelków, wynik z ikoną i tekstem, układ stabilny), korekta zdań (przed / po kopiowaniu), układanka i quiz (min. 44/56 px), animacja (klatki: kłębek, strzałka, koło w połowie, koło gotowe + reduced-motion = 0 animacji), pasek statystyk (8 zmian, CLS 0, jedna linia, dotknięcie → następna + pauza, cel 44 px). Przy 1280 px (mysz) zostają znane małe cele ekranu rozgrzewki (`Pomiń`, `Resetuj` — warianty `pointer-coarse:min-h-11`, istniejące).
+- **Niesprawdzone:** prawdziwy Gemini (czy sędzia faktycznie odrzuca nielogiczne pary — testowane atrapą), iPhone/Android (WebKit z Playwrighta ≠ Safari), prawdziwy Firestore i realne liczby kursantów (statystyki liczone na danych testowych), pełny ekran generatora zdań z zalogowanym kursantem (komponenty sprawdzane osobno), fokus po „Kopiuj" (logika w generatorze — test strukturalny).
+- **Ryzyka:** `firestore.rules`, `storage.rules`, `server.ts`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. `git diff api/index.js` NIE jest pusty: zmiana w `utils/freePracticeGeneration.ts` (bramka jakości) trafia do bundla trasy `POST /api/free-practice/generate` — osobny commit `build: api/index.js`. Poza zakresem: `functions/src/homeworkV2/openai.ts` (osobny silnik prac domowych z OpenAI) — do osobnej decyzji. `HomeworkExercise` dla MC/dopasowania nadal czyta `item` bez `normalizeExercise` (kontrakt adaptera nie zna tych typów; wcześniejsza świadoma decyzja).
