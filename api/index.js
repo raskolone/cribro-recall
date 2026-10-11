@@ -189,11 +189,11 @@ var countPolishSuffixes = (haystack) => haystack.filter(
 var words = (text2) => text2.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
 var countMatches = (list, haystack) => haystack.filter((w) => list.includes(w)).length;
 var detectLanguage = (text2) => {
-  const clean2 = String(text2 || "").trim();
-  if (clean2.length < 12) return null;
-  const w = words(clean2);
+  const clean3 = String(text2 || "").trim();
+  if (clean3.length < 12) return null;
+  const w = words(clean3);
   if (w.length < 3) return null;
-  const pl = countMatches(POLISH_STOPWORDS, w) + countPolishSuffixes(w) + (POLISH_LETTERS.test(clean2) ? 2 : 0);
+  const pl = countMatches(POLISH_STOPWORDS, w) + countPolishSuffixes(w) + (POLISH_LETTERS.test(clean3) ? 2 : 0);
   const en = countMatches(ENGLISH_STOPWORDS, w);
   if (pl === 0 && en === 0) return null;
   return pl > en ? "pl" : "en";
@@ -307,7 +307,7 @@ import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } fr
 import { getAuth } from "firebase-admin/auth";
 import { getFirestore as getFirestore2, FieldValue } from "firebase-admin/firestore";
 import { createHmac } from "crypto";
-import { GoogleGenAI as GoogleGenAI4, Type as Type5 } from "@google/genai";
+import { GoogleGenAI as GoogleGenAI4, Type as Type6 } from "@google/genai";
 
 // services/aiModels.ts
 var PRIMARY_MODEL = "gemini-2.5-flash";
@@ -2013,10 +2013,10 @@ var V2_MODEL_CASCADE = [
   V2_FALLBACK_MODEL
 ];
 var mapToActualGeminiModel = (modelName) => {
-  const clean2 = String(modelName || "").trim().toLowerCase();
-  if (clean2.includes("2.5-flash") || clean2 === "gemini-2.5-flash") return "gemini-2.5-flash";
-  if (clean2.includes("3.8-flash") || clean2 === "gemini-3.8-flash") return "gemini-2.5-flash";
-  if (clean2.includes("1.5-flash")) return "gemini-1.5-flash";
+  const clean3 = String(modelName || "").trim().toLowerCase();
+  if (clean3.includes("2.5-flash") || clean3 === "gemini-2.5-flash") return "gemini-2.5-flash";
+  if (clean3.includes("3.8-flash") || clean3 === "gemini-3.8-flash") return "gemini-2.5-flash";
+  if (clean3.includes("1.5-flash")) return "gemini-1.5-flash";
   return "gemini-2.5-flash";
 };
 var extractJson = (text2) => {
@@ -2138,18 +2138,84 @@ var getRecentMistakes = async (studentUid) => {
 };
 
 // utils/freePracticeGeneration.ts
-import { Type as Type4 } from "@google/genai";
+import { Type as Type5 } from "@google/genai";
+
+// utils/pairConsistency.ts
+var tokens = (text2) => (text2.toLowerCase().match(/[\p{L}']+/gu) ?? []).map((t) => t.replace(/’/g, "'"));
+var POLISH_POSSESSIVE = [
+  [/^(mój|moj|moja|moje|moi|moich|mojego|mojej|mojemu|moim|moją|moimi|moją)$/, ["my", "mine"]],
+  [/^(twój|twoj|twoja|twoje|twoi|twoich|twojego|twojej|twojemu|twoim|twoją|twoimi)$/, ["your", "yours"]],
+  [/^(nasz|nasza|nasze|nasi|naszych|naszego|naszej|naszemu|naszym|naszą|naszymi)$/, ["our", "ours"]],
+  [/^(wasz|wasza|wasze|wasi|waszych|waszego|waszej|waszemu|waszym|waszą|waszymi)$/, ["your", "yours"]],
+  [/^(jego)$/, ["his", "its"]],
+  [/^(jej)$/, ["her", "hers"]],
+  [/^(ich)$/, ["their", "theirs"]]
+];
+var POLISH_SUBJECT = [
+  [/^ja$/, ["i"]],
+  [/^ty$/, ["you"]],
+  [/^on$/, ["he"]],
+  [/^ona$/, ["she"]],
+  [/^ono$/, ["it"]],
+  [/^my$/, ["we"]],
+  [/^wy$/, ["you"]],
+  [/^(oni|one)$/, ["they"]]
+];
+var EN_POSSESSIVES = /* @__PURE__ */ new Set(["my", "mine", "your", "yours", "his", "her", "hers", "its", "our", "ours", "their", "theirs"]);
+var EN_SUBJECTS = /* @__PURE__ */ new Set(["i", "you", "he", "she", "it", "we", "they"]);
+var REFLEXIVE_POSSESSIVE = /^(swój|swoja|swoje|swoi|swoich|swojego|swojej|swojemu|swoim|swoją|swoimi)$/;
+var STRICT_EN_POSSESSIVES = /* @__PURE__ */ new Set(["my", "mine", "your", "yours", "his", "our", "ours", "their", "theirs"]);
+var expectedFrom = (plTokens, table) => {
+  const expected = /* @__PURE__ */ new Set();
+  for (const token of plTokens) {
+    for (const [pattern, english] of table) if (pattern.test(token)) english.forEach((e) => expected.add(e));
+  }
+  return expected;
+};
+var intersects = (a, b) => [...a].some((x) => b.has(x));
+var findPersonMismatch = (en, pl) => {
+  const enTokens = tokens(en);
+  const plTokens = tokens(pl);
+  const wantedPossessive = expectedFrom(plTokens, POLISH_POSSESSIVE);
+  const havePossessive = new Set(enTokens.filter((t) => EN_POSSESSIVES.has(t)));
+  if (wantedPossessive.size > 0 && havePossessive.size > 0 && !intersects(wantedPossessive, havePossessive)) return true;
+  if (wantedPossessive.size > 0 && !plTokens.some((t) => REFLEXIVE_POSSESSIVE.test(t))) {
+    const unmatched = enTokens.some((t) => STRICT_EN_POSSESSIVES.has(t) && !wantedPossessive.has(t));
+    if (unmatched) return true;
+  }
+  const wantedSubject = expectedFrom(plTokens, POLISH_SUBJECT);
+  const haveSubject = new Set(enTokens.filter((t) => EN_SUBJECTS.has(t)));
+  if (wantedSubject.size > 0 && haveSubject.size > 0 && !intersects(wantedSubject, haveSubject)) return true;
+  return false;
+};
+var POLISH_CALQUES = [
+  /,\s*co (jest|było|będzie)\s+[\p{L}]+[.!?…]*$/iu,
+  // „…, co jest świetne.” ← „…, which is great.”
+  /\bna (moim|twoim|jego|jej|naszym|waszym|ich) progu\b/iu,
+  // „on your doorstep” słowo w słowo
+  /\b(ma|mam|masz|mamy|macie|mają|mieć|miał[\p{L}]*)\s+dobry czas\b/iu,
+  // have a good time
+  /\brob[\p{L}]*\s+sens(u|em)?\b/iu,
+  // make sense
+  /\bzrob[\p{L}]*\s+decyzj/iu,
+  // make a decision
+  /\brob[\p{L}]*\s+pieniąd/iu,
+  // make money
+  /\bw moim zdaniu myślę\b/iu
+];
+var ENGLISH_ROBOTIC = [/,\s*which (is|was|will be)\s+(really |very |so )?(great|nice|good|wonderful|amazing|awesome|fantastic)[.!]*$/i];
+var hasKnownCalque = (en, pl) => POLISH_CALQUES.some((re) => re.test(pl.trim())) || ENGLISH_ROBOTIC.some((re) => re.test(en.trim()));
 
 // utils/exerciseSentenceChecks.ts
 var normalizeSentence2 = (value) => String(value ?? "").normalize("NFKC").toLowerCase().replace(/[‘’ʼ`´]/g, "'").replace(/[^\p{L}\p{N}'\s]/gu, " ").replace(/\s+/g, " ").trim();
-var filterRepeatedSentences = (items, used, keysOf) => {
+var filterRepeatedSentences = (items, used, keysOf2) => {
   const seen = /* @__PURE__ */ new Set();
   for (const sentence of used) {
     const key = normalizeSentence2(sentence);
     if (key) seen.add(key);
   }
   return items.filter((item) => {
-    const keys = keysOf(item).map(normalizeSentence2).filter(Boolean);
+    const keys = keysOf2(item).map(normalizeSentence2).filter(Boolean);
     if (keys.some((key) => seen.has(key))) return false;
     keys.forEach((key) => seen.add(key));
     return true;
@@ -2266,6 +2332,322 @@ var MAX_SENTENCE_SOURCES = 5;
 var MAX_SENTENCE_TOPICS = 3;
 var MAX_TOPIC_LENGTH = 80;
 
+// utils/exerciseQuality.ts
+import { Type as Type4 } from "@google/genai";
+
+// utils/grammarFocus.ts
+var GRAMMAR_FOCUS_IDS = [
+  "tense",
+  "article",
+  "preposition",
+  "collocation",
+  "word_form",
+  "word_order",
+  "modal_verb",
+  "conditional",
+  "quantifier",
+  "phrasal_verb"
+];
+var isGrammarFocusId = (value) => typeof value === "string" && GRAMMAR_FOCUS_IDS.includes(value);
+
+// utils/exerciseQualityRules.ts
+var QUALITY_CRITERIA = ["naturalness", "equivalence", "uniqueness", "level_vocab", "context", "grammar"];
+var EXERCISE_IRON_RULES = `\u017BELAZNE ZASADY JAKO\u015ACI \u0106WICZE\u0143 (obowi\u0105zuj\u0105 ka\u017Cdy element, wa\u017Cniejsze ni\u017C u\u017Cycie s\u0142ownictwa z lekcji):
+a) NATURALNO\u015A\u0106 EN i PL. Zdania brzmi\u0105 jak wypowied\u017A native speakera. Zakaz kalk i t\u0142umaczenia s\u0142owo w s\u0142owo, zakaz robotycznych konstrukcji (np. polskie \u201E\u2026, co jest \u015Bwietne\u201D zamiast naturalnego \u201Ei to \u015Bwietnie\u201D, angielskie \u201E\u2026, which is great\u201D doklejone na ko\u0144cu), zakaz niezr\u0119cznego szyku.
+b) R\xD3WNOWA\u017BNO\u015A\u0106 ZNACZENIOWA PL = EN. Polskie i angielskie zdanie opisuj\u0105 to samo: ta sama osoba, liczba, czas, tryb i stopie\u0144 formalno\u015Bci (moje = my, nie your; ona = she, nie he; wczoraj = past, nie present).
+c) JEDNOZNACZNO\u015A\u0106. Wielokrotny wyb\xF3r: dok\u0142adnie JEDNA poprawna opcja. Dopasowanie: ka\u017Cda para ma tylko jedno sensowne dopasowanie. Korekta zda\u0144: dok\u0142adnie JEDEN zamierzony b\u0142\u0105d, a wersja poprawna jest naturalna.
+d) POZIOM I R\xD3\u017BNORODNO\u015A\u0106. Poziom CEFR zgodny z kursantem, s\u0142ownictwo z lekcji u\u017Cyte sensownie (nie na si\u0142\u0119), brak duplikat\xF3w i brak kilku zda\u0144 pod rz\u0105d o identycznej strukturze.
+e) KONTEKST. Zdanie ma sens jako ca\u0142o\u015B\u0107 \u2014 \u017Cadnych absurd\xF3w i przypadkowych idiom\xF3w niepasuj\u0105cych do reszty (np. \u201EMy office is on your doorstep\u201D). Polecenie po polsku musi dotyczy\u0107 tej samej sytuacji co zdanie angielskie (nie hamak i meble w jednej parze).
+f) POPRAWNO\u015A\u0106 GRAMATYCZNA. Ka\u017Cde zdanie angielskie (tak\u017Ce to, kt\xF3re ma by\u0107 POPRAWNE w korekcie i ka\u017Cda wersja po wstawieniu luki) jest gramatycznie bezb\u0142\u0119dne: szyk, czas, forma czasownika, przedimki, przyimki, zgoda podmiotu z orzeczeniem. Wielokrotny wyb\xF3r: po wstawieniu poprawnej opcji zdanie jest poprawne gramatycznie i znaczeniowo, a ka\u017Cda z trzech pozosta\u0142ych opcji po wstawieniu daje zdanie niepoprawne gramatycznie ALBO nieadekwatne znaczeniowo.
+Przed zwr\xF3ceniem KA\u017BDEGO elementu sprawd\u017A punkty a)\u2013f). Element, kt\xF3ry kt\xF3rego\u015B nie spe\u0142nia, przepisz albo zast\u0105p innym.`;
+var JUDGE_CRITERIA_TEXT = `Dla KA\u017BDEGO elementu oce\u0144 sze\u015B\u0107 kryteri\xF3w (true = spe\u0142nione, false = niespe\u0142nione):
+- naturalness (a): zdania angielskie i polskie brzmi\u0105 jak native speaker; bez kalk, bez robotycznych konstrukcji, bez niezr\u0119cznego szyku;
+- equivalence (b): polska i angielska strona znacz\u0105 TO SAMO \u2014 ta sama osoba, liczba, czas, tryb i formalno\u015B\u0107 (moje \u2260 your; inna sytuacja = false);
+- uniqueness (c): dok\u0142adnie jedna poprawna odpowied\u017A (wielokrotny wyb\xF3r), jednoznaczne pary (dopasowanie: polskie znaczenie nie pasuje te\u017C do \u017Cadnego innego angielskiego s\u0142owa z tej samej listy), dok\u0142adnie jeden zamierzony b\u0142\u0105d i naturalna wersja poprawna (korekta); dla pozosta\u0142ych typ\xF3w true;
+- level_vocab (d): poziom pasuje do kursanta, s\u0142ownictwo u\u017Cyte sensownie;
+- context (e): ca\u0142o\u015B\u0107 ma sens, bez absurd\xF3w i przypadkowych idiom\xF3w (np. \u201Emy office\u2026 on your doorstep\u201D);
+- grammar (f): zdanie angielskie jest poprawne gramatycznie (szyk, czas, forma czasownika, przedimki, przyimki, zgoda podmiotu z orzeczeniem; w korekcie dotyczy wersji POPRAWNEJ). Wielokrotny wyb\xF3r: po wstawieniu opcji oznaczonej jako poprawna zdanie jest poprawne gramatycznie I znaczeniowo, a dok\u0142adnie jedna z czterech opcji spe\u0142nia ten warunek \u2014 je\u015Bli druga opcja te\u017C daje poprawne zdanie, grammar = false.
+W polu reason napisz po polsku w kilku s\u0142owach, co jest nie tak (puste, gdy wszystko w porz\u0105dku). B\u0105d\u017A surowy: w\u0105tpliwo\u015B\u0107 = false.`;
+
+// utils/exerciseQuality.ts
+var MARKUP = /https?:\/\/|www\.|<|>|\{\{|`/i;
+var POLISH_DIACRITICS = /[ąćęłńóśźż]/i;
+var EN_STOPWORDS = /* @__PURE__ */ new Set(["the", "is", "are", "was", "were", "to", "and", "of", "in", "my", "i", "you", "we", "it", "a", "an", "for", "with", "on"]);
+var clean = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
+var wordCount = (text2) => text2 ? text2.split(" ").length : 0;
+var checkEnglishSide = (en) => {
+  if (!en) return "missing_field";
+  if (en.length > 200 || wordCount(en) > 26) return "too_long";
+  if (MARKUP.test(en)) return "markup";
+  if (POLISH_DIACRITICS.test(en)) return "language_mixed";
+  return null;
+};
+var checkPolishSide = (pl) => {
+  if (!pl) return "missing_field";
+  if (pl.length > 240) return "too_long";
+  if (MARKUP.test(pl)) return "markup";
+  if (!POLISH_DIACRITICS.test(pl)) {
+    const english = tokens(pl).filter((t) => EN_STOPWORDS.has(t)).length;
+    if (english >= 3) return "language_mixed";
+  }
+  return null;
+};
+var checkPair = (en, pl) => checkEnglishSide(en) ?? checkPolishSide(pl) ?? (findPersonMismatch(en, pl) ? "person_mismatch" : null) ?? (hasKnownCalque(en, pl) ? "calque" : null);
+var tokenDistance = (a, b) => {
+  const prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let diagonal = prev[0];
+    prev[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const above = prev[j];
+      prev[j] = Math.min(prev[j] + 1, prev[j - 1] + 1, diagonal + (a[i - 1] === b[j - 1] ? 0 : 1));
+      diagonal = above;
+    }
+  }
+  return prev[b.length];
+};
+var checkItemLocally = (item) => {
+  switch (item.kind) {
+    case "pair":
+      return checkPair(clean(item.en), clean(item.pl));
+    case "fix_sentence": {
+      const incorrect = clean(item.incorrect);
+      const correct = clean(item.correct);
+      const side = checkEnglishSide(correct) ?? checkEnglishSide(incorrect);
+      if (side) return side;
+      if (normalizeSentence2(incorrect) === normalizeSentence2(correct)) return "no_error";
+      const distance = tokenDistance(normalizeSentence2(incorrect).split(" "), normalizeSentence2(correct).split(" "));
+      if (distance > 3) return "error_not_single";
+      const pl = clean(item.pl);
+      if (pl) {
+        const plSide = checkPolishSide(pl);
+        if (plSide) return plSide;
+        if (findPersonMismatch(correct, pl)) return "person_mismatch";
+        if (hasKnownCalque(correct, pl)) return "calque";
+      }
+      return null;
+    }
+    case "multiple_choice": {
+      const question = clean(item.question);
+      if (!question) return "missing_field";
+      if (question.length > 240 || MARKUP.test(question)) return "too_long";
+      const options = (item.options ?? []).map(clean);
+      if (options.length !== 4) return "bad_option_count";
+      if (options.some((o) => !o || o.length > 80)) return "missing_field";
+      if (!Number.isInteger(item.correctIndex) || item.correctIndex < 0 || item.correctIndex >= options.length) return "bad_correct_index";
+      if (new Set(options.map(normalizeSentence2)).size !== options.length) return "duplicate_option";
+      const blanks = question.split("___").length - 1;
+      if (blanks > 1) return "no_blank";
+      if (blanks === 0 && !question.includes("?")) return "no_blank";
+      if (blanks === 1) {
+        const filled = options.map((o) => normalizeSentence2(question.replace("___", o)));
+        if (new Set(filled).size !== filled.length) return "equivalent_options";
+      }
+      if (item.grammarFocus !== void 0 && !isGrammarFocusId(item.grammarFocus)) return "unknown_grammar_focus";
+      return null;
+    }
+    case "word_pair": {
+      const left = clean(item.left);
+      const right = clean(item.right);
+      if (!left || !right) return "missing_field";
+      if (left.length > 80 || right.length > 100 || MARKUP.test(left + right)) return "too_long";
+      if (POLISH_DIACRITICS.test(left)) return "language_mixed";
+      if (normalizeSentence2(left) === normalizeSentence2(right)) return "duplicate_pair_side";
+      return null;
+    }
+  }
+};
+var keysOf = (item) => {
+  switch (item.kind) {
+    case "pair":
+      return [normalizeSentence2(item.en), normalizeSentence2(item.pl)];
+    case "fix_sentence":
+      return [normalizeSentence2(item.correct), normalizeSentence2(item.incorrect)];
+    case "multiple_choice":
+      return [normalizeSentence2(item.question)];
+    case "word_pair":
+      return [normalizeSentence2(item.left), normalizeSentence2(item.right)];
+  }
+};
+var structureKey = (item) => {
+  const sentence = item.kind === "pair" ? item.en : item.kind === "fix_sentence" ? item.correct : null;
+  if (!sentence) return null;
+  return normalizeSentence2(sentence).split(" ").slice(0, 3).join(" ");
+};
+var checkSetLocally = (items, alreadyKept = []) => {
+  const rejected = /* @__PURE__ */ new Map();
+  const seen = /* @__PURE__ */ new Set();
+  alreadyKept.forEach((kept) => keysOf(kept).forEach((k) => k && seen.add(k)));
+  let previousStructure = alreadyKept.length > 0 ? structureKey(alreadyKept[alreadyKept.length - 1]) : null;
+  items.forEach((item, index) => {
+    const single = checkItemLocally(item);
+    if (single) {
+      rejected.set(index, single);
+      return;
+    }
+    const keys = keysOf(item).filter(Boolean);
+    if (keys.some((k) => seen.has(k))) {
+      rejected.set(index, item.kind === "word_pair" ? "duplicate_pair_side" : "duplicate");
+      return;
+    }
+    const structure = structureKey(item);
+    if (structure && structure === previousStructure) {
+      rejected.set(index, "same_structure");
+      return;
+    }
+    keys.forEach((k) => seen.add(k));
+    previousStructure = structure;
+  });
+  return rejected;
+};
+var renderForJudge = (item, index) => {
+  switch (item.kind) {
+    case "pair":
+      return `${index}. [para PL\u2194EN]
+   EN: ${item.en}
+   PL: ${item.pl}`;
+    case "fix_sentence":
+      return `${index}. [korekta zdania]
+   Z B\u0141\u0118DEM: ${item.incorrect}
+   POPRAWNIE: ${item.correct}${item.pl ? `
+   PL: ${item.pl}` : ""}`;
+    case "multiple_choice":
+      return `${index}. [wielokrotny wyb\xF3r]
+   PYTANIE: ${item.question}
+   OPCJE: ${item.options.map((o, i) => `${String.fromCharCode(65 + i)}) ${o}`).join("  ")}
+   POPRAWNA: ${String.fromCharCode(65 + item.correctIndex)}${item.explanation ? `
+   WYJA\u015ANIENIE: ${item.explanation}` : ""}`;
+    case "word_pair":
+      return `${index}. [dopasowanie: s\u0142owo/fraza EN \u2194 znaczenie PL]
+   ${item.left} = ${item.right}`;
+  }
+};
+var buildJudgePrompt = (items, levelHint) => `ZADANIE: jeste\u015B surowym recenzentem \u0107wicze\u0144 do nauki angielskiego dla polskiego kursanta${levelHint ? ` (poziom ${levelHint})` : ""}. Oce\u0144 ka\u017Cdy element poni\u017Cej.
+
+${JUDGE_CRITERIA_TEXT}
+
+ELEMENTY:
+${items.map(renderForJudge).join("\n")}
+
+Zwr\xF3\u0107 JSON z jednym wpisem na element (index = numer elementu):
+{"verdicts":[{"index":0,"reason":"","naturalness":true,"equivalence":true,"uniqueness":true,"level_vocab":true,"context":true,"grammar":true}]}`;
+var JUDGE_SCHEMA = {
+  type: Type4.OBJECT,
+  properties: {
+    verdicts: {
+      type: Type4.ARRAY,
+      items: {
+        type: Type4.OBJECT,
+        properties: {
+          index: { type: Type4.INTEGER },
+          reason: { type: Type4.STRING, description: "Po polsku, kilka s\u0142\xF3w: co jest nie tak (puste, gdy wszystko w porz\u0105dku)." },
+          naturalness: { type: Type4.BOOLEAN },
+          equivalence: { type: Type4.BOOLEAN },
+          uniqueness: { type: Type4.BOOLEAN },
+          level_vocab: { type: Type4.BOOLEAN },
+          context: { type: Type4.BOOLEAN },
+          grammar: { type: Type4.BOOLEAN }
+        },
+        required: ["index", "reason", ...QUALITY_CRITERIA],
+        propertyOrdering: ["index", "reason", ...QUALITY_CRITERIA]
+      }
+    }
+  },
+  required: ["verdicts"]
+};
+var parseJudgeVerdicts = (raw, count) => {
+  const verdicts = Array.from({ length: count }, () => null);
+  let data = raw;
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch {
+      return verdicts;
+    }
+  }
+  const list = Array.isArray(data) ? data : data && typeof data === "object" && Array.isArray(data.verdicts) ? data.verdicts : null;
+  if (!list) return verdicts;
+  list.forEach((entry, position) => {
+    if (!entry || typeof entry !== "object") return;
+    const source = entry;
+    const index = typeof source.index === "number" ? source.index : position;
+    if (!Number.isInteger(index) || index < 0 || index >= count || verdicts[index]) return;
+    const criteria = {};
+    for (const key of QUALITY_CRITERIA) if (typeof source[key] === "boolean") criteria[key] = source[key];
+    const hasCriteria = Object.keys(criteria).length > 0;
+    if (!hasCriteria && typeof source.ok !== "boolean") return;
+    const ok = hasCriteria ? QUALITY_CRITERIA.every((key) => criteria[key] === true) && source.ok !== false : source.ok === true;
+    verdicts[index] = { ok, reason: typeof source.reason === "string" ? source.reason.trim() : "", criteria };
+  });
+  return verdicts;
+};
+var MAX_QUALITY_RETRIES = 2;
+var describeItem = (item) => {
+  switch (item.kind) {
+    case "pair":
+      return `${item.en} / ${item.pl}`;
+    case "fix_sentence":
+      return item.incorrect;
+    case "multiple_choice":
+      return item.question;
+    case "word_pair":
+      return `${item.left} = ${item.right}`;
+  }
+};
+var runQualityGate = async (options) => {
+  const maxRetries = options.maxRetries ?? MAX_QUALITY_RETRIES;
+  const kept = [];
+  const unverified = [];
+  const rejected = [];
+  let pending = options.items;
+  let retries = 0;
+  let judgeDown = false;
+  for (let round = 0; ; round++) {
+    const qualities = pending.map(options.toQuality);
+    const keptQualities = kept.map(options.toQuality);
+    const local = checkSetLocally(qualities, keptQualities);
+    const survivors = [];
+    pending.forEach((item, index) => {
+      const reason = local.get(index);
+      if (reason) rejected.push({ stage: "local", reason, text: describeItem(qualities[index]) });
+      else survivors.push({ item, quality: qualities[index] });
+    });
+    if (survivors.length > 0) {
+      let verdicts = null;
+      try {
+        verdicts = await options.judge(survivors.map((s) => s.quality));
+      } catch {
+        verdicts = null;
+      }
+      if (!verdicts) judgeDown = true;
+      survivors.forEach((survivor, index) => {
+        const verdict = verdicts?.[index] ?? null;
+        if (!verdict) unverified.push(survivor.item);
+        else if (verdict.ok) kept.push(survivor.item);
+        else rejected.push({ stage: "judge", reason: verdict.reason || "judge_rejected", text: describeItem(survivor.quality) });
+      });
+    }
+    const missing = options.target - kept.length;
+    if (missing <= 0 || !options.refill || retries >= maxRetries || judgeDown || rejected.length === 0) break;
+    retries += 1;
+    try {
+      pending = await options.refill(missing, rejected);
+    } catch {
+      break;
+    }
+    if (pending.length === 0) break;
+  }
+  return { items: kept.slice(0, options.target), unverified, rejected, retries };
+};
+var buildRejectedBlock = (rejected, limit = 8) => {
+  const lines = rejected.slice(-limit).map((r) => `- ${r.text}${r.reason && r.stage === "judge" ? ` (${r.reason})` : ""}`);
+  return lines.length === 0 ? "" : `
+
+[ODRZUCONE PRZY KONTROLI \u2014 NIE POWTARZAJ TYCH B\u0141\u0118D\xD3W]:
+${lines.join("\n")}
+`;
+};
+
 // utils/freePracticeGeneration.ts
 var FREE_PRACTICE_MODEL = "gemini-2.5-flash";
 var FREE_PRACTICE_CALL_TIMEOUT_MS = 25e3;
@@ -2367,14 +2749,18 @@ function buildGenerationPrompt({ request, context, retryNote }) {
 - Je\u015Bli w <error_history> s\u0105 b\u0142\u0119dy kursanta, cz\u0119\u015B\u0107 zda\u0144 \u0107wiczy w\u0142a\u015Bnie te problemy; im lepiej kursant sobie radzi, tym trudniejsze s\u0142ownictwo i konstrukcje.
 - english_sentence: naturalne zdanie po angielsku. polish_translation: naturalna polszczyzna, nie kalka. hint: kr\xF3tka podpowied\u017A po polsku z kluczowymi s\u0142owami angielskimi i wskaz\xF3wk\u0105 gramatyczn\u0105. puzzleChunks: zdanie poci\u0119te na 3\u20135 sensownych fragment\xF3w (kr\xF3tkie zdania na pojedyncze s\u0142owa lub pary, d\u0142ugie na fragmenty 2\u20134 s\u0142owa); z\u0142\u0105czone daj\u0105 dok\u0142adnie english_sentence.
 
-${CRIBRO_SENTENCE_NATURALNESS2}` : `ZADANIE: U\u0142\xF3\u017C ${request.count} ${request.count === 1 ? "zadanie" : "zada\u0144"} \u201EPopraw zdanie" dla kursanta na poziomie ${level}.
+${CRIBRO_SENTENCE_NATURALNESS2}
+
+${EXERCISE_IRON_RULES}` : `ZADANIE: U\u0142\xF3\u017C ${request.count} ${request.count === 1 ? "zadanie" : "zada\u0144"} \u201EPopraw zdanie" dla kursanta na poziomie ${level}.
 Kursant dostaje zdanie z jednym b\u0142\u0119dem i przepisuje je poprawnie. Oprzyj zadania na s\u0142owach s\u0142abych z <focus_words> (priorytet), tematach z <student_topics>, s\u0142owach z <student_words> i <lesson_context>.
 Je\u015Bli w <error_history> s\u0105 b\u0142\u0119dy kursanta, cz\u0119\u015B\u0107 zada\u0144 dotyczy w\u0142a\u015Bnie takich b\u0142\u0119d\xF3w.
 POLA: explanation \u2014 zwi\u0119z\u0142e wyja\u015Bnienie regu\u0142y po polsku; hint \u2014 subtelna wskaz\xF3wka po polsku, gdzie szuka\u0107 b\u0142\u0119du, bez podawania poprawki; polish_hint \u2014 naturalne polskie znaczenie zdania.
 
 ${FIX_SENTENCE_RULES2}
 
-${CRIBRO_SENTENCE_NATURALNESS2}`;
+${CRIBRO_SENTENCE_NATURALNESS2}
+
+${EXERCISE_IRON_RULES}`;
   return [
     "ROLA: Jeste\u015B autorem \u0107wicze\u0144 do nauki angielskiego dla polskiego kursanta. Zdania maj\u0105 by\u0107 logiczne, naturalne i realistyczne.",
     DATA_RULES,
@@ -2384,18 +2770,18 @@ ${CRIBRO_SENTENCE_NATURALNESS2}`;
   ].filter(Boolean).join("\n\n");
 }
 var TRANSLATION_SCHEMA = {
-  type: Type4.OBJECT,
+  type: Type5.OBJECT,
   properties: {
     sentences: {
-      type: Type4.ARRAY,
+      type: Type5.ARRAY,
       items: {
-        type: Type4.OBJECT,
+        type: Type5.OBJECT,
         properties: {
-          english_sentence: { type: Type4.STRING, description: "Czyste, naturalne zdanie po angielsku." },
-          polish_translation: { type: Type4.STRING, description: "Naturalne polskie t\u0142umaczenie." },
-          target_word_used: { type: Type4.STRING, description: "Jedno docelowe s\u0142owo u\u017Cyte w zdaniu." },
-          hint: { type: Type4.STRING, description: "Kr\xF3tka podpowied\u017A po polsku z kluczowymi s\u0142owami angielskimi i wskaz\xF3wk\u0105 gramatyczn\u0105." },
-          puzzleChunks: { type: Type4.ARRAY, items: { type: Type4.STRING }, description: "Fragmenty zdania do rozgrzewki (3\u20135)." }
+          english_sentence: { type: Type5.STRING, description: "Czyste, naturalne zdanie po angielsku." },
+          polish_translation: { type: Type5.STRING, description: "Naturalne polskie t\u0142umaczenie." },
+          target_word_used: { type: Type5.STRING, description: "Jedno docelowe s\u0142owo u\u017Cyte w zdaniu." },
+          hint: { type: Type5.STRING, description: "Kr\xF3tka podpowied\u017A po polsku z kluczowymi s\u0142owami angielskimi i wskaz\xF3wk\u0105 gramatyczn\u0105." },
+          puzzleChunks: { type: Type5.ARRAY, items: { type: Type5.STRING }, description: "Fragmenty zdania do rozgrzewki (3\u20135)." }
         },
         required: ["english_sentence", "polish_translation", "hint", "puzzleChunks"]
       }
@@ -2404,19 +2790,19 @@ var TRANSLATION_SCHEMA = {
   required: ["sentences"]
 };
 var CORRECTION_SCHEMA = {
-  type: Type4.OBJECT,
+  type: Type5.OBJECT,
   properties: {
     items: {
-      type: Type4.ARRAY,
+      type: Type5.ARRAY,
       items: {
-        type: Type4.OBJECT,
+        type: Type5.OBJECT,
         properties: {
-          correct_sentence: { type: Type4.STRING, description: "Naturalne, w pe\u0142ni poprawne zdanie po angielsku \u2014 uk\u0142adane NAJPIERW." },
-          error_type: { type: Type4.STRING, enum: [...FIX_SENTENCE_ERROR_TYPES2], description: "Jeden typ b\u0142\u0119du pasuj\u0105cy do tego zdania." },
-          error_sentence: { type: Type4.STRING, description: "correct_sentence z DOK\u0141ADNIE jednym b\u0142\u0119dem typu error_type." },
-          explanation: { type: Type4.STRING, description: "Zwi\u0119z\u0142e wyja\u015Bnienie regu\u0142y po polsku." },
-          hint: { type: Type4.STRING, description: "Wskaz\xF3wka po polsku bez podawania poprawki." },
-          polish_hint: { type: Type4.STRING, description: "Naturalne polskie znaczenie zdania." }
+          correct_sentence: { type: Type5.STRING, description: "Naturalne, w pe\u0142ni poprawne zdanie po angielsku \u2014 uk\u0142adane NAJPIERW." },
+          error_type: { type: Type5.STRING, enum: [...FIX_SENTENCE_ERROR_TYPES2], description: "Jeden typ b\u0142\u0119du pasuj\u0105cy do tego zdania." },
+          error_sentence: { type: Type5.STRING, description: "correct_sentence z DOK\u0141ADNIE jednym b\u0142\u0119dem typu error_type." },
+          explanation: { type: Type5.STRING, description: "Zwi\u0119z\u0142e wyja\u015Bnienie regu\u0142y po polsku." },
+          hint: { type: Type5.STRING, description: "Wskaz\xF3wka po polsku bez podawania poprawki." },
+          polish_hint: { type: Type5.STRING, description: "Naturalne polskie znaczenie zdania." }
         },
         required: ["correct_sentence", "error_type", "error_sentence", "explanation", "hint", "polish_hint"],
         propertyOrdering: ["correct_sentence", "error_type", "error_sentence", "explanation", "hint", "polish_hint"]
@@ -2519,18 +2905,31 @@ var retryNoteFor = (request, rejected) => {
   }
   return `POPRZEDNIA ODPOWIED\u0179 BY\u0141A NIEPOPRAWNA (nie by\u0142 to JSON zgodny ze schematem albo zdania nie przesz\u0142y kontroli). Zwr\xF3\u0107 dok\u0142adnie ${request.count} zda\u0144, tylko JSON zgodny ze schematem, bez link\xF3w i znacznik\xF3w.`;
 };
+var FREE_PRACTICE_BUDGET_MS = 58e3;
+var toFreeQualityItem = (exercise) => exercise.format === "error_hunt" ? {
+  kind: "fix_sentence",
+  incorrect: exercise.erroneousSentence ?? "",
+  correct: exercise.englishTranslation,
+  // W korekcie `polishSentence` bywa zastępcze (zdanie z błędem, gdy brak polskiego znaczenia).
+  ...exercise.polishSentence !== exercise.erroneousSentence ? { pl: exercise.polishSentence } : {}
+} : { kind: "pair", en: exercise.englishTranslation, pl: exercise.polishSentence };
 async function generateFreePracticeExercises(args) {
   const { request, context, callModel } = args;
+  const clock = args.clock ?? Date.now;
+  const startedAt = clock();
+  const remaining = () => FREE_PRACTICE_BUDGET_MS - (clock() - startedAt);
   const schema = request.format === "translation" ? TRANSLATION_SCHEMA : CORRECTION_SCHEMA;
   let retryNote;
-  for (let attempt = 1; attempt <= FREE_PRACTICE_MAX_ATTEMPTS; attempt++) {
-    const prompt = buildGenerationPrompt({ request, context, retryNote });
+  let lastModel = FREE_PRACTICE_MODEL;
+  const produce = async (count, note, attempt) => {
+    const prompt = buildGenerationPrompt({ request: { ...request, count }, context, retryNote: note });
     let reply;
     try {
       reply = await callModel({ prompt, schema, attempt });
     } catch (err) {
       throw new FreeGenerationError("model_failed", err instanceof Error ? err.message : "Model niedost\u0119pny.");
     }
+    lastModel = reply.modelUsed;
     const parsed = parseModelJson(reply.text);
     let exercises;
     let rejected = [];
@@ -2546,9 +2945,31 @@ async function generateFreePracticeExercises(args) {
       item.polishSentence,
       item.erroneousSentence
     ]);
-    exercises = exercises.slice(0, request.count);
-    if (exercises.length > 0) return { exercises, modelUsed: reply.modelUsed, attempts: attempt };
-    retryNote = retryNoteFor(request, rejected);
+    return { exercises: exercises.slice(0, count), rejected };
+  };
+  const judge = async (items) => {
+    if (remaining() < FREE_PRACTICE_CALL_TIMEOUT_MS) throw new Error("Brak czasu na kontrol\u0119 jako\u015Bci.");
+    const reply = await callModel({ prompt: buildJudgePrompt(items, safeLevel(context.level)), schema: JUDGE_SCHEMA, attempt: 1 });
+    return parseJudgeVerdicts(parseModelJson(reply.text), items.length);
+  };
+  for (let attempt = 1; attempt <= FREE_PRACTICE_MAX_ATTEMPTS; attempt++) {
+    const first = await produce(request.count, retryNote, attempt);
+    if (first.exercises.length > 0) {
+      const gate = await runQualityGate({
+        items: first.exercises,
+        target: request.count,
+        toQuality: toFreeQualityItem,
+        judge,
+        refill: async (missing, rejected) => {
+          if (remaining() < 2 * FREE_PRACTICE_CALL_TIMEOUT_MS) return [];
+          const more = await produce(missing, `${retryNote ?? ""}${buildRejectedBlock(rejected)}`, attempt);
+          return more.exercises;
+        }
+      });
+      if (gate.items.length > 0) return { exercises: gate.items, modelUsed: lastModel, attempts: attempt };
+    }
+    if (attempt < FREE_PRACTICE_MAX_ATTEMPTS && remaining() < 2 * FREE_PRACTICE_CALL_TIMEOUT_MS) break;
+    retryNote = retryNoteFor(request, first.rejected);
   }
   throw new FreeGenerationError("invalid_output", "Model nie zwr\xF3ci\u0142 poprawnych zda\u0144.");
 }
@@ -3774,8 +4195,8 @@ var sanitizeWarmup = (input) => {
   if (input.length === 0) return [];
   const valid = [];
   for (const item of input) {
-    const clean2 = sanitizeWarmupItem(item);
-    if (clean2) valid.push(clean2);
+    const clean3 = sanitizeWarmupItem(item);
+    if (clean3) valid.push(clean3);
     if (valid.length >= WARMUP_MAX_ITEMS) break;
   }
   return valid.length > 0 ? stripUndefinedDeep(valid) : void 0;
@@ -3787,7 +4208,7 @@ var WARMUP_CARD_TERM_MAX_WORDS = 5;
 var WARMUP_CARD_TERM_MAX_LENGTH = 60;
 var WARMUP_CARD_DEFINITION_MAX_LENGTH = 60;
 var WARMUP_CARD_CONTEXT_MAX_LENGTH = 200;
-var clean = (value) => {
+var clean2 = (value) => {
   if (typeof value !== "string") return null;
   return value.trim().replace(/\s+/g, " ");
 };
@@ -3800,17 +4221,17 @@ var termEqualsTaskSentence = (term, taskSentences) => {
 var checkWarmupCard = (raw, taskSentences = []) => {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, reason: "invalid_shape" };
   const source = raw;
-  const term = clean(source.term);
+  const term = clean2(source.term);
   if (!term) return { ok: false, reason: "missing_term" };
   if (countWords(term) > WARMUP_CARD_TERM_MAX_WORDS || term.length > WARMUP_CARD_TERM_MAX_LENGTH) {
     return { ok: false, reason: "term_too_long" };
   }
-  const definition = clean(source.definition);
+  const definition = clean2(source.definition);
   if (!definition) return { ok: false, reason: "missing_definition" };
   if (definition.length > WARMUP_CARD_DEFINITION_MAX_LENGTH) return { ok: false, reason: "definition_too_long" };
   if (normalizeSentence2(definition) === normalizeSentence2(term)) return { ok: false, reason: "definition_same_as_term" };
   if (termEqualsTaskSentence(term, taskSentences)) return { ok: false, reason: "term_in_task_sentence" };
-  const context = clean(source.contextSentence);
+  const context = clean2(source.contextSentence);
   const card = { term, definition };
   if (context && context.length <= WARMUP_CARD_CONTEXT_MAX_LENGTH) card.contextSentence = context;
   return { ok: true, card };
@@ -3848,28 +4269,28 @@ var sanitizeWarmupCards = (input, taskSentences = []) => {
 // server.ts
 import crypto from "crypto";
 function mapToActualOpenAIModel(modelName) {
-  const clean2 = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
-  if (clean2 === "gpt-5.6-luna" || clean2 === "gpt-5.6" || clean2.includes("luna")) {
+  const clean3 = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
+  if (clean3 === "gpt-5.6-luna" || clean3 === "gpt-5.6" || clean3.includes("luna")) {
     return "gpt-4o";
   }
-  if (clean2.includes("gpt-4o-mini")) return "gpt-4o-mini";
-  if (clean2.includes("gpt-4o")) return "gpt-4o";
-  if (clean2.includes("o3-mini")) return "o3-mini";
-  if (clean2.includes("gpt-4-turbo")) return "gpt-4-turbo";
-  if (clean2.includes("gpt-4")) return "gpt-4";
-  if (clean2.includes("gpt-3.5-turbo") || clean2.includes("gpt-3.5")) return "gpt-3.5-turbo";
+  if (clean3.includes("gpt-4o-mini")) return "gpt-4o-mini";
+  if (clean3.includes("gpt-4o")) return "gpt-4o";
+  if (clean3.includes("o3-mini")) return "o3-mini";
+  if (clean3.includes("gpt-4-turbo")) return "gpt-4-turbo";
+  if (clean3.includes("gpt-4")) return "gpt-4";
+  if (clean3.includes("gpt-3.5-turbo") || clean3.includes("gpt-3.5")) return "gpt-3.5-turbo";
   return "gpt-4o-mini";
 }
 function mapToActualAnthropicModel(modelName) {
-  const clean2 = String(modelName || "").replace(/^anthropic\//, "").trim().toLowerCase();
-  if (clean2.includes("3-7") || clean2.includes("3.7")) return "claude-3-7-sonnet-20250219";
-  if (clean2.includes("3-5-haiku") || clean2.includes("3.5-haiku") || clean2.includes("haiku")) return "claude-3-5-haiku-20241022";
-  if (clean2.includes("3-5-sonnet") || clean2.includes("3.5-sonnet") || clean2.includes("sonnet")) return "claude-3-5-sonnet-20241022";
+  const clean3 = String(modelName || "").replace(/^anthropic\//, "").trim().toLowerCase();
+  if (clean3.includes("3-7") || clean3.includes("3.7")) return "claude-3-7-sonnet-20250219";
+  if (clean3.includes("3-5-haiku") || clean3.includes("3.5-haiku") || clean3.includes("haiku")) return "claude-3-5-haiku-20241022";
+  if (clean3.includes("3-5-sonnet") || clean3.includes("3.5-sonnet") || clean3.includes("sonnet")) return "claude-3-5-sonnet-20241022";
   return "claude-3-7-sonnet-20250219";
 }
 function mapToActualDeepSeekModel(modelName) {
-  const clean2 = String(modelName || "").replace(/^deepseek\//, "").trim().toLowerCase();
-  if (clean2.includes("reasoner") || clean2.includes("r1")) return "deepseek-reasoner";
+  const clean3 = String(modelName || "").replace(/^deepseek\//, "").trim().toLowerCase();
+  if (clean3.includes("reasoner") || clean3.includes("r1")) return "deepseek-reasoner";
   return "deepseek-chat";
 }
 function extractJsonFromString(str) {
@@ -5443,11 +5864,11 @@ function createApp() {
         "deepseek/deepseek-chat",
         "deepseek/deepseek-reasoner"
       ];
-      const clean2 = {};
+      const clean3 = {};
       for (const [task, model] of Object.entries(models || {})) {
         if (!allowedTasks.includes(task)) continue;
         if (typeof model !== "string" || !allowedModels.includes(model)) continue;
-        clean2[task] = model;
+        clean3[task] = model;
       }
       let cleanCouncil = void 0;
       if (council && typeof council === "object") {
@@ -5476,7 +5897,7 @@ function createApp() {
         }
         const updated = {
           ...currentData,
-          ...models ? { models: clean2 } : {},
+          ...models ? { models: clean3 } : {},
           ...cleanCouncil ? { council: cleanCouncil } : {},
           ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
           updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -5490,7 +5911,7 @@ function createApp() {
           const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
           await adminDb.collection("system").doc("ai").set(
             {
-              ...models ? { models: clean2 } : {},
+              ...models ? { models: clean3 } : {},
               ...cleanCouncil ? { council: cleanCouncil } : {},
               ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
               updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -5501,7 +5922,7 @@ function createApp() {
           console.warn("[AI] Nie uda\u0142o si\u0119 zapisa\u0107 konfiguracji do Firestore (brak po\u015Bwiadcze\u0144 Admin):", dbErr);
         }
       }
-      return res.json({ ok: true, models: clean2, council: cleanCouncil, chatConfig: cleanChatConfig });
+      return res.json({ ok: true, models: clean3, council: cleanCouncil, chatConfig: cleanChatConfig });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
@@ -5988,8 +6409,8 @@ RESEND_API_KEY=${cleanKey}
     const trimmed = input.trim();
     const match = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-f0-9]{32})/i);
     if (match) {
-      const clean2 = match[1].replace(/-/g, "").toLowerCase();
-      return `${clean2.slice(0, 8)}-${clean2.slice(8, 12)}-${clean2.slice(12, 16)}-${clean2.slice(16, 20)}-${clean2.slice(20)}`;
+      const clean3 = match[1].replace(/-/g, "").toLowerCase();
+      return `${clean3.slice(0, 8)}-${clean3.slice(8, 12)}-${clean3.slice(12, 16)}-${clean3.slice(16, 20)}-${clean3.slice(20)}`;
     }
     return trimmed;
   }
@@ -6350,31 +6771,31 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       const apiKey = getGeminiApiKey();
       const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const schema = {
-        type: Type5.OBJECT,
+        type: Type6.OBJECT,
         properties: {
-          topic: { type: Type5.STRING, description: "Zwi\u0119z\u0142y, merytoryczny temat lekcji po angielsku (max 6-8 s\u0142\xF3w)" },
-          date: { type: Type5.STRING, description: "Rzeczywista data spotkania w formacie YYYY-MM-DD, je\u015Bli pada w transkrypcji" },
-          summary: { type: Type5.STRING, description: "2-3 zdania podsumowania po polsku o czym by\u0142a lekcja" },
+          topic: { type: Type6.STRING, description: "Zwi\u0119z\u0142y, merytoryczny temat lekcji po angielsku (max 6-8 s\u0142\xF3w)" },
+          date: { type: Type6.STRING, description: "Rzeczywista data spotkania w formacie YYYY-MM-DD, je\u015Bli pada w transkrypcji" },
+          summary: { type: Type6.STRING, description: "2-3 zdania podsumowania po polsku o czym by\u0142a lekcja" },
           keyLanguage: {
-            type: Type5.ARRAY,
+            type: Type6.ARRAY,
             items: {
-              type: Type5.OBJECT,
+              type: Type6.OBJECT,
               properties: {
-                phrase: { type: Type5.STRING },
-                translation: { type: Type5.STRING },
-                context: { type: Type5.STRING }
+                phrase: { type: Type6.STRING },
+                translation: { type: Type6.STRING },
+                context: { type: Type6.STRING }
               },
               required: ["phrase", "translation"]
             }
           },
           corrections: {
-            type: Type5.ARRAY,
+            type: Type6.ARRAY,
             items: {
-              type: Type5.OBJECT,
+              type: Type6.OBJECT,
               properties: {
-                original: { type: Type5.STRING },
-                correction: { type: Type5.STRING },
-                rule: { type: Type5.STRING }
+                original: { type: Type6.STRING },
+                correction: { type: Type6.STRING },
+                rule: { type: Type6.STRING }
               },
               required: ["original", "correction"]
             }
@@ -6918,26 +7339,26 @@ Zwr\xF3\u0107 wynik jako obiekt JSON zawieraj\u0105cy tablic\u0119 obiekt\xF3w p
         contents = [{ text: prompt }];
       }
       const schema = {
-        type: Type5.ARRAY,
+        type: Type6.ARRAY,
         description: "Array of test questions",
         items: {
-          type: Type5.OBJECT,
+          type: Type6.OBJECT,
           properties: {
-            type: { type: Type5.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
-            instruction: { type: Type5.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
-            prompt: { type: Type5.STRING, description: "The question or the sentence to translate/fill" },
+            type: { type: Type6.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
+            instruction: { type: Type6.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
+            prompt: { type: Type6.STRING, description: "The question or the sentence to translate/fill" },
             options: {
-              type: Type5.ARRAY,
-              items: { type: Type5.STRING },
+              type: Type6.ARRAY,
+              items: { type: Type6.STRING },
               description: "Options for multiple_choice, find_mistake or matching pairs."
             },
             wordBank: {
-              type: Type5.ARRAY,
-              items: { type: Type5.STRING },
+              type: Type6.ARRAY,
+              items: { type: Type6.STRING },
               description: "List of words in the word bank for fill_in_blank_bank"
             },
-            correctAnswer: { type: Type5.STRING, description: "The correct answer (exact string)." },
-            hint: { type: Type5.STRING, description: "Optional hint in Polish." }
+            correctAnswer: { type: Type6.STRING, description: "The correct answer (exact string)." },
+            hint: { type: Type6.STRING, description: "Optional hint in Polish." }
           },
           required: ["type", "instruction", "prompt", "correctAnswer"]
         }
@@ -7158,22 +7579,22 @@ Zwr\xF3\u0107 dok\u0142adnie taki kszta\u0142t, bez komentarzy i bez bloku markd
 {"lessons":[{"date":"2024-03-12","studentId":"abc123","studentIds":["abc123"],"lessonTopic":"Present Perfect","revisionNotes":"...","vocabularyText":"deadline - termin\\nto meet - spotka\u0107","studentSpeaking":"...","thingsToImprove":"...","suggestedFollowUp":"..."}]}
 Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 nigdy nie wymy\u015Blaj lekcji, kt\xF3rych nie ma w tek\u015Bcie.`;
       const schema = {
-        type: Type5.OBJECT,
+        type: Type6.OBJECT,
         properties: {
           lessons: {
-            type: Type5.ARRAY,
+            type: Type6.ARRAY,
             items: {
-              type: Type5.OBJECT,
+              type: Type6.OBJECT,
               properties: {
-                date: { type: Type5.STRING },
-                studentId: { type: Type5.STRING },
-                studentIds: { type: Type5.ARRAY, items: { type: Type5.STRING } },
-                lessonTopic: { type: Type5.STRING },
-                revisionNotes: { type: Type5.STRING },
-                vocabularyText: { type: Type5.STRING },
-                studentSpeaking: { type: Type5.STRING },
-                thingsToImprove: { type: Type5.STRING },
-                suggestedFollowUp: { type: Type5.STRING }
+                date: { type: Type6.STRING },
+                studentId: { type: Type6.STRING },
+                studentIds: { type: Type6.ARRAY, items: { type: Type6.STRING } },
+                lessonTopic: { type: Type6.STRING },
+                revisionNotes: { type: Type6.STRING },
+                vocabularyText: { type: Type6.STRING },
+                studentSpeaking: { type: Type6.STRING },
+                thingsToImprove: { type: Type6.STRING },
+                suggestedFollowUp: { type: Type6.STRING }
               },
               required: ["date", "studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
             }
@@ -7282,27 +7703,27 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
 - aiComment: kr\xF3tkie podsumowanie w 1-2 zdaniach PO POLSKU \u2014 co znalaz\u0142e\u015B i na co lektor powinien zwr\xF3ci\u0107 uwag\u0119.
 - Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny obiekt JSON zgodny ze schematem, bez komentarzy i bloku markdown.`;
       const schema = {
-        type: Type5.OBJECT,
+        type: Type6.OBJECT,
         properties: {
           extractedData: {
-            type: Type5.OBJECT,
+            type: Type6.OBJECT,
             properties: {
-              fullName: { type: Type5.STRING },
-              email: { type: Type5.STRING },
-              level: { type: Type5.STRING },
-              targetGoals: { type: Type5.STRING },
-              industry: { type: Type5.STRING },
-              generalNotes: { type: Type5.STRING },
+              fullName: { type: Type6.STRING },
+              email: { type: Type6.STRING },
+              level: { type: Type6.STRING },
+              targetGoals: { type: Type6.STRING },
+              industry: { type: Type6.STRING },
+              generalNotes: { type: Type6.STRING },
               historicalLessons: {
-                type: Type5.ARRAY,
+                type: Type6.ARRAY,
                 items: {
-                  type: Type5.OBJECT,
+                  type: Type6.OBJECT,
                   properties: {
-                    date: { type: Type5.STRING },
-                    dateAmbiguous: { type: Type5.BOOLEAN },
-                    summary: { type: Type5.STRING },
-                    vocabulary: { type: Type5.ARRAY, items: { type: Type5.STRING } },
-                    corrections: { type: Type5.ARRAY, items: { type: Type5.STRING } }
+                    date: { type: Type6.STRING },
+                    dateAmbiguous: { type: Type6.BOOLEAN },
+                    summary: { type: Type6.STRING },
+                    vocabulary: { type: Type6.ARRAY, items: { type: Type6.STRING } },
+                    corrections: { type: Type6.ARRAY, items: { type: Type6.STRING } }
                   },
                   required: ["date", "summary"]
                 }
@@ -7310,7 +7731,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
             },
             required: ["historicalLessons"]
           },
-          aiComment: { type: Type5.STRING }
+          aiComment: { type: Type6.STRING }
         },
         required: ["extractedData", "aiComment"]
       };
@@ -7673,25 +8094,25 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejn\u0105 lekcj\u0119, po polsku)
 `;
       const schema = {
-        type: Type5.OBJECT,
+        type: Type6.OBJECT,
         properties: {
-          studentId: { type: Type5.STRING },
-          studentIds: { type: Type5.ARRAY, items: { type: Type5.STRING } },
-          lessonTopic: { type: Type5.STRING },
-          revisionNotes: { type: Type5.STRING },
-          vocabularyText: { type: Type5.STRING },
-          studentSpeaking: { type: Type5.STRING },
-          thingsToImprove: { type: Type5.STRING },
-          suggestedFollowUp: { type: Type5.STRING },
+          studentId: { type: Type6.STRING },
+          studentIds: { type: Type6.ARRAY, items: { type: Type6.STRING } },
+          lessonTopic: { type: Type6.STRING },
+          revisionNotes: { type: Type6.STRING },
+          vocabularyText: { type: Type6.STRING },
+          studentSpeaking: { type: Type6.STRING },
+          thingsToImprove: { type: Type6.STRING },
+          suggestedFollowUp: { type: Type6.STRING },
           /* Blok 2b i 4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
              pola są opcjonalne, więc schemat jest jeden dla obu trybów.
              Świadomie BEZ homeworkText/homeworkAnswerKey (dawny Blok 3):
              praca domowa żyje wyłącznie w module ćwiczeń, nie w notatce
              z lekcji — nawet jeśli transkrypcja ją zawiera, ma być
              pominięta. */
-          date: { type: Type5.STRING },
-          corrections: { type: Type5.STRING },
-          nextLessonPlan: { type: Type5.STRING }
+          date: { type: Type6.STRING },
+          corrections: { type: Type6.STRING },
+          nextLessonPlan: { type: Type6.STRING }
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
       };
@@ -7721,19 +8142,19 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
       }
       const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const schema = {
-        type: Type5.OBJECT,
+        type: Type6.OBJECT,
         properties: {
           issues: {
-            type: Type5.ARRAY,
+            type: Type6.ARRAY,
             items: {
-              type: Type5.OBJECT,
+              type: Type6.OBJECT,
               properties: {
-                id: { type: Type5.STRING },
-                matchedText: { type: Type5.STRING },
-                contextSnippet: { type: Type5.STRING },
-                suggestion: { type: Type5.STRING },
-                type: { type: Type5.STRING, enum: ["spelling", "grammar", "awkward"] },
-                shortReason: { type: Type5.STRING }
+                id: { type: Type6.STRING },
+                matchedText: { type: Type6.STRING },
+                contextSnippet: { type: Type6.STRING },
+                suggestion: { type: Type6.STRING },
+                type: { type: Type6.STRING, enum: ["spelling", "grammar", "awkward"] },
+                shortReason: { type: Type6.STRING }
               },
               required: ["id", "matchedText", "contextSnippet", "suggestion", "type", "shortReason"]
             }
@@ -7811,10 +8232,10 @@ Zwr\xF3\u0107 JSON z polami:
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type5.OBJECT,
+          type: Type6.OBJECT,
           properties: {
-            score: { type: Type5.NUMBER },
-            feedback: { type: Type5.STRING }
+            score: { type: Type6.NUMBER },
+            feedback: { type: Type6.STRING }
           },
           required: ["score", "feedback"]
         }
@@ -7859,18 +8280,18 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type5.OBJECT,
+          type: Type6.OBJECT,
           properties: {
-            overallTeacherCommentary: { type: Type5.STRING },
+            overallTeacherCommentary: { type: Type6.STRING },
             keyStrengths: {
-              type: Type5.ARRAY,
-              items: { type: Type5.STRING }
+              type: Type6.ARRAY,
+              items: { type: Type6.STRING }
             },
             areasToImprove: {
-              type: Type5.ARRAY,
-              items: { type: Type5.STRING }
+              type: Type6.ARRAY,
+              items: { type: Type6.STRING }
             },
-            pedagogicalTip: { type: Type5.STRING }
+            pedagogicalTip: { type: Type6.STRING }
           },
           required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
         }
