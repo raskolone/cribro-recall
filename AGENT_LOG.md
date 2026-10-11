@@ -7143,3 +7143,12 @@ Zrobione: p.2 homework-v2 generate/assign (admin + flaga + walidacja), p.3 notif
 Nie dokończone / do sprawdzenia: p.1 (`system/**`) i p.5 (proxy openai/anthropic/deepseek) ZATRZYMANE — używa ich kursant (plan w CHANGELOG BV). Reguły niewdrożone. `npm run test:rules` ma 1 test padający już na origin/main (notatnik po ID). Nie sprawdzono na prawdziwym Firestore/Gemini/Resend.
 Decyzje architektoniczne: (1) „lektor-właściciel kursanta" nie istnieje w modelu danych (`isAdmin()` = każdy lektor), więc walidacja ogranicza się do istnienia konta; (2) limit Gemini fail-open przy awarii bazy (ochrona kosztowa, nie autoryzacja); (3) ciało gemini 2 MB zamiast 1 MB — brak pomiaru realnych promptów; (4) przebudowany `api/index.js` jest w repo, bo Vercel serwuje go z commita.
 Ryzyka: `firestore.rules`, middleware autoryzacji, ścieżki tokenowe — NIETKNIĘTE. Zmieniono, które trasy w `server.ts` używają `requireFirebaseAdmin`. Konflikt przy rebase S1: `server.ts`, `api/index.js`, `CHANGELOG.md`, `AGENT_LOG.md`.
+
+---
+
+2026-10-11 — Claude Code / Sonnet 5.5
+
+Zadanie: SEC2b — weryfikacja gałęzi `sec2-security`, plan reguł (tylko raport), tymczasowa ochrona proxy openai/anthropic/deepseek.
+Zrobione: origin/main nadal `465f3ef` (bez rebase); commit `fbc93b7` (limit ciała 2 MB, limit żądań wspólny dla trzech dostawców, sufit `max_tokens` Anthropic, `tests/routes/aiProxy.test.ts`); przebudowa `api/index.js`. Reguł NIE ruszano.
+Nie dokończone / do sprawdzenia: p.1 reguły `system/**` — plan w raporcie SEC2b, czeka na akceptację. `test:rules` 43/44: test „notatnik otwiera się po znanym ID, ale lista notatników nie” pada na origin/main (`scratchpads`: `allow read: if true` obejmuje też `list`, więc `allow list: if false` nic nie zamyka) — nie dotyczy `system/**`.
+Ryzyka: `firestore.rules`, middleware autoryzacji, ścieżki tokenowe — NIETKNIĘTE.
