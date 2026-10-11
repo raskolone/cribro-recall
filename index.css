@@ -69,6 +69,16 @@
   --color-tile-3: #e4def7; --color-tile-line-3: #7a69c4;
   --color-tile-4: #f7e6c4; --color-tile-line-4: #a67c1f;
   --color-tile-5: #f8dce4; --color-tile-line-5: #c0587a;
+
+  /* Wspólny kafelek gier (.game-tile, utils/gameTile.ts): spoczynek, poprawny, błędny, zablokowany.
+     Tekst zawsze text-hi; stan niosą obwódka 2 px, ikona i tekst dla czytników (kontrast: tests/gameTile.test.ts). */
+  --color-game-rest: #eef4fb;   --color-game-rest-line: #5b7a99;
+  --color-game-ok: #d3efe2;     --color-game-ok-line: #0b7953;
+  --color-game-bad: #fbe0de;    --color-game-bad-line: #c0342f;
+  --color-game-locked: #e3e9ef; --color-game-locked-line: #7a8ca1;
+  /* Połysk szkła — ten sam co w kafelkach menu głównego (.glass-tile::after). */
+  --glass-sheen: radial-gradient(ellipse 80% 32% at 50% 0%, rgba(255, 255, 255, 0.40) 0%, transparent 100%);
+  --glass-sheen-edge: inset 0 1px 0.5px #ffffff;
 }
 
 /* ── WYJĄTEK OD ODWRÓCENIA CZERNI: PRZYCIEMNIENIE ZA OKNEM DIALOGOWYM ──
@@ -291,6 +301,14 @@
   --color-tile-3: #2d2552; --color-tile-line-3: #7a64c8;
   --color-tile-4: #4a3410; --color-tile-line-4: #b98a2c;
   --color-tile-5: #4a2230; --color-tile-line-5: #c4607c;
+
+  /* Wspólny kafelek gier — wersja ciemna; jasna w bloku :root[data-theme="light"] wyżej. */
+  --color-game-rest: #182a40;   --color-game-rest-line: #7391b4;
+  --color-game-ok: #12402f;     --color-game-ok-line: #72f0b4;
+  --color-game-bad: #4a1d22;    --color-game-bad-line: #f0726f;
+  --color-game-locked: #131e2d; --color-game-locked-line: #566a82;
+  --glass-sheen: radial-gradient(ellipse 80% 32% at 50% 0%, rgba(255, 255, 255, 0.10) 0%, transparent 100%);
+  --glass-sheen-edge: inset 0 1px 0.5px rgba(255, 255, 255, 0.22);
 
   /* --- Aliasy zastane. Odpowiadają tokenom Nocturne, zostają bez zmian:
          primary = --accent, content = --text, content-muted = --text-mute,
@@ -632,12 +650,8 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
   border-radius: inherit;
   pointer-events: none;
   z-index: 1;
-  background: radial-gradient(
-    ellipse 80% 32% at 50% 0%,
-    rgba(255, 255, 255, 0.10) 0%,
-    transparent 100%
-  );
-  box-shadow: inset 0 1px 0.5px rgba(255, 255, 255, 0.22);
+  background: var(--glass-sheen);
+  box-shadow: var(--glass-sheen-edge);
 }
 
 /* Wersja w trybie dziennym (Translucent Frosted Glass) */
@@ -665,12 +679,8 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
 :root.light .glass-tile::after,
 :root[data-theme="light"] .liquid-glass-tile::after,
 :root[data-theme="light"] .glass-tile::after {
-  background: radial-gradient(
-    ellipse 80% 32% at 50% 0%,
-    rgba(255, 255, 255, 0.40) 0%,
-    transparent 100%
-  );
-  box-shadow: inset 0 1px 0.5px #ffffff;
+  background: var(--glass-sheen);
+  box-shadow: var(--glass-sheen-edge);
 }
 
 /* Płynny hover 3D z uziemionym pozycjonowaniem (eliminacja przeskoków i pętli jittera) */
@@ -716,6 +726,117 @@ html, body, #root { min-height: 100vh; min-height: 100dvh; }
       inset 0 1.5px 0.5px #ffffff,
       inset 0 0 0 1px rgba(11, 121, 83, 0.30);
   }
+}
+
+
+/* ---------------------------------------------------------------------------
+   Wspólny kafelek gier (dopasowanie, wielokrotny wybór, układanka, quiz).
+   Styl w CSS + data-atrybutach z utils/gameTile.ts — widoki nie układają klas ręcznie.
+   Kontur 2 px, pastelowe tło, min. 56 px, połysk szkła z menu głównego (statyczny, bez animacji).
+   Stany nie zmieniają rozmiaru ani położenia kafelka (tylko kolor, obwódka, cień).
+   --------------------------------------------------------------------------- */
+.game-tile {
+  --gt-bg: var(--color-game-rest);
+  --gt-line: var(--color-game-rest-line);
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  min-height: 3.5rem;
+  padding: 0.75rem 1rem;
+  border: 2px solid var(--gt-line);
+  border-radius: var(--r-xl, 1rem);
+  background: var(--gt-bg);
+  color: var(--color-text-hi);
+  font-family: var(--font-sans);
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.005em;
+  text-align: center;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.game-tile::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: var(--glass-sheen);
+  box-shadow: var(--glass-sheen-edge);
+}
+.game-tile > * { position: relative; z-index: 2; }
+
+@media (hover: hover) and (pointer: fine) {
+  .game-tile[data-state="rest"]:hover {
+    --gt-line: var(--color-primary);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-primary) 40%, transparent);
+  }
+}
+.game-tile:disabled,
+.game-tile[aria-disabled="true"] { cursor: default; }
+.game-tile:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.game-tile[data-state="rest"]:active {
+  box-shadow: inset 0 2px 4px color-mix(in srgb, var(--color-text-hi) 22%, transparent);
+}
+.game-tile[data-state="selected"] {
+  --gt-line: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 38%, transparent);
+}
+.game-tile[data-state="correct"] { --gt-bg: var(--color-game-ok); --gt-line: var(--color-game-ok-line); cursor: default; }
+.game-tile[data-state="wrong"] {
+  --gt-bg: var(--color-game-bad);
+  --gt-line: var(--color-game-bad-line);
+  animation: game-tile-shake 0.3s ease-in-out 1;
+}
+.game-tile[data-state="locked"] {
+  --gt-bg: var(--color-game-locked);
+  --gt-line: var(--color-game-locked-line);
+  color: var(--color-text-3);
+  cursor: default;
+}
+/* Trafiona para w dopasowaniu: jeden pastelowy odcień na parę (palety tile-1…5), tekst zostaje text-hi. */
+.game-tile[data-shade="1"] { --gt-bg: var(--color-tile-1); --gt-line: var(--color-tile-line-1); }
+.game-tile[data-shade="2"] { --gt-bg: var(--color-tile-2); --gt-line: var(--color-tile-line-2); }
+.game-tile[data-shade="3"] { --gt-bg: var(--color-tile-3); --gt-line: var(--color-tile-line-3); }
+.game-tile[data-shade="4"] { --gt-bg: var(--color-tile-4); --gt-line: var(--color-tile-line-4); }
+.game-tile[data-shade="5"] { --gt-bg: var(--color-tile-5); --gt-line: var(--color-tile-line-5); }
+.game-tile[data-shade][data-state="locked"] { color: var(--color-text-hi); cursor: default; }
+
+/* Wersja zwarta (układanka z rozsypki): kafelki płyną w wierszach, więc nie rozciągamy ich na całą szerokość;
+   ten sam kontur, promień, połysk i stany, cel dotykowy ≥ 44 px. */
+.game-tile--chip {
+  display: inline-flex;
+  width: auto;
+  min-height: 2.75rem;
+  min-width: 2.75rem;
+  padding: 0.5rem 0.875rem;
+  font-size: 1rem;
+  text-align: left;
+}
+.game-tile--chip[data-state="locked"][data-shade] { cursor: default; }
+
+@keyframes game-tile-shake {
+  0%, 100% { translate: 0 0; }
+  25% { translate: -3px 0; }
+  75% { translate: 3px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-tile { transition: none; }
+  .game-tile[data-state="wrong"] { animation: none; }
 }
 
 /* Kliknięcie / wciśnięcie fizycznego przycisku ze szkła (3D button press) */

@@ -85,6 +85,7 @@ test('kontrast: text-hi na tle każdego odcienia kafelka ≥ 4,5:1 w obu motywac
 
 test('kolory: komponent używa tokenów, nie surowych klas kolorów', () => {
   const src = readFileSync(new URL('../components/dashboard/HomeworkWarmupScrambler.tsx', import.meta.url), 'utf8');
-  for (const n of PALETTE) assert.ok(src.includes(`bg-tile-${n} border-tile-line-${n}`));
+  assert.ok(src.includes('gameTileAttrs'));
+  assert.ok(readFileSync(new URL('../index.css', import.meta.url), 'utf8').includes('.game-tile[data-shade="5"]'));
   assert.ok(!/text-white|bg-white|\bvh\b|\d+vh/.test(src));
 });

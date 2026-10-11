@@ -36,13 +36,14 @@ test('stan błędny: ikona + tekst dla czytników ekranu', () => {
   assert.equal(el.querySelector('.sr-only')?.textContent, 'Błędna odpowiedź');
 });
 
-test('stan domyślny jest klikalny, ma hover/focus z tokenów i brak ikony/sr-only', () => {
+test('stan domyślny jest klikalny, ma wspólny kafelek gier i brak ikony/sr-only', () => {
   let n = 0;
   const el = mount('default', () => n++).getByTestId('quiz-option');
   assert.equal(el.getAttribute('aria-disabled'), null);
   assert.equal(el.querySelector('svg'), null);
   assert.equal(el.querySelector('.sr-only'), null);
-  assert.match(el.className, /hover:bg-primary\/10/);
+  assert.equal(el.className, 'game-tile');
+  assert.equal(el.getAttribute('data-state'), 'rest');
   fireEvent.click(el);
   assert.equal(n, 1);
 });
@@ -56,7 +57,7 @@ test('po odpowiedzi kafelki nie reagują na klik (aria-disabled zamiast disabled
     assert.equal(n, 0, state);
     assert.equal((el as HTMLButtonElement).disabled, false, `${state}: natywny disabled nakłada na iOS szary kolor i krycie`);
     assert.doesNotMatch(el.className, /opacity/);
-    assert.match(el.className, /min-h-14/);
+    assert.match(el.className, /game-tile/);
   }
 });
 

@@ -252,7 +252,7 @@ const HAMMOCK_PL = 'Chciałbym mieć hamak na moim przestronnym balkonie.';
 const hammockItem = { chunks: ['I would like', 'to have a hammock', 'on my spacious balcony.'], correctSentence: 'I would like to have a hammock on my spacious balcony.', polishTranslation: HAMMOCK_PL };
 const furnitureItem = { chunks: ['We chose', 'simple furniture', 'for our small,', 'cramped apartment.'], correctSentence: 'We chose simple furniture for our small, cramped apartment.', polishTranslation: 'Wybraliśmy proste meble do naszego małego, ciasnego mieszkania.' };
 
-const tileClasses = (el: Element) => (el.getAttribute('class') ?? '').split(/\s+/).filter((c) => /^(bg-tile-|border-tile-line-)/.test(c)).sort().join(' ');
+const tileClasses = (el: Element) => `shade-${el.getAttribute('data-shade') ?? ''}`;
 
 test('H3: ćwiczenie z rozjechaną parą (objaw z telefonu) jest pomijane: bez kafelków, bez zapisu wyniku', () => {
   const skips: number[] = [];
@@ -283,7 +283,7 @@ test('H3: kafelek zachowuje kolor po przeniesieniu do odpowiedzi i po zwróceniu
   const { getAllByTestId, queryByTestId } = renderScrambler({ sentences: [], task: { warmup: [hammockItem, furnitureItem] } });
   const bankTiles = getAllByTestId('warmup-bank-tile');
   const colorOf = new Map(bankTiles.map((el) => [el.textContent!, tileClasses(el)]));
-  assert.ok([...colorOf.values()].every((c) => /bg-tile-\d border-tile-line-\d/.test(c)));
+  assert.ok([...colorOf.values()].every((c) => /^shade-[1-5]$/.test(c)));
   const [first] = bankTiles.map((el) => el.textContent!);
   pick(getAllByTestId, first);
   const selected = getAllByTestId('warmup-selected-tile');

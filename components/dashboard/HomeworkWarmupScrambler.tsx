@@ -14,6 +14,7 @@ import i18n from 'i18next';
 import { buildWarmupRoundsReport, filterValidRounds, WarmupRound } from '../../utils/warmupRounds';
 import { hashString, stableShuffle } from '../../utils/warmupChunks';
 import { assignTileColors } from '../../utils/warmupTileColors';
+import { gameTileAttrs, shadeForHit, type GameTileState } from '../../utils/gameTile';
 import { classifyUnscrambleAttempt, UnscrambleResult } from '../../utils/unscrambleGrading';
 import { HomeworkType } from '../../types';
 
@@ -47,18 +48,6 @@ interface BankTile {
   /** Dekoracyjny odcień 0…4 — zależy od tekstu kafelka i rundy, nie od roli ani pozycji (utils/warmupTileColors.ts). */
   color: number;
 }
-
-/**
- * Pełne literały klas (Tailwind skanuje źródło), jeden zestaw na odcień. Tło i obrys z tokenów
- * `tile-N` / `tile-line-N` (osobne wartości dla jasnego i ciemnego motywu), tekst zawsze `text-hi`.
- */
-const TILE_COLOR_CLASSES = [
-  'bg-tile-1 border-tile-line-1',
-  'bg-tile-2 border-tile-line-2',
-  'bg-tile-3 border-tile-line-3',
-  'bg-tile-4 border-tile-line-4',
-  'bg-tile-5 border-tile-line-5',
-] as const;
 
 const roundKey = (round: WarmupRound): string => `${round.itemIndex}|${round.targetSentence}`;
 
@@ -225,9 +214,11 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
   const isLast = currentIndex === warmupItems.length - 1;
   const t = (key: string, options?: Record<string, unknown>) => i18n.t(key, options) as string;
 
-  // Wspólny wygląd chipa (kawałka) — jedna definicja dla puli, strefy odpowiedzi i miernika.
-  const chipBase =
-    'px-3.5 py-2 rounded-xl border text-base font-bold leading-snug text-left pointer-coarse:min-h-11 pointer-coarse:min-w-11';
+  // Wspólny wygląd chipa (kawałka) — wspólny kafelek gier (utils/gameTile.ts) w wersji zwartej,
+  // jedna definicja dla puli, strefy odpowiedzi i miernika.
+  const chipBase = 'game-tile game-tile--chip';
+  const chipAttrs = (tile: BankTile, state: GameTileState = 'rest') =>
+    gameTileAttrs({ state, shade: shadeForHit(tile.color), extraClass: 'game-tile--chip' });
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-3 sm:py-5 space-y-3 sm:space-y-5 animate-in fade-in duration-300 motion-reduce:animate-none">
@@ -349,7 +340,7 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                     onClick={() => handleRemoveTile(pos)}
                     disabled={isDone}
                     title={t('Dotknij, aby cofnąć frazę')}
-                    className={`${chipBase} ${TILE_COLOR_CLASSES[tile.color]} text-text-hi transition-colors motion-reduce:transition-none cursor-pointer enabled:hover:border-danger disabled:cursor-default`}
+                    {...chipAttrs(tile, isDone ? 'locked' : 'rest')}
                   >
                     {tile.text}
                   </button>
@@ -378,9 +369,8 @@ export const HomeworkWarmupScrambler: React.FC<HomeworkWarmupScramblerProps> = (
                     aria-hidden={isUsed ? true : undefined}
                     tabIndex={isUsed ? -1 : undefined}
                     onClick={() => handleSelectTile(tile.id)}
-                    className={`${chipBase} ${TILE_COLOR_CLASSES[tile.color]} text-text-hi transition-colors motion-reduce:transition-none cursor-pointer enabled:hover:border-primary disabled:cursor-default ${
-                      isUsed ? 'invisible' : ''
-                    } ${isDone && !isUsed ? 'opacity-60' : ''} ${isDone && !isUsed && tile.isDistractor ? 'line-through' : ''}`}
+                    {...chipAttrs(tile, isDone && !isUsed ? 'locked' : 'rest')}
+                    className={`${chipAttrs(tile).className} ${isUsed ? 'invisible' : ''} ${isDone && !isUsed && tile.isDistractor ? 'line-through' : ''}`}
                   >
                     {tile.text}
                   </button>
