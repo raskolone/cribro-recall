@@ -152,13 +152,24 @@ const MatchingExerciseView: React.FC<{
 const HomeworkExercise: React.FC<HomeworkExerciseProps> = ({ type, item, answer, onChange }) => {
   const [showHint, setShowHint] = useState(false);
 
-  // `multiple_choice` i `matching` czytają `item` bezpośrednio, bez
-  // przechodzenia przez `normalizeExercise` — kontrakt tego adaptera zna tylko
-  // cztery starsze typy (patrz `CanonicalExerciseType`), więc dla tych dwóch
-  // zawsze zwróciłby `state: 'invalid'`. Sprawdzamy je więc PRZED odczytaniem
-  // stanu `exercise`, inaczej ważne zadanie nigdy by się nie wyrenderowało.
   if (type === 'multiple_choice') {
-    return <HomeworkMultipleChoice item={item} answer={answer} onChange={onChange} />;
+    const exercise = normalizeExercise(item, { type });
+    if (exercise.state === 'invalid') {
+      return <InvalidExerciseCard message={exercise.message} />;
+    }
+    return (
+      <HomeworkMultipleChoice
+        item={{
+          question: exercise.question,
+          options: exercise.options,
+          correctIndex: exercise.correctIndex,
+          explanation: exercise.explanation,
+          grammarFocus: exercise.grammarFocus,
+        }}
+        answer={answer}
+        onChange={onChange}
+      />
+    );
   }
 
   if (type === 'matching') {

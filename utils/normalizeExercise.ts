@@ -1,5 +1,6 @@
 import i18n from 'i18next';
 import { HomeworkType } from '../types';
+import { seededShuffleOptions } from './multipleChoice';
 
 /**
  * Adapter kanoniczny dla jednego ćwiczenia pracy domowej (silnik v1 —
@@ -17,7 +18,7 @@ import { HomeworkType } from '../types';
  */
 
 /** Typ kanoniczny — te same cztery rodzaje, które `utils/homework.ts` już rozróżnia jako v1. */
-export type CanonicalExerciseType = 'word_order' | 'fill_in_the_blank' | 'translation' | 'find_errors';
+export type CanonicalExerciseType = 'word_order' | 'fill_in_the_blank' | 'translation' | 'find_errors' | 'multiple_choice';
 
 export type ExerciseState = 'ready' | 'degraded' | 'invalid';
 
@@ -48,6 +49,13 @@ export interface CanonicalExercise {
   tokens?: string[];
   correctSentence?: string;
 
+  // --- multiple_choice ---
+  question?: string;
+  options?: string[];
+  correctIndex?: number;
+  explanation?: string;
+  grammarFocus?: string;
+
   // --- wspólne ---
   /** Zdanie/treść źródłowa (np. polskie zdanie do przetłumaczenia lub ułożenia). */
   sourceSentence?: string;
@@ -72,11 +80,13 @@ const TYPE_ALIASES: Record<string, CanonicalExerciseType> = {
   micro_translation: 'translation',
   find_errors: 'find_errors',
   fix_sentence: 'find_errors',
+  multiple_choice: 'multiple_choice',
 };
 
 const resolveCanonicalType = (item: any, task?: { type?: HomeworkType } | null): CanonicalExerciseType | null => {
   const declared = item?.type || item?.exerciseType;
   if (declared && TYPE_ALIASES[declared]) return TYPE_ALIASES[declared];
+  if (Array.isArray(item?.options) && (item?.correctIndex !== undefined || item?.correctOptionIndex !== undefined || item?.question)) return 'multiple_choice';
   if (item?.incorrectSentence) return 'find_errors';
   if (item?.textWithBlanks || item?.blanks || item?.wordsToCut || item?.missingWords) return 'fill_in_the_blank';
   if (item?.chunks) return 'word_order';
@@ -225,9 +235,49 @@ const normalizeTokens = (raw: unknown): string[] => {
  * Zero wyjątków: błąd w kształcie danych degraduje do `state: 'invalid'`
  * zamiast wywalić render.
  */
-export const normalizeExercise = (raw: any, task?: { type?: HomeworkType } | null): CanonicalExercise => {
+export const normalizeExercise = (raw: any, task?: { type?: HomeworkType; id?: string } | null): CanonicalExercise => {
   try {
     const type = resolveCanonicalType(raw, task);
+    if (type === 'multiple_choice') {
+      const sourceOptions: string[] = Array.isArray(raw?.raw?.options)
+        ? raw.raw.options
+        : Array.isArray(raw?.options)
+        ? raw.options
+        : [];
+      if (sourceOptions.length === 0) {
+        return { type, state: 'invalid', message: INVALID_MESSAGE, raw };
+      }
+      const rawCorrect =
+        typeof raw?.raw?.correctIndex === 'number'
+          ? raw.raw.correctIndex
+          : typeof raw?.correctIndex === 'number'
+          ? raw.correctIndex
+          : typeof raw?.correctOptionIndex === 'number'
+          ? raw.correctOptionIndex
+          : 0;
+
+      const question = String(raw?.question || raw?.sentence || raw?.prompt || raw?.content || '').trim();
+      const idPart = String(raw?.id || raw?.questionId || raw?.raw?.id || raw?.raw?.questionId || (task as any)?.id || '').trim();
+      const seed = idPart ? `${idPart}|${question}` : (question || 'mc');
+
+      const cleanOptions = sourceOptions.map((o: any) => (typeof o === 'string' ? o.trim() : String(o ?? '').trim()));
+      const shuffled = seededShuffleOptions(cleanOptions, rawCorrect, seed);
+
+      const focus = typeof raw?.grammarFocus === 'string' ? raw.grammarFocus : undefined;
+      const explanation = typeof raw?.explanation === 'string' ? raw.explanation : undefined;
+
+      return {
+        type,
+        state: 'ready',
+        question,
+        options: shuffled.options,
+        correctIndex: shuffled.correctIndex,
+        explanation,
+        grammarFocus: focus,
+        raw,
+      };
+    }
+
     if (!type) {
       return { type: 'translation', state: 'invalid', message: INVALID_MESSAGE, raw };
     }
@@ -347,5 +397,7 @@ export const exerciseUiCopy = (type: CanonicalExerciseType): { heading: string; 
       return { heading: i18n.t('Przetłumacz zdanie'), instruction: i18n.t('Zapisz tłumaczenie w języku angielskim.') };
     case 'find_errors':
       return { heading: i18n.t('Popraw zdanie'), instruction: i18n.t('Znajdź błąd i zapisz poprawną wersję zdania.') };
+    case 'multiple_choice':
+      return { heading: i18n.t('Wybierz formę'), instruction: i18n.t('Wybierz poprawną odpowiedź') };
   }
 };

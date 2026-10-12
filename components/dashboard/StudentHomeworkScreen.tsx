@@ -34,6 +34,7 @@ import { HOMEWORK_TYPE_LABELS } from '../../services/homeworkGenerator';
 import { recordExerciseResults } from '../../services/learningProfile';
 import { useDraftAnswers } from '../../hooks/useDraftAnswers';
 import { normalizeLevel } from '../../utils/learningCurve';
+import { normalizeExercise } from '../../utils/normalizeExercise';
 import HomeworkExercise from './HomeworkExercise';
 import GradedHomeworkTiles from './GradedHomeworkTiles';
 import HomeworkWarmupScrambler from './HomeworkWarmupScrambler';
@@ -121,7 +122,8 @@ const answerToText = (type: HomeworkType, item: any, answer: any): string => {
     return chosen.map((i) => item.chunks?.[i]).filter(Boolean).join(' ');
   }
   if (type === 'multiple_choice') {
-    return typeof answer === 'number' ? item.options?.[answer] || '' : '';
+    const norm = normalizeExercise(item, { type });
+    return typeof answer === 'number' ? norm.options?.[answer] || '' : String(answer || '');
   }
   if (type === 'matching') {
     const matched: string[] = Array.isArray(answer) ? answer : [];
@@ -188,7 +190,10 @@ const getExerciseReviewRows = (task: SpecialTask): ReviewExerciseItem[] => {
     if (!expected) {
       if (itemType === 'find_errors') expected = item.correctSentence || '';
       else if (itemType === 'word_order') expected = item.correctSentence || '';
-      else if (itemType === 'multiple_choice') expected = item.options?.[item.correctIndex] || '';
+      else if (itemType === 'multiple_choice') {
+        const norm = normalizeExercise(item, { type: 'multiple_choice' });
+        expected = norm.options?.[norm.correctIndex] || item.options?.[item.correctIndex] || '';
+      }
       else if (itemType === 'matching') {
         expected = Array.isArray(item.pairs)
           ? item.pairs.map((p: any) => `${p.left} = ${p.right}`).join(', ')
@@ -205,6 +210,20 @@ const getExerciseReviewRows = (task: SpecialTask): ReviewExerciseItem[] => {
         ? ev.isCorrect
         : typeof ev.score === 'number'
         ? ev.score >= 80
+        : itemType === 'multiple_choice'
+        ? (() => {
+            const norm = normalizeExercise(item, { type: 'multiple_choice' });
+            if (typeof rawAns === 'number') {
+              return (
+                rawAns === norm.correctIndex ||
+                rawAns === item.correctIndex ||
+                rawAns === item.correctOptionIndex ||
+                norm.options?.[rawAns] === expected ||
+                item.options?.[rawAns] === expected
+              );
+            }
+            return Boolean(rawAns && normalize(rawAns) === normalize(expected));
+          })()
         : false;
 
     const score = typeof ev.score === 'number' ? ev.score : isCorrect ? 100 : 0;
@@ -631,14 +650,18 @@ const StudentHomeworkScreen: React.FC<StudentHomeworkScreenProps> = ({
     }
 
     if (type === 'multiple_choice') {
-      const isCorrect = answer === item.correctIndex;
+      const norm = normalizeExercise(item, { type });
+      const expectedText = norm.options?.[norm.correctIndex] || '';
+      const isCorrect =
+        (typeof answer === 'number' && answer === norm.correctIndex) ||
+        (Boolean(studentAnswer) && normalize(studentAnswer) === normalize(expectedText));
       return {
-        polishSentence: item.question,
-        correctTranslation: item.options?.[item.correctIndex] || '',
+        polishSentence: norm.question || item.question,
+        correctTranslation: expectedText,
         studentAnswer,
         isCorrect,
         score: isCorrect ? 100 : 0,
-        explanation: item.explanation,
+        explanation: norm.explanation || item.explanation,
       };
     }
 

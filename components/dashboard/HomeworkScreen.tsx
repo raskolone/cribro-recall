@@ -1,3 +1,4 @@
+import { normalizeExercise } from '../../utils/normalizeExercise';
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
@@ -263,16 +264,17 @@ export const renderExercisePrompt = (item: any, itemType: HomeworkType): React.R
   }
 
   if (itemType === 'multiple_choice') {
+    const norm = normalizeExercise(item, { type: 'multiple_choice' });
     return (
       <div className="space-y-1.5 text-sm">
         <div>
           <span className="text-xs text-content-muted block mb-0.5">Pytanie:</span>
-          <p className="font-semibold text-white">{item.question}</p>
+          <p className="font-semibold text-white">{norm.question || item.question}</p>
         </div>
         <div>
           <span className="text-xs text-content-muted block mb-0.5">Poprawna opcja:</span>
           <p className="text-primary font-medium">
-            {item.options?.[item.correctIndex] || `Opcja ${item.correctIndex + 1}`}
+            {norm.options?.[norm.correctIndex] || item.options?.[item.correctIndex] || `Opcja ${(norm.correctIndex ?? 0) + 1}`}
           </p>
         </div>
       </div>

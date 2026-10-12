@@ -1,3 +1,4 @@
+import { normalizeExercise } from './normalizeExercise';
 /**
  * Ocena odpowiedzi z linku bez logowania (`POST /api/homework/direct-submit`).
  *
@@ -82,10 +83,21 @@ export const evaluateDirectHomework = (
         score = 100;
       }
     } else if (itemType === 'multiple_choice') {
-      studentStr = typeof rawAns === 'number' ? item.options?.[rawAns] || '' : String(rawAns || '');
-      const expectedOption = typeof item.correctOptionIndex === 'number' ? item.options?.[item.correctOptionIndex] : (item.options?.[0] || '');
+      const norm = normalizeExercise(item, { type: 'multiple_choice' });
+      const expectedOption =
+        norm.options?.[norm.correctIndex] ||
+        (typeof item.correctOptionIndex === 'number' ? item.options?.[item.correctOptionIndex] : (item.options?.[0] || ''));
       expectedStr = expectedOption;
-      if (rawAns === item.correctOptionIndex || normalizeSimple(studentStr) === normalizeSimple(expectedOption)) {
+      studentStr = typeof rawAns === 'number'
+        ? (norm.options?.[rawAns] || item.options?.[rawAns] || '')
+        : String(rawAns || '');
+
+      const isMatchByIndex =
+        typeof rawAns === 'number' &&
+        (rawAns === norm.correctIndex || rawAns === item.correctIndex || rawAns === item.correctOptionIndex);
+      const isMatchByText = Boolean(studentStr && normalizeSimple(studentStr) === normalizeSimple(expectedOption));
+
+      if (isMatchByIndex || isMatchByText) {
         isCorrect = true;
         score = 100;
       }

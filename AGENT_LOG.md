@@ -7176,3 +7176,15 @@ Zrobione: A — `config/featureFlags.ts` (`HIDDEN_EXERCISE_TYPES`, helpery), `se
 Nie dokończone / do sprawdzenia: miejsca z typem luk poza generatorem prac domowych (praktyka kursanta, generator testów, planner Cloud Functions) zostawione — lista z `plik:linia` w CHANGELOG BW (dopisek U1-polish), czeka na decyzję Macieja. Kolor `tile-1` = tło „poprawna” w jasnym motywie (patrz CHANGELOG). Wzrokowo sprawdzony sam komponent w Chromium (harness w scratchpadzie), nie pełny ekran z zalogowanym kursantem; nie WebKit/iPhone.
 Decyzje architektoniczne: (1) stała w `featureFlags.ts` zamiast osobnego pliku, z aliasem `gap_from_context` dla silnika v2; (2) filtr także w trasie serwera i w kliencie v2, bo brak `types` oznaczał „wszystkie trzy”; (3) planner w `functions/` nietknięty (wymaga wdrożenia); (4) `data-tint` zamiast `data-shade` — `shade` ma pierwszeństwo przed stanami w CSS i ukryłby poprawną/błędną odpowiedź; (5) pastel z pozycji 1…4, nie z hasha treści (opcje są mieszane przy generowaniu).
 Ryzyka: `firestore.rules`, `storage.rules`, middleware autoryzacji, ścieżki tokenowe — NIETKNIĘTE. Zmieniona trasa `POST /api/homework-v2/generate` w `server.ts` (tylko filtr typów, ta sama bramka `requireFirebaseAdmin`).
+
+
+2026-10-12 — Antigravity / Gemini 3.8 Flash (High)
+
+Zadanie: U1-polish2 (Zmiana 1) — losowa, stabilna kolejność opcji w wyborze wielokrotnym. Gałąź `u1-release` (worktree `../recall-u1`), bez pusha.
+Zrobione:
+- Dodano typ `multiple_choice` do `CanonicalExerciseType` i `normalizeExercise` (`utils/normalizeExercise.ts`).
+- Wprowadzono `seededShuffleOptions` w `utils/multipleChoice.ts` z deterministycznym ziarnem (`id|question`, Mulberry32 + FNV-1a).
+- `HomeworkExercise.tsx` normalizuje `multiple_choice` przed przekazaniem do widoku.
+- `StudentHomeworkScreen.tsx` i `directHomeworkEvaluation.ts` przeliczają i sprawdzają odpowiedzi po tekście i zindeksowaniu (zachowana kompatybilność wsteczna starych zapisów).
+- Dodano klucze i18n (`Wybierz formę`) w `pl.json` i `en.json`.
+- Testy: `tests/multipleChoiceShuffle.test.ts` (4 testy, rozkład na 400 próbach: [ 100, 85, 121, 94 ]).

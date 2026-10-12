@@ -3,6 +3,7 @@
  * odczyt zagadnienia gramatycznego. Wygląd kafelków to wspólny styl gier (`utils/gameTile.ts`).
  */
 import { shadeForHit, type GameTileShade, type GameTileState } from './gameTile';
+import { seededRng } from './matchingBoard';
 import { grammarFocusLabelKey, isGrammarFocusId, type GrammarFocusId } from './grammarFocus';
 
 export interface McOptionView {
@@ -56,4 +57,29 @@ export function shuffleOptions(options: readonly string[], correctIndex: number,
     [order[i], order[j]] = [order[j], order[i]];
   }
   return { options: order.map((i) => options[i]), correctIndex: order.indexOf(correctIndex) };
+}
+
+/**
+ * Tasuje opcje deterministycznie według stałego ziarna (np. id zadania i treści pytania)
+ * i przelicza `correctIndex`. Zachowuje `originalOrder`, co pozwala mapować odpowiedzi
+ * sprzed tasowania na aktualny układ.
+ */
+export function seededShuffleOptions(
+  options: readonly string[],
+  correctIndex: number,
+  seed: string | number
+): { options: string[]; correctIndex: number; originalOrder: number[] } {
+  const rng = seededRng(seed);
+  const order = options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const shuffledOptions = order.map((i) => options[i]);
+  const newCorrectIndex = order.indexOf(correctIndex);
+  return {
+    options: shuffledOptions,
+    correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0,
+    originalOrder: order,
+  };
 }
