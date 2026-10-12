@@ -4542,3 +4542,25 @@ light | 5 | #f8dce4 | #020617 | 15.70 | 4.27
   - Prompt generatorów: do `services/homeworkGenerator.ts` dodano zasadę pisania zdań, które native speaker powiedziałby naturalnie w codziennym życiu, oraz explicite zakaz konstrukcji typu „always try to + zjawisko niezależne od woli/niefortunny stan”.
   - Testy z fixturami (`tests/exerciseQuality.test.ts`): zweryfikowano odrzucanie nielogicznych intencji (w tym „always try to lose track of time”), odrzucenie przy braku pola `sense` w werdykcie, przejście zdań naturalnych oraz zachowanie reguł i schematu promptu.
   - Próba na żywym modelu (`gemini-2.5-flash`): test 20 zadań MC i 20 par PL↔EN — 100% (20/20 MC i 20/20 par) przeszło bramkę sędziego z kryterium `sense`, 0 odrzuconych; rozkład pozycji poprawnej odpowiedzi MC: [ 3, 6, 9, 2 ]; łączny czas: 73.5 s.
+
+- **Dopisek U1-polish3 (2026-10-12), Zmiana 1 — konfigurowalna liczba par (4–8) w zadaniach dopasowania:**
+  - Wprowadzono parametr `matchingPairCount` (domyślnie 5, dozwolony zakres 4–8) z walidacją i przycięciem (clamp) po stronie serwera (`services/homeworkGenerator.ts`, `server.ts`) oraz w `utils/normalizeExercise.ts`. Wartości spoza zakresu lub brak parametru są bezpiecznie przycinane/domyślnie ustawiane na 5.
+  - Selektory liczby par (etykiety w i18n `pl.json` i `en.json`):
+    (a) Generator prac domowych lektora (`HomeworkComposer.tsx`): widoczny pod wyborem typów, gdy zaznaczony jest typ dopasowania (`types.includes("matching")`).
+    (b) Free Practice (`FreePracticeScreen.tsx`): w kroku 3 konfiguracji ćwiczenia, gdy wybrany tryb to dopasowanie (`mode === "matching"`).
+  - Generator AI: prompt żąda od modelu wygenerowania DOKŁADNIE N par. W sędzim i generatorze (`services/homeworkGenerator.ts`), jeśli model zwróci liczbę par inną niż N, zadanie jest odrzucane z wymuszeniem regeneracji (brak cichego ucinania/akceptacji błędnej liczby).
+  - Normalizacja i istniejące zadania: `normalizeExercise` obsługuje typ `matching` zachowując `pairCount` (lub parsując z zadania), istniejące zadania z dowolną liczbą par działają bez zakłóceń.
+  - Układ mobilny na telefonie (do 8 par): kafelki o wysokości co najmniej 56 px (`min-h-[56px]`), siatka 2 kolumny, brak poziomego scrolla (sprawdzone w stylach `MatchingGame.tsx` i `FlashcardStudyScreen.tsx`).
+  - Testy jednostkowe: `tests/matchingPairCount.test.ts` (11 testów) — weryfikacja wartości domyślnej 5, przycięcia 3→4 i 12→8, żądania N par w prompcie, odrzucenia przez walidator przy innej liczbie par oraz normalizacji zadań z 4 i 8 parami.
+
+- **Dopisek U1-polish3 (2026-10-12), Zmiana 2 — przywrócenie animacji oczekiwania na generowanie (usunięcie regresji):**
+  - Diagnoza regresji w historii git: animacja kłębka wektorowego została zmieniona w commicie `3549a1ba6730ea220c09e9f74d7cb3d883dc165b` (`feat(ux): plynna animacja ladowania generowania z dynamicznym SVG i mikrotekstami`), który usunął precyzyjną krzywą SVG kłębka na rzecz uproszczonej strzałki ze spinnerem.
+  - Przywrócenie wizualne i behawioralne: przywrócono oryginalny komponent kłębka (`AIGenerationLoader` ze stanu `origin/main` `4f100ee`) w `components/ui/GeneratingAnimation.tsx` oraz wektory `TANGLED_YARN_PATH` i `SPIRAL_CIRCLE_PATH` w `utils/generatingAnimation.ts`. Animacja wykorzystuje odwijanie nici SVG (`strokeDashoffset`) z efektem poświaty i cienia (`yarnGlow`, `yarnShadow`), rotację w koło i przejście od splątanego kłębka do uporządkowanego okręgu.
+  - Zachowane ulepszenia funkcjonalne:
+    - Dostępność (a11y): `role="status"`, `aria-live="polite"`.
+    - Wsparcie dla `prefers-reduced-motion`: przy włączonej redukcji ruchu animacje GSAP i pętle są pomijane, prezentowana jest statyczna grafika.
+    - Internacjonalizacja (i18n): dynamiczne napisy oparte o `pl.json` i `en.json` („Upraszczanie i porządkowanie..." / „Simplifying and organizing...", „Inteligentny system eliminuje chaos i tworzy przejrzystą strukturę." / „The system eliminates chaos and builds a clear structure.").
+    - Kontrast WCAG AA: zmierzony kontrast tekstu i elementów w obu motywach (jasny: 4.56:1, ciemny: 13.46:1).
+    - Brak zewnętrznych bibliotek animacji: użycie czystego SVG/CSS z GSAP (już obecnym w projekcie).
+  - Testy: `tests/generatingAnimation.test.tsx` (5 testów) — weryfikacja obecności wektorów SVG, atrybutów dostępności, tekstów i18n, braku zakazanych klas i spełnienia kontrastów AA.
+

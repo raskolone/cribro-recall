@@ -7210,3 +7210,37 @@ Zrobione:
 - W `services/homeworkGenerator.ts`: prompt `generateMultipleChoice` wzbogacony o zasady naturalności i zakaz konstrukcji nielogicznych intencji.
 - Zaktualizowano testy i atrapy: `tests/exerciseQuality.test.ts`, `tests/freePracticeGeneration.test.ts`, `tests/freePracticeHandler.test.ts`, `tests/multipleChoice.test.ts`.
 - Wykonano test generacji prawdziwym modelem `gemini-2.5-flash`: 20 MC i 20 par PL↔EN, 100% akceptacji (20/20 i 20/20), 0 odrzuceń, rozkład MC [ 3, 6, 9, 2 ], czas: 73.5 s.
+
+2026-10-12 — Antigravity / Gemini 3.8 Flash (High)
+
+Zadanie: U1-polish3 (Zmiana 1) — konfigurowalna liczba par (4–8) w zadaniach dopasowania. Gałąź `u1-release` (worktree `../recall-u1`), bez pusha.
+Zrobione:
+- Dodano parametr `matchingPairCount` do żądań generowania (`services/homeworkGenerator.ts`, `server.ts`, `homeworkV2Input.ts`). Domyślnie 5, dozwolony zakres 4–8 (funkcja `clampMatchingPairCount`).
+- `normalizeExercise.ts`: dodano normalizację typu `matching`, walidację i zabezpieczenie `pairCount` (zakres 4–8, default 5, tolerancja dla istniejących zadań).
+- Dodano selektor liczby par w `HomeworkComposer.tsx` (gdy wybrany typ dopasowania) oraz w `FreePracticeScreen.tsx` (krok 3, gdy wybrany tryb dopasowania).
+- Prompt dopasowania w `homeworkGenerator.ts` precyzuje wymóg DOKŁADNIE N par (`matchingPairCount`). Przy niezgodnej liczbie par następuje odrzucenie zadania i regeneracja.
+- Układ mobilny dopasowania (`MatchingGame.tsx`, `FlashcardStudyScreen.tsx`) zachowuje min-h 56 px dla kafelków, bez poziomego scrolla przy 8 parach.
+- Klucze i18n dodane w `pl.json` i `en.json` („Liczba par w dopasowaniu” bez kropek i dwukropków w kluczu).
+- Testy: `tests/matchingPairCount.test.ts` (11 testów).
+
+
+2026-10-12 — Antigravity / Gemini 3.8 Flash (High)
+
+Zadanie: U1-polish3 (Zmiana 2) — przywrócenie oryginalnej animacji kłębka generowania AI. Gałąź `u1-release` (worktree `../recall-u1`), bez pusha.
+Zrobione:
+- Zidentyfikowano commit regresji: `3549a1ba6730ea220c09e9f74d7cb3d883dc165b`, który zastąpił animację odwijania kłębka wektorowego uproszczonym spinnerem ze strzałką.
+- Przywrócono oryginalne wektory kłębka i spirali z `origin/main` (`4f100ee`) w `utils/generatingAnimation.ts` (`TANGLED_YARN_PATH`, `SPIRAL_CIRCLE_PATH`).
+- Zrekonstruowano `components/ui/GeneratingAnimation.tsx` w oparciu o `AIGenerationLoader`: odwijanie nici, filtry poświaty i cienia (`yarnGlow`, `yarnShadow`), rotacja i transformacja w okrąg.
+- Zachowano usprawnienia dostępności i i18n: `role="status"`, `aria-live="polite"`, `prefers-reduced-motion`, klucze i18n `pl.json`/`en.json`, kontrasty tekstu WCAG AA (ciemny 13.46:1, jasny 4.56:1).
+- Usunięto nieużywane reguły keyframes z `index.css`.
+- Testy: `tests/generatingAnimation.test.tsx` (5 testów).
+
+
+2026-10-12 — Antigravity / Gemini 3.8 Flash (High)
+
+Zadanie: U1-polish3 (Zmiana 3) — przebudowa bundle"a `api/index.js` i weryfikacja. Gałąź `u1-release` (worktree `../recall-u1`), bez pusha.
+Zrobione:
+- Przebudowano bundle API `api/index.js` po zmianach generatora dopasowania (`npm run build`).
+- Potwierdzono idempotencję buildu — ponowne uruchomienie `npm run build` daje całkowicie pusty `git status --short`.
+- Zatwierdzono zmiany w osobnym commicie `build: api/index.js po zmianach U1-polish3 (liczba par w dopasowaniu)`.
+
