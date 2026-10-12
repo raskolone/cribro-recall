@@ -2351,7 +2351,7 @@ var GRAMMAR_FOCUS_IDS = [
 var isGrammarFocusId = (value) => typeof value === "string" && GRAMMAR_FOCUS_IDS.includes(value);
 
 // utils/exerciseQualityRules.ts
-var QUALITY_CRITERIA = ["naturalness", "equivalence", "uniqueness", "level_vocab", "context", "grammar"];
+var QUALITY_CRITERIA = ["naturalness", "equivalence", "uniqueness", "level_vocab", "context", "grammar", "sense"];
 var EXERCISE_IRON_RULES = `\u017BELAZNE ZASADY JAKO\u015ACI \u0106WICZE\u0143 (obowi\u0105zuj\u0105 ka\u017Cdy element, wa\u017Cniejsze ni\u017C u\u017Cycie s\u0142ownictwa z lekcji):
 a) NATURALNO\u015A\u0106 EN i PL. Zdania brzmi\u0105 jak wypowied\u017A native speakera. Zakaz kalk i t\u0142umaczenia s\u0142owo w s\u0142owo, zakaz robotycznych konstrukcji (np. polskie \u201E\u2026, co jest \u015Bwietne\u201D zamiast naturalnego \u201Ei to \u015Bwietnie\u201D, angielskie \u201E\u2026, which is great\u201D doklejone na ko\u0144cu), zakaz niezr\u0119cznego szyku.
 b) R\xD3WNOWA\u017BNO\u015A\u0106 ZNACZENIOWA PL = EN. Polskie i angielskie zdanie opisuj\u0105 to samo: ta sama osoba, liczba, czas, tryb i stopie\u0144 formalno\u015Bci (moje = my, nie your; ona = she, nie he; wczoraj = past, nie present).
@@ -2359,14 +2359,16 @@ c) JEDNOZNACZNO\u015A\u0106. Wielokrotny wyb\xF3r: dok\u0142adnie JEDNA poprawna
 d) POZIOM I R\xD3\u017BNORODNO\u015A\u0106. Poziom CEFR zgodny z kursantem, s\u0142ownictwo z lekcji u\u017Cyte sensownie (nie na si\u0142\u0119), brak duplikat\xF3w i brak kilku zda\u0144 pod rz\u0105d o identycznej strukturze.
 e) KONTEKST. Zdanie ma sens jako ca\u0142o\u015B\u0107 \u2014 \u017Cadnych absurd\xF3w i przypadkowych idiom\xF3w niepasuj\u0105cych do reszty (np. \u201EMy office is on your doorstep\u201D). Polecenie po polsku musi dotyczy\u0107 tej samej sytuacji co zdanie angielskie (nie hamak i meble w jednej parze).
 f) POPRAWNO\u015A\u0106 GRAMATYCZNA. Ka\u017Cde zdanie angielskie (tak\u017Ce to, kt\xF3re ma by\u0107 POPRAWNE w korekcie i ka\u017Cda wersja po wstawieniu luki) jest gramatycznie bezb\u0142\u0119dne: szyk, czas, forma czasownika, przedimki, przyimki, zgoda podmiotu z orzeczeniem. Wielokrotny wyb\xF3r: po wstawieniu poprawnej opcji zdanie jest poprawne gramatycznie i znaczeniowo, a ka\u017Cda z trzech pozosta\u0142ych opcji po wstawieniu daje zdanie niepoprawne gramatycznie ALBO nieadekwatne znaczeniowo.
-Przed zwr\xF3ceniem KA\u017BDEGO elementu sprawd\u017A punkty a)\u2013f). Element, kt\xF3ry kt\xF3rego\u015B nie spe\u0142nia, przepisz albo zast\u0105p innym.`;
-var JUDGE_CRITERIA_TEXT = `Dla KA\u017BDEGO elementu oce\u0144 sze\u015B\u0107 kryteri\xF3w (true = spe\u0142nione, false = niespe\u0142nione):
+g) LOGIKA I WIARYGODNO\u015A\u0106 SYTUACJI (sense). Zdanie opisuje wiarygodn\u0105, naturaln\u0105 sytuacj\u0119 z \u017Cycia (bez wymuszonych intencji, sprzeczno\u015Bci i dziwnego kontekstu); u\u017Cyta fraza pasuje do kontekstu zdania. Pisz zdania, kt\xF3re rodzimy u\u017Cytkownik powiedzia\u0142by naturalnie; unikaj konstrukcji typu \u201Ealways try to + zjawisko niezale\u017Cne od woli\u201D (np. \u201EI always try to lose track of time\u201D). W wyborze wielokrotnym kontekst zdania jednoznacznie prowadzi do jednej odpowiedzi, a pozosta\u0142e s\u0105 b\u0142\u0119dne z powodu gramatyki lub znaczenia, nie przez dwuznaczno\u015B\u0107.
+Przed zwr\xF3ceniem KA\u017BDEGO elementu sprawd\u017A punkty a)\u2013g). Element, kt\xF3ry kt\xF3rego\u015B nie spe\u0142nia, przepisz albo zast\u0105p innym.`;
+var JUDGE_CRITERIA_TEXT = `Dla KA\u017BDEGO elementu oce\u0144 siedem kryteri\xF3w (true = spe\u0142nione, false = niespe\u0142nione):
 - naturalness (a): zdania angielskie i polskie brzmi\u0105 jak native speaker; bez kalk, bez robotycznych konstrukcji, bez niezr\u0119cznego szyku;
 - equivalence (b): polska i angielska strona znacz\u0105 TO SAMO \u2014 ta sama osoba, liczba, czas, tryb i formalno\u015B\u0107 (moje \u2260 your; inna sytuacja = false);
 - uniqueness (c): dok\u0142adnie jedna poprawna odpowied\u017A (wielokrotny wyb\xF3r), jednoznaczne pary (dopasowanie: polskie znaczenie nie pasuje te\u017C do \u017Cadnego innego angielskiego s\u0142owa z tej samej listy), dok\u0142adnie jeden zamierzony b\u0142\u0105d i naturalna wersja poprawna (korekta); dla pozosta\u0142ych typ\xF3w true;
 - level_vocab (d): poziom pasuje do kursanta, s\u0142ownictwo u\u017Cyte sensownie;
 - context (e): ca\u0142o\u015B\u0107 ma sens, bez absurd\xF3w i przypadkowych idiom\xF3w (np. \u201Emy office\u2026 on your doorstep\u201D);
-- grammar (f): zdanie angielskie jest poprawne gramatycznie (szyk, czas, forma czasownika, przedimki, przyimki, zgoda podmiotu z orzeczeniem; w korekcie dotyczy wersji POPRAWNEJ). Wielokrotny wyb\xF3r: po wstawieniu opcji oznaczonej jako poprawna zdanie jest poprawne gramatycznie I znaczeniowo, a dok\u0142adnie jedna z czterech opcji spe\u0142nia ten warunek \u2014 je\u015Bli druga opcja te\u017C daje poprawne zdanie, grammar = false.
+- grammar (f): zdanie angielskie jest poprawne gramatycznie (szyk, czas, forma czasownika, przedimki, przyimki, zgoda podmiotu z orzeczeniem; w korekcie dotyczy wersji POPRAWNEJ). Wielokrotny wyb\xF3r: po wstawieniu opcji oznaczonej jako poprawna zdanie jest poprawne gramatycznie I znaczeniowo, a dok\u0142adnie jedna z czterech opcji spe\u0142nia ten warunek \u2014 je\u015Bli druga opcja te\u017C daje poprawne zdanie, grammar = false;
+- sense (g): zdanie opisuje wiarygodn\u0105, naturaln\u0105 sytuacj\u0119 z \u017Cycia (bez wymuszonych intencji, sprzeczno\u015Bci i dziwnego kontekstu); u\u017Cyta fraza pasuje do kontekstu zdania (np. kolokacja nie jest czym\u015B, co si\u0119 \u201Epr\xF3buje robi\u0107\u201D wbrew logice, jak \u201Ealways try to lose track of time\u201D); w wyborze wielokrotnym kontekst zdania jednoznacznie prowadzi do jednej odpowiedzi, a pozosta\u0142e s\u0105 b\u0142\u0119dne z powodu gramatyki lub znaczenia, nie przez dwuznaczno\u015B\u0107.
 W polu reason napisz po polsku w kilku s\u0142owach, co jest nie tak (puste, gdy wszystko w porz\u0105dku). B\u0105d\u017A surowy: w\u0105tpliwo\u015B\u0107 = false.`;
 
 // utils/exerciseQuality.ts
@@ -2530,7 +2532,7 @@ ELEMENTY:
 ${items.map(renderForJudge).join("\n")}
 
 Zwr\xF3\u0107 JSON z jednym wpisem na element (index = numer elementu):
-{"verdicts":[{"index":0,"reason":"","naturalness":true,"equivalence":true,"uniqueness":true,"level_vocab":true,"context":true,"grammar":true}]}`;
+{"verdicts":[{"index":0,"reason":"","naturalness":true,"equivalence":true,"uniqueness":true,"level_vocab":true,"context":true,"grammar":true,"sense":true}]}`;
 var JUDGE_SCHEMA = {
   type: Type4.OBJECT,
   properties: {
@@ -2546,7 +2548,8 @@ var JUDGE_SCHEMA = {
           uniqueness: { type: Type4.BOOLEAN },
           level_vocab: { type: Type4.BOOLEAN },
           context: { type: Type4.BOOLEAN },
-          grammar: { type: Type4.BOOLEAN }
+          grammar: { type: Type4.BOOLEAN },
+          sense: { type: Type4.BOOLEAN }
         },
         required: ["index", "reason", ...QUALITY_CRITERIA],
         propertyOrdering: ["index", "reason", ...QUALITY_CRITERIA]
@@ -4063,6 +4066,261 @@ function buildNewGroupPayload(teacherUid, groupId, input, nowIso) {
   return payload;
 }
 
+// utils/normalizeExercise.ts
+import i18n from "i18next";
+
+// utils/matchingBoard.ts
+function hashSeed(text2) {
+  let h = 2166136261;
+  for (let i = 0; i < text2.length; i++) {
+    h ^= text2.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function seededRng(seed) {
+  let a = typeof seed === "number" ? seed >>> 0 : hashSeed(seed);
+  return () => {
+    a = a + 1831565813 >>> 0;
+    let t = a;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+// utils/multipleChoice.ts
+function seededShuffleOptions(options, correctIndex, seed) {
+  const rng = seededRng(seed);
+  const order = options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const shuffledOptions = order.map((i) => options[i]);
+  const newCorrectIndex = order.indexOf(correctIndex);
+  return {
+    options: shuffledOptions,
+    correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0,
+    originalOrder: order
+  };
+}
+
+// utils/normalizeExercise.ts
+var TYPE_ALIASES = {
+  word_order: "word_order",
+  unscramble: "word_order",
+  fill_in_the_blank: "fill_in_the_blank",
+  gap_fill: "fill_in_the_blank",
+  gap_from_context: "fill_in_the_blank",
+  cloze: "fill_in_the_blank",
+  translation: "translation",
+  micro_translation: "translation",
+  find_errors: "find_errors",
+  fix_sentence: "find_errors",
+  multiple_choice: "multiple_choice"
+};
+var resolveCanonicalType = (item, task) => {
+  const declared = item?.type || item?.exerciseType;
+  if (declared && TYPE_ALIASES[declared]) return TYPE_ALIASES[declared];
+  if (Array.isArray(item?.options) && (item?.correctIndex !== void 0 || item?.correctOptionIndex !== void 0 || item?.question)) return "multiple_choice";
+  if (item?.incorrectSentence) return "find_errors";
+  if (item?.textWithBlanks || item?.blanks || item?.wordsToCut || item?.missingWords) return "fill_in_the_blank";
+  if (item?.chunks) return "word_order";
+  const fallback = task?.type && TYPE_ALIASES[task.type];
+  return fallback || null;
+};
+var looksLikeInjectedInstruction = (text2) => /^(popraw zdanie|zwróć uwagę|instrukcja|ułóż)\b/i.test(text2.trim());
+var cleanSourceSentence = (raw) => {
+  const text2 = typeof raw === "string" ? raw.trim() : "";
+  if (!text2 || looksLikeInjectedInstruction(text2)) return "";
+  return text2;
+};
+var normalizeGapPayload = (item) => {
+  const canonicalSource = typeof item?.textWithBlanks === "string" && item.textWithBlanks.includes("{{gap:") ? item.textWithBlanks : null;
+  if (canonicalSource) {
+    const segments = splitBySeparator(canonicalSource, /\{\{gap:(\d+)\}\}/g, (n) => `GAP_${n}`);
+    if (segments.some((s) => s.kind === "gap")) {
+      return { segments, availableWords: Array.isArray(item.availableWords) ? item.availableWords : [] };
+    }
+  }
+  if (typeof item?.textWithBlanks === "string" && /\[BLANK_\d+\]/.test(item.textWithBlanks)) {
+    const segments = splitBySeparator(item.textWithBlanks, /\[BLANK_(\d+)\]/g, (n) => `BLANK_${n}`);
+    if (segments.some((s) => s.kind === "gap")) {
+      return { segments, availableWords: Array.isArray(item.availableWords) ? item.availableWords : [] };
+    }
+  }
+  const cutWords = Array.isArray(item?.wordsToCut) ? item.wordsToCut : Array.isArray(item?.missingWords) ? item.missingWords : [];
+  const baseSentence = String(item?.fullSentence || item?.sentenceWithBlank || "").trim();
+  if (cutWords.length > 0 && baseSentence) {
+    const segments = cutWordsFromSentence(baseSentence, cutWords);
+    if (segments.some((s) => s.kind === "gap")) {
+      return { segments, availableWords: cutWords };
+    }
+  }
+  const contentSource = String(item?.content || item?.text || item?.sentence || item?.sentenceWithBlank || "");
+  if (/_{3,}/.test(contentSource)) {
+    const parts = contentSource.split(/_{3,}/);
+    const segments = [];
+    parts.forEach((part, index) => {
+      if (part) segments.push({ kind: "text", text: part });
+      if (index < parts.length - 1) segments.push({ kind: "gap", gapId: "GAP_1" });
+    });
+    return { segments, availableWords: [] };
+  }
+  return null;
+};
+var splitBySeparator = (source, pattern, gapIdFromMatch) => {
+  const segments = [];
+  let lastIndex = 0;
+  let match;
+  const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+  while (match = re.exec(source)) {
+    if (match.index > lastIndex) {
+      segments.push({ kind: "text", text: source.slice(lastIndex, match.index) });
+    }
+    segments.push({ kind: "gap", gapId: gapIdFromMatch(match[1]) });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < source.length) {
+    segments.push({ kind: "text", text: source.slice(lastIndex) });
+  }
+  return segments;
+};
+var cutWordsFromSentence = (sentence, wordsToCut) => {
+  let remaining = sentence;
+  const segments = [];
+  let gapIndex = 0;
+  wordsToCut.forEach((word) => {
+    if (!word) return;
+    const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    const match = remaining.match(pattern);
+    if (!match || match.index === void 0) return;
+    gapIndex += 1;
+    if (match.index > 0) segments.push({ kind: "text", text: remaining.slice(0, match.index) });
+    segments.push({ kind: "gap", gapId: `GAP_${gapIndex}` });
+    remaining = remaining.slice(match.index + match[0].length);
+  });
+  if (remaining) segments.push({ kind: "text", text: remaining });
+  return segments;
+};
+var normalizeTokens = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry) => {
+    if (typeof entry === "string") return entry;
+    if (entry && typeof entry === "object" && typeof entry.word === "string") return entry.word;
+    if (entry === null || entry === void 0) return "";
+    return String(entry);
+  });
+};
+var normalizeExercise = (raw, task) => {
+  try {
+    const type = resolveCanonicalType(raw, task);
+    if (type === "multiple_choice") {
+      const sourceOptions = Array.isArray(raw?.raw?.options) ? raw.raw.options : Array.isArray(raw?.options) ? raw.options : [];
+      if (sourceOptions.length === 0) {
+        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+      }
+      const rawCorrect = typeof raw?.raw?.correctIndex === "number" ? raw.raw.correctIndex : typeof raw?.correctIndex === "number" ? raw.correctIndex : typeof raw?.correctOptionIndex === "number" ? raw.correctOptionIndex : 0;
+      const question = String(raw?.question || raw?.sentence || raw?.prompt || raw?.content || "").trim();
+      const idPart = String(raw?.id || raw?.questionId || raw?.raw?.id || raw?.raw?.questionId || task?.id || "").trim();
+      const seed = idPart ? `${idPart}|${question}` : question || "mc";
+      const cleanOptions = sourceOptions.map((o) => typeof o === "string" ? o.trim() : String(o ?? "").trim());
+      const shuffled = seededShuffleOptions(cleanOptions, rawCorrect, seed);
+      const focus = typeof raw?.grammarFocus === "string" ? raw.grammarFocus : void 0;
+      const explanation = typeof raw?.explanation === "string" ? raw.explanation : void 0;
+      return {
+        type,
+        state: "ready",
+        question,
+        options: shuffled.options,
+        correctIndex: shuffled.correctIndex,
+        explanation,
+        grammarFocus: focus,
+        raw
+      };
+    }
+    if (!type) {
+      return { type: "translation", state: "invalid", message: INVALID_MESSAGE, raw };
+    }
+    if (type === "word_order") {
+      const tokens2 = normalizeTokens(raw?.chunks);
+      if (tokens2.length === 0) {
+        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+      }
+      const sourceSentence = cleanSourceSentence(raw?.polishHint || raw?.sourceSentence || raw?.prompt);
+      return {
+        type,
+        state: "ready",
+        tokens: tokens2,
+        sourceSentence: sourceSentence || void 0,
+        correctSentence: typeof raw?.correctSentence === "string" ? raw.correctSentence : void 0,
+        raw
+      };
+    }
+    if (type === "fill_in_the_blank") {
+      const gapPayload = normalizeGapPayload(raw);
+      if (!gapPayload) {
+        const fallbackText = String(raw?.content || raw?.text || raw?.sentence || raw?.instruction || "").trim();
+        if (!fallbackText) {
+          return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+        }
+        return {
+          type,
+          state: "degraded",
+          segments: [{ kind: "text", text: fallbackText }],
+          gaps: [],
+          availableWords: [],
+          raw
+        };
+      }
+      const gaps = gapPayload.segments.filter((s) => s.kind === "gap").map((s) => ({ id: s.gapId }));
+      return {
+        type,
+        state: "ready",
+        segments: gapPayload.segments,
+        gaps,
+        availableWords: gapPayload.availableWords,
+        raw
+      };
+    }
+    if (type === "translation") {
+      const sourceSentence = cleanSourceSentence(raw?.polishSentence || raw?.content || raw?.instruction);
+      if (!sourceSentence) {
+        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+      }
+      const explicitHint2 = raw?.hint || raw?.hintSmall || raw?.hintLarge || (Array.isArray(raw?.requiredMaterial) ? raw.requiredMaterial.join(", ") : raw?.requiredMaterial);
+      const correctSentence = typeof raw?.correctTranslation === "string" ? raw.correctTranslation : typeof raw?.englishTranslation === "string" ? raw.englishTranslation : typeof raw?.englishSentence === "string" ? raw.englishSentence : typeof raw?.modelAnswer === "string" ? raw.modelAnswer : void 0;
+      return {
+        type,
+        state: "ready",
+        sourceSentence,
+        hint: explicitHint2 || void 0,
+        correctSentence,
+        raw
+      };
+    }
+    const incorrectSentence = cleanSourceSentence(raw?.incorrectSentence || raw?.content);
+    if (!incorrectSentence) {
+      return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+    }
+    const explicitHint = raw?.hint || raw?.hintSmall || raw?.hintLarge || (Array.isArray(raw?.requiredMaterial) ? raw.requiredMaterial.join(", ") : raw?.requiredMaterial);
+    const meaning = raw?.polishHint || raw?.meaning || void 0;
+    return {
+      type,
+      state: "ready",
+      incorrectSentence,
+      hint: explicitHint || void 0,
+      meaning,
+      correctSentence: typeof raw?.correctSentence === "string" ? raw.correctSentence : void 0,
+      raw
+    };
+  } catch {
+    return { type: "translation", state: "invalid", message: INVALID_MESSAGE, raw };
+  }
+};
+var INVALID_MESSAGE = "Nie uda\u0142o si\u0119 wczyta\u0107 tre\u015Bci tego zadania. Mo\u017Cesz przej\u015B\u0107 do kolejnego \u0107wiczenia.";
+
 // utils/directHomeworkEvaluation.ts
 var stripUndefinedDeep = (value) => {
   if (Array.isArray(value)) {
@@ -4101,10 +4359,13 @@ var evaluateDirectHomework = (items, answers, taskType) => {
         score = 100;
       }
     } else if (itemType === "multiple_choice") {
-      studentStr = typeof rawAns === "number" ? item.options?.[rawAns] || "" : String(rawAns || "");
-      const expectedOption = typeof item.correctOptionIndex === "number" ? item.options?.[item.correctOptionIndex] : item.options?.[0] || "";
+      const norm = normalizeExercise(item, { type: "multiple_choice" });
+      const expectedOption = norm.options?.[norm.correctIndex] || (typeof item.correctOptionIndex === "number" ? item.options?.[item.correctOptionIndex] : item.options?.[0] || "");
       expectedStr = expectedOption;
-      if (rawAns === item.correctOptionIndex || normalizeSimple(studentStr) === normalizeSimple(expectedOption)) {
+      studentStr = typeof rawAns === "number" ? norm.options?.[rawAns] || item.options?.[rawAns] || "" : String(rawAns || "");
+      const isMatchByIndex = typeof rawAns === "number" && (rawAns === norm.correctIndex || rawAns === item.correctIndex || rawAns === item.correctOptionIndex);
+      const isMatchByText = Boolean(studentStr && normalizeSimple(studentStr) === normalizeSimple(expectedOption));
+      if (isMatchByIndex || isMatchByText) {
         isCorrect = true;
         score = 100;
       }
