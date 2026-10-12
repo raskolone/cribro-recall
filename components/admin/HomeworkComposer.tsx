@@ -72,6 +72,7 @@ type RecipientMode = 'student' | 'group' | 'multiple';
 type SourceMode = 'lessons' | 'text';
 
 const PER_TYPE_OPTIONS = [3, 5, 8];
+const MATCHING_PAIR_OPTIONS = [4, 5, 6, 7, 8];
 
 const studentLabel = (student: User): string => {
   const name = `${student.firstName || ''} ${student.lastName || ''}`.trim();
@@ -108,6 +109,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
   const [pastedText, setPastedText] = useState('');
   const [types, setTypes] = useState<HomeworkType[]>(['translation']);
   const [perType, setPerType] = useState(5);
+  const [matchingPairCount, setMatchingPairCount] = useState<number>(5);
   const [instruction, setInstruction] = useState('');
   const [dueDate, setDueDate] = useState(() => todayPlusDays(7));
 
@@ -141,6 +143,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     level: string;
     studentId?: string;
     perType: number;
+    matchingPairCount?: number;
   } | null>(null);
   const [modelUsed, setModelUsed] = useState<string>('');
   const [assignedCount, setAssignedCount] = useState(0);
@@ -290,6 +293,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         source,
         types,
         perType,
+        matchingPairCount,
         level: (recipientMode === 'group' ? group?.level : student?.level) || 'B1',
         instruction: instruction.trim() || undefined,
         // Z `studentId` generator sięga po krzywą uczenia kursanta: poziom
@@ -303,6 +307,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         level: (recipientMode === 'group' ? group?.level : student?.level) || 'B1',
         studentId: recipientMode === 'group' ? undefined : studentId,
         perType,
+        matchingPairCount,
       });
       setWarmup(result.warmup || []);
       setIncludeWarmup(true);
@@ -983,6 +988,27 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
             ))}
           </div>
         </div>
+        {types.includes('matching') && (
+          <div className="flex flex-wrap items-center gap-3 mt-4" data-testid="matching-pair-count-selector">
+            <span className="text-xs font-bold text-content-muted">{i18n.t('Liczba par w dopasowaniu')}:</span>
+            <div className="flex gap-1.5">
+              {MATCHING_PAIR_OPTIONS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setMatchingPairCount(n)}
+                  className={`w-11 h-11 rounded-xl border font-mono text-sm font-bold transition-colors ${
+                    matchingPairCount === n
+                      ? 'bg-primary/12 border-primary/40 text-primary'
+                      : 'border-white/10 text-content-muted'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <input
           value={instruction}

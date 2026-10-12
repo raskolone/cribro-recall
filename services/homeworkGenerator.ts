@@ -1,3 +1,4 @@
+import { clampMatchingPairCount } from "../utils/normalizeExercise";
 import {
   ErrorCorrectionExercise,
   HomeworkType,
@@ -95,6 +96,8 @@ export interface HomeworkSource {
   pastedText?: string;
 }
 
+export { clampMatchingPairCount };
+
 export interface HomeworkGenerationRequest {
   source: HomeworkSource;
   types: HomeworkType[];
@@ -116,6 +119,8 @@ export interface HomeworkGenerationRequest {
   excludeSentences?: string[];
   /** Liczba par w jednym zestawie dopasowania; domyślnie wynika z `perType`. Używane przy regeneracji zestawu. */
   pairCount?: number;
+  /** Liczba par w dopasowaniu (4–8, domyślnie 5). */
+  matchingPairCount?: number;
 }
 
 export interface GeneratedSection {
@@ -824,35 +829,56 @@ export const generateMatching = async (
   briefing?: string,
   ask: JsonAsker = askForJson
 ): Promise<{ items: MatchingExercise[]; modelUsed: string }> => {
-  const pairCount = req.pairCount ?? Math.max(4, Math.min(6, req.perType * 4));
-  const prompt = `${baseContext(req, sourceText, briefing)}
+  const pairCount = clampMatchingPairCount(req.matchingPairCount ?? req.pairCount);
+
+  const buildPrompt = (count: number, retryNote?: string) => `${baseContext(req, sourceText, briefing)}
 
 ZADANIE:
-Wybierz ${pairCount} słów lub krótkich fraz po angielsku z powyższego materiału i podaj ich
+Wybierz DOKŁADNIE ${count} słów lub krótkich fraz po angielsku z powyższego materiału i podaj ich
 polskie znaczenie (proste, jednoznaczne tłumaczenie albo krótka definicja).
 
 WYMAGANIA SZCZEGÓŁOWE DLA DOPASOWYWANIA PAR:
+- Zwróć DOKŁADNIE ${count} unikalnych par (ani mniej, ani więcej).
 - Każde polskie znaczenie musi jednoznacznie wskazywać dokładnie jedno angielskie
   słowo/frazę z listy — bez dwuznaczności, które pasowałyby do kilku par naraz.
 - Wybieraj słownictwo rzeczywiście obecne w materiale z lekcji, nie ogólne słówka.
 - Bez powtórzeń — każde angielskie słowo/fraza występuje tylko raz.
-
+${retryNote ? `\nUWAGA DO POPRZEDNIEJ PRÓBY:\n${retryNote}\n` : ''}
 Zwróć JSON:
 {"pairs":[{"left":"deadline","right":"termin (ostateczny)"},{"left":"to catch up","right":"nadrobić zaległości"}]}`;
 
-  const { parsed, modelUsed } = await ask(prompt);
-  const rawPairs = Array.isArray(parsed?.pairs) ? parsed.pairs : [];
+  let currentPrompt = buildPrompt(pairCount);
+  let modelUsed = '';
+  let pairs: Array<{ id: string; left: string; right: string }> = [];
 
-  const pairs = rawPairs
-    .filter((p: any) => p?.left && p?.right)
-    .map((p: any, i: number) => ({
-      id: `pair-${i}`,
-      left: String(p.left).trim(),
-      right: String(p.right).trim(),
-    }));
+  // Próba generowania z regeneracją, jeśli model zwróci inną liczbę par niż N
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const res = await ask(currentPrompt);
+    modelUsed = res.modelUsed;
+    const rawPairs = Array.isArray(res.parsed?.pairs) ? res.parsed.pairs : [];
+
+    const extracted = rawPairs
+      .filter((p: any) => p?.left && p?.right && String(p.left).trim() && String(p.right).trim())
+      .map((p: any, i: number) => ({
+        id: `pair-${i}`,
+        left: String(p.left).trim(),
+        right: String(p.right).trim(),
+      }));
+
+    if (extracted.length === pairCount) {
+      pairs = extracted;
+      break;
+    }
+
+    // Odrzucenie z regeneracją: prosimy o dokładnie pairCount par
+    currentPrompt = buildPrompt(
+      pairCount,
+      `Poprzednia odpowiedź zawierała ${extracted.length} par zamiast wymaganych dokładnie ${pairCount}. Zwróć DOKŁADNIE ${pairCount} unikalnych par.`
+    );
+    pairs = extracted;
+  }
 
   const items: MatchingExercise[] = pairs.length >= 2 ? [{ pairs }] : [];
-
   return { items, modelUsed };
 };
 
@@ -1045,9 +1071,9 @@ const withQualityGate = (
 
 /** Dopasowanie: sędzia ocenia pary pojedynczo, a z przechodzących składamy zestaw. */
 const withMatchingQualityGate = (run: TypeRunner, level: string, ask?: JsonAsker): TypeRunner => async (subReq) => {
-  const first = await run(subReq);
+  const wanted = clampMatchingPairCount(subReq.matchingPairCount ?? subReq.pairCount);
+  const first = await run({ ...subReq, pairCount: wanted, matchingPairCount: wanted });
   const sets = first.items.filter((set) => Array.isArray(set?.pairs));
-  const wanted = subReq.pairCount ?? Math.max(4, Math.min(6, subReq.perType * 4));
   const gate = await runQualityGate({
     items: sets.flatMap((set) => set.pairs as Array<{ left: string; right: string }>),
     target: wanted,
@@ -1057,6 +1083,7 @@ const withMatchingQualityGate = (run: TypeRunner, level: string, ask?: JsonAsker
       const more = await run({
         ...subReq,
         pairCount: missing,
+        matchingPairCount: missing,
         instruction: `${subReq.instruction ?? ''}${buildRejectedBlock(rejected)}`.trim() || undefined,
       });
       return more.items.flatMap((set) => (Array.isArray(set?.pairs) ? set.pairs : []));
@@ -1197,6 +1224,7 @@ export interface RegenerateItemsRequest {
   instruction?: string;
   /** „Ile zadań na typ" z pierwszego generowania — dla luk to liczba pustych miejsc w tekście. */
   perType: number;
+  matchingPairCount?: number;
 }
 
 /**
@@ -1237,7 +1265,8 @@ export const regenerateItems = async (req: RegenerateItemsRequest): Promise<Rege
         source: {},
         types: [group.type],
         perType: group.type === 'fill_in_the_blank' ? req.perType : wanted,
-        pairCount: group.type === 'matching' ? group.items[0]?.pairs?.length || undefined : undefined,
+        pairCount: group.type === 'matching' ? clampMatchingPairCount(group.items[0]?.pairs?.length ?? req.matchingPairCount) : undefined,
+        matchingPairCount: group.type === 'matching' ? clampMatchingPairCount(group.items[0]?.pairs?.length ?? req.matchingPairCount) : undefined,
         level: req.level,
         studentId: req.studentId,
         instruction:

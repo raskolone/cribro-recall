@@ -12,6 +12,7 @@ import MatchingBoard from '../ui/MatchingBoard';
 import {
   buildRound,
   columnsOf,
+  MAX_PAIRS_PER_ROUND,
   initialMatchState,
   isRoundComplete,
   matchingScore,
@@ -34,6 +35,7 @@ export interface MatchingResult {
 
 interface MatchingGameProps {
   cards: MatchCardInput[];
+  pairCount?: number;
   onBack: () => void;
   /** „Wyjdź" w trakcie gry — rodzic pokazuje potwierdzenie. */
   onQuit: () => void;
@@ -80,7 +82,9 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
   onStartSentences,
   renderPronunciation,
   reducedMotion,
+  pairCount,
 }) => {
+  const effectiveMaxPairs = pairCount ?? MAX_PAIRS_PER_ROUND;
   const reduced = useMemo(() => reducedMotion ?? prefersReducedMotion(), [reducedMotion]);
 
   // Aktualne karty na potrzeby „Zagraj ponownie" — plansza NIE czyta ich w renderze.
@@ -89,7 +93,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
 
   // Plansza i jej kolejność: raz na rundę (leniwa inicjalizacja / „Zagraj ponownie").
   const [round, setRound] = useState(0);
-  const [tiles, setTiles] = useState<MatchTile[]>(() => buildRound(cards));
+  const [tiles, setTiles] = useState<MatchTile[]>(() => buildRound(cards, Math.random, effectiveMaxPairs));
   const [game, setGame] = useState<MatchState>(initialMatchState);
   const gameRef = useRef<MatchState>(game);
   const wrongWordsRef = useRef<Set<string>>(new Set());
@@ -315,7 +319,7 @@ const MatchingGame: React.FC<MatchingGameProps> = ({
     const fresh = initialMatchState();
     gameRef.current = fresh;
     wrongWordsRef.current.clear();
-    setTiles(buildRound(cardsRef.current)); // jedyne miejsce ponownego tasowania
+    setTiles(buildRound(cardsRef.current, Math.random, effectiveMaxPairs)); // jedyne miejsce ponownego tasowania
     setGame(fresh);
     setElapsed(0);
     setResult(null);

@@ -1,6 +1,18 @@
+/** Walidacja i przycięcie liczby par w dopasowaniu (4–8, domyślnie 5). */
+export const clampMatchingPairCount = (rawCount?: unknown): number => {
+  if (rawCount === undefined || rawCount === null || rawCount === "") return 5;
+  const num = typeof rawCount === "number" ? rawCount : Number(rawCount);
+  if (!Number.isFinite(num)) return 5;
+  const rounded = Math.round(num);
+  if (rounded < 4) return 4;
+  if (rounded > 8) return 8;
+  return rounded;
+};
+
 import i18n from 'i18next';
 import { HomeworkType } from '../types';
 import { seededShuffleOptions } from './multipleChoice';
+import { cleanPairs } from './matchingBoard';
 
 /**
  * Adapter kanoniczny dla jednego ćwiczenia pracy domowej (silnik v1 —
@@ -18,7 +30,7 @@ import { seededShuffleOptions } from './multipleChoice';
  */
 
 /** Typ kanoniczny — te same cztery rodzaje, które `utils/homework.ts` już rozróżnia jako v1. */
-export type CanonicalExerciseType = 'word_order' | 'fill_in_the_blank' | 'translation' | 'find_errors' | 'multiple_choice';
+export type CanonicalExerciseType = 'word_order' | 'fill_in_the_blank' | 'translation' | 'find_errors' | 'multiple_choice' | 'matching';
 
 export type ExerciseState = 'ready' | 'degraded' | 'invalid';
 
@@ -48,6 +60,10 @@ export interface CanonicalExercise {
   /** ZAWSZE tablica czystych stringów — nigdy zagnieżdżonych obiektów. */
   tokens?: string[];
   correctSentence?: string;
+
+  // --- matching ---
+  pairs?: Array<{ id: string; left: string; right: string }>;
+  matchingPairCount?: number;
 
   // --- multiple_choice ---
   question?: string;
@@ -81,6 +97,10 @@ const TYPE_ALIASES: Record<string, CanonicalExerciseType> = {
   find_errors: 'find_errors',
   fix_sentence: 'find_errors',
   multiple_choice: 'multiple_choice',
+  matching: 'matching',
+  match: 'matching',
+  pairs: 'matching',
+  match_pairs: 'matching',
 };
 
 const resolveCanonicalType = (item: any, task?: { type?: HomeworkType } | null): CanonicalExerciseType | null => {
@@ -90,6 +110,7 @@ const resolveCanonicalType = (item: any, task?: { type?: HomeworkType } | null):
   if (item?.incorrectSentence) return 'find_errors';
   if (item?.textWithBlanks || item?.blanks || item?.wordsToCut || item?.missingWords) return 'fill_in_the_blank';
   if (item?.chunks) return 'word_order';
+  if (Array.isArray(item?.pairs) || Array.isArray(item?.raw?.pairs)) return 'matching';
   const fallback = task?.type && TYPE_ALIASES[task.type];
   return fallback || null;
 };
@@ -238,6 +259,34 @@ const normalizeTokens = (raw: unknown): string[] => {
 export const normalizeExercise = (raw: any, task?: { type?: HomeworkType; id?: string } | null): CanonicalExercise => {
   try {
     const type = resolveCanonicalType(raw, task);
+    if (type === 'matching') {
+      const rawPairsList = Array.isArray(raw?.pairs)
+        ? raw.pairs
+        : Array.isArray(raw?.raw?.pairs)
+        ? raw.raw.pairs
+        : [];
+      // Upewnij się, że każda para ma id
+      const normalizedRawPairs = rawPairsList.map((p: any, idx: number) => ({
+        id: typeof p?.id === 'string' && p.id ? p.id : `pair-${idx}`,
+        left: typeof p?.left === 'string' ? p.left : String(p?.left ?? ''),
+        right: typeof p?.right === 'string' ? p.right : String(p?.right ?? ''),
+      }));
+      const pairs = cleanPairs(normalizedRawPairs);
+      if (pairs.length < 2) {
+        return { type, state: 'invalid', message: INVALID_MESSAGE, raw };
+      }
+      const matchingPairCount = clampMatchingPairCount(
+        raw?.matchingPairCount ?? raw?.pairCount ?? raw?.raw?.matchingPairCount ?? raw?.raw?.pairCount ?? pairs.length
+      );
+      return {
+        type,
+        state: 'ready',
+        pairs,
+        matchingPairCount,
+        raw,
+      };
+    }
+
     if (type === 'multiple_choice') {
       const sourceOptions: string[] = Array.isArray(raw?.raw?.options)
         ? raw.raw.options
@@ -399,5 +448,7 @@ export const exerciseUiCopy = (type: CanonicalExerciseType): { heading: string; 
       return { heading: i18n.t('Popraw zdanie'), instruction: i18n.t('Znajdź błąd i zapisz poprawną wersję zdania.') };
     case 'multiple_choice':
       return { heading: i18n.t('Wybierz formę'), instruction: i18n.t('Wybierz poprawną odpowiedź') };
+    case 'matching':
+      return { heading: i18n.t('Dopasuj pary'), instruction: i18n.t('Dopasuj słowa do ich polskich odpowiedników.') };
   }
 };

@@ -49,11 +49,13 @@ interface FlashcardStudyScreenProps {
   onNavigate?: (view: any, extra?: any) => void;
   onStartAIPractice?: () => void;
   focusWords?: string[];
+  pairCount?: number;
 }
 
 type StudyMode = 'flashcards' | 'quiz' | 'writing' | 'matching' | 'intro' | null;
 
-const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setIds, initialMode = null, onBack, onNavigate, onStartAIPractice, focusWords }) => {
+const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setIds, initialMode = null, onBack, onNavigate, onStartAIPractice, focusWords, pairCount }) => {
+  const effectivePairCount = pairCount ?? (typeof window !== 'undefined' ? (window as any)._initialMatchingPairCount : undefined);
   const { sets, getFlashcards, saveSession } = useFlashcards();
   const { t, language } = useLanguage();
   const [set, setSet] = useState<FlashcardSet | null>(null);
@@ -243,7 +245,7 @@ const FlashcardStudyScreen: React.FC<FlashcardStudyScreenProps> = ({ setId, setI
   }
 
   if (selectedMode === 'matching') {
-    return <>{renderModal()}<MatchingMode showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSessionForScope}
+    return <>{renderModal()}<MatchingMode pairCount={effectivePairCount} showConfirm={showConfirm} closeConfirm={closeConfirm} cards={cards} setId={setId} onBack={onBack} saveSession={saveSessionForScope}
         onNavigate={onNavigate}
         language={language} t={t}
         onStartQuiz={(wrongWords: string[]) => {
@@ -1066,7 +1068,7 @@ const WritingMode = ({ cards: initialCards, setId, onBack, saveSession, t, showC
 // --- Matching Mode Component ---
 // Gra żyje w MatchingGame (plansza tasowana raz na rundę, efekty GSAP, gwiazdki);
 // tu zostaje tylko zapis sesji — dokładnie to, co zapisywała dotąd.
-const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language, onComplete}: any) => {
+const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, closeConfirm , onNavigate, language, onComplete, pairCount}: any) => {
   // Kafelki pokazują tekst bez HTML-a, więc zapisany rich-text (`<b>`, `&amp;`) sprowadzamy do zwykłego
   // tekstu tutaj. `wrongWords` wracają do zapisanej postaci terminu — Quiz dopasowuje słowa do kart po niej.
   const plainCards = useMemo(
@@ -1081,6 +1083,7 @@ const MatchingMode = ({ cards, setId, onBack, saveSession, t, showConfirm, close
   return (
   <div className="w-full flex-1 flex flex-col min-h-[calc(100dvh-5rem)]">
     <MatchingGame
+      pairCount={pairCount}
       cards={plainCards}
       onBack={onBack}
       onQuit={() => showConfirm(

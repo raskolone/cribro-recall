@@ -1,3 +1,4 @@
+import { clampMatchingPairCount } from "./normalizeExercise";
 /**
  * Walidacja wejścia tras `/api/homework-v2/*` — czyste funkcje, bez Firebase i bez Express.
  *
@@ -71,6 +72,7 @@ export interface GenerateInput {
   lessonIds: string[];
   itemCount: number;
   plannedMinutes: number;
+  matchingPairCount?: number;
 }
 
 export function validateGenerateInput(body: any): Validated<GenerateInput> {
@@ -94,5 +96,6 @@ export function validateGenerateInput(body: any): Validated<GenerateInput> {
     if (!Array.isArray(body.rawLessons)) return fail('rawLessons: oczekiwano listy.');
     if (JSON.stringify(body.rawLessons).length > MAX_RAW_LESSONS_JSON_CHARS) return fail('rawLessons: zbyt duże wejście.');
   }
-  return { ok: true, value: { studentUid, lessonIds: lessons.value, itemCount, plannedMinutes } };
+  const matchingPairCount = body?.matchingPairCount !== undefined ? clampMatchingPairCount(body.matchingPairCount) : undefined;
+  return { ok: true, value: { studentUid, lessonIds: lessons.value, itemCount, plannedMinutes, ...(matchingPairCount !== undefined ? { matchingPairCount } : {}) } };
 }

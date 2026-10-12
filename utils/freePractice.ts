@@ -96,11 +96,12 @@ export interface FreePracticeLaunch {
   /** Wszystkie wybrane zestawy, w kolejności wyboru. */
   setIds: string[];
   mode: FreePracticeMode;
+  pairCount?: number;
 }
 
-export function freePracticeLaunch(mode: FreePracticeMode, setIds: readonly string[]): FreePracticeLaunch {
+export function freePracticeLaunch(mode: FreePracticeMode, setIds: readonly string[], pairCount?: number): FreePracticeLaunch {
   const ids = [...setIds];
-  return { view: 'flashcard-study', setId: ids[0] ?? '', setIds: ids, mode };
+  return { view: 'flashcard-study', setId: ids[0] ?? '', setIds: ids, mode, ...(pairCount !== undefined ? { pairCount } : {}) };
 }
 
 /** Zakres zdań z AI: zestawy, lekcje (id zestawów słownictwa z lekcji) i tematy wpisane ręcznie. */
@@ -147,10 +148,11 @@ export function buildFreeLaunch(
   scope: SentenceScope,
   count?: number,
   focusWords?: string[],
+  pairCount?: number,
 ): AnyFreeLaunch {
   return mode === 'translation' || mode === 'correction'
     ? freeSentencesLaunch(mode, scope, count, focusWords)
-    : freePracticeLaunch(mode, scope.setIds);
+    : freePracticeLaunch(mode, scope.setIds, pairCount !== 5 ? pairCount : undefined);
 }
 
 // --- Stan początkowy menu (powrót z ćwiczenia, skrót z innego ekranu) ---------------------------
@@ -158,6 +160,7 @@ export function buildFreeLaunch(
 /** Wstępny stan menu: powrót z ćwiczenia albo skrót „Przećwicz w zdaniach AI" z innego ekranu. */
 export interface FreePracticeInitial {
   mode?: FreePracticeMode;
+  pairCount?: number;
   step?: FreePracticeStep;
   setIds?: string[];
   lessonIds?: string[];

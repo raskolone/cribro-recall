@@ -140,6 +140,9 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
   const [sentenceCount, setSentenceCount] = useState(() =>
     Math.min(MAX_SENTENCE_COUNT, Math.max(MIN_SENTENCE_COUNT, initial?.count ?? DEFAULT_SENTENCE_COUNT)),
   );
+  const [matchingPairCount, setMatchingPairCount] = useState<number>(() =>
+    Math.min(8, Math.max(4, initial?.pairCount ?? 5)),
+  );
   // Szybki start („Co dalej?"): słowa słabe tylko do odczytu, krok 3 w zwartej formie z „Generuj".
   const focusWords = useMemo(() => initial?.focusWords ?? [], [initial?.focusWords]);
   const quick = Boolean(initial?.quick) && sentences;
@@ -173,7 +176,7 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
 
   const start = () => {
     if (blocker) return;
-    onStart(buildFreeLaunch(mode, scope, sentences ? sentenceCount : undefined, sentences ? focusWords : undefined));
+    onStart(buildFreeLaunch(mode, scope, sentences ? sentenceCount : undefined, sentences ? focusWords : undefined, mode === 'matching' ? matchingPairCount : undefined));
   };
 
   const primaryAction = () => {
@@ -804,6 +807,32 @@ const FreePracticeScreen: React.FC<FreePracticeScreenProps> = ({
               value={sentenceCount}
               onChange={setSentenceCount}
             />
+          </div>
+        )}
+        {mode === 'matching' && (
+          <div data-testid="free-practice-matching-pair-count-wrapper" className="rounded-2xl border-2 border-line-strong bg-surface-flat p-4 space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold text-text-hi">
+                {t('Liczba par w dopasowaniu')}
+              </span>
+              <span className="font-mono text-sm font-bold text-primary">{matchingPairCount}</span>
+            </div>
+            <div className="flex gap-1.5 pt-1">
+              {[4, 5, 6, 7, 8].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setMatchingPairCount(n)}
+                  className={`w-11 h-11 rounded-xl border font-mono text-sm font-bold transition-colors motion-reduce:transition-none pointer-coarse:min-h-11 ${focusRing} ${
+                    matchingPairCount === n
+                      ? 'bg-primary/15 border-primary text-primary'
+                      : 'border-line-strong text-text-2 hover:border-line-soft'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {blockerMessage && (

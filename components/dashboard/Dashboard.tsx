@@ -753,6 +753,9 @@ const Dashboard: React.FC = () => {
               return;
             }
             (window as any)._initialStudyMode = launch.mode;
+            if (launch.pairCount) {
+              (window as any)._initialMatchingPairCount = launch.pairCount;
+            }
             handleNavigate(launch.view, { setId: launch.setId, setIds: launch.setIds });
           }}
           onBack={() => handleNavigate('dashboard')}
