@@ -68,7 +68,7 @@
   --color-tile-2: #d6e6f8; --color-tile-line-2: #4b82bf;
   --color-tile-3: #e4def7; --color-tile-line-3: #7a69c4;
   --color-tile-4: #f7e6c4; --color-tile-line-4: #a67c1f;
-  --color-tile-5: #f8dce4; --color-tile-line-5: #c0587a;
+  --color-tile-5: #ccf2f4; --color-tile-line-5: #20808b;
 
   /* Wspólny kafelek gier (.game-tile, utils/gameTile.ts): spoczynek, poprawny, błędny, zablokowany.
      Tekst zawsze text-hi; stan niosą obwódka 2 px, ikona i tekst dla czytników (kontrast: tests/gameTile.test.ts). */
@@ -305,7 +305,7 @@
   --color-tile-2: #162f52; --color-tile-line-2: #3f78c4;
   --color-tile-3: #2d2552; --color-tile-line-3: #7a64c8;
   --color-tile-4: #4a3410; --color-tile-line-4: #b98a2c;
-  --color-tile-5: #4a2230; --color-tile-line-5: #c4607c;
+  --color-tile-5: #0f363d; --color-tile-line-5: #33a9b9;
 
   /* Wspólny kafelek gier — wersja ciemna; jasna w bloku :root[data-theme="light"] wyżej. */
   --color-game-rest: #182a40;   --color-game-rest-line: #7391b4;

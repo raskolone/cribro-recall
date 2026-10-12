@@ -36,8 +36,8 @@ const tints = (c: HTMLElement) => Array.from(c.querySelectorAll('[data-testid="m
 
 test('kolor kafelka zależy od pozycji, nie od flagi poprawności: ten sam układ barw dla każdego correctIndex', () => {
   const layouts = [0, 1, 2, 3].map((correctIndex) => tints(render(<Host item={mk(correctIndex)} />).container));
-  for (const layout of layouts) assert.deepEqual(layout, ['1', '2', '3', '4']);
-  assert.deepEqual([0, 1, 2, 3, 4, 5].map(mcOptionTint), [1, 2, 3, 4, 5, 1]);
+  for (const layout of layouts) assert.deepEqual(layout, ['2', '3', '4', '5']);
+  assert.deepEqual([0, 1, 2, 3, 4, 5].map(mcOptionTint), [2, 3, 4, 5, 2, 3]);
 });
 
 test('cztery kafelki mają cztery różne barwy, a kolor nie zmienia się po odpowiedzi (poprawnej ani błędnej)', () => {
@@ -100,4 +100,35 @@ test('kontrast pasteli opcji (5 kolorów × 2 motywy): tekst ≥ 4,5:1, obrys �
     }
   }
   console.log(rows.join('\n'));
+});
+
+
+function getHue(hex: string): number {
+  const r = parseInt(hex.slice(1, 3), 16) / 255;
+  const g = parseInt(hex.slice(3, 5), 16) / 255;
+  const b = parseInt(hex.slice(5, 7), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0;
+  if (max !== min) {
+    const d = max - min;
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h *= 60;
+  }
+  return Math.round(h);
+}
+
+test('żaden kolor puli (1…5) w obu motywach nie wpada w zakres 335°–25° (czerwień/róż)', () => {
+  const themes: ThemeName[] = ['light', 'dark'];
+  for (const theme of themes) {
+    for (const n of [1, 2, 3, 4, 5]) {
+      const hex = THEMES[theme][`--color-tile-${n}`];
+      const hue = getHue(hex);
+      const isRedPink = hue >= 335 || hue <= 25;
+      assert.equal(isRedPink, false, `${theme} tile-${n} (${hex}, hue ${hue}°) leży w zakresie 335°–25°!`);
+    }
+  }
 });

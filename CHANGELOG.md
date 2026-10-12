@@ -4525,3 +4525,12 @@ light | 5 | #f8dce4 | #020617 | 15.70 | 4.27
   - Przeliczenie indeksu i spójność: `correctIndex` jest przeliczany po tasowaniu. Komponenty (`HomeworkExercise.tsx`, `HomeworkScreen.tsx`, `StudentHomeworkScreen.tsx`) korzystają z kanonicznego ćwiczenia.
   - Wsteczna kompatybilność: ewaluacja w `StudentHomeworkScreen.tsx` i `utils/directHomeworkEvaluation.ts` weryfikuje odpowiedź zarówno po nowym indeksie i tekście opcji, jak i wspiera odczyt archiwalnych odpowiedzi sprzed tasowania (indeksowych i tekstowych).
   - Testy: `tests/multipleChoiceShuffle.test.ts` — rozkład pozycji poprawnej odpowiedzi na 400 zadaniach wynosi [ 100, 85, 121, 94 ] (25.0%, 21.3%, 30.3%, 23.5%), idempotencja i determinizm powtórnej normalizacji, ocena po tasowaniu, odczyt starych zapisów.
+
+- **Dopisek U1-polish2 (2026-10-12), Zmiana 2 — paleta kafelków (eliminacja różu/czerwieni z puli, MC bez zieleni i czerwieni):**
+  - Kolor 5 zastąpiony odcieniem turkusowym/cyan: #ccf2f4 (linia #20808b) w jasnym motywie (odcień 183°), #0f363d (linia #33a9b9) w ciemnym motywie (odcień 189°). Żaden kolor puli nie wpada w zakres 335°–25°.
+  - Zmierzone kontrasty nowego koloru:
+    - Jasny motyw: tekst text-hi na tle 16.88:1 (AA >= 4.5:1), obrys 2 px vs tło strony 3.90:1 (>= 3:1), obrys vs tło kafelka 3.89:1 (>= 3:1), akcent zaznaczenia 4.54:1.
+    - Ciemny motyw: tekst text-hi na tle 13.00:1 (AA >= 4.5:1), obrys 2 px vs tło strony 6.82:1 (>= 3:1), obrys vs tło kafelka 4.65:1 (>= 3:1), akcent zaznaczenia 9.19:1.
+  - Wybór wielokrotny: używa wyłącznie odcieni [2, 3, 4, 5] (niebieski, lawendowy, żółty, nowy turkus) z pozycji 0..3, całkowicie bez zielonego (1, zarezerwowanego dla stanu „poprawna") i bez czerwieni/różu (stan „błędna"). Kolor przypisany wyłącznie do pozycji, niezależny od poprawności.
+  - Dopasowanie par: 5 odcieni bez różu/czerwieni. Czerwień występuje wyłącznie dla stanu „błędna odpowiedź".
+  - Testy: `tests/multipleChoiceTint.test.tsx` (12 testów w pakiecie, w tym walidacja kąta barwnego < 335° i > 25° dla wszystkich tokenów 1..5).

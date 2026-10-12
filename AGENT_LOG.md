@@ -7188,3 +7188,13 @@ Zrobione:
 - `StudentHomeworkScreen.tsx` i `directHomeworkEvaluation.ts` przeliczają i sprawdzają odpowiedzi po tekście i zindeksowaniu (zachowana kompatybilność wsteczna starych zapisów).
 - Dodano klucze i18n (`Wybierz formę`) w `pl.json` i `en.json`.
 - Testy: `tests/multipleChoiceShuffle.test.ts` (4 testy, rozkład na 400 próbach: [ 100, 85, 121, 94 ]).
+
+
+2026-10-12 — Antigravity / Gemini 3.8 Flash (High)
+
+Zadanie: U1-polish2 (Zmiana 2) — nowa paleta kafelków bez różu/czerwieni, MC na kolorach niebieski/lawendowy/żółty/turkus. Gałąź `u1-release` (worktree `../recall-u1`), bez pusha.
+Zrobione:
+- Zastąpiono kolor 5 w `index.css` pastelowym turkusem (#ccf2f4 / #0f363d, linie #20808b / #33a9b9; odcienie 183° i 189° — poza zakresem 335°–25°).
+- Zmierzono kontrasty: tekst text-hi 16.88:1 (jasny) i 13.00:1 (ciemny); obrys vs strona 3.90:1 (jasny) i 6.82:1 (ciemny).
+- `mcOptionTint` w `utils/multipleChoice.ts` mapuje pozycje 0..3 na tokeny [2, 3, 4, 5] (wykluczony zielony 1 i czerwień/róż).
+- Testy: `tests/multipleChoiceTint.test.tsx` (walidacja braku barw w 335°–25°, układ MC, kontrasty).

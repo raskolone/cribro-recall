@@ -14,10 +14,13 @@ export interface McOptionView {
 }
 
 /**
- * Pastel kafelka opcji: wyłącznie z pozycji (1…5 po kolei), więc nie zależy od `correctIndex`
- * ani od tego, co kursant wybrał — kolor nie zdradza odpowiedzi. Opcje są mieszane przy generowaniu.
+ * Pastel kafelka opcji: wyłącznie niebieski (2), lawendowy (3), żółty (4) i nowy turkus (5),
+ * bez zielonego (1 = stan „poprawna") i bez czerwieni/różu (stan „błędna").
+ * Kolor przypisany wyłącznie do pozycji kafelka (2, 3, 4, 5 po kolei), niezależny od poprawności.
  */
-export const mcOptionTint = (index: number): GameTileShade => shadeForHit(index);
+const MC_OPTION_TINTS: readonly GameTileShade[] = [2, 3, 4, 5] as const;
+export const mcOptionTint = (index: number): GameTileShade =>
+  MC_OPTION_TINTS[Math.abs(index) % MC_OPTION_TINTS.length];
 
 /** Czy zadanie ma poprawny `correctIndex` (stare dane bywają bez niego — wtedy nie pokazujemy wyniku). */
 export const hasValidKey = (options: readonly unknown[], correctIndex: unknown): correctIndex is number =>
