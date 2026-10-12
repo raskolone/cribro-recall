@@ -26,6 +26,7 @@ const BAD: Array<{ name: string; en: string; pl: string; caughtBy: 'local' | 'ju
   { name: 'kalka „mieć dobry czas”', en: 'I have a good time at work.', pl: 'Mam dobry czas w pracy.', caughtBy: 'local' },
   { name: 'czas przeszły/przyszły', en: 'I will go to the shop tomorrow.', pl: 'Wczoraj poszedłem do sklepu.', caughtBy: 'judge' },
   { name: 'kalka „zrobić decyzję”', en: 'I made a decision to move.', pl: 'Zrobiłem decyzję o przeprowadzce.', caughtBy: 'local' },
+  { name: 'nielogiczna intencja (always try to lose track of time)', en: 'I always try to lose track of time when I read a good book.', pl: 'Zawsze staram się tracić poczucie czasu, kiedy czytam dobrą książkę.', caughtBy: 'judge' },
 ];
 
 const GOOD: Array<[string, string]> = [
@@ -242,7 +243,7 @@ test('korekta: jeden błąd przechodzi', () =>
 // --- sędzia: prompt i parsowanie ---------------------------------------------------------------
 
 test('parseJudgeVerdicts: wszystkie kryteria true = ok; jedno false = odrzucenie; brak kryterium = odrzucenie', () => {
-  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true };
+  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true, sense: true };
   const verdicts = parseJudgeVerdicts(
     { verdicts: [full, { ...full, index: 1, equivalence: false, reason: 'inna sytuacja' }, { index: 2, reason: '', naturalness: true }] },
     4
@@ -255,11 +256,35 @@ test('parseJudgeVerdicts: wszystkie kryteria true = ok; jedno false = odrzucenie
 });
 
 test('parseJudgeVerdicts: grammar=false odrzuca element (np. dwie poprawne opcje w wyborze wielokrotnym)', () => {
-  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true };
+  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true, sense: true };
   const [ok, bad] = parseJudgeVerdicts({ verdicts: [full, { ...full, index: 1, grammar: false, reason: 'dwie opcje poprawne' }] }, 2);
   assert.equal(ok?.ok, true);
   assert.equal(bad?.ok, false);
   assert.equal(bad?.criteria.grammar, false);
+});
+
+test('parseJudgeVerdicts: sense=false odrzuca element (np. nielogiczna intencja: always try to lose track of time)', () => {
+  const full = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true, sense: true };
+  const [ok, bad] = parseJudgeVerdicts(
+    {
+      verdicts: [
+        full,
+        { ...full, index: 1, sense: false, reason: 'nielogiczne: "lose track of time" nie jest czymś, co się próbuje robić' },
+      ],
+    },
+    2
+  );
+  assert.equal(ok?.ok, true);
+  assert.equal(bad?.ok, false);
+  assert.equal(bad?.criteria.sense, false);
+  assert.match(bad?.reason!, /lose track of time/);
+});
+
+test('parseJudgeVerdicts: brak kryterium sense w odpowiedzi sędziego = odrzucenie (jak przy grammar)', () => {
+  const withoutSense = { index: 0, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true };
+  const [verdict] = parseJudgeVerdicts({ verdicts: [withoutSense] }, 1);
+  assert.equal(verdict?.ok, false);
+  assert.equal(verdict?.criteria.sense, undefined);
 });
 
 test('parseJudgeVerdicts: nieczytelna odpowiedź = brak wyroków', () => {
@@ -268,12 +293,12 @@ test('parseJudgeVerdicts: nieczytelna odpowiedź = brak wyroków', () => {
 
 test('prompt sędziego zawiera kryteria a)–e) i wszystkie elementy', () => {
   const prompt = buildJudgePrompt([pair('A b.', 'A b.'), mc()], 'B1');
-  for (const key of ['naturalness', 'equivalence', 'uniqueness', 'level_vocab', 'context', 'grammar']) assert.ok(prompt.includes(key), key);
+  for (const key of ['naturalness', 'equivalence', 'uniqueness', 'level_vocab', 'context', 'grammar', 'sense']) assert.ok(prompt.includes(key), key);
   assert.ok(prompt.includes('0. [para PL↔EN]') && prompt.includes('1. [wielokrotny wybór]'));
 });
 
-test('żelazne zasady opisują punkty a)–e)', () => {
-  for (const marker of ['a) NATURALNOŚĆ', 'b) RÓWNOWAŻNOŚĆ', 'c) JEDNOZNACZNOŚĆ', 'd) POZIOM', 'e) KONTEKST']) {
+test('żelazne zasady opisują punkty a)–g)', () => {
+  for (const marker of ['a) NATURALNOŚĆ', 'b) RÓWNOWAŻNOŚĆ', 'c) JEDNOZNACZNOŚĆ', 'd) POZIOM', 'e) KONTEKST', 'f) POPRAWNOŚĆ', 'g) LOGIKA']) {
     assert.ok(EXERCISE_IRON_RULES.includes(marker), marker);
   }
 });
@@ -312,6 +337,7 @@ const judgeText = (prompt: string, bad: string[]) => {
       level_vocab: true,
       context: true,
       grammar: true,
+      sense: true,
     })),
   });
 };

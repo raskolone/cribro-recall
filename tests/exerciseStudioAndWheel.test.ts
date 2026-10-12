@@ -1,4 +1,6 @@
-import { describe, it } from 'node:test';
+import { describe, it, after } from 'node:test';
+import { terminate } from 'firebase/firestore';
+import { db } from '../firebase';
 import assert from 'node:assert/strict';
 import {
   buildLessonTemplate,
@@ -214,4 +216,9 @@ describe('4. Theme Switching & Typography Tokens', () => {
     assert.ok(headingLight.includes('#0d8a5f'), 'Today’s lesson używa zieleni szmaragdowej #0d8a5f');
     assert.ok(headingWarmup.includes('#0f766e'), 'Quick recall używa morskiego teal #0f766e');
   });
+});
+
+
+after(async () => {
+  try { await terminate(db); } catch {}
 });

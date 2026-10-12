@@ -4534,3 +4534,11 @@ light | 5 | #f8dce4 | #020617 | 15.70 | 4.27
   - Wybór wielokrotny: używa wyłącznie odcieni [2, 3, 4, 5] (niebieski, lawendowy, żółty, nowy turkus) z pozycji 0..3, całkowicie bez zielonego (1, zarezerwowanego dla stanu „poprawna") i bez czerwieni/różu (stan „błędna"). Kolor przypisany wyłącznie do pozycji, niezależny od poprawności.
   - Dopasowanie par: 5 odcieni bez różu/czerwieni. Czerwień występuje wyłącznie dla stanu „błędna odpowiedź".
   - Testy: `tests/multipleChoiceTint.test.tsx` (12 testów w pakiecie, w tym walidacja kąta barwnego < 335° i > 25° dla wszystkich tokenów 1..5).
+
+- **Dopisek U1-polish2 (2026-10-12), Zmiana 3 — logika zdań i naturalność (kryterium `sense` u sędziego i zasady generatora):**
+  - Problem: brak wiarygodności życiowej w niektórych wygenerowanych zdaniach (np. wymuszone „I always try to lose track of time when I read a good book” — kolokacja „lose track of time” nie jest intencjonalnym działaniem).
+  - Kryterium sędziego: dodano siódme kryterium `sense` w `utils/exerciseQualityRules.ts` i `utils/exerciseQuality.ts` (oraz schemacie Structured Outputs sędziego). Zdanie musi opisywać wiarygodną sytuację z życia, fraza musi pasować do kontekstu, a w wyborze wielokrotnym kontekst musi jednoznacznie wskazywać jedną opcję bez dwuznaczności.
+  - Odrzucenie: brak kryterium `sense` lub `sense === false` w odpowiedzi sędziego skutkuje bezwzględnym odrzuceniem zadania (identycznie jak przy `grammar`).
+  - Prompt generatorów: do `services/homeworkGenerator.ts` dodano zasadę pisania zdań, które native speaker powiedziałby naturalnie w codziennym życiu, oraz explicite zakaz konstrukcji typu „always try to + zjawisko niezależne od woli/niefortunny stan”.
+  - Testy z fixturami (`tests/exerciseQuality.test.ts`): zweryfikowano odrzucanie nielogicznych intencji (w tym „always try to lose track of time”), odrzucenie przy braku pola `sense` w werdykcie, przejście zdań naturalnych oraz zachowanie reguł i schematu promptu.
+  - Próba na żywym modelu (`gemini-2.5-flash`): test 20 zadań MC i 20 par PL↔EN — 100% (20/20 MC i 20/20 par) przeszło bramkę sędziego z kryterium `sense`, 0 odrzuconych; rozkład pozycji poprawnej odpowiedzi MC: [ 3, 6, 9, 2 ]; łączny czas: 73.5 s.

@@ -7198,3 +7198,15 @@ Zrobione:
 - Zmierzono kontrasty: tekst text-hi 16.88:1 (jasny) i 13.00:1 (ciemny); obrys vs strona 3.90:1 (jasny) i 6.82:1 (ciemny).
 - `mcOptionTint` w `utils/multipleChoice.ts` mapuje pozycje 0..3 na tokeny [2, 3, 4, 5] (wykluczony zielony 1 i czerwień/róż).
 - Testy: `tests/multipleChoiceTint.test.tsx` (walidacja braku barw w 335°–25°, układ MC, kontrasty).
+
+
+2026-10-12 — Antigravity / Gemini 3.8 Flash (High)
+
+Zadanie: U1-polish2 (Zmiana 3) — logika zdań (jakość generowanych treści, kryterium `sense` sędziego i zasada naturalności w promptach). Gałąź `u1-release` (worktree `../recall-u1`), bez pusha.
+Zrobione:
+- Rozszerzono `QUALITY_CRITERIA` i `JUDGE_CRITERIA_TEXT` o 7. kryterium `sense` (wiarygodny, naturalny kontekst życiowy, brak sprzeczności intencjonalnych, jednoznaczność w MC).
+- Zaktualizowano `EXERCISE_IRON_RULES` o punkt g) zabraniający wymuszonych intencji i konstrukcji „always try to + stan poza kontrolą".
+- W `utils/exerciseQuality.ts`: schemat `JUDGE_SCHEMA` zawiera `sense: { type: Type.BOOLEAN }`, `parseJudgeVerdicts` wymaga `criteria.sense === true` (brak lub false = odrzucenie).
+- W `services/homeworkGenerator.ts`: prompt `generateMultipleChoice` wzbogacony o zasady naturalności i zakaz konstrukcji nielogicznych intencji.
+- Zaktualizowano testy i atrapy: `tests/exerciseQuality.test.ts`, `tests/freePracticeGeneration.test.ts`, `tests/freePracticeHandler.test.ts`, `tests/multipleChoice.test.ts`.
+- Wykonano test generacji prawdziwym modelem `gemini-2.5-flash`: 20 MC i 20 par PL↔EN, 100% akceptacji (20/20 i 20/20), 0 odrzuceń, rozkład MC [ 3, 6, 9, 2 ], czas: 73.5 s.

@@ -84,7 +84,7 @@ function setup(over: Partial<HandlerDeps> = {}, seed: Record<string, any> = {}, 
   const callModel: CallModel = async ({ prompt, schema }) => {
     if (schema === JUDGE_SCHEMA) {
       const count = (prompt.match(/^\d+\. \[/gm) ?? []).length;
-      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true })) }), modelUsed: FREE_PRACTICE_MODEL };
+      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true, sense: true })) }), modelUsed: FREE_PRACTICE_MODEL };
     }
     prompts.push(prompt);
     const next = replies[Math.min(calls++, replies.length - 1)];
@@ -228,7 +228,7 @@ test('RÓWNOLEGŁE żądania tego samego kursanta (wolny model): nigdy więcej u
     await new Promise((r) => setTimeout(r, 5));
     if (schema === JUDGE_SCHEMA) {
       const count = (prompt.match(/^\d+\. \[/gm) ?? []).length;
-      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true })) }), modelUsed: FREE_PRACTICE_MODEL };
+      return { text: JSON.stringify({ verdicts: Array.from({ length: count }, (_, index) => ({ index, reason: '', naturalness: true, equivalence: true, uniqueness: true, level_vocab: true, context: true, grammar: true, sense: true })) }), modelUsed: FREE_PRACTICE_MODEL };
     }
     return { text: sentences(), modelUsed: FREE_PRACTICE_MODEL };
   };

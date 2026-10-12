@@ -770,6 +770,7 @@ i trzy błędne. Wypełnij grammarFocus identyfikatorem z listy (nie opisuj go w
 zagadnienia pokaże aplikacja). Dopasuj zagadnienia do poziomu kursanta i urozmaicaj je w zestawie.
 
 WYMAGANIA SZCZEGÓŁOWE DLA WYBORU FORMY:
+- Pisz zdania, które rodzimy użytkownik powiedziałby naturalnie w prawdziwym życiu. Unikaj konstrukcji typu „always try to + zjawisko niezależne od woli” (np. „I always try to lose track of time”). Zdanie musi opisywać wiarygodną sytuację, a kontekst jednoznacznie wskazywać na jedną poprawną odpowiedź.
 - Zdanie z luką musi mieć sens PO WSTAWIENIU poprawnej opcji i dawać dość kontekstu, żeby dało się
   ją wybrać. Jeśli zdanie działa z dwiema opcjami naraz, dopisz kontekst („... because the flight
   leaves at 6 a.m.") albo zmień pytanie.
@@ -817,10 +818,11 @@ Zwróć JSON:
 };
 
 /** Dopasuj pary: słowo/fraza po angielsku do znaczenia po polsku. */
-const generateMatching = async (
+export const generateMatching = async (
   req: HomeworkGenerationRequest,
   sourceText: string,
-  briefing?: string
+  briefing?: string,
+  ask: JsonAsker = askForJson
 ): Promise<{ items: MatchingExercise[]; modelUsed: string }> => {
   const pairCount = req.pairCount ?? Math.max(4, Math.min(6, req.perType * 4));
   const prompt = `${baseContext(req, sourceText, briefing)}
@@ -838,7 +840,7 @@ WYMAGANIA SZCZEGÓŁOWE DLA DOPASOWYWANIA PAR:
 Zwróć JSON:
 {"pairs":[{"left":"deadline","right":"termin (ostateczny)"},{"left":"to catch up","right":"nadrobić zaległości"}]}`;
 
-  const { parsed, modelUsed } = await askForJson(prompt);
+  const { parsed, modelUsed } = await ask(prompt);
   const rawPairs = Array.isArray(parsed?.pairs) ? parsed.pairs : [];
 
   const pairs = rawPairs
@@ -1105,7 +1107,7 @@ const buildRunners = (
     ask
   ),
   fill_in_the_blank: (subReq) => generateGaps(subReq, sourceText, briefing, level),
-  matching: withMatchingQualityGate((subReq) => generateMatching(subReq, sourceText, briefing), level, ask),
+  matching: withMatchingQualityGate((subReq) => generateMatching(subReq, sourceText, briefing, ask), level, ask),
 });
 
 /** Typy, które w ogóle trafiają do modelu — bez ukrytych w `HIDDEN_EXERCISE_TYPES`. */

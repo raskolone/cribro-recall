@@ -87,4 +87,6 @@ test('generator: prompt łączy słownictwo i zagadnienie, zawiera żelazne zasa
   assert.ok(prompt.includes(EXERCISE_IRON_RULES.slice(0, 60)));
   assert.match(prompt, /typowe błędy POLSKIEGO uczącego się/);
   assert.match(prompt, /DOKŁADNIE JEDNA opcja/);
+  assert.match(prompt, /always try to/);
+  assert.match(prompt, /zjawisko niezależne od woli/);
 });
