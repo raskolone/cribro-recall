@@ -3855,6 +3855,311 @@ function clampMaxTokens(value, ceiling) {
   return typeof value === "number" && Number.isFinite(value) && value > ceiling ? ceiling : value;
 }
 
+// utils/normalizeExercise.ts
+import i18n from "i18next";
+
+// utils/matchingBoard.ts
+function hashSeed(text2) {
+  let h = 2166136261;
+  for (let i = 0; i < text2.length; i++) {
+    h ^= text2.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+function seededRng(seed) {
+  let a = typeof seed === "number" ? seed >>> 0 : hashSeed(seed);
+  return () => {
+    a = a + 1831565813 >>> 0;
+    let t = a;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function cleanPairs(raw) {
+  if (!Array.isArray(raw)) return [];
+  const seen = /* @__PURE__ */ new Set();
+  const out = [];
+  for (const p of raw) {
+    if (!p || typeof p !== "object") continue;
+    const { id, left, right } = p;
+    if (typeof id !== "string" || !id || typeof left !== "string" || !left.trim() || typeof right !== "string" || !right.trim()) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push({ id, left, right });
+  }
+  return out;
+}
+
+// utils/multipleChoice.ts
+function seededShuffleOptions(options, correctIndex, seed) {
+  const rng = seededRng(seed);
+  const order = options.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const shuffledOptions = order.map((i) => options[i]);
+  const newCorrectIndex = order.indexOf(correctIndex);
+  return {
+    options: shuffledOptions,
+    correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0,
+    originalOrder: order
+  };
+}
+
+// utils/normalizeExercise.ts
+var clampMatchingPairCount = (rawCount) => {
+  if (rawCount === void 0 || rawCount === null || rawCount === "") return 5;
+  const num2 = typeof rawCount === "number" ? rawCount : Number(rawCount);
+  if (!Number.isFinite(num2)) return 5;
+  const rounded = Math.round(num2);
+  if (rounded < 4) return 4;
+  if (rounded > 8) return 8;
+  return rounded;
+};
+var TYPE_ALIASES = {
+  word_order: "word_order",
+  unscramble: "word_order",
+  fill_in_the_blank: "fill_in_the_blank",
+  gap_fill: "fill_in_the_blank",
+  gap_from_context: "fill_in_the_blank",
+  cloze: "fill_in_the_blank",
+  translation: "translation",
+  micro_translation: "translation",
+  find_errors: "find_errors",
+  fix_sentence: "find_errors",
+  multiple_choice: "multiple_choice",
+  matching: "matching",
+  match: "matching",
+  pairs: "matching",
+  match_pairs: "matching"
+};
+var resolveCanonicalType = (item, task) => {
+  const declared = item?.type || item?.exerciseType;
+  if (declared && TYPE_ALIASES[declared]) return TYPE_ALIASES[declared];
+  if (Array.isArray(item?.options) && (item?.correctIndex !== void 0 || item?.correctOptionIndex !== void 0 || item?.question)) return "multiple_choice";
+  if (item?.incorrectSentence) return "find_errors";
+  if (item?.textWithBlanks || item?.blanks || item?.wordsToCut || item?.missingWords) return "fill_in_the_blank";
+  if (item?.chunks) return "word_order";
+  if (Array.isArray(item?.pairs) || Array.isArray(item?.raw?.pairs)) return "matching";
+  const fallback = task?.type && TYPE_ALIASES[task.type];
+  return fallback || null;
+};
+var looksLikeInjectedInstruction = (text2) => /^(popraw zdanie|zwróć uwagę|instrukcja|ułóż)\b/i.test(text2.trim());
+var cleanSourceSentence = (raw) => {
+  const text2 = typeof raw === "string" ? raw.trim() : "";
+  if (!text2 || looksLikeInjectedInstruction(text2)) return "";
+  return text2;
+};
+var normalizeGapPayload = (item) => {
+  const canonicalSource = typeof item?.textWithBlanks === "string" && item.textWithBlanks.includes("{{gap:") ? item.textWithBlanks : null;
+  if (canonicalSource) {
+    const segments = splitBySeparator(canonicalSource, /\{\{gap:(\d+)\}\}/g, (n) => `GAP_${n}`);
+    if (segments.some((s) => s.kind === "gap")) {
+      return { segments, availableWords: Array.isArray(item.availableWords) ? item.availableWords : [] };
+    }
+  }
+  if (typeof item?.textWithBlanks === "string" && /\[BLANK_\d+\]/.test(item.textWithBlanks)) {
+    const segments = splitBySeparator(item.textWithBlanks, /\[BLANK_(\d+)\]/g, (n) => `BLANK_${n}`);
+    if (segments.some((s) => s.kind === "gap")) {
+      return { segments, availableWords: Array.isArray(item.availableWords) ? item.availableWords : [] };
+    }
+  }
+  const cutWords = Array.isArray(item?.wordsToCut) ? item.wordsToCut : Array.isArray(item?.missingWords) ? item.missingWords : [];
+  const baseSentence = String(item?.fullSentence || item?.sentenceWithBlank || "").trim();
+  if (cutWords.length > 0 && baseSentence) {
+    const segments = cutWordsFromSentence(baseSentence, cutWords);
+    if (segments.some((s) => s.kind === "gap")) {
+      return { segments, availableWords: cutWords };
+    }
+  }
+  const contentSource = String(item?.content || item?.text || item?.sentence || item?.sentenceWithBlank || "");
+  if (/_{3,}/.test(contentSource)) {
+    const parts = contentSource.split(/_{3,}/);
+    const segments = [];
+    parts.forEach((part, index) => {
+      if (part) segments.push({ kind: "text", text: part });
+      if (index < parts.length - 1) segments.push({ kind: "gap", gapId: "GAP_1" });
+    });
+    return { segments, availableWords: [] };
+  }
+  return null;
+};
+var splitBySeparator = (source, pattern, gapIdFromMatch) => {
+  const segments = [];
+  let lastIndex = 0;
+  let match;
+  const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
+  while (match = re.exec(source)) {
+    if (match.index > lastIndex) {
+      segments.push({ kind: "text", text: source.slice(lastIndex, match.index) });
+    }
+    segments.push({ kind: "gap", gapId: gapIdFromMatch(match[1]) });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < source.length) {
+    segments.push({ kind: "text", text: source.slice(lastIndex) });
+  }
+  return segments;
+};
+var cutWordsFromSentence = (sentence, wordsToCut) => {
+  let remaining = sentence;
+  const segments = [];
+  let gapIndex = 0;
+  wordsToCut.forEach((word) => {
+    if (!word) return;
+    const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
+    const match = remaining.match(pattern);
+    if (!match || match.index === void 0) return;
+    gapIndex += 1;
+    if (match.index > 0) segments.push({ kind: "text", text: remaining.slice(0, match.index) });
+    segments.push({ kind: "gap", gapId: `GAP_${gapIndex}` });
+    remaining = remaining.slice(match.index + match[0].length);
+  });
+  if (remaining) segments.push({ kind: "text", text: remaining });
+  return segments;
+};
+var normalizeTokens = (raw) => {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((entry) => {
+    if (typeof entry === "string") return entry;
+    if (entry && typeof entry === "object" && typeof entry.word === "string") return entry.word;
+    if (entry === null || entry === void 0) return "";
+    return String(entry);
+  });
+};
+var normalizeExercise = (raw, task) => {
+  try {
+    const type = resolveCanonicalType(raw, task);
+    if (type === "matching") {
+      const rawPairsList = Array.isArray(raw?.pairs) ? raw.pairs : Array.isArray(raw?.raw?.pairs) ? raw.raw.pairs : [];
+      const normalizedRawPairs = rawPairsList.map((p, idx) => ({
+        id: typeof p?.id === "string" && p.id ? p.id : `pair-${idx}`,
+        left: typeof p?.left === "string" ? p.left : String(p?.left ?? ""),
+        right: typeof p?.right === "string" ? p.right : String(p?.right ?? "")
+      }));
+      const pairs = cleanPairs(normalizedRawPairs);
+      if (pairs.length < 2) {
+        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+      }
+      const matchingPairCount = clampMatchingPairCount(
+        raw?.matchingPairCount ?? raw?.pairCount ?? raw?.raw?.matchingPairCount ?? raw?.raw?.pairCount ?? pairs.length
+      );
+      return {
+        type,
+        state: "ready",
+        pairs,
+        matchingPairCount,
+        raw
+      };
+    }
+    if (type === "multiple_choice") {
+      const sourceOptions = Array.isArray(raw?.raw?.options) ? raw.raw.options : Array.isArray(raw?.options) ? raw.options : [];
+      if (sourceOptions.length === 0) {
+        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+      }
+      const rawCorrect = typeof raw?.raw?.correctIndex === "number" ? raw.raw.correctIndex : typeof raw?.correctIndex === "number" ? raw.correctIndex : typeof raw?.correctOptionIndex === "number" ? raw.correctOptionIndex : 0;
+      const question = String(raw?.question || raw?.sentence || raw?.prompt || raw?.content || "").trim();
+      const idPart = String(raw?.id || raw?.questionId || raw?.raw?.id || raw?.raw?.questionId || task?.id || "").trim();
+      const seed = idPart ? `${idPart}|${question}` : question || "mc";
+      const cleanOptions = sourceOptions.map((o) => typeof o === "string" ? o.trim() : String(o ?? "").trim());
+      const shuffled = seededShuffleOptions(cleanOptions, rawCorrect, seed);
+      const focus = typeof raw?.grammarFocus === "string" ? raw.grammarFocus : void 0;
+      const explanation = typeof raw?.explanation === "string" ? raw.explanation : void 0;
+      return {
+        type,
+        state: "ready",
+        question,
+        options: shuffled.options,
+        correctIndex: shuffled.correctIndex,
+        explanation,
+        grammarFocus: focus,
+        raw
+      };
+    }
+    if (!type) {
+      return { type: "translation", state: "invalid", message: INVALID_MESSAGE, raw };
+    }
+    if (type === "word_order") {
+      const tokens2 = normalizeTokens(raw?.chunks);
+      if (tokens2.length === 0) {
+        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+      }
+      const sourceSentence = cleanSourceSentence(raw?.polishHint || raw?.sourceSentence || raw?.prompt);
+      return {
+        type,
+        state: "ready",
+        tokens: tokens2,
+        sourceSentence: sourceSentence || void 0,
+        correctSentence: typeof raw?.correctSentence === "string" ? raw.correctSentence : void 0,
+        raw
+      };
+    }
+    if (type === "fill_in_the_blank") {
+      const gapPayload = normalizeGapPayload(raw);
+      if (!gapPayload) {
+        const fallbackText = String(raw?.content || raw?.text || raw?.sentence || raw?.instruction || "").trim();
+        if (!fallbackText) {
+          return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+        }
+        return {
+          type,
+          state: "degraded",
+          segments: [{ kind: "text", text: fallbackText }],
+          gaps: [],
+          availableWords: [],
+          raw
+        };
+      }
+      const gaps = gapPayload.segments.filter((s) => s.kind === "gap").map((s) => ({ id: s.gapId }));
+      return {
+        type,
+        state: "ready",
+        segments: gapPayload.segments,
+        gaps,
+        availableWords: gapPayload.availableWords,
+        raw
+      };
+    }
+    if (type === "translation") {
+      const sourceSentence = cleanSourceSentence(raw?.polishSentence || raw?.content || raw?.instruction);
+      if (!sourceSentence) {
+        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+      }
+      const explicitHint2 = raw?.hint || raw?.hintSmall || raw?.hintLarge || (Array.isArray(raw?.requiredMaterial) ? raw.requiredMaterial.join(", ") : raw?.requiredMaterial);
+      const correctSentence = typeof raw?.correctTranslation === "string" ? raw.correctTranslation : typeof raw?.englishTranslation === "string" ? raw.englishTranslation : typeof raw?.englishSentence === "string" ? raw.englishSentence : typeof raw?.modelAnswer === "string" ? raw.modelAnswer : void 0;
+      return {
+        type,
+        state: "ready",
+        sourceSentence,
+        hint: explicitHint2 || void 0,
+        correctSentence,
+        raw
+      };
+    }
+    const incorrectSentence = cleanSourceSentence(raw?.incorrectSentence || raw?.content);
+    if (!incorrectSentence) {
+      return { type, state: "invalid", message: INVALID_MESSAGE, raw };
+    }
+    const explicitHint = raw?.hint || raw?.hintSmall || raw?.hintLarge || (Array.isArray(raw?.requiredMaterial) ? raw.requiredMaterial.join(", ") : raw?.requiredMaterial);
+    const meaning = raw?.polishHint || raw?.meaning || void 0;
+    return {
+      type,
+      state: "ready",
+      incorrectSentence,
+      hint: explicitHint || void 0,
+      meaning,
+      correctSentence: typeof raw?.correctSentence === "string" ? raw.correctSentence : void 0,
+      raw
+    };
+  } catch {
+    return { type: "translation", state: "invalid", message: INVALID_MESSAGE, raw };
+  }
+};
+var INVALID_MESSAGE = "Nie uda\u0142o si\u0119 wczyta\u0107 tre\u015Bci tego zadania. Mo\u017Cesz przej\u015B\u0107 do kolejnego \u0107wiczenia.";
+
 // utils/homeworkV2Input.ts
 var MAX_ASSIGN_STUDENTS = 200;
 var MAX_ASSIGN_EXERCISES = 100;
@@ -3907,7 +4212,8 @@ function validateGenerateInput(body) {
     if (!Array.isArray(body.rawLessons)) return fail2("rawLessons: oczekiwano listy.");
     if (JSON.stringify(body.rawLessons).length > MAX_RAW_LESSONS_JSON_CHARS) return fail2("rawLessons: zbyt du\u017Ce wej\u015Bcie.");
   }
-  return { ok: true, value: { studentUid, lessonIds: lessons.value, itemCount, plannedMinutes } };
+  const matchingPairCount = body?.matchingPairCount !== void 0 ? clampMatchingPairCount(body.matchingPairCount) : void 0;
+  return { ok: true, value: { studentUid, lessonIds: lessons.value, itemCount, plannedMinutes, ...matchingPairCount !== void 0 ? { matchingPairCount } : {} } };
 }
 
 // utils/gradedNotification.ts
@@ -4065,261 +4371,6 @@ function buildNewGroupPayload(teacherUid, groupId, input, nowIso) {
   }
   return payload;
 }
-
-// utils/normalizeExercise.ts
-import i18n from "i18next";
-
-// utils/matchingBoard.ts
-function hashSeed(text2) {
-  let h = 2166136261;
-  for (let i = 0; i < text2.length; i++) {
-    h ^= text2.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h >>> 0;
-}
-function seededRng(seed) {
-  let a = typeof seed === "number" ? seed >>> 0 : hashSeed(seed);
-  return () => {
-    a = a + 1831565813 >>> 0;
-    let t = a;
-    t = Math.imul(t ^ t >>> 15, t | 1);
-    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-
-// utils/multipleChoice.ts
-function seededShuffleOptions(options, correctIndex, seed) {
-  const rng = seededRng(seed);
-  const order = options.map((_, i) => i);
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  const shuffledOptions = order.map((i) => options[i]);
-  const newCorrectIndex = order.indexOf(correctIndex);
-  return {
-    options: shuffledOptions,
-    correctIndex: newCorrectIndex >= 0 ? newCorrectIndex : 0,
-    originalOrder: order
-  };
-}
-
-// utils/normalizeExercise.ts
-var TYPE_ALIASES = {
-  word_order: "word_order",
-  unscramble: "word_order",
-  fill_in_the_blank: "fill_in_the_blank",
-  gap_fill: "fill_in_the_blank",
-  gap_from_context: "fill_in_the_blank",
-  cloze: "fill_in_the_blank",
-  translation: "translation",
-  micro_translation: "translation",
-  find_errors: "find_errors",
-  fix_sentence: "find_errors",
-  multiple_choice: "multiple_choice"
-};
-var resolveCanonicalType = (item, task) => {
-  const declared = item?.type || item?.exerciseType;
-  if (declared && TYPE_ALIASES[declared]) return TYPE_ALIASES[declared];
-  if (Array.isArray(item?.options) && (item?.correctIndex !== void 0 || item?.correctOptionIndex !== void 0 || item?.question)) return "multiple_choice";
-  if (item?.incorrectSentence) return "find_errors";
-  if (item?.textWithBlanks || item?.blanks || item?.wordsToCut || item?.missingWords) return "fill_in_the_blank";
-  if (item?.chunks) return "word_order";
-  const fallback = task?.type && TYPE_ALIASES[task.type];
-  return fallback || null;
-};
-var looksLikeInjectedInstruction = (text2) => /^(popraw zdanie|zwróć uwagę|instrukcja|ułóż)\b/i.test(text2.trim());
-var cleanSourceSentence = (raw) => {
-  const text2 = typeof raw === "string" ? raw.trim() : "";
-  if (!text2 || looksLikeInjectedInstruction(text2)) return "";
-  return text2;
-};
-var normalizeGapPayload = (item) => {
-  const canonicalSource = typeof item?.textWithBlanks === "string" && item.textWithBlanks.includes("{{gap:") ? item.textWithBlanks : null;
-  if (canonicalSource) {
-    const segments = splitBySeparator(canonicalSource, /\{\{gap:(\d+)\}\}/g, (n) => `GAP_${n}`);
-    if (segments.some((s) => s.kind === "gap")) {
-      return { segments, availableWords: Array.isArray(item.availableWords) ? item.availableWords : [] };
-    }
-  }
-  if (typeof item?.textWithBlanks === "string" && /\[BLANK_\d+\]/.test(item.textWithBlanks)) {
-    const segments = splitBySeparator(item.textWithBlanks, /\[BLANK_(\d+)\]/g, (n) => `BLANK_${n}`);
-    if (segments.some((s) => s.kind === "gap")) {
-      return { segments, availableWords: Array.isArray(item.availableWords) ? item.availableWords : [] };
-    }
-  }
-  const cutWords = Array.isArray(item?.wordsToCut) ? item.wordsToCut : Array.isArray(item?.missingWords) ? item.missingWords : [];
-  const baseSentence = String(item?.fullSentence || item?.sentenceWithBlank || "").trim();
-  if (cutWords.length > 0 && baseSentence) {
-    const segments = cutWordsFromSentence(baseSentence, cutWords);
-    if (segments.some((s) => s.kind === "gap")) {
-      return { segments, availableWords: cutWords };
-    }
-  }
-  const contentSource = String(item?.content || item?.text || item?.sentence || item?.sentenceWithBlank || "");
-  if (/_{3,}/.test(contentSource)) {
-    const parts = contentSource.split(/_{3,}/);
-    const segments = [];
-    parts.forEach((part, index) => {
-      if (part) segments.push({ kind: "text", text: part });
-      if (index < parts.length - 1) segments.push({ kind: "gap", gapId: "GAP_1" });
-    });
-    return { segments, availableWords: [] };
-  }
-  return null;
-};
-var splitBySeparator = (source, pattern, gapIdFromMatch) => {
-  const segments = [];
-  let lastIndex = 0;
-  let match;
-  const re = new RegExp(pattern.source, pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`);
-  while (match = re.exec(source)) {
-    if (match.index > lastIndex) {
-      segments.push({ kind: "text", text: source.slice(lastIndex, match.index) });
-    }
-    segments.push({ kind: "gap", gapId: gapIdFromMatch(match[1]) });
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < source.length) {
-    segments.push({ kind: "text", text: source.slice(lastIndex) });
-  }
-  return segments;
-};
-var cutWordsFromSentence = (sentence, wordsToCut) => {
-  let remaining = sentence;
-  const segments = [];
-  let gapIndex = 0;
-  wordsToCut.forEach((word) => {
-    if (!word) return;
-    const pattern = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i");
-    const match = remaining.match(pattern);
-    if (!match || match.index === void 0) return;
-    gapIndex += 1;
-    if (match.index > 0) segments.push({ kind: "text", text: remaining.slice(0, match.index) });
-    segments.push({ kind: "gap", gapId: `GAP_${gapIndex}` });
-    remaining = remaining.slice(match.index + match[0].length);
-  });
-  if (remaining) segments.push({ kind: "text", text: remaining });
-  return segments;
-};
-var normalizeTokens = (raw) => {
-  if (!Array.isArray(raw)) return [];
-  return raw.map((entry) => {
-    if (typeof entry === "string") return entry;
-    if (entry && typeof entry === "object" && typeof entry.word === "string") return entry.word;
-    if (entry === null || entry === void 0) return "";
-    return String(entry);
-  });
-};
-var normalizeExercise = (raw, task) => {
-  try {
-    const type = resolveCanonicalType(raw, task);
-    if (type === "multiple_choice") {
-      const sourceOptions = Array.isArray(raw?.raw?.options) ? raw.raw.options : Array.isArray(raw?.options) ? raw.options : [];
-      if (sourceOptions.length === 0) {
-        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
-      }
-      const rawCorrect = typeof raw?.raw?.correctIndex === "number" ? raw.raw.correctIndex : typeof raw?.correctIndex === "number" ? raw.correctIndex : typeof raw?.correctOptionIndex === "number" ? raw.correctOptionIndex : 0;
-      const question = String(raw?.question || raw?.sentence || raw?.prompt || raw?.content || "").trim();
-      const idPart = String(raw?.id || raw?.questionId || raw?.raw?.id || raw?.raw?.questionId || task?.id || "").trim();
-      const seed = idPart ? `${idPart}|${question}` : question || "mc";
-      const cleanOptions = sourceOptions.map((o) => typeof o === "string" ? o.trim() : String(o ?? "").trim());
-      const shuffled = seededShuffleOptions(cleanOptions, rawCorrect, seed);
-      const focus = typeof raw?.grammarFocus === "string" ? raw.grammarFocus : void 0;
-      const explanation = typeof raw?.explanation === "string" ? raw.explanation : void 0;
-      return {
-        type,
-        state: "ready",
-        question,
-        options: shuffled.options,
-        correctIndex: shuffled.correctIndex,
-        explanation,
-        grammarFocus: focus,
-        raw
-      };
-    }
-    if (!type) {
-      return { type: "translation", state: "invalid", message: INVALID_MESSAGE, raw };
-    }
-    if (type === "word_order") {
-      const tokens2 = normalizeTokens(raw?.chunks);
-      if (tokens2.length === 0) {
-        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
-      }
-      const sourceSentence = cleanSourceSentence(raw?.polishHint || raw?.sourceSentence || raw?.prompt);
-      return {
-        type,
-        state: "ready",
-        tokens: tokens2,
-        sourceSentence: sourceSentence || void 0,
-        correctSentence: typeof raw?.correctSentence === "string" ? raw.correctSentence : void 0,
-        raw
-      };
-    }
-    if (type === "fill_in_the_blank") {
-      const gapPayload = normalizeGapPayload(raw);
-      if (!gapPayload) {
-        const fallbackText = String(raw?.content || raw?.text || raw?.sentence || raw?.instruction || "").trim();
-        if (!fallbackText) {
-          return { type, state: "invalid", message: INVALID_MESSAGE, raw };
-        }
-        return {
-          type,
-          state: "degraded",
-          segments: [{ kind: "text", text: fallbackText }],
-          gaps: [],
-          availableWords: [],
-          raw
-        };
-      }
-      const gaps = gapPayload.segments.filter((s) => s.kind === "gap").map((s) => ({ id: s.gapId }));
-      return {
-        type,
-        state: "ready",
-        segments: gapPayload.segments,
-        gaps,
-        availableWords: gapPayload.availableWords,
-        raw
-      };
-    }
-    if (type === "translation") {
-      const sourceSentence = cleanSourceSentence(raw?.polishSentence || raw?.content || raw?.instruction);
-      if (!sourceSentence) {
-        return { type, state: "invalid", message: INVALID_MESSAGE, raw };
-      }
-      const explicitHint2 = raw?.hint || raw?.hintSmall || raw?.hintLarge || (Array.isArray(raw?.requiredMaterial) ? raw.requiredMaterial.join(", ") : raw?.requiredMaterial);
-      const correctSentence = typeof raw?.correctTranslation === "string" ? raw.correctTranslation : typeof raw?.englishTranslation === "string" ? raw.englishTranslation : typeof raw?.englishSentence === "string" ? raw.englishSentence : typeof raw?.modelAnswer === "string" ? raw.modelAnswer : void 0;
-      return {
-        type,
-        state: "ready",
-        sourceSentence,
-        hint: explicitHint2 || void 0,
-        correctSentence,
-        raw
-      };
-    }
-    const incorrectSentence = cleanSourceSentence(raw?.incorrectSentence || raw?.content);
-    if (!incorrectSentence) {
-      return { type, state: "invalid", message: INVALID_MESSAGE, raw };
-    }
-    const explicitHint = raw?.hint || raw?.hintSmall || raw?.hintLarge || (Array.isArray(raw?.requiredMaterial) ? raw.requiredMaterial.join(", ") : raw?.requiredMaterial);
-    const meaning = raw?.polishHint || raw?.meaning || void 0;
-    return {
-      type,
-      state: "ready",
-      incorrectSentence,
-      hint: explicitHint || void 0,
-      meaning,
-      correctSentence: typeof raw?.correctSentence === "string" ? raw.correctSentence : void 0,
-      raw
-    };
-  } catch {
-    return { type: "translation", state: "invalid", message: INVALID_MESSAGE, raw };
-  }
-};
-var INVALID_MESSAGE = "Nie uda\u0142o si\u0119 wczyta\u0107 tre\u015Bci tego zadania. Mo\u017Cesz przej\u015B\u0107 do kolejnego \u0107wiczenia.";
 
 // utils/directHomeworkEvaluation.ts
 var stripUndefinedDeep = (value) => {
