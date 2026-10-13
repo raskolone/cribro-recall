@@ -3683,41 +3683,51 @@ function formatPolishGreeting(rawName) {
 // services/homeworkEmail.ts
 var escapeHtml = (value) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 var INSTRUCTOR_CARD_HTML = `
-  <div style="margin:28px 0 0;border:1.5px solid #334155;border-radius:12px;background:#0f172a;padding:20px 22px;text-align:left;">
-    <div style="font-size:18px;font-weight:800;color:#e2e8f0;line-height:1.25;letter-spacing:-0.01em;">
-      Maciej Wyrozumski
-    </div>
-    <div style="margin-top:4px;font-size:13px;font-weight:400;color:#94a3b8;line-height:1.4;">
-      Instructional Designer | AI EdTech Specialist | English Trainer
-    </div>
-    <div style="margin:14px 0 12px;border-top:1px solid #334155;height:0;line-height:0;font-size:0;">&nbsp;</div>
-    <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;">
-      <tr>
-        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u2709\uFE0F</td>
-        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
-          <a href="mailto:wyrozumski@maciej.pro" style="color:#e2e8f0;text-decoration:none;font-weight:500;">wyrozumski@maciej.pro</a>
-        </td>
-      </tr>
-      <tr>
-        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F4DE}</td>
-        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
-          <a href="tel:+48698250507" style="color:#e2e8f0;text-decoration:none;font-weight:500;">+48 698 250 507</a>
-        </td>
-      </tr>
-      <tr>
-        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F310}</td>
-        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
-          <a href="https://www.maciej.pro" target="_blank" rel="noopener noreferrer" style="color:#e2e8f0;text-decoration:none;font-weight:500;">www.maciej.pro</a>
-        </td>
-      </tr>
-      <tr>
-        <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F517}</td>
-        <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
-          <a href="https://linkedin.com/in/maciej-pro" target="_blank" rel="noopener noreferrer" style="color:#e2e8f0;text-decoration:none;font-weight:500;">linkedin.com/in/maciej-pro</a>
-        </td>
-      </tr>
-    </table>
-  </div>
+  <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#f8fafc" style="margin:28px 0 0;border:1.5px solid #2563eb;border-radius:8px;background-color:#f8fafc;">
+    <tr>
+      <td bgcolor="#f8fafc" style="background-color:#f8fafc;padding:20px 22px;text-align:left;border-radius:8px;">
+        <div style="font-size:18px;font-weight:800;color:#0f172a;line-height:1.25;letter-spacing:-0.01em;">
+          Maciej Wyrozumski
+        </div>
+        <div style="margin-top:4px;font-size:13px;font-weight:400;color:#334155;line-height:1.4;">
+          Instructional Designer | AI EdTech Specialist | English Trainer
+        </div>
+        <div style="margin:14px 0 12px;border-top:2px solid #0f172a;height:0;line-height:0;font-size:0;">&nbsp;</div>
+        <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;width:100%;">
+          <tr>
+            <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u2709\uFE0F</td>
+            <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+              <a href="mailto:wyrozumski@maciej.pro" style="color:#0f172a;text-decoration:none;font-weight:500;">wyrozumski@maciej.pro</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F4DE}</td>
+            <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+              <a href="tel:+48698250507" style="color:#0f172a;text-decoration:none;font-weight:500;">+48 698 250 507</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F310}</td>
+            <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+              <a href="https://www.maciej.pro" target="_blank" rel="noopener noreferrer" style="color:#0f172a;text-decoration:none;font-weight:500;">www.maciej.pro</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F517}</td>
+            <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+              <a href="https://linkedin.com/in/maciej-pro" target="_blank" rel="noopener noreferrer" style="color:#0f172a;text-decoration:none;font-weight:500;">linkedin.com/in/maciej-pro</a>
+            </td>
+          </tr>
+          <tr>
+            <td style="width:24px;vertical-align:middle;padding:4px 0;font-size:15px;line-height:1;">\u{1F419}</td>
+            <td style="vertical-align:middle;padding:4px 0 4px 8px;font-size:13.5px;">
+              <a href="https://github.com/raskolone" target="_blank" rel="noopener noreferrer" style="color:#0f172a;text-decoration:none;font-weight:500;">github.com/raskolone</a>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
 `;
 function buildGradedHomeworkEmail(params) {
   const {
@@ -3730,54 +3740,90 @@ function buildGradedHomeworkEmail(params) {
     unsubscribeUrl
   } = params;
   const greeting = formatPolishGreeting(studentName);
-  const cleanTitle = title.trim() || "Praca domowa";
-  const subject = `Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105: ${cleanTitle} \u{1F393} | CRIBRO English`;
-  const scoreBadge = typeof score === "number" ? `<div style="margin:20px 0;background:#0f172a;border:1px solid #334155;border-radius:12px;padding:16px 20px;text-align:center;">
-           <span style="font-size:12px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:4px;">Tw\xF3j wynik</span>
-           <span style="font-size:32px;font-weight:900;color:#72f0b4;font-family:'Courier New',monospace;">${score}%</span>
-         </div>` : "";
-  const feedbackBlock = teacherFeedback ? `<div style="margin:16px 0;background:rgba(114,240,180,0.08);border-left:4px solid #72f0b4;padding:14px 18px;border-radius:0 10px 10px 0;">
-         <p style="margin:0 0 6px;font-size:12px;font-weight:800;color:#72f0b4;text-transform:uppercase;letter-spacing:0.06em;">Komentarz i wskaz\xF3wki ode mnie:</p>
-         <p style="margin:0;color:#e2e8f0;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(teacherFeedback)}</p>
+  const rawTitle = (title || "").trim();
+  const cleanTitle = rawTitle.replace(/^(?:Praca domowa|Homework)\s*:\s*/i, "").trim() || "Praca domowa";
+  const subject = cleanTitle === "Praca domowa" ? `Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105 \u{1F393} | CRIBRO English` : `Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105: ${cleanTitle} \u{1F393} | CRIBRO English`;
+  const targetUrl = appUrl && appUrl.trim() || "https://app.maciej.pro";
+  const scoreBadge = typeof score === "number" ? `<table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#f8fafc" style="margin:20px 0;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;">
+           <tr>
+             <td align="center" bgcolor="#f8fafc" style="padding:16px 20px;background-color:#f8fafc;border-radius:12px;">
+               <span style="font-size:12px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:4px;">Tw\xF3j wynik</span>
+               <span style="font-size:32px;font-weight:900;color:#0f766e;font-family:'Courier New',monospace;line-height:1.2;">${score}%</span>
+             </td>
+           </tr>
+         </table>` : "";
+  const feedbackBlock = teacherFeedback ? `<div style="margin:16px 0;background-color:#f0fdf4;border-left:4px solid #16a34a;padding:14px 18px;border-radius:0 10px 10px 0;">
+         <p style="margin:0 0 6px;font-size:12px;font-weight:800;color:#166534;text-transform:uppercase;letter-spacing:0.06em;">Komentarz i wskaz\xF3wki ode mnie:</p>
+         <p style="margin:0;color:#0f172a;font-size:14px;line-height:1.6;white-space:pre-wrap;">${escapeHtml(teacherFeedback)}</p>
        </div>` : "";
-  const unsubscribeHtml = unsubscribeUrl ? `<div style="margin-top:24px;text-align:center;font-size:11px;color:#64748b;">
-         <a href="${escapeHtml(unsubscribeUrl)}" style="color:#64748b;text-decoration:underline;">Wypisz si\u0119 z powiadomie\u0144 e-mail</a>
-       </div>` : "";
+  const unsubscribeHtml = unsubscribeUrl ? `<p style="margin:20px 0 0;font-size:11px;line-height:1.5;color:#64748b;text-align:center;">
+         Nie chcesz otrzymywa\u0107 powiadomie\u0144?
+         <a href="${escapeHtml(unsubscribeUrl)}" target="_blank" rel="noopener noreferrer" style="color:#475569;text-decoration:underline;">
+           Wypisz si\u0119 z powiadomie\u0144 e-mail
+         </a>
+       </p>` : "";
   const html = `<!doctype html>
 <html lang="pl">
-  <body style="margin:0;padding:24px;background:#09101c;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:540px;margin:0 auto;background:#141b2a;border-radius:16px;border:1px solid rgba(255,255,255,0.08);overflow:hidden;box-shadow:0 8px 30px rgba(0,0,0,0.5);">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <style>
+      :root {
+        color-scheme: light;
+        supported-color-schemes: light;
+      }
+    </style>
+  </head>
+  <body bgcolor="#f8fafc" style="margin:0;padding:24px 12px;background-color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+    <table role="presentation" width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#f8fafc" style="width:100%;background-color:#f8fafc;">
       <tr>
-        <td style="background:linear-gradient(90deg, #72f0b4, #3b82f6);height:6px;font-size:0;line-height:0;">&nbsp;</td>
-      </tr>
-      <tr>
-        <td style="padding:32px 32px 28px;">
-          <div style="margin-bottom:20px;">
-            <p style="margin:0;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:#72f0b4;">CRIBRO ENGLISH</p>
-            <span style="display:inline-block;margin-top:8px;font-size:11px;font-weight:600;background:rgba(114,240,180,0.15);color:#72f0b4;border:1px solid rgba(114,240,180,0.3);padding:3px 10px;border-radius:999px;">\u{1F393} SPRAWDZONA PRACA DOMOWA</span>
-          </div>
+        <td align="center" bgcolor="#f8fafc" style="background-color:#f8fafc;padding:0;">
+          <table role="presentation" border="0" cellpadding="0" cellspacing="0" width="100%" bgcolor="#ffffff" style="max-width:540px;margin:0 auto;background-color:#ffffff;border-radius:16px;border:1px solid #e2e8f0;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,0.05);">
+            <tr>
+              <td bgcolor="#0f766e" style="background:linear-gradient(90deg, #0f766e, #2563eb);height:6px;font-size:0;line-height:0;">&nbsp;</td>
+            </tr>
+            <tr>
+              <td bgcolor="#ffffff" style="padding:32px 32px 28px;background-color:#ffffff;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+                  <p style="margin:0;font-size:12px;letter-spacing:0.14em;font-weight:800;text-transform:uppercase;color:#0f766e;">CRIBRO ENGLISH</p>
+                  <span style="font-size:11px;font-weight:700;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;padding:3px 10px;border-radius:999px;">\u{1F393} SPRAWDZONA PRACA DOMOWA</span>
+                </div>
 
-          <h1 style="margin:0 0 14px;font-size:24px;line-height:1.3;color:#ffffff;font-weight:800;">
-            ${escapeHtml(greeting)}
-          </h1>
+                <h1 style="margin:0 0 14px;font-size:24px;line-height:1.3;color:#0f172a;font-weight:800;">
+                  ${escapeHtml(greeting)}
+                </h1>
 
-          <p style="margin:0 0 14px;color:#cbd5e1;font-size:15px;line-height:1.65;">
-            Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105 <strong style="color:#ffffff;">\u201E${escapeHtml(cleanTitle)}\u201D</strong>. Zajrzyj do aplikacji, aby sprawdzi\u0107 sw\xF3j wynik i ewentualnie prze\u0107wiczy\u0107 rzeczy do poprawy.
-          </p>
+                <p style="margin:0 0 16px;color:#334155;font-size:15px;line-height:1.65;">
+                  Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105${cleanTitle !== "Praca domowa" ? `: <strong style="color:#0f172a;">\u201E${escapeHtml(cleanTitle)}\u201D</strong>` : ""}. Zajrzyj do aplikacji, aby sprawdzi\u0107 sw\xF3j wynik i zapozna\u0107 si\u0119 ze wskaz\xF3wkami.
+                </p>
 
-          ${scoreBadge}
-          ${feedbackBlock}
+                ${scoreBadge}
+                ${feedbackBlock}
 
-          <div style="margin:26px 0 0;text-align:center;">
-            <a href="${escapeHtml(appUrl)}"
-               style="display:inline-block;background:#72f0b4;background:linear-gradient(135deg, #72f0b4 0%, #10b981 100%);color:#06120c;text-decoration:none;
-                      padding:15px 36px;border-radius:12px;font-size:16px;font-weight:800;box-shadow:0 4px 16px rgba(114, 240, 180, 0.4);">
-              Zobacz ocenion\u0105 prac\u0119 w aplikacji \u2192
-            </a>
-          </div>
+                <!-- Przycisk CTA bulletproof -->
+                <table role="presentation" border="0" cellpadding="0" cellspacing="0" style="margin:26px auto 0;border-collapse:separate;">
+                  <tr>
+                    <td align="center" bgcolor="#0f766e" style="background-color:#0f766e;background-image:linear-gradient(135deg, #0f766e 0%, #115e59 100%);border-radius:10px;padding:0;">
+                      <a href="${escapeHtml(targetUrl)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:14px 30px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:10px;line-height:1.2;">
+                        Zobacz ocenion\u0105 prac\u0119 w aplikacji \u2192
+                      </a>
+                    </td>
+                  </tr>
+                </table>
 
-          ${INSTRUCTOR_CARD_HTML}
-          ${unsubscribeHtml}
+                <!-- Zwyk\u0142y tekstowy link pod przyciskiem -->
+                <p style="margin:12px 0 0;font-size:12px;line-height:1.5;color:#475569;text-align:center;">
+                  Lub przejd\u017A bezpo\u015Brednio pod adres:<br>
+                  <a href="${escapeHtml(targetUrl)}" target="_blank" rel="noopener noreferrer" style="color:#0f766e;text-decoration:underline;word-break:break-all;font-size:12px;">${escapeHtml(targetUrl)}</a>
+                </p>
+
+                ${INSTRUCTOR_CARD_HTML}
+                ${unsubscribeHtml}
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </table>
@@ -3785,14 +3831,14 @@ function buildGradedHomeworkEmail(params) {
 </html>`;
   const text2 = `${greeting}
 
-Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105 \u201E${cleanTitle}\u201D. Zajrzyj do aplikacji, aby sprawdzi\u0107 sw\xF3j wynik i ewentualnie prze\u0107wiczy\u0107 rzeczy do poprawy.${score !== void 0 && score !== null ? `
+Sprawdzi\u0142em Twoj\u0105 prac\u0119 domow\u0105${cleanTitle !== "Praca domowa" ? ` \u201E${cleanTitle}\u201D` : ""}. Zajrzyj do aplikacji, aby sprawdzi\u0107 sw\xF3j wynik i zapozna\u0107 si\u0119 ze wskaz\xF3wkami.${score !== void 0 && score !== null ? `
 
 Tw\xF3j wynik: ${score}%` : ""}${teacherFeedback ? `
 
-Komentarz lektora:
+Komentarz i wskaz\xF3wki ode mnie:
 ${teacherFeedback}` : ""}
 
-Otw\xF3rz aplikacj\u0119: ${appUrl}
+Zobacz ocenion\u0105 prac\u0119 w aplikacji: ${targetUrl}
 
 \u2014
 ${gradedBy}
@@ -6435,13 +6481,15 @@ RESEND_API_KEY=${cleanKey}
         }
         if (apiKey) {
           const studentName = userData.firstName || userData.name || userData.username || "";
+          const baseUrl = process.env.APP_URL || "https://app.maciej.pro";
+          const homeworkUrl = typeof taskData.accessToken === "string" && taskData.accessToken.trim() ? `${baseUrl}/hw?token=${encodeURIComponent(taskData.accessToken.trim())}` : baseUrl;
           const emailData = buildGradedHomeworkEmail({
             studentName,
             title: taskTitle,
             score,
             teacherFeedback,
             gradedBy: teacherName,
-            appUrl: process.env.APP_URL || "https://app.maciej.pro"
+            appUrl: homeworkUrl
           });
           let fromAddress = process.env.FROM_ADDRESS || "Maciej Wyrozumski <wyrozumski@maciej.pro>";
           try {
