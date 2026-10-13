@@ -2432,13 +2432,18 @@ export function createApp() {
 
         if (apiKey) {
           const studentName = userData.firstName || userData.name || userData.username || '';
+          const baseUrl = process.env.APP_URL || 'https://app.maciej.pro';
+          const homeworkUrl = typeof taskData.accessToken === 'string' && taskData.accessToken.trim()
+            ? `${baseUrl}/hw?token=${encodeURIComponent(taskData.accessToken.trim())}`
+            : baseUrl;
+
           const emailData = buildGradedHomeworkEmail({
             studentName,
             title: taskTitle,
             score,
             teacherFeedback,
             gradedBy: teacherName,
-            appUrl: process.env.APP_URL || 'https://app.maciej.pro',
+            appUrl: homeworkUrl,
           });
 
           let fromAddress = process.env.FROM_ADDRESS || 'Maciej Wyrozumski <wyrozumski@maciej.pro>';

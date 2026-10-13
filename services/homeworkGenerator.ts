@@ -155,7 +155,7 @@ export const HOMEWORK_TYPE_LABELS: Record<
   translation: {
     pl: 'Tłumaczenie zdań',
     en: 'Sentence translation',
-    hint: { pl: 'Kursant tłumaczy z polskiego na angielski.', en: 'Student translates PL to EN.' },
+    hint: { pl: 'Tłumaczysz z polskiego na angielski.', en: 'Translate from Polish to English.' },
   },
   word_order: {
     pl: 'Uporządkuj',
@@ -357,7 +357,7 @@ export function buildStaticHomeworkNote(params: BuildStaticHomeworkNoteParams): 
   }
 
   const vocative = toPolishVocative(studentName);
-  const greeting = vocative ? `Hej, ${vocative}!` : 'Cześć!';
+  const greeting = vocative ? `Cześć, ${vocative}!` : 'Cześć!';
   const topicText = topic || 'zestaw powtórkowy';
   return `${greeting} Po naszej ostatniej lekcji przygotowałem dla Ciebie zestaw ćwiczeń: ${topicText}. Daj znać, jak Ci poszło!`;
 }
