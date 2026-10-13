@@ -714,17 +714,27 @@ service cloud.firestore {
       // aplikacja nie listuje notatników; skrypty idą przez Admin SDK).
       allow get: if true;
 
+      // Prywatne notatki lektora żyją w `private/teacher` — w tym dokumencie
+      // (czytelnym dla każdego z linkiem) pole `teacherNotes` nie może istnieć.
+      // Usunięcie starego pola przechodzi (po zapisie go już nie ma).
+      // UWAGA: wdrażać dopiero PO migracji
+      // (scripts/migrate-scratchpad-teacher-notes.mjs --apply) — notatnik,
+      // który wciąż ma stare pole, odrzuci KAŻDY zapis, także treści.
+      function noTeacherNotesInParent() {
+        return !('teacherNotes' in request.resource.data);
+      }
+
       // Zakłada lektor/admin we własnym imieniu albo kursant swój własny
       // `sp_<uid>`. Bez tego dowolny zalogowany mógł zająć `sp_<idCudzegoKursanta>`
       // przed lektorem, a `getOrCreateStudentScratchpad` otwierałby potem
       // dokument atakującego.
-      allow create: if isAuthenticated() && (
+      allow create: if isAuthenticated() && noTeacherNotesInParent() && (
         (isAdmin() && request.resource.data.teacherUid == request.auth.uid)
         || (scratchpadId == 'sp_' + request.auth.uid && request.resource.data.studentId == request.auth.uid)
       );
 
       // Zapis dopuszczony dla admina, lektora-właściciela lub w trybie edycji ucznia/grupy
-      allow update: if isAdmin()
+      allow update: if noTeacherNotesInParent() && (isAdmin()
         || (isAuthenticated() && (
              ('teacherUid' in resource.data && request.auth.uid == resource.data.teacherUid) ||
              ('teacherId' in resource.data && request.auth.uid == resource.data.teacherId)
@@ -739,7 +749,7 @@ service cloud.firestore {
              && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
                   'contentHtml', 'contentText', 'updatedAt', 'version', 'lastEditedBy', 'blocks'
                 ])
-           );
+           ));
 
       allow delete: if isAdmin();
 

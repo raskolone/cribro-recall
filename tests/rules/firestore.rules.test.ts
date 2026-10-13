@@ -12,6 +12,7 @@ import {
 import {
   collection,
   deleteDoc,
+  deleteField,
   doc,
   getDoc,
   getDocs,
@@ -487,6 +488,64 @@ test('kursant zakłada swój sp_<uid>, lektor tylko we własnym imieniu', async 
   await assertFails(
     setDoc(doc(teacherByEmail(), 'scratchpads/sp_dawid'), { pin: 'WXYZ23', teacherUid: 'inny-lektor', studentId: 'dawid' })
   );
+});
+
+// ———————————————————— Prywatne notatki lektora (teacherNotes) ————————————————————
+
+test('teacherNotes nie trafiają do dokumentu nadrzędnego — ani przy zakładaniu, ani przy zapisie', async () => {
+  await assertFails(
+    setDoc(doc(teacherByEmail(), 'scratchpads/sp_ala'), {
+      pin: 'ABCDEF',
+      teacherUid: 'teacher-uid',
+      studentId: 'ala',
+      teacherNotes: 'Ala myli czasy',
+    })
+  );
+
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher-uid', studentId: 'ala' })
+  );
+  // Nawet lektor-właściciel/admin — pole czytałby każdy z linkiem.
+  await assertFails(updateDoc(doc(teacherByEmail(), 'scratchpads/sp_ala'), { teacherNotes: 'Ala myli czasy' }));
+  // Zwykłe zapisy bez tego pola działają jak dotąd.
+  await assertSucceeds(updateDoc(doc(teacherByEmail(), 'scratchpads/sp_ala'), { title: 'Notatnik' }));
+  await assertSucceeds(updateDoc(doc(student('ala'), 'scratchpads/sp_ala'), { contentHtml: '<p>moje</p>' }));
+});
+
+test('notatnik ze starym polem teacherNotes: zapis odpada, usunięcie pola przechodzi (dlatego najpierw migracja)', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpads/sp_ala'), {
+      pin: 'ABCDEF',
+      teacherUid: 'teacher-uid',
+      studentId: 'ala',
+      teacherNotes: 'sprzed migracji',
+    })
+  );
+
+  // To jest powód kolejności wdrożenia: przed migracją KAŻDY zapis treści
+  // do takiego notatnika zostałby odrzucony.
+  await assertFails(updateDoc(doc(student('ala'), 'scratchpads/sp_ala'), { contentHtml: '<p>moje</p>' }));
+  await assertSucceeds(updateDoc(doc(teacherByEmail(), 'scratchpads/sp_ala'), { teacherNotes: deleteField() }));
+  await assertSucceeds(updateDoc(doc(student('ala'), 'scratchpads/sp_ala'), { contentHtml: '<p>moje</p>' }));
+});
+
+test('private/teacher: lektor-właściciel czyta i zapisuje, kursant i gość nie', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'lektor-ala', studentId: 'ala' });
+    await setDoc(doc(db, 'scratchpads/sp_ala/private/teacher'), { teacherNotes: 'tajne' });
+  });
+
+  const owner = student('lektor-ala'); // właściciel po teacherUid, bez roli admina
+  await assertSucceeds(getDoc(doc(owner, 'scratchpads/sp_ala/private/teacher')));
+  await assertSucceeds(
+    setDoc(doc(owner, 'scratchpads/sp_ala/private/teacher'), { teacherNotes: 'nowe' }, { merge: true })
+  );
+
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(getDoc(doc(anon, 'scratchpads/sp_ala/private/teacher')));
+  await assertFails(getDoc(doc(student('ala'), 'scratchpads/sp_ala/private/teacher')));
+  await assertFails(setDoc(doc(student('ala'), 'scratchpads/sp_ala/private/teacher'), { teacherNotes: 'x' }));
+  await assertFails(getDoc(doc(student('bob'), 'scratchpads/sp_ala/private/teacher')));
 });
 
 // ———————————————————— Szablony notatnika (scratchpadTemplates) ————————————————————
