@@ -198,6 +198,31 @@ we dwoje na żywo.
 ### 🟡 Bufor odprawy AI jest lokalny dla przeglądarki
 `services/preLessonBriefing.ts` trzyma wynik w `localStorage` pod kluczem `briefing_{studentId}_{date}`. Przełączenie przeglądarki lub urządzenia generuje nową odprawę na świeżo.
 
+### ✉️ Zadanie MAIL1 (etap A) — Ujednolicone jasne szablony e-mail (przypisanie i ocena pracy) (2026-10-13, gałąź mail1, niewypchnięte)
+Poprawki szablonów wiadomości transakcyjnych wysyłanych do kursantów (zgłoszone po weryfikacji w kliencie pocztowym Spark):
+- **Jeden spójny JASNY szablon (Light Theme)**:
+  - Niezależny od trybu ciemnego klienta pocztowego: nagłówki `<meta name="color-scheme" content="light">`, `<meta name="supported-color-schemes" content="light">` oraz reguła CSS `:root { color-scheme: light; supported-color-schemes: light; }`.
+  - Tło ustawione zarówno przez atrybuty `bgcolor` (`#f8fafc` dla tła zewnętrznego, `#ffffff` dla karty, `#0f766e` dla przycisku), jak i style inline `background-color`.
+  - Układ ściśle tabelowy z pełną kompatybilnością klientów mobilnych i desktopowych (Spark, Gmail, Apple Mail, Outlook).
+- **Przycisk CTA „bulletproof”**:
+  - Komórka tabeli `<td>` z `bgcolor="#0f766e"`, jednolitym kolorem zastępczym `background-color:#0f766e` oraz gradientem `#115e59`.
+  - Biały tekst (`#ffffff`) o gwarantowanym kontraście WCAG AA ≥ 4.5:1 (5.47:1 na kolorze fallback i 7.58:1 na gradiencie).
+- **Bezpośredni link tekstowy pod przyciskiem**:
+  - Pod każdym przyciskiem CTA dodano widoczny, klikalny link tekstowy z adresem bezwzględnym (`https://app.maciej.pro/...`): „Lub przejdź bezpośrednio pod adres: <url>”.
+  - Gwarantuje dostęp do zadania nawet przy zablokowanych przyciskach czy stylach w restrykcyjnych klientach pocztowych.
+- **Korekta treści, powitań i odmiany**:
+  - Wyeliminowano słowo „Hej” z powitań na rzecz oficjalnego/naturalnego zwrotu z wołaczem („Cześć, Moniko!” / `formatPolishGreeting`).
+  - Usunięto zdublowane prefiksy tytułu („Praca domowa: Praca domowa: ...” / „Homework: ...”) za pomocą sanityzacji `cleanTitle`.
+  - Zmieniono formę w 3. osobie w opisie typu zadania `translation` (`HOMEWORK_TYPE_LABELS.translation.hint.pl`: `'Tłumaczysz z polskiego na angielski.'` zamiast `'Kursant tłumaczy...'`).
+  - Treść maili sformatowana w 2. osobie („Twoja praca domowa”, „Sprawdziłem Twoją pracę domową...”).
+- **Wizytówka lektora ze stopki**:
+  - Ujednolicono wizytówkę w obu szablonach: jasne tło (`#ffffff`), ramka `#2563eb`, pełna lista kontaktów (e-mail, telefon, strona www, LinkedIn, GitHub).
+- **Weryfikacja dostępności WCAG AA**:
+  - Wszystkie 13 par kolorystycznych tekst/tło przechodzą test kontrastu ze współczynnikami od 4.55:1 do 17.85:1 (≥ 4.5:1).
+- **Testy i scratchpad**:
+  - Rozszerzono `tests/emailNotifications.test.ts` (15 testów) o asercje obecności linku w obu mailach, braku „Hej”, braku zdublowanego tytułu, kontrastów AA, atrybutów `bgcolor` i meta `color-scheme`.
+  - Renderowanie obu maili do plików HTML w scratchpadzie: `scratch/assigned_homework_email.html` oraz `scratch/graded_homework_email.html`.
+
 ### 🎯 „Ćwiczenia dowolne: rozgrzewka, potem trudniejsza praktyka" (Etapy R1–R6, 2026-10-10, niewypchnięte)
 Przebudowa „Ćwiczeń dowolnych" w jeden spójny przepływ: rozgrzewka (fiszki, dopasowanie), a następnie trudniejsza praktyka (quiz, tłumaczenie, korekta) z ekranem „Co dalej?" i personalizacją.
 - **R1 — Układ menu (`FreePracticeScreen`):**

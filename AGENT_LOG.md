@@ -7244,3 +7244,36 @@ Zrobione:
 - Potwierdzono idempotencję buildu — ponowne uruchomienie `npm run build` daje całkowicie pusty `git status --short`.
 - Zatwierdzono zmiany w osobnym commicie `build: api/index.js po zmianach U1-polish3 (liczba par w dopasowaniu)`.
 
+
+
+2026-10-13 — Antigravity / Gemini 3.8 Flash (High)
+
+Zadanie: MAIL1 (etap A) — ujednolicone jasne szablony maili (przypisanie i ocena pracy). Gałąź `mail1` z origin/main (`a204872`), worktree `../recall-u1`. Bez pusha, bez wdrożenia Cloud Functions, bez zmian w firestore.rules i storage.rules.
+
+Zrobione:
+- `services/homeworkEmail.ts`:
+  - `buildGradedHomeworkEmail`: przebudowany na jasny szablon (`#f8fafc` tło, `#ffffff` karta, `#0f172a` tekst), meta `color-scheme: light` i `supported-color-schemes: light`, atrybuty `bgcolor` na tabelach i komórkach.
+  - Przycisk CTA typu bulletproof (`<td bgcolor="#0f766e" ...>`) z zapasowym kolorem tła i białym tekstem (kontrast 5.47:1).
+  - Bezpośredni link tekstowy pod przyciskiem z bezwzględnym adresem (`app.maciej.pro/hw?token=...` lub `app.maciej.pro`).
+  - Sanityzacja tytułu (`cleanTitle`), eliminacja podwójnego prefiksu „Praca domowa:”, treść w 2. osobie („Twoją pracę domową”).
+  - Pełna wizytówka instruktora (`INSTRUCTOR_CARD_HTML`) z jasnym tłem i kompletem linków (w tym GitHub).
+  - `buildHomeworkConfirmationEmail`: analogicznie ujednolicone tło, przycisk bulletproof i link tekstowy.
+- `functions/src/emailTemplate.ts`:
+  - `buildHomeworkEmail` i `buildHomeworkGradedEmail`: zaktualizowane do identycznego jasnego szablonu z meta `color-scheme: light`, tabelami `bgcolor`, bulletproof buttonem i bezpośrednim linkiem tekstowym pod przyciskiem.
+  - Obsługa opcjonalnego `appUrl` w danych wejściowych z fallbackiem do `APP_URL`.
+  - Zwracanie pola `greeting` dla spójności kontraktu.
+- `services/homeworkGenerator.ts`:
+  - `HOMEWORK_TYPE_LABELS.translation.hint.pl`: zmieniono z 3. osoby („Kursant tłumaczy...”) na 2. osobę („Tłumaczysz z polskiego na angielski.”).
+  - `buildStaticHomeworkNote`: powitanie zmienione z „Hej, {vocative}!” na „Cześć, {vocative}!”.
+- `server.ts`:
+  - W trasie powiadomienia o ocenionej pracy domowej: przekazywanie adresu `homeworkUrl` (z tokenem `/hw?token=${taskData.accessToken}` jeśli dostępny, z fallbackiem do `APP_URL`).
+- `tests/emailNotifications.test.ts`:
+  - Dodano testy MAIL1 (a)–(e):
+    - (a) obecność linku w obu mailach (przycisk CTA oraz tekstowy link pod spodem),
+    - (b) brak „Hej”, brak zdublowanego tytułu, zwrot do kursanta w 2. osobie,
+    - (c) badanie kontrastu WCAG AA (≥ 4.5:1) dla wszystkich par kolorystycznych,
+    - (d) obecność atrybutów `bgcolor` oraz meta `color-scheme: light`,
+    - (e) renderowanie obu maili do plików HTML w scratchpadzie (`assigned_homework_email.html` i `graded_homework_email.html`).
+- Commity:
+  - Commit 1: `fix(email): ujednolicone jasne szablony maili z przypisaniem i ocena pracy` (szablony, generator, server.ts, testy).
+  - Commit 2: `build: api/index.js po zmianach szablonow maili` (przebudowa produkcyjnego bundle'a serwera, potwierdzony zerowy diff przy ponownym buildzie).
