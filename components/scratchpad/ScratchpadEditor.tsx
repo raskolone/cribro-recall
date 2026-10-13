@@ -108,6 +108,7 @@ import InsertLessonModal from './InsertLessonModal';
 import { ScratchpadPresentationOverlay, PresentationState } from './ScratchpadPresentationOverlay';
 import { ScratchpadLivePresentationModal } from './ScratchpadLivePresentationModal';
 import { ScratchpadTeacherCompanionDrawer } from './ScratchpadTeacherCompanionDrawer';
+import { useScratchpadTeacherNotes } from '../../hooks/useScratchpadTeacherNotes';
 import TeacherDock from './TeacherDock';
 import ExerciseStudioModal from '../exercise/ExerciseStudioModal';
 import TeacherFormattingToolbar from './TeacherFormattingToolbar';
@@ -227,6 +228,9 @@ export const ScratchpadEditor: React.FC<ScratchpadEditorProps> = ({
   
   // Kursant może edytować tylko wtedy, gdy lektor włączył flagę `allowStudentEdit` i nie narzucono explicitReadOnly
   const isReadOnly = explicitReadOnly || (!isTeacher && !docData.allowStudentEdit);
+
+  // Prywatne notatki lektora z `private/teacher` (u kursanta zawsze puste).
+  const teacherNotes = useScratchpadTeacherNotes(docData.id, isTeacher, docData.teacherNotes);
 
   const editorRef = useRef<HTMLDivElement>(null);
   const extendedPaletteBtnRef = useRef<HTMLButtonElement>(null);
@@ -2035,7 +2039,7 @@ Tytuł: ${docData.title || 'Notatnik lekcyjny'}
 Kursant: ${docData.studentName || 'Kursant'}
 
 ${selectedText ? `Aktualnie zaznaczony przez użytkownika fragment tekstu:\n"""${selectedText}"""\n\n` : ''}Treść dokumentu notatnika:\n"""${docText.slice(0, 12000)}"""
-${docData.teacherNotes ? `\n\n[PRYWATNE NOTATKI LEKTORA (SIDE NOTES — WIDOCZNE TYLKO DLA CIEBIE I LEKTORA, UWAGI DOTYCZĄCE TRUDNOŚCI KURSANTA I PRZEBIEGU ZAJĘĆ)]:\n"""${docData.teacherNotes.slice(0, 5000)}"""\nWykorzystaj te uwagi lektora przy przygotowywaniu podsumowania, korekt lub zadań domowych!\n` : ''}
+${teacherNotes ? `\n\n[PRYWATNE NOTATKI LEKTORA (SIDE NOTES — WIDOCZNE TYLKO DLA CIEBIE I LEKTORA, UWAGI DOTYCZĄCE TRUDNOŚCI KURSANTA I PRZEBIEGU ZAJĘĆ)]:\n"""${teacherNotes.slice(0, 5000)}"""\nWykorzystaj te uwagi lektora przy przygotowywaniu podsumowania, korekt lub zadań domowych!\n` : ''}
 ${attachmentsContext}
 
 Polecenie użytkownika:
@@ -2712,7 +2716,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
             >
               <Target size={14} />
               <span className="hidden md:inline">Scenariusz & Notes</span>
-              {docData.teacherNotes && (
+              {teacherNotes && (
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
               )}
             </button>
@@ -4074,6 +4078,7 @@ ${promptToSend || 'Przeanalizuj przesłane załączniki/notatki i przygotuj z ni
           isOpen={isScenarioDrawerOpen}
           onClose={() => setIsScenarioDrawerOpen(false)}
           docData={docData}
+          teacherNotes={teacherNotes}
           onLaunchExercise={handleLaunchExerciseFromScenario}
           onLaunchWheelOfFortune={handleLaunchWheelOfFortune}
           onTriggerAiSummary={handleTriggerAiFromNotes}

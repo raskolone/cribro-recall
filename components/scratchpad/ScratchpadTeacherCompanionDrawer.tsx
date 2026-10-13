@@ -30,6 +30,8 @@ interface ScratchpadTeacherCompanionDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   docData: ScratchpadDocument;
+  /** Prywatne notatki lektora (`private/teacher`, awaryjnie stare pole) — z `useScratchpadTeacherNotes`. */
+  teacherNotes: string;
   onLaunchExercise: (exercise: InteractiveExercise) => void;
   onLaunchWheelOfFortune?: () => void;
   onTriggerAiSummary?: (prompt: string) => void;
@@ -41,6 +43,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
   isOpen,
   onClose,
   docData,
+  teacherNotes,
   onLaunchExercise,
   onLaunchWheelOfFortune,
   onTriggerAiSummary,
@@ -62,15 +65,15 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
   const audioInputRef = useRef<HTMLInputElement>(null);
 
   // Side Notes local state
-  const [sideNotes, setSideNotes] = useState(docData.teacherNotes || '');
+  const [sideNotes, setSideNotes] = useState(teacherNotes);
   const [isSavingNotes, setIsSavingNotes] = useState(false);
 
-  // Sync side notes from docData
+  // Sync side notes from the private notes document
   useEffect(() => {
-    if (docData.teacherNotes !== undefined && docData.teacherNotes !== sideNotes) {
-      setSideNotes(docData.teacherNotes);
+    if (teacherNotes !== sideNotes) {
+      setSideNotes(teacherNotes);
     }
-  }, [docData.teacherNotes]);
+  }, [teacherNotes]);
 
   // Load scenarios list & active scenario
   useEffect(() => {
@@ -101,7 +104,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
 
   // Auto-save side notes with debounce
   useEffect(() => {
-    if (!docData.id || sideNotes === (docData.teacherNotes || '')) return;
+    if (!docData.id || sideNotes === teacherNotes) return;
 
     const timer = setTimeout(async () => {
       try {
@@ -115,7 +118,7 @@ export const ScratchpadTeacherCompanionDrawer: React.FC<ScratchpadTeacherCompani
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [sideNotes, docData.id, docData.teacherNotes]);
+  }, [sideNotes, docData.id, teacherNotes]);
 
   if (!isOpen) return null;
 

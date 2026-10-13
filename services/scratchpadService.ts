@@ -3,10 +3,6 @@ import {
   getDoc,
   setDoc,
   updateDoc,
-  collection,
-  query,
-  where,
-  getDocs,
   onSnapshot,
   increment,
 } from 'firebase/firestore';
@@ -32,6 +28,24 @@ const stripHtmlToText = (html: string): string =>
     .trim();
 
 export const scratchpadDocRef = (id: string) => doc(db, 'scratchpads', id);
+
+/**
+ * Prywatne notatki lektora (Side Notes). Osobny dokument, bo nadrzędny
+ * `scratchpads/{id}` czyta każdy, kto zna link — także kursant i osoba
+ * niezalogowana. Reguły wpuszczają tu tylko lektora-właściciela i admina.
+ */
+export const scratchpadTeacherNotesRef = (id: string) =>
+  doc(db, 'scratchpads', id, 'private', 'teacher');
+
+/**
+ * Kopia dokumentu bez `teacherNotes` — do zapisów CAŁEGO dokumentu z kopii
+ * lokalnej (`setDoc`). Stare kopie w localStorage mogą jeszcze mieć to pole,
+ * a po zamknięciu go w regułach taki zapis zostałby odrzucony w całości.
+ */
+const withoutTeacherNotes = (docData: ScratchpadDocument): ScratchpadDocument => {
+  const { teacherNotes: _omit, ...rest } = docData;
+  return rest;
+};
 
 /** Wpis indeksu PIN → notatnik. Pozwala wejść po kodzie bez `list` na kolekcji. */
 const scratchpadPinRef = (pin: string) => doc(db, 'scratchpadPins', normalizeAccessCode(pin));
@@ -172,7 +186,7 @@ export async function getOrCreateStudentScratchpad(
   // Jeśli mamy już dokument w pamięci lokalnej, zwróć go i w tle ponów próbę zapisu do chmury
   if (localDoc) {
     try {
-      await setDoc(ref, localDoc, { merge: true });
+      await setDoc(ref, withoutTeacherNotes(localDoc), { merge: true });
     } catch (e: any) {
       console.warn('[Scratchpad] Cicha synchronizacja do chmury nie powiodła się:', e?.message || e);
     }
@@ -303,22 +317,9 @@ export async function findScratchpadByPin(
       }
     }
 
-    // Zapas dla notatników sprzed wprowadzenia indeksu, których lektor jeszcze
-    // nie otworzył (otwarcie dorabia wpis). Zapytanie kolekcyjne zadziała
-    // tylko przy starych, otwartych regułach — po wdrożeniu nowych po prostu
-    // odmówi i zejdziemy do `null`, zamiast wywracać ekran.
-    try {
-      const q = query(collection(db, 'scratchpads'), where('pin', '==', pin));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const cloudDoc = snap.docs[0].data() as ScratchpadDocument;
-        saveLocalScratchpad(cloudDoc);
-        ensureScratchpadPinIndex(cloudDoc.pin, cloudDoc.id);
-        return cloudDoc;
-      }
-    } catch {
-      // Oczekiwane po zamknięciu `list` — nie jest błędem wartym zgłoszenia.
-    }
+    // Bez zapytania po polu `pin`: `list` na `scratchpads` jest zamknięty,
+    // więc PIN bez wpisu w indeksie po prostu nie istnieje. Wpisy dorabia
+    // `ensureScratchpadPinIndex` przy otwarciu notatnika przez lektora.
   } catch (err: any) {
     console.warn('[Scratchpad] Błąd wyszukiwania po PIN w chmurze:', err?.message || err);
     if (isPermissionDenied(err)) throw new ScratchpadAccessError(ACCESS_DENIED_MESSAGE);
@@ -602,7 +603,7 @@ export async function saveScratchpadContent(
     } catch (err: any) {
       if (err?.code === 'not-found') {
         try {
-          await setDoc(ref, updatedDoc);
+          await setDoc(ref, withoutTeacherNotes(updatedDoc));
           return true;
         } catch (createErr: any) {
           result.cloudError = createErr?.message || String(createErr);
@@ -662,7 +663,7 @@ export async function updateScratchpadSettings(
     // stronie linku nigdy nie dostałby prawa zapisu.
     if (err?.code === 'not-found' && updated) {
       try {
-        await setDoc(scratchpadDocRef(id), updated);
+        await setDoc(scratchpadDocRef(id), withoutTeacherNotes(updated));
         return;
       } catch (createErr: any) {
         console.warn('[Scratchpad] Odtworzenie dokumentu przy zmianie ustawień nie powiodło się:', createErr?.message || createErr);
@@ -963,25 +964,53 @@ export async function submitStudentExerciseAnswer(
 }
 
 /**
- * Zapis prywatnych notatek lektora (Side Notes) w notatniku.
+ * Zapis prywatnych notatek lektora (Side Notes) w `private/teacher`.
  * Niewidoczne dla kursanta — służą do śledzenia uwag i zasilania AI.
+ * Pole `teacherNotes` w dokumencie nadrzędnym jest tylko czytane awaryjnie
+ * (notatniki sprzed migracji) — patrz `subscribeScratchpadTeacherNotes`.
  */
 export async function updateScratchpadTeacherNotes(
   id: string,
   notes: string
 ): Promise<void> {
   if (!id) return;
-  const local = getLocalScratchpad(id);
-  if (local) {
-    saveLocalScratchpad({ ...local, teacherNotes: notes });
-  }
-
   try {
-    const ref = scratchpadDocRef(id);
-    await updateDoc(ref, { teacherNotes: notes });
+    await setDoc(
+      scratchpadTeacherNotesRef(id),
+      { teacherNotes: notes, updatedAt: new Date().toISOString() },
+      { merge: true }
+    );
   } catch (err) {
     console.warn('[Scratchpad Teacher Notes Sync error]:', err);
   }
+}
+
+/**
+ * Subskrypcja prywatnych notatek lektora. `onChange(null)` znaczy „brak
+ * dokumentu `private/teacher`" — wołający bierze wtedy stare pole z
+ * dokumentu nadrzędnego (`resolveTeacherNotes`). Odmowa dostępu też kończy
+ * się `null`, żeby edytor nie wywracał się na koncie bez uprawnień.
+ */
+export function subscribeScratchpadTeacherNotes(
+  id: string,
+  onChange: (notes: string | null) => void
+): () => void {
+  if (!id) return () => {};
+  return onSnapshot(
+    scratchpadTeacherNotesRef(id),
+    (snap) => {
+      if (!snap.exists()) {
+        onChange(null);
+        return;
+      }
+      const value = snap.data()?.teacherNotes;
+      onChange(typeof value === 'string' ? value : null);
+    },
+    (err) => {
+      console.warn('[Scratchpad Teacher Notes] Błąd subskrypcji:', err?.message || err);
+      onChange(null);
+    }
+  );
 }
 
 /**
