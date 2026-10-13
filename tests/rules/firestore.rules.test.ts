@@ -407,6 +407,88 @@ test('usunięcie wpisu z indeksu PIN zarezerwowane dla admina', async () => {
   await assertSucceeds(deleteDoc(doc(teacherByEmail(), 'scratchpadPins/ABCDEF')));
 });
 
+test('zapytanie po polu pin nie działa — PIN rozwiązuje wyłącznie indeks', async () => {
+  await seed((db) =>
+    setDoc(doc(db, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher-uid', studentId: 'ala' })
+  );
+
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(getDocs(query(collection(anon, 'scratchpads'), where('pin', '==', 'ABCDEF'))));
+  await assertFails(
+    getDocs(query(collection(student('ala'), 'scratchpads'), where('studentId', '==', 'ala')))
+  );
+});
+
+test('atak Boba: własny notatnik z PIN-em ofiary nie pozwala przepiąć jej wpisu', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher-uid', studentId: 'ala' });
+    await setDoc(doc(db, 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' });
+  });
+
+  // Bob zakłada (legalnie) swój notatnik, ale wpisuje w nim PIN Ali…
+  await assertSucceeds(
+    setDoc(doc(student('bob'), 'scratchpads/sp_bob'), { pin: 'ABCDEF', teacherUid: 'teacher_default', studentId: 'bob' })
+  );
+  // …i próbuje przepiąć wpis indeksu na siebie. Nowy cel jest jego i ma ten
+  // PIN, ale wpis OBECNIE wskazuje na notatnik Ali.
+  await assertFails(
+    setDoc(doc(student('bob'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_bob' }, { merge: true })
+  );
+  await assertFails(updateDoc(doc(student('bob'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_bob' }));
+});
+
+test('atak Boba jako lektor-właściciel własnego notatnika też nie przepina cudzego wpisu', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher-uid', studentId: 'ala' });
+    await setDoc(doc(db, 'scratchpads/sp_evil'), { pin: 'ABCDEF', teacherUid: 'bob' });
+    await setDoc(doc(db, 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' });
+  });
+
+  await assertFails(updateDoc(doc(student('bob'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_evil' }));
+});
+
+test('właściciel odświeża swój wpis PIN, admin przepina dowolny', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher-uid', studentId: 'ala' });
+    await setDoc(doc(db, 'scratchpads/sp_ala2'), { pin: 'ABCDEF', teacherUid: 'inny-lektor', studentId: 'ala' });
+    await setDoc(doc(db, 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala' });
+  });
+
+  // `ensureScratchpadPinIndex` przy każdym otwarciu — ten sam cel.
+  await assertSucceeds(
+    setDoc(doc(student('ala'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala', updatedAt: 'x' }, { merge: true })
+  );
+  await assertSucceeds(updateDoc(doc(teacherByEmail(), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_ala2' }));
+});
+
+test('obcy zalogowany nie zakłada sp_<idCudzegoKursanta>', async () => {
+  const bob = student('bob');
+  // Ani jako „lektor" (nie jest lektorem/adminem)…
+  await assertFails(setDoc(doc(bob, 'scratchpads/sp_celina'), { pin: 'ZZZZZZ', teacherUid: 'bob', studentId: 'celina' }));
+  // …ani jako kursant — ID musi być jego własnym `sp_<uid>`.
+  await assertFails(setDoc(doc(bob, 'scratchpads/sp_celina'), { pin: 'ZZZZZZ', teacherUid: 'teacher_default', studentId: 'bob' }));
+  await assertFails(setDoc(doc(bob, 'scratchpads/sp_celina'), { pin: 'ZZZZZZ', teacherUid: 'teacher_default', studentId: 'celina' }));
+  // Bez logowania — nic.
+  const anon = env.unauthenticatedContext().firestore();
+  await assertFails(setDoc(doc(anon, 'scratchpads/sp_bob'), { pin: 'ZZZZZZ', studentId: 'bob' }));
+});
+
+test('kursant zakłada swój sp_<uid>, lektor tylko we własnym imieniu', async () => {
+  // Ścieżka `StudentScratchpadScreen`: teacherUid = 'teacher_default'.
+  await assertSucceeds(
+    setDoc(doc(student('ala'), 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher_default', studentId: 'ala' })
+  );
+  // Lektor: notatnik kursanta i notatnik roboczy `sp_<timestamp>`.
+  await assertSucceeds(
+    setDoc(doc(teacherByEmail(), 'scratchpads/sp_celina'), { pin: 'GHJKMN', teacherUid: 'teacher-uid', studentId: 'celina' })
+  );
+  await assertSucceeds(setDoc(doc(teacherByEmail(), 'scratchpads/sp_1760000000000'), { pin: 'PQRTUV', teacherUid: 'teacher-uid' }));
+  // Lektor nie podpisuje notatnika cudzym teacherUid.
+  await assertFails(
+    setDoc(doc(teacherByEmail(), 'scratchpads/sp_dawid'), { pin: 'WXYZ23', teacherUid: 'inny-lektor', studentId: 'dawid' })
+  );
+});
+
 // ———————————————————— Szablony notatnika (scratchpadTemplates) ————————————————————
 
 test('lektor czyta i zapisuje szablony notatnika', async () => {

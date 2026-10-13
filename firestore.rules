@@ -707,10 +707,21 @@ service cloud.firestore {
 
     // Współdzielony notatnik lekcyjny (A4)
     match /scratchpads/{scratchpadId} {
-      allow read: if true; // udostępnianie linkiem po znanym ID
-      allow list: if false; // zapobieganie enumeracji wszystkich notatników
+      // Udostępnianie linkiem po znanym ID — wyłącznie `get`. Reguły `allow`
+      // się sumują, a `read` obejmuje też `list`, więc dawne
+      // `read: if true` + `list: if false` pozwalało wylistować wszystko.
+      // `list` nie ma żadnej reguły (zamknięty dla wszystkich, także admina —
+      // aplikacja nie listuje notatników; skrypty idą przez Admin SDK).
+      allow get: if true;
 
-      allow create: if isAuthenticated();
+      // Zakłada lektor/admin we własnym imieniu albo kursant swój własny
+      // `sp_<uid>`. Bez tego dowolny zalogowany mógł zająć `sp_<idCudzegoKursanta>`
+      // przed lektorem, a `getOrCreateStudentScratchpad` otwierałby potem
+      // dokument atakującego.
+      allow create: if isAuthenticated() && (
+        (isAdmin() && request.resource.data.teacherUid == request.auth.uid)
+        || (scratchpadId == 'sp_' + request.auth.uid && request.resource.data.studentId == request.auth.uid)
+      );
 
       // Zapis dopuszczony dla admina, lektora-właściciela lub w trybie edycji ucznia/grupy
       allow update: if isAdmin()
@@ -770,14 +781,31 @@ service cloud.firestore {
       allow get: if true;
       allow list: if false;
 
-      allow create, update: if isAdmin() || (
+      // Lektor-właściciel albo kursant, dla którego notatnik powstał.
+      function ownsScratchpad(scratchpadId) {
+        return exists(/databases/$(database)/documents/scratchpads/$(scratchpadId)) && (
+          get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.get('teacherUid', null) == request.auth.uid ||
+          get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.get('studentId', null) == request.auth.uid
+        );
+      }
+
+      // Nowy cel wpisu: istnieje, ma ten PIN i należy do wołającego.
+      function targetIsMineWithThisPin() {
+        return ownsScratchpad(request.resource.data.scratchpadId) &&
+          get(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)).data.pin == pin;
+      }
+
+      // `create` w regułach dotyczy tylko wpisu, którego jeszcze nie ma
+      // (`setDoc` na istniejący wpis to `update`).
+      allow create: if isAdmin() || (isAuthenticated() && targetIsMineWithThisPin());
+
+      // Przepięcie istniejącego wpisu: dodatkowo trzeba być właścicielem
+      // notatnika, na który wpis wskazuje OBECNIE. Inaczej wystarczyło
+      // założyć własny notatnik z PIN-em ofiary i przekierować jej wpis.
+      allow update: if isAdmin() || (
         isAuthenticated() &&
-        exists(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)) &&
-        get(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)).data.pin == pin &&
-        (
-          get(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)).data.teacherUid == request.auth.uid ||
-          get(/databases/$(database)/documents/scratchpads/$(request.resource.data.scratchpadId)).data.studentId == request.auth.uid
-        )
+        ownsScratchpad(resource.data.scratchpadId) &&
+        targetIsMineWithThisPin()
       );
 
       allow delete: if isAdmin();
