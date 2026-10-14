@@ -753,12 +753,19 @@ service cloud.firestore {
 
       allow delete: if isAdmin();
 
-      // Prywatne notatki lektora — zablokowane dla kursantów
+      // Prywatne notatki lektora — zablokowane dla kursantów.
+      // Kursant, dla którego notatnik powstał, nie wchodzi tu nigdy (poza
+      // isAdmin, np. admin_student): `create` pozwala mu założyć własny
+      // `sp_<uid>` z dowolnym teacherUid/teacherId, więc sama zgodność
+      // teacherUid nie dowodzi, że to lektor.
       match /private/teacher {
         allow read, write: if isAuthenticated() && (
-          isAdmin() ||
-          ('teacherUid' in get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data && request.auth.uid == get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.teacherUid) ||
-          ('teacherId' in get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data && request.auth.uid == get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.teacherId)
+          isAdmin() || (
+            request.auth.uid != get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.get('studentId', null) && (
+              ('teacherUid' in get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data && request.auth.uid == get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.teacherUid) ||
+              ('teacherId' in get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data && request.auth.uid == get(/databases/$(database)/documents/scratchpads/$(scratchpadId)).data.teacherId)
+            )
+          )
         );
       }
     }

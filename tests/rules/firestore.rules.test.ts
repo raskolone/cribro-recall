@@ -438,7 +438,10 @@ test('atak Boba: własny notatnik z PIN-em ofiary nie pozwala przepiąć jej wpi
   await assertFails(updateDoc(doc(student('bob'), 'scratchpadPins/ABCDEF'), { scratchpadId: 'sp_bob' }));
 });
 
-test('atak Boba jako lektor-właściciel własnego notatnika też nie przepina cudzego wpisu', async () => {
+// Bob jest tu zwykłym kursantem (bez roli w `users`), który tylko figuruje jako
+// `teacherUid` własnego notatnika. Prawdziwy lektor (rola `teacher`) przechodzi
+// przez `isAdmin()` i przepina dowolny wpis — to osobna, świadoma decyzja.
+test('atak Boba: kursant wpisany jako teacherUid własnego notatnika nie przepina cudzego wpisu', async () => {
   await seed(async (db) => {
     await setDoc(doc(db, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher-uid', studentId: 'ala' });
     await setDoc(doc(db, 'scratchpads/sp_evil'), { pin: 'ABCDEF', teacherUid: 'bob' });
@@ -546,6 +549,85 @@ test('private/teacher: lektor-właściciel czyta i zapisuje, kursant i gość ni
   await assertFails(getDoc(doc(student('ala'), 'scratchpads/sp_ala/private/teacher')));
   await assertFails(setDoc(doc(student('ala'), 'scratchpads/sp_ala/private/teacher'), { teacherNotes: 'x' }));
   await assertFails(getDoc(doc(student('bob'), 'scratchpads/sp_ala/private/teacher')));
+});
+
+// Gałąź kursanta w `create` nie ogranicza teacherUid/teacherId (odtwarzanie
+// z kopii lokalnej zapisuje prawdziwy teacherUid lektora) — to znana luka,
+// odłożona. Zamyka ją tylko to, że kursant-właściciel nie wchodzi do
+// `private/teacher`, nawet jeśli figuruje jako lektor.
+test('S1/S2: kursant jako teacherUid własnego sp_<uid> — create przechodzi, private/teacher nie', async () => {
+  const bob = student('bob');
+  // Znana, nieblokowana luka: create przechodzi.
+  await assertSucceeds(
+    setDoc(doc(bob, 'scratchpads/sp_bob'), { pin: 'BBBBBB', teacherUid: 'bob', studentId: 'bob' })
+  );
+  // Lektor (admin po e-mailu) zapisuje notatki o Bobie.
+  await assertSucceeds(
+    setDoc(doc(teacherByEmail(), 'scratchpads/sp_bob/private/teacher'), { teacherNotes: 'Bob myli czasy' })
+  );
+
+  await assertFails(getDoc(doc(bob, 'scratchpads/sp_bob/private/teacher')));
+  await assertFails(
+    setDoc(doc(bob, 'scratchpads/sp_bob/private/teacher'), { teacherNotes: 'nadpisane' }, { merge: true })
+  );
+});
+
+test('S2b: kursant jako legacy teacherId własnego sp_<uid> — private/teacher nadal zamknięte', async () => {
+  const bob = student('bob');
+  await assertSucceeds(
+    setDoc(doc(bob, 'scratchpads/sp_bob'), {
+      pin: 'BBBBBB',
+      teacherUid: 'teacher_default',
+      teacherId: 'bob',
+      studentId: 'bob',
+    })
+  );
+  await seed((db) => setDoc(doc(db, 'scratchpads/sp_bob/private/teacher'), { teacherNotes: 'tajne' }));
+
+  await assertFails(getDoc(doc(bob, 'scratchpads/sp_bob/private/teacher')));
+  await assertFails(setDoc(doc(bob, 'scratchpads/sp_bob/private/teacher'), { teacherNotes: 'x' }));
+});
+
+test('kursant zakłada sp_<uid> z teacher_default (StudentScratchpadScreen), ale private/teacher nie czyta', async () => {
+  const ala = student('ala');
+  await assertSucceeds(
+    setDoc(doc(ala, 'scratchpads/sp_ala'), { pin: 'ABCDEF', teacherUid: 'teacher_default', studentId: 'ala' })
+  );
+  await assertFails(getDoc(doc(ala, 'scratchpads/sp_ala/private/teacher')));
+  await assertFails(setDoc(doc(ala, 'scratchpads/sp_ala/private/teacher'), { teacherNotes: 'x' }));
+});
+
+test('admin_student i admin (rola w users) czytają i piszą private/teacher także własnego notatnika', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'users/as-uid'), { role: 'admin_student' });
+    await setDoc(doc(db, 'users/adm-uid'), { role: 'admin' });
+    await setDoc(doc(db, 'scratchpads/sp_as-uid'), { pin: 'ABCDEF', teacherUid: 'as-uid', studentId: 'as-uid' });
+    await setDoc(doc(db, 'scratchpads/sp_adm-uid'), { pin: 'GHJKMN', teacherUid: 'teacher_default', studentId: 'adm-uid' });
+  });
+
+  for (const uid of ['as-uid', 'adm-uid']) {
+    const db = student(uid);
+    const ref = doc(db, `scratchpads/sp_${uid}/private/teacher`);
+    await assertSucceeds(setDoc(ref, { teacherNotes: 'moje' }, { merge: true }));
+    await assertSucceeds(getDoc(ref));
+  }
+});
+
+test('lektor-właściciel bez roli admina: notatnik z innym studentId i bez studentId', async () => {
+  await seed(async (db) => {
+    await setDoc(doc(db, 'scratchpads/sp_celina'), { pin: 'ABCDEF', teacherUid: 'lektor-x', studentId: 'celina' });
+    // Notatnik roboczy `sp_<timestamp>` — bez studentId.
+    await setDoc(doc(db, 'scratchpads/sp_1760000000000'), { pin: 'GHJKMN', teacherUid: 'lektor-x' });
+    // Legacy: właściciel tylko w teacherId.
+    await setDoc(doc(db, 'scratchpads/sp_dawid'), { pin: 'PQRTUV', teacherId: 'lektor-x', studentId: 'dawid' });
+  });
+
+  const owner = student('lektor-x');
+  for (const id of ['sp_celina', 'sp_1760000000000', 'sp_dawid']) {
+    const ref = doc(owner, `scratchpads/${id}/private/teacher`);
+    await assertSucceeds(setDoc(ref, { teacherNotes: 'n' }, { merge: true }));
+    await assertSucceeds(getDoc(ref));
+  }
 });
 
 // ———————————————————— Szablony notatnika (scratchpadTemplates) ————————————————————
