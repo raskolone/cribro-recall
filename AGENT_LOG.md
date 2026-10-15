@@ -7277,3 +7277,14 @@ Zrobione:
 - Commity:
   - Commit 1: `fix(email): ujednolicone jasne szablony maili z przypisaniem i ocena pracy` (szablony, generator, server.ts, testy).
   - Commit 2: `build: api/index.js po zmianach szablonow maili` (przebudowa produkcyjnego bundle'a serwera, potwierdzony zerowy diff przy ponownym buildzie).
+
+---
+
+2026-10-13 — Claude Code / Opus 5.5
+
+Zadanie: SEC-NOTEBOOK-1 — punkty 1, 2, 6, 7 z weryfikacji SEC-NOTEBOOK-verify (gałąź `sec-notebook-1` od `9d2d66d`, worktree `../recall-sec-notebook-1`, bez pusha, bez deployu reguł, bez zapisów do produkcji).
+Zrobione: `services/scratchpadService.ts`, `components/scratchpad/ScratchpadEditor.tsx`, `components/scratchpad/ScratchpadTeacherCompanionDrawer.tsx`, nowe `hooks/useScratchpadTeacherNotes.ts`, `utils/teacherNotes.ts`, `scripts/migrate-scratchpad-teacher-notes.mjs`, `firestore.rules`, `tests/rules/firestore.rules.test.ts`, `tests/teacherNotes.test.ts`. 4 commity + docs (CHANGELOG BX). tsc 0, `npm test` 1704/1704, reguły 60/60 (`--test-concurrency=1`), build OK, `api/index.js` bez zmian.
+Nie dokończone / do sprawdzenia: wdrożenie (kod → migracja `--apply` → reguły) czeka na osobną zgodę Macieja; UI szuflady notatek niesprawdzone w przeglądarce (tylko tsc + testy strukturalne); punkty 3/4/5 (allowStudentEdit bez logowania, requirePin w kliencie, studentAnswer) poza zakresem.
+Decyzje architektoniczne: (1) `list` zamknięty dla wszystkich, także admina — aplikacja nie listuje notatników, a skrypty idą przez Admin SDK; istniejący test wprost tego wymaga; (2) „lektor lub admin" w regule `create` = `isAdmin()` (obejmuje rolę `teacher` z `users/{uid}`); ścieżka kursanta wiąże ID dokumentu z UID (`sp_<uid>`), bo samo `studentId == auth.uid` pozwalałoby zająć `sp_<cudzy>`; (3) blokada `teacherNotes` jako „pola nie ma po zapisie" (nie „pole się nie zmienia"), żeby nie zostawić wycieku dla niezmigrowanych dokumentów — stąd twarda kolejność wdrożenia; (4) blokada pola w osobnym commicie reguł, do cofnięcia niezależnie; (5) `create` w `scratchpadPins` z natury dotyczy tylko nieistniejącego wpisu (`setDoc` na istniejący to `update`), więc dokręcony został `update`; (6) notatki nie są już kopiowane do kopii lokalnej dokumentu (localStorage).
+Ryzyka: DOTKNIĘTE `firestore.rules` (scratchpads, scratchpadPins) — za zgodą Macieja, NIE wdrożone. Ścieżka bez logowania (notatnik po linku/PIN) zmieniona tylko o zamknięcie `list` i usunięcie zapytania po `pin`. Rezydualne: wpis PIN, którego jeszcze nie ma w indeksie, może zająć pierwszy właściciel notatnika z tym PIN-em (także kursant ze swoim `sp_<uid>` i podrobionym `pin`) — indeks jest wypełniony backfillem, więc dotyczy tylko nowych PIN-ów przed pierwszym otwarciem.
+
