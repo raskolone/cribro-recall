@@ -22,6 +22,8 @@ import {
   MAX_SERIES_ITEMS,
   planCronReleases,
   isSeriesAutoEmailConfirmed,
+  itemReleaseWarsawDate,
+  studentsWithReleaseOn,
 } from '../utils/homeworkSeries';
 import { HomeworkType, User } from '../types';
 
@@ -507,4 +509,36 @@ test('DECYZJA 5: autoEmail włącza wysyłkę tylko z potwierdzeniem lektora (au
   assert.equal(unconfirmed.skipAutoEmail, true);
   assert.equal(unconfirmed.manualEmailConfirmationRequired, true);
   assert.equal(unconfirmed.seriesAutoEmailConfirmed, false);
+});
+
+test('limit dzienny: planCronReleases pomija kursanta, który dziś (Warszawa) dostał już pracę z dowolnej serii', () => {
+  const series = [
+    {
+      id: 'ser_a',
+      studentUid: 'stu',
+      status: 'active' as const,
+      items: [
+        { itemId: 'a1', slotDate: '2026-10-01', dueInDays: 3, state: 'released' as const, releasedWarsawDate: '2026-10-10' },
+        { itemId: 'a2', slotDate: '2026-10-02', dueInDays: 3, state: 'ready' as const },
+      ],
+    },
+    {
+      id: 'ser_b',
+      studentUid: 'other',
+      status: 'active' as const,
+      items: [{ itemId: 'b1', slotDate: '2026-10-02', dueInDays: 3, state: 'ready' as const }],
+    },
+  ];
+  assert.deepEqual(planCronReleases(series, '2026-10-10').map((p) => p.studentUid), ['other']);
+  assert.deepEqual(planCronReleases(series, '2026-10-11').map((p) => p.itemId).sort(), ['a2', 'b1']);
+  assert.deepEqual(Array.from(studentsWithReleaseOn(series, '2026-10-10')), ['stu']);
+});
+
+test('itemReleaseWarsawDate: pole releasedWarsawDate, a dla starszych pozycji dzień z releasedAt (Warszawa)', () => {
+  const base = { itemId: 'x', slotDate: '2026-10-01', dueInDays: 3 };
+  assert.equal(itemReleaseWarsawDate({ ...base, state: 'ready' }), null);
+  assert.equal(itemReleaseWarsawDate({ ...base, state: 'released', releasedWarsawDate: '2026-10-05' }), '2026-10-05');
+  // 22:30 UTC 24.10 to już 25.10 w Warszawie (CEST).
+  assert.equal(itemReleaseWarsawDate({ ...base, state: 'released', releasedAt: '2026-10-24T22:30:00.000Z' }), '2026-10-25');
+  assert.equal(itemReleaseWarsawDate({ ...base, state: 'released' }), null);
 });

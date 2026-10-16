@@ -508,3 +508,60 @@ test('pętla crona: wyjątek przy odczycie payloadu jednej pozycji nie zatrzymuj
   assert.equal(item.state, 'ready');
   assert.equal(item.releaseAttempts, 1);
 });
+
+test('limit dzienny (R1): dwa uruchomienia crona tego samego dnia = jedna praca, następny dzień = kolejna', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, cronSecret: 's3cret' };
+  // Zaległości: dwie pozycje w jednej serii i jedna w drugiej serii (seria jednopozycyjna
+  // po wydaniu przechodzi w `completed` i znika z zapytania o aktywne).
+  await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-05'] });
+  await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-06', '2026-10-07'] });
+
+  const run = (day: string) => handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: day });
+
+  const first = await run('2026-10-10');
+  assert.equal(first.body.releasedCount, 1);
+  const second = await run('2026-10-10');
+  assert.equal(second.body.releasedCount, 0, 'ponowne uruchomienie tego samego dnia nic nie wydaje');
+  assert.equal(second.body.dailyLimitSkippedCount, 1);
+  assert.equal(releasedTasks(db).length, 1);
+
+  const nextDay = await run('2026-10-11');
+  assert.equal(nextDay.body.releasedCount, 1);
+  assert.equal((await run('2026-10-11')).body.releasedCount, 0);
+  assert.equal((await run('2026-10-12')).body.releasedCount, 1);
+  assert.equal(releasedTasks(db).length, 3);
+});
+
+test('limit dzienny: ręczne „Wydaj” jest poza limitem, ale cron tego dnia już kursantowi nic nie wyda', async () => {
+  const db = new InMemoryDb();
+  const now = () => new Date('2026-10-10T05:00:00.000Z');
+  const deps = { db, cronSecret: 's3cret', now };
+  const a = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-08'] });
+  const b = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-09'] });
+
+  const cron = await handleCronRelease(deps, { authHeader: 'Bearer s3cret' });
+  assert.equal(cron.body.todayWarsaw, '2026-10-10');
+  assert.equal(cron.body.releasedCount, 1);
+  assert.equal(releasedTasks(db)[0].seriesId, a);
+
+  // Lektor świadomie wydaje drugą pracę tego samego dnia — limit crona go nie blokuje.
+  const manual = await handleReleaseNow(deps, { callerUid: 'teacher_1', seriesId: b });
+  assert.equal(manual.status, 200);
+  assert.equal(releasedTasks(db).length, 2);
+  const stored = (await db.collection('homeworkSeries').doc(b).get()).data();
+  assert.equal(stored.items[0].releasedWarsawDate, '2026-10-10');
+});
+
+test('limit dzienny: ręczne „Wydaj” rano blokuje crona dla tego kursanta do następnego dnia', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, cronSecret: 's3cret', now: () => new Date('2026-10-10T04:00:00.000Z') };
+  const a = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-08'] });
+  await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-09'] });
+  await createSeries(deps, { studentUid: 'student_2', slots: ['2026-10-09'] });
+
+  await handleReleaseNow(deps, { callerUid: 'teacher_1', seriesId: a });
+  const cron = await handleCronRelease(deps, { authHeader: 'Bearer s3cret' });
+  assert.equal(cron.body.releasedCount, 1, 'tylko student_2');
+  assert.deepEqual(releasedTasks(db).map((t) => t.studentUid).sort(), ['student_1', 'student_2']);
+});

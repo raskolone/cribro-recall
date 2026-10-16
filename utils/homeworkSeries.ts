@@ -21,6 +21,8 @@ export interface HomeworkSeriesItemMeta {
   releasedAt?: string;
   releasedTaskId?: string;
   releasedDelayed?: boolean;
+  /** Dzień warszawski wydania (YYYY-MM-DD) — podstawa dziennego limitu crona. */
+  releasedWarsawDate?: string;
   /** Liczba nieudanych prób wydania (błędy przejściowe i deterministyczne). */
   releaseAttempts?: number;
   lastAttemptAt?: string;
@@ -140,18 +142,58 @@ export interface PlannedSeriesRelease {
 }
 
 /**
+ * Dzień warszawski, w którym pozycję wydano, albo `null`, gdy nie jest wydana.
+ * Pozycje sprzed pola `releasedWarsawDate` liczone z `releasedAt`.
+ */
+export function itemReleaseWarsawDate(item: HomeworkSeriesItemMeta): string | null {
+  if (!item || item.state !== 'released') return null;
+  if (item.releasedWarsawDate) return item.releasedWarsawDate;
+  if (item.releasedAt) {
+    const d = new Date(item.releasedAt);
+    if (!isNaN(d.getTime())) return getWarsawDateString(d);
+  }
+  return null;
+}
+
+/**
+ * Kursanci, którzy w danym dniu warszawskim dostali już pracę z którejkolwiek
+ * z przekazanych serii (cron albo ręczne „Wydaj”), niezależnie od statusu serii.
+ */
+export function studentsWithReleaseOn(
+  seriesList: Array<Pick<HomeworkSeriesDocument, 'studentUid' | 'items'>>,
+  dayWarsaw: string
+): Set<string> {
+  const result = new Set<string>();
+  for (const series of seriesList || []) {
+    if (!series?.studentUid || !Array.isArray(series.items)) continue;
+    if (series.items.some((item) => itemReleaseWarsawDate(item) === dayWarsaw)) {
+      result.add(series.studentUid);
+    }
+  }
+  return result;
+}
+
+/**
  * Plan jednego uruchomienia crona: najwyżej jeden slot na kursanta, także gdy ma
  * kilka aktywnych serii. Wygrywa najstarszy zaległy slot spośród jego serii (przy
  * równych datach — seria wcześniejsza na liście). Pozostałe czekają na kolejne
  * uruchomienia.
+ *
+ * Limit dzienny: kursant, który dziś (dzień warszawski) dostał już pracę z którejś
+ * z przekazanych serii, jest pomijany — drugie uruchomienie tego samego dnia
+ * (ponowne dostarczenie zdarzenia przez Vercel, ręczny POST) nic mu nie wyda.
+ * Serie zakończone nie przychodzą w zapytaniu o aktywne, więc handler sprawdza
+ * je osobno przed wydaniem.
  */
 export function planCronReleases(
   seriesList: Array<Pick<HomeworkSeriesDocument, 'id' | 'studentUid' | 'status' | 'items'>>,
   todayWarsaw: string
 ): PlannedSeriesRelease[] {
+  const releasedToday = studentsWithReleaseOn(seriesList, todayWarsaw);
   const byStudent = new Map<string, PlannedSeriesRelease>();
   for (const series of seriesList || []) {
     if (!series || series.status !== 'active' || !series.studentUid) continue;
+    if (releasedToday.has(series.studentUid)) continue;
     const [candidate] = findItemsToRelease(series.items, todayWarsaw);
     if (!candidate) continue;
     const current = byStudent.get(series.studentUid);
@@ -173,7 +215,7 @@ export function planCronReleases(
 export function updateSeriesItemAfterRelease(
   items: HomeworkSeriesItemMeta[],
   itemId: string,
-  update: { taskId: string; releasedAt: string; delayed: boolean }
+  update: { taskId: string; releasedAt: string; delayed: boolean; releasedWarsawDate?: string }
 ): HomeworkSeriesItemMeta[] {
   return items.map((item) => {
     if (item.itemId !== itemId) return item;
@@ -183,6 +225,7 @@ export function updateSeriesItemAfterRelease(
       releasedTaskId: update.taskId,
       releasedAt: update.releasedAt,
       releasedDelayed: update.delayed,
+      releasedWarsawDate: update.releasedWarsawDate,
       lastError: undefined,
     };
   });

@@ -10,7 +10,9 @@ import {
   getWarsawDateString,
   isDelayedRelease,
   isSlotReadyToRelease,
+  PlannedSeriesRelease,
   planCronReleases,
+  studentsWithReleaseOn,
   updateSeriesItemAfterRelease,
   updateSeriesItemAfterReleaseError,
   validateCreateSeriesInput,
@@ -380,6 +382,7 @@ export async function releaseSingleSeriesItem(
           taskId,
           releasedAt: nowIso,
           delayed: isDelayedRelease(itemMeta.slotDate, todayWarsaw),
+          releasedWarsawDate: todayWarsaw,
         });
         const newStatus = computeSeriesStatus(seriesData.status, updatedItems);
         transaction.update(seriesRef, clean({ items: updatedItems, status: newStatus, updatedAt: nowIso }));
@@ -416,6 +419,7 @@ export async function releaseSingleSeriesItem(
         taskId,
         releasedAt: nowIso,
         delayed,
+        releasedWarsawDate: todayWarsaw,
       });
       const newStatus = computeSeriesStatus(seriesData.status, updatedItems);
       transaction.update(seriesRef, clean({ items: updatedItems, status: newStatus, updatedAt: nowIso }));
@@ -487,20 +491,50 @@ export async function handleCronRelease(
     return { ...data, id: data.id || doc.id };
   });
 
-  // Najwyżej jeden slot na kursanta na uruchomienie (planCronReleases) — reszta
-  // zaległych czeka na kolejne uruchomienia.
-  const plan = planCronReleases(seriesList, todayWarsaw);
+  // Najwyżej jeden slot na kursanta na uruchomienie i najwyżej jedna praca na
+  // kursanta na dzień (planCronReleases) — reszta zaległych czeka na kolejne dni.
+  const candidates = planCronReleases(seriesList, todayWarsaw);
   const dueCount = seriesList.reduce(
     (sum, series) =>
       sum + (series.items || []).filter((it) => it.state === 'ready' && isSlotReadyToRelease(it.slotDate, todayWarsaw)).length,
     0
   );
+  const dueStudents = new Set(
+    seriesList.filter((s) => findItemsToRelease(s.items || [], todayWarsaw).length > 0).map((s) => s.studentUid)
+  );
+  const releasedToday = studentsWithReleaseOn(seriesList, todayWarsaw);
 
   let releasedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
   let retryCount = 0;
   let failedCount = 0;
+
+  // Limit dzienny także względem serii zakończonych: seria jednopozycyjna po wydaniu
+  // od razu przechodzi w `completed` i znika z zapytania o aktywne. Bez tego drugie
+  // uruchomienie tego samego dnia wydałoby kursantowi pracę z jego kolejnej serii.
+  const plan: PlannedSeriesRelease[] = [];
+  for (const candidate of candidates) {
+    try {
+      const studentSeriesSnap = await deps.db
+        .collection('homeworkSeries')
+        .where('studentUid', '==', candidate.studentUid)
+        .get();
+      const studentSeries = studentSeriesSnap.docs.map((d) => d.data() as HomeworkSeriesDocument);
+      if (studentsWithReleaseOn(studentSeries, todayWarsaw).has(candidate.studentUid)) {
+        releasedToday.add(candidate.studentUid);
+        continue;
+      }
+    } catch {
+      // Nie da się sprawdzić limitu — ostrożnie pomijamy kursanta (spróbujemy jutro),
+      // zamiast ryzykować drugą pracę tego samego dnia.
+      errorCount++;
+      retryCount++;
+      continue;
+    }
+    plan.push(candidate);
+  }
+  const dailyLimitSkippedCount = Array.from(dueStudents).filter((uid) => releasedToday.has(uid)).length;
 
   // Każda pozycja osobno: błąd jednej (także nieoczekiwany wyjątek) nie zatrzymuje
   // pozostałych — cron kończy się 200 z podsumowaniem.
@@ -534,6 +568,7 @@ export async function handleCronRelease(
       todayWarsaw,
       seriesProcessed: seriesList.length,
       plannedCount: plan.length,
+      dailyLimitSkippedCount,
       releasedCount,
       deferredCount: Math.max(0, dueCount - plan.length),
       skippedCount,
