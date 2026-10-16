@@ -4,7 +4,7 @@ import { AlertTriangle, Calendar, Check, Clock, Loader2, Mail, ShieldAlert, X } 
 import { HomeworkType, User } from '../../types';
 import { auth } from '../../firebase';
 import { formatStudentLabel } from '../../utils/buildHomeworkAssignment';
-import { getWarsawDateString } from '../../utils/homeworkSeries';
+import { addDaysToDateString, getWarsawDateString } from '../../utils/homeworkSeries';
 
 interface ScheduleSeriesModalProps {
   isOpen: boolean;
@@ -34,11 +34,9 @@ export const ScheduleSeriesModal: React.FC<ScheduleSeriesModalProps> = ({
   warmup,
   warmupCards,
 }) => {
-  const tomorrow = (() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    return getWarsawDateString(d);
-  })();
+  // Najwcześniejszy dzień wydania: jutro w Warszawie (serwer odrzuca dziś i przeszłość —
+  // poranny cron już się odbył, więc slot na dziś wyszedłby dopiero nazajutrz).
+  const tomorrow = addDaysToDateString(getWarsawDateString(new Date()), 1);
 
   const [seriesTitle, setSeriesTitle] = useState(title || i18n.t('Seria prac domowych'));
   const [slotDate, setSlotDate] = useState(tomorrow);
@@ -71,6 +69,10 @@ export const ScheduleSeriesModal: React.FC<ScheduleSeriesModalProps> = ({
     }
     if (!slotDate) {
       setError(i18n.t('Wybierz datę wydania zadania.'));
+      return;
+    }
+    if (slotDate < tomorrow) {
+      setError(i18n.t('Dzień wydania musi być najwcześniej jutro.'));
       return;
     }
 
@@ -189,7 +191,11 @@ export const ScheduleSeriesModal: React.FC<ScheduleSeriesModalProps> = ({
         ) : (
           <form onSubmit={handleSubmit} className="p-5 space-y-4">
             {error && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2">
+              <div
+                role="alert"
+                data-testid="schedule-error"
+                className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2"
+              >
                 <ShieldAlert size={16} className="shrink-0" />
                 <span>{error}</span>
               </div>
@@ -219,7 +225,7 @@ export const ScheduleSeriesModal: React.FC<ScheduleSeriesModalProps> = ({
                   data-testid="schedule-slot-date"
                   type="date"
                   value={slotDate}
-                  min={getWarsawDateString(new Date())}
+                  min={tomorrow}
                   onChange={(e) => setSlotDate(e.target.value)}
                   className="w-full min-h-[2.75rem] px-3 bg-base-100 dark:bg-base-200 border border-line-strong rounded-xl text-sm text-text-hi focus:border-primary focus:outline-none"
                   required
@@ -259,7 +265,7 @@ export const ScheduleSeriesModal: React.FC<ScheduleSeriesModalProps> = ({
                   <p className="text-text-mute mt-0.5 leading-relaxed">
                     {autoEmail
                       ? i18n.t('Włączone i potwierdzone.')
-                      : i18n.t('Domyślnie wyłączone — po wydaniu wyślesz e-mail ręcznie, jak przy zwykłej pracy.')}
+                      : i18n.t('Domyślnie wyłączone — kursant zobaczy pracę po zalogowaniu, e-mail nie zostanie wysłany.')}
                   </p>
                 </div>
               </label>

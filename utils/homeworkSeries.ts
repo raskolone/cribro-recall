@@ -97,6 +97,17 @@ export function computeDueDate(releaseDate: string | Date, dueInDays: number): s
 }
 
 /**
+ * Data `YYYY-MM-DD` przesunięta o `days` dni kalendarzowych — arytmetyka na samej
+ * dacie (UTC), więc wynik nie zależy od strefy przeglądarki ani zmiany czasu.
+ */
+export function addDaysToDateString(dateStr: string, days: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || '').trim());
+  if (!match) throw new Error('Niepoprawna data (wymagany YYYY-MM-DD)');
+  const d = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3]) + days));
+  return d.toISOString().slice(0, 10);
+}
+
+/**
  * Czy dany slot kwalifikuje się do wydania w zadanym dniu warszawskim (slotDate <= todayWarsaw).
  */
 export function isSlotReadyToRelease(slotDate: string, todayWarsaw: string): boolean {

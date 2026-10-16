@@ -25,6 +25,7 @@ import {
   itemReleaseWarsawDate,
   studentsWithReleaseOn,
   checkSeriesStudentProfile,
+  addDaysToDateString,
 } from '../utils/homeworkSeries';
 import { HomeworkType, User } from '../types';
 
@@ -570,4 +571,12 @@ test('checkSeriesStudentProfile: tylko istniejące konto kursanta, nie grupa ani
   assert.equal(checkSeriesStudentProfile({ lessonType: 'Group' }).ok, false);
   assert.equal(checkSeriesStudentProfile({ role: 'teacher' }).ok, false);
   assert.equal(checkSeriesStudentProfile({ role: 'admin' }).ok, false);
+});
+
+test('addDaysToDateString: arytmetyka na dacie, niezależna od strefy i zmiany czasu', () => {
+  assert.equal(addDaysToDateString('2026-10-24', 1), '2026-10-25');
+  assert.equal(addDaysToDateString('2026-10-25', 1), '2026-10-26');
+  assert.equal(addDaysToDateString('2026-12-31', 1), '2027-01-01');
+  assert.equal(addDaysToDateString('2026-03-28', 2), '2026-03-30');
+  assert.throws(() => addDaysToDateString('16.10.2026', 1));
 });

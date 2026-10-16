@@ -8,7 +8,7 @@ import i18n from '../i18n';
 import { auth } from '../firebase';
 import ScheduleSeriesModal from '../components/admin/ScheduleSeriesModal';
 import HomeworkSeriesScreen from '../components/admin/HomeworkSeriesScreen';
-import { HomeworkSeriesDocument } from '../utils/homeworkSeries';
+import { HomeworkSeriesDocument, addDaysToDateString, getWarsawDateString } from '../utils/homeworkSeries';
 
 const realFetch = globalThis.fetch;
 let fetchCalls: Array<{ url: string; init?: any }> = [];
@@ -237,4 +237,23 @@ test('HomeworkSeriesScreen i modal: teksty z en.json po zmianie języka', async 
   assert.ok(modal.getByText('Schedule for a day in a series'));
   fireEvent.click(modal.getByTestId('schedule-auto-email-toggle'));
   assert.match(modal.getByTestId('auto-email-confirm-count').textContent || '', /Students: 1/);
+});
+
+test('ScheduleSeriesModal: najwcześniej jutro — min i domyślna data to jutro, dzisiejsza data daje role="alert" bez żądania', async () => {
+  setMockFetch(async () => ({ ok: true, json: async () => ({}) }));
+  const { getByTestId, getByText } = renderModal();
+  const tomorrow = addDaysToDateString(getWarsawDateString(new Date()), 1);
+  const slotDateInput = getByTestId('schedule-slot-date') as HTMLInputElement;
+  assert.equal(slotDateInput.min, tomorrow);
+  assert.equal(slotDateInput.value, tomorrow);
+
+  // Bez potwierdzonego e-maila: kursant zobaczy pracę po zalogowaniu, maila nie będzie.
+  assert.ok(getByText('Domyślnie wyłączone — kursant zobaczy pracę po zalogowaniu, e-mail nie zostanie wysłany.'));
+
+  fireEvent.change(slotDateInput, { target: { value: getWarsawDateString(new Date()) } });
+  fireEvent.submit(slotDateInput.closest('form')!);
+  const alert = await waitFor(() => getByTestId('schedule-error'));
+  assert.equal(alert.getAttribute('role'), 'alert');
+  assert.match(alert.textContent || '', /najwcześniej jutro/);
+  assert.equal(fetchCalls.length, 0, 'bez żądania do API');
 });
