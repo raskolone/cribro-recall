@@ -5317,6 +5317,8 @@ function buildHomeworkAssignment(input) {
 // utils/homeworkSeries.ts
 var MAX_SERIES_ITEMS = 5;
 var MAX_ITEM_PAYLOAD_BYTES = 200 * 1024;
+var MAX_RELEASE_ATTEMPTS = 5;
+var MAX_STORED_ERROR_LENGTH = 500;
 function buildSeriesTaskId(seriesId, itemId) {
   const cleanSeries = String(seriesId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
   const cleanItem = String(itemId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -5356,10 +5358,31 @@ function findItemsToRelease(items, todayWarsaw) {
   }
   return oldest ? [oldest] : [];
 }
+function itemReleaseWarsawDate(item) {
+  if (!item || item.state !== "released") return null;
+  if (item.releasedWarsawDate) return item.releasedWarsawDate;
+  if (item.releasedAt) {
+    const d = new Date(item.releasedAt);
+    if (!isNaN(d.getTime())) return getWarsawDateString(d);
+  }
+  return null;
+}
+function studentsWithReleaseOn(seriesList, dayWarsaw) {
+  const result = /* @__PURE__ */ new Set();
+  for (const series of seriesList || []) {
+    if (!series?.studentUid || !Array.isArray(series.items)) continue;
+    if (series.items.some((item) => itemReleaseWarsawDate(item) === dayWarsaw)) {
+      result.add(series.studentUid);
+    }
+  }
+  return result;
+}
 function planCronReleases(seriesList, todayWarsaw) {
+  const releasedToday = studentsWithReleaseOn(seriesList, todayWarsaw);
   const byStudent = /* @__PURE__ */ new Map();
   for (const series of seriesList || []) {
     if (!series || series.status !== "active" || !series.studentUid) continue;
+    if (releasedToday.has(series.studentUid)) continue;
     const [candidate] = findItemsToRelease(series.items, todayWarsaw);
     if (!candidate) continue;
     const current = byStudent.get(series.studentUid);
@@ -5383,17 +5406,21 @@ function updateSeriesItemAfterRelease(items, itemId, update) {
       releasedTaskId: update.taskId,
       releasedAt: update.releasedAt,
       releasedDelayed: update.delayed,
+      releasedWarsawDate: update.releasedWarsawDate,
       lastError: void 0
     };
   });
 }
-function updateSeriesItemAfterFailure(items, itemId, error) {
+function updateSeriesItemAfterReleaseError(items, itemId, failure) {
   return items.map((item) => {
-    if (item.itemId !== itemId) return item;
+    if (item.itemId !== itemId || item.state !== "ready") return item;
+    const releaseAttempts = (item.releaseAttempts || 0) + 1;
     return {
       ...item,
-      state: "failed",
-      lastError: error
+      state: failure.permanent || releaseAttempts >= MAX_RELEASE_ATTEMPTS ? "failed" : "ready",
+      releaseAttempts,
+      lastAttemptAt: failure.attemptedAt,
+      lastError: String(failure.error || "Nieznany b\u0142\u0105d").slice(0, MAX_STORED_ERROR_LENGTH)
     };
   });
 }
@@ -5470,7 +5497,7 @@ function validateSeriesItemPayload(rawPayload) {
   };
   return { ok: true, sanitized };
 }
-function validateCreateSeriesInput(input) {
+function validateCreateSeriesInput(input, options = {}) {
   if (!input || typeof input !== "object") {
     return { ok: false, error: "Dane serii musz\u0105 by\u0107 obiektem JSON" };
   }
@@ -5515,6 +5542,12 @@ function validateCreateSeriesInput(input) {
     if (!validateSlotDate(slotDate)) {
       return { ok: false, error: `Pozycja #${i + 1} (${itemId}): niepoprawny format daty slotDate (wymagany YYYY-MM-DD)` };
     }
+    if (options.todayWarsaw && slotDate <= options.todayWarsaw) {
+      return {
+        ok: false,
+        error: `Pozycja #${i + 1} (${itemId}): dzie\u0144 wydania musi by\u0107 najwcze\u015Bniej jutro (dzi\u015B w Warszawie: ${options.todayWarsaw})`
+      };
+    }
     const dueInDays = Number(item.dueInDays);
     if (!Number.isInteger(dueInDays) || dueInDays < 1 || dueInDays > 60) {
       return { ok: false, error: `Pozycja #${i + 1} (${itemId}): dueInDays musi by\u0107 liczb\u0105 ca\u0142kowit\u0105 z zakresu 1\u201360` };
@@ -5544,6 +5577,16 @@ function validateCreateSeriesInput(input) {
       items: sanitizedItems
     }
   };
+}
+function checkSeriesStudentProfile(profile) {
+  if (!profile) return { ok: false, error: "Wskazany kursant nie istnieje." };
+  if (profile.isGroup === true || profile.lessonType === "Group") {
+    return { ok: false, error: "Seri\u0119 mo\u017Cna zaplanowa\u0107 tylko pojedynczemu kursantowi, nie grupie." };
+  }
+  if (profile.role && profile.role !== "user") {
+    return { ok: false, error: "Wskazane konto nie jest kontem kursanta." };
+  }
+  return { ok: true };
 }
 function isSeriesAutoEmailConfirmed(series) {
   return series.autoEmail === true && typeof series.autoEmailConfirmedAt === "string" && series.autoEmailConfirmedAt.length > 0;
@@ -5589,7 +5632,8 @@ function buildReleasedTaskDocument(params) {
 // utils/homeworkSeriesHandler.ts
 var clean3 = (value) => stripUndefinedDeep(value);
 function verifyCronSecret(providedHeader, expectedSecret) {
-  if (!expectedSecret || expectedSecret.trim().length === 0) {
+  const expected = (expectedSecret || "").trim();
+  if (expected.length === 0) {
     return { ok: false, status: 500, error: "CRON_SECRET is not configured on server" };
   }
   if (!providedHeader || !providedHeader.startsWith("Bearer ")) {
@@ -5597,7 +5641,7 @@ function verifyCronSecret(providedHeader, expectedSecret) {
   }
   const provided = providedHeader.slice(7).trim();
   const bufProvided = Buffer.from(provided, "utf8");
-  const bufExpected = Buffer.from(expectedSecret, "utf8");
+  const bufExpected = Buffer.from(expected, "utf8");
   if (bufProvided.length !== bufExpected.length || !crypto2.timingSafeEqual(bufProvided, bufExpected)) {
     return { ok: false, status: 401, error: "Invalid CRON_SECRET" };
   }
@@ -5605,7 +5649,8 @@ function verifyCronSecret(providedHeader, expectedSecret) {
 }
 async function handleCreateSeries(deps, input) {
   const { callerUid, body } = input;
-  const validation = validateCreateSeriesInput(body);
+  const now = deps.now ? deps.now() : /* @__PURE__ */ new Date();
+  const validation = validateCreateSeriesInput(body, { todayWarsaw: getWarsawDateString(now) });
   if (validation.ok === false) {
     return { status: 400, body: { error: validation.error } };
   }
@@ -5629,7 +5674,11 @@ async function handleCreateSeries(deps, input) {
     }
     cleanPayloads.push(itemValidation.sanitized);
   }
-  const now = deps.now ? deps.now() : /* @__PURE__ */ new Date();
+  const studentSnap = await deps.db.collection("users").doc(sanitized.studentUid).get();
+  const studentCheck = checkSeriesStudentProfile(studentSnap.exists ? studentSnap.data() : null);
+  if (studentCheck.ok === false) {
+    return { status: 400, body: { error: studentCheck.error } };
+  }
   const nowIso = now.toISOString();
   const randomSuffix = crypto2.randomBytes(4).toString("hex");
   const seriesId = `series_${now.getTime()}_${randomSuffix}`;
@@ -5703,24 +5752,47 @@ async function handleDeleteSeries(deps, input) {
   await docRef.delete();
   return { status: 200, body: { success: true } };
 }
+var PermanentReleaseError = class extends Error {
+  constructor() {
+    super(...arguments);
+    this.permanent = true;
+  }
+};
+function isPermanentReleaseError(err) {
+  return err instanceof PermanentReleaseError;
+}
+async function recordReleaseError(deps, seriesRef, itemId, failure) {
+  return deps.db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(seriesRef);
+    if (!snap.exists) return null;
+    const seriesData = snap.data();
+    const items = updateSeriesItemAfterReleaseError(seriesData.items || [], itemId, failure);
+    transaction.update(seriesRef, clean3({ items, updatedAt: failure.attemptedAt }));
+    return items.find((it) => it.itemId === itemId) || null;
+  });
+}
 async function releaseSingleSeriesItem(deps, params) {
   const { seriesId, itemId, todayWarsaw, origin } = params;
   const now = deps.now ? deps.now() : /* @__PURE__ */ new Date();
   const nowIso = now.toISOString();
   const seriesRef = deps.db.collection("homeworkSeries").doc(seriesId);
   const itemPayloadRef = seriesRef.collection("items").doc(itemId);
-  const payloadSnap = await itemPayloadRef.get();
-  if (!payloadSnap.exists) {
-    return { success: false, error: `Brak payloadu pozycji ${itemId}` };
-  }
-  const itemPayload = payloadSnap.data();
   const taskId = buildSeriesTaskId(seriesId, itemId);
   const taskRef = deps.db.collection("specialTasks").doc(taskId);
   try {
+    const payloadSnap = await itemPayloadRef.get();
+    if (!payloadSnap.exists) {
+      throw new PermanentReleaseError(`Brak payloadu pozycji ${itemId}`);
+    }
+    const itemPayload = payloadSnap.data();
+    const payloadCheck = validateSeriesItemPayload({ ...itemPayload, itemId });
+    if (payloadCheck.ok === false) {
+      throw new PermanentReleaseError(`Niepoprawny payload pozycji ${itemId}: ${payloadCheck.error}`);
+    }
     const result = await deps.db.runTransaction(async (transaction) => {
       const currentSeriesSnap = await transaction.get(seriesRef);
       if (!currentSeriesSnap.exists) {
-        throw new Error("Seria nie istnieje");
+        return { skipped: true, reason: "series_missing" };
       }
       const seriesData = currentSeriesSnap.data();
       if (seriesData.status !== "active") {
@@ -5728,7 +5800,7 @@ async function releaseSingleSeriesItem(deps, params) {
       }
       const itemMeta = seriesData.items.find((it) => it.itemId === itemId);
       if (!itemMeta) {
-        throw new Error(`Pozycja ${itemId} nie istnieje w serii`);
+        return { skipped: true, reason: "item_missing" };
       }
       if (itemMeta.state !== "ready") {
         return { skipped: true, reason: "already_processed", taskId: itemMeta.releasedTaskId };
@@ -5741,7 +5813,8 @@ async function releaseSingleSeriesItem(deps, params) {
         const updatedItems2 = updateSeriesItemAfterRelease(seriesData.items, itemId, {
           taskId,
           releasedAt: nowIso,
-          delayed: isDelayedRelease(itemMeta.slotDate, todayWarsaw)
+          delayed: isDelayedRelease(itemMeta.slotDate, todayWarsaw),
+          releasedWarsawDate: todayWarsaw
         });
         const newStatus2 = computeSeriesStatus(seriesData.status, updatedItems2);
         transaction.update(seriesRef, clean3({ items: updatedItems2, status: newStatus2, updatedAt: nowIso }));
@@ -5770,7 +5843,8 @@ async function releaseSingleSeriesItem(deps, params) {
       const updatedItems = updateSeriesItemAfterRelease(seriesData.items, itemId, {
         taskId,
         releasedAt: nowIso,
-        delayed
+        delayed,
+        releasedWarsawDate: todayWarsaw
       });
       const newStatus = computeSeriesStatus(seriesData.status, updatedItems);
       transaction.update(seriesRef, clean3({ items: updatedItems, status: newStatus, updatedAt: nowIso }));
@@ -5780,23 +5854,27 @@ async function releaseSingleSeriesItem(deps, params) {
       return { success: true, taskId };
     });
     if (result.skipped) {
-      return { success: true, skipped: true, taskId: result.taskId };
+      return { success: true, skipped: true, reason: result.reason, taskId: result.taskId };
     }
     return { success: true, taskId: result.taskId };
   } catch (err) {
-    if (err.code === 6 || err.code === "already-exists" || String(err.message).toLowerCase().includes("already exists")) {
-      return { success: true, taskId, skipped: true };
+    if (err?.code === 6 || err?.code === "already-exists" || String(err?.message).toLowerCase().includes("already exists")) {
+      return { success: true, taskId, skipped: true, reason: "task_already_exists" };
     }
+    const permanent = isPermanentReleaseError(err);
+    const error = String(err?.message || err || "Nieznany b\u0142\u0105d");
     try {
-      const snap = await seriesRef.get();
-      if (snap.exists) {
-        const seriesData = snap.data();
-        const failedItems = updateSeriesItemAfterFailure(seriesData.items, itemId, err.message || "Transaction error");
-        await seriesRef.update(clean3({ items: failedItems, updatedAt: nowIso }));
-      }
+      const updated = await recordReleaseError(deps, seriesRef, itemId, { error, permanent, attemptedAt: nowIso });
+      return {
+        success: false,
+        error,
+        failed: updated?.state === "failed",
+        willRetry: updated?.state === "ready",
+        releaseAttempts: updated?.releaseAttempts
+      };
     } catch {
+      return { success: false, error, willRetry: true };
     }
-    return { success: false, error: err.message };
   }
 }
 async function handleCronRelease(deps, input) {
@@ -5811,26 +5889,56 @@ async function handleCronRelease(deps, input) {
     const data = doc4.data();
     return { ...data, id: data.id || doc4.id };
   });
-  const plan = planCronReleases(seriesList, todayWarsaw);
+  const candidates = planCronReleases(seriesList, todayWarsaw);
   const dueCount = seriesList.reduce(
     (sum, series) => sum + (series.items || []).filter((it) => it.state === "ready" && isSlotReadyToRelease(it.slotDate, todayWarsaw)).length,
     0
   );
+  const dueStudents = new Set(
+    seriesList.filter((s) => findItemsToRelease(s.items || [], todayWarsaw).length > 0).map((s) => s.studentUid)
+  );
+  const releasedToday = studentsWithReleaseOn(seriesList, todayWarsaw);
   let releasedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
+  let retryCount = 0;
+  let failedCount = 0;
+  const plan = [];
+  for (const candidate of candidates) {
+    try {
+      const studentSeriesSnap = await deps.db.collection("homeworkSeries").where("studentUid", "==", candidate.studentUid).get();
+      const studentSeries = studentSeriesSnap.docs.map((d) => d.data());
+      if (studentsWithReleaseOn(studentSeries, todayWarsaw).has(candidate.studentUid)) {
+        releasedToday.add(candidate.studentUid);
+        continue;
+      }
+    } catch {
+      errorCount++;
+      retryCount++;
+      continue;
+    }
+    plan.push(candidate);
+  }
+  const dailyLimitSkippedCount = Array.from(dueStudents).filter((uid) => releasedToday.has(uid)).length;
   for (const planned of plan) {
-    const res = await releaseSingleSeriesItem(deps, {
-      seriesId: planned.seriesId,
-      itemId: planned.itemId,
-      todayWarsaw
-    });
+    let res;
+    try {
+      res = await releaseSingleSeriesItem(deps, {
+        seriesId: planned.seriesId,
+        itemId: planned.itemId,
+        todayWarsaw
+      });
+    } catch (err) {
+      res = { success: false, error: String(err?.message || err), willRetry: true };
+    }
     if (res.success && !res.skipped) {
       releasedCount++;
     } else if (res.skipped) {
       skippedCount++;
     } else {
       errorCount++;
+      if (res.failed) failedCount++;
+      else retryCount++;
     }
   }
   return {
@@ -5839,10 +5947,14 @@ async function handleCronRelease(deps, input) {
       success: true,
       todayWarsaw,
       seriesProcessed: seriesList.length,
+      plannedCount: plan.length,
+      dailyLimitSkippedCount,
       releasedCount,
       deferredCount: Math.max(0, dueCount - plan.length),
       skippedCount,
-      errorCount
+      errorCount,
+      retryCount,
+      failedCount
     }
   };
 }
