@@ -25,6 +25,7 @@ import { LessonSelectionModal } from './LessonSelectionModal';
 import HomeworkComposer from '../admin/HomeworkComposer';
 import HomeworkComposerV2 from '../admin/HomeworkComposerV2';
 import HomeworkV2ReviewScreen from '../admin/HomeworkV2ReviewScreen';
+import HomeworkSeriesScreen from '../admin/HomeworkSeriesScreen';
 import { HOMEWORK_ENGINE_V2 } from '../../config/featureFlags';
 import HomeworkEmailConfirmationModal from '../admin/HomeworkEmailConfirmationModal';
 import { TestPreviewModal } from '../admin/TestPreviewModal';
@@ -399,7 +400,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSavingHomework, setIsSavingHomework] = useState<boolean>(false);
   const isSavingRef = React.useRef<boolean>(false);
-  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'flashcards'>('list');
+  const [activeTab, setActiveTab] = useState<'list' | 'create' | 'series' | 'flashcards'>('list');
 
   // Zakładki widoku lektora: Prace domowe / Moje testy / Sprawdzone przez nauczyciela.
   // Wyłącznie prezentacyjne — nie wpływają na zapytania Firestore ani logikę oceniania.
@@ -2056,7 +2057,7 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                   ]}
                 />
               )}
-              {activeTab === 'create' && (
+              {(activeTab === 'create' || activeTab === 'series') && (
                 <Button
                   onClick={() => {
                     if (editingTask) setEditingTask(null);
@@ -2067,6 +2068,17 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
                 >
                   <FileText size={16} />
                   Wróć do listy
+                </Button>
+              )}
+              {activeTab !== 'series' && (
+                <Button
+                  onClick={() => setActiveTab('series')}
+                  variant="secondary"
+                  className="flex items-center gap-2 text-sm"
+                  data-testid="homework-series-tab-btn"
+                >
+                  <Layers size={16} />
+                  {i18n.t('Serie prac')}
                 </Button>
               )}
               {activeTab !== 'create' && (
@@ -2982,6 +2994,11 @@ export const HomeworkScreen: React.FC<HomeworkScreenProps> = ({
             </Button>
           </div>
         </Card>
+      )}
+
+      {/* ---------------- TEACHER HOMEWORK SERIES DASHBOARD ---------------- */}
+      {isTeacher && !activeTask && activeTab === 'series' && (
+        <HomeworkSeriesScreen onOpenCreator={() => setActiveTab('create')} />
       )}
 
       {/* ---------------- HOMEWORK LIST VIEW (Students & Teachers) ---------------- */}

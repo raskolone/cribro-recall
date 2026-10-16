@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { addDoc, collection, doc, getDocs, updateDoc } from 'firebase/firestore';
-import { AlertTriangle, Check, ChevronDown, ChevronUp, Loader2, Pencil, RefreshCw, Send, Sparkles, Trash2 } from 'lucide-react';
+import { AlertTriangle, Calendar, Check, ChevronDown, ChevronUp, Loader2, Pencil, RefreshCw, Send, Sparkles, Trash2 } from 'lucide-react';
 import i18n from 'i18next';
 import { db } from '../../firebase';
 import { HomeworkType, LessonRecord, User, Group, GroupHomeworkFanOutResult, WarmupDraftItem } from '../../types';
@@ -59,6 +59,7 @@ import {
   toggleId,
   validateMultipleRecipients,
 } from '../../utils/homeworkRecipients';
+import ScheduleSeriesModal from './ScheduleSeriesModal';
 
 interface HomeworkComposerProps {
   /** Kursant wskazany z zewnątrz (np. z profilu w panelu lektora). */
@@ -149,6 +150,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
   const [modelUsed, setModelUsed] = useState<string>('');
   const [assignedCount, setAssignedCount] = useState(0);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
   const [pendingEmailTask, setPendingEmailTask] = useState<any>(null);
   // Tryb „multiple": ad-hoc wybór kursantów bez grupy. Kolejka służy do
   // potwierdzania maili po kolei, osobno dla każdego odbiorcy.
@@ -458,6 +460,35 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     }
   };
 
+  const sourceLabel = useMemo(
+    () =>
+      sourceMode === 'lessons' && selectedLessons[0]
+        ? cleanVocabularyTopic(selectedLessons[0].topic) || selectedLessons[0].topic
+        : '',
+    [sourceMode, selectedLessons]
+  );
+  const usable = useMemo(
+    () => sections.filter((section) => section.items.length > 0),
+    [sections]
+  );
+  const items = useMemo(() => flattenSectionsForSave(usable), [usable]);
+  const defaultHomeworkTitle = useMemo(() => {
+    const labels = usable.map((section) => HOMEWORK_TYPE_LABELS[section.type]?.pl);
+    const singleType = usable.length === 1 ? usable[0].type : undefined;
+    return singleType
+      ? sourceLabel
+        ? `${labels[0]}: ${sourceLabel}`
+        : labels[0]
+      : sourceLabel
+      ? `Praca domowa: ${sourceLabel}`
+      : 'Praca domowa';
+  }, [usable, sourceLabel]);
+  const finalWarmup = useMemo(() => resolveWarmupField(includeWarmup, warmup), [includeWarmup, warmup]);
+  const finalCards = useMemo(
+    () => resolveWarmupCardsField(includeCards, stripWarmupCardDraftFlags(warmupCards)),
+    [includeCards, warmupCards]
+  );
+
   const handleAssign = async () => {
     if ((recipientMode === 'student' && !studentId) || (recipientMode === 'group' && !groupId) || totalItems === 0) return;
     if (recipientMode === 'multiple') {
@@ -471,34 +502,7 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
     setError('');
     try {
       const nowIso = new Date().toISOString();
-      const selectedLessons = sourceLessons.filter((l) => selectedLessonIds.includes(l.id));
-      const sourceLabel =
-        sourceMode === 'lessons' && selectedLessons[0]
-          ? cleanVocabularyTopic(selectedLessons[0].topic) || selectedLessons[0].topic
-          : '';
-
-      const usable = sections.filter((section) => section.items.length > 0);
-
-      // Jedno przypisanie, nie jedno na rodzaj zadania. Rodzaj niesie teraz
-      // element, dzięki czemu kursant dostaje jedną pracę domową do zrobienia
-      // od początku do końca, a nie trzy osobne pozycje na liście. Ma to też
-      // drugi skutek: powiadomienie e-mail wychodzi raz, bo wyzwala je
-      // utworzenie dokumentu (functions/src/index.ts).
-      // `uid` jest tylko roboczy — flattenSectionsForSave zdejmuje go przed zapisem.
-      const items = flattenSectionsForSave(usable);
-      const labels = usable.map((section) => HOMEWORK_TYPE_LABELS[section.type].pl);
-      const singleType = usable.length === 1 ? usable[0].type : undefined;
-      const title = singleType
-        ? sourceLabel
-          ? `${labels[0]}: ${sourceLabel}`
-          : labels[0]
-        : sourceLabel
-        ? `Praca domowa: ${sourceLabel}`
-        : 'Praca domowa';
-
-      const finalWarmup = resolveWarmupField(includeWarmup, warmup);
-      // Fiszki: wyłączone = [], są karty = karty bez flag roboczych, włączone bez kart = pole pomijane.
-      const finalCards = resolveWarmupCardsField(includeCards, stripWarmupCardDraftFlags(warmupCards));
+      const title = defaultHomeworkTitle;
 
       if (recipientMode === 'group' && groupId) {
         // Obsługa Fan-outu dla całej grupy
@@ -1398,27 +1402,59 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
             )}
           </div>
 
-          <button
-            onClick={handleAssign}
-            disabled={totalItems === 0 || isAssigning}
-            className="w-full min-h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-primary text-accent-ink font-bold disabled:opacity-40"
-          >
-            {isAssigning ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" /> Przypisuję…
-              </>
-            ) : (
-              <>
-                <Send size={16} /> {recipientMode === 'group'
-                  ? `Przypisz całej grupie (${totalItems})`
-                  : recipientMode === 'multiple'
-                  ? `Przypisz wybranym (${selectedStudentIds.length} os.) (${totalItems})`
-                  : `Przypisz kursantowi (${totalItems})`}
-              </>
+          <div className="flex flex-col sm:flex-row gap-2.5 w-full">
+            {/* Seria jest zawsze dla jednego kursanta — w trybie grupy i kilku kursantów
+                modal dostałby `studentId` z innego trybu i zaplanował pracę nie tej osobie. */}
+            {recipientMode === 'student' && studentId && (
+              <button
+                type="button"
+                onClick={() => setIsScheduleModalOpen(true)}
+                disabled={totalItems === 0 || isAssigning}
+                data-testid="schedule-series-btn"
+                className="min-h-[3.25rem] px-5 flex items-center justify-center gap-2 rounded-xl border border-primary/40 bg-primary/10 text-primary font-bold hover:bg-primary/20 transition-colors disabled:opacity-40"
+              >
+                <Calendar size={16} /> {i18n.t('Zaplanuj na dzień')}
+              </button>
             )}
-          </button>
+            <button
+              onClick={handleAssign}
+              disabled={totalItems === 0 || isAssigning}
+              className="flex-1 min-h-[3.25rem] flex items-center justify-center gap-2 rounded-xl bg-primary text-accent-ink font-bold disabled:opacity-40"
+            >
+              {isAssigning ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Przypisuję…
+                </>
+              ) : (
+                <>
+                  <Send size={16} /> {recipientMode === 'group'
+                    ? `Przypisz całej grupie (${totalItems})`
+                    : recipientMode === 'multiple'
+                    ? `Przypisz wybranym (${selectedStudentIds.length} os.) (${totalItems})`
+                    : `Przypisz kursantowi (${totalItems})`}
+                </>
+              )}
+            </button>
+          </div>
         </section>
       )}
+
+      <ScheduleSeriesModal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        studentId={studentId}
+        student={student}
+        recipientCount={1}
+        title={defaultHomeworkTitle}
+        usable={usable}
+        items={items}
+        warmup={finalWarmup}
+        warmupCards={finalCards}
+        onScheduled={() => {
+          setSections([]);
+          if (onAssigned) onAssigned();
+        }}
+      />
 
       {/* Modal Fan-Out Grupowego (Raport Przypisania) */}
       {groupFanOutResult && (
