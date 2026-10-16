@@ -12,6 +12,17 @@ import {
 import { buildSeriesTaskId } from '../utils/homeworkSeries';
 import { InMemorySeriesDb as InMemoryDb } from './helpers/inMemorySeriesDb';
 
+/**
+ * Zegar tworzenia serii w testach: przed wszystkimi slotami, bo serwer odrzuca sloty
+ * na dziś i z przeszłości. Wydawanie dostaje osobno `todayWarsaw` albo własne `now`.
+ */
+const CREATED_AT = () => new Date('2026-09-01T12:00:00.000Z');
+
+/** Profil kursanta — serwer tworzy serię tylko dla istniejącego konta kursanta. */
+const seedStudent = (db: InMemoryDb, uid: string, profile: Record<string, unknown> = { role: 'user' }) => {
+  if (!db.data.has(`users/${uid}`)) db.data.set(`users/${uid}`, profile);
+};
+
 test('DECYZJA 7: verifyCronSecret autoryzuje Bearer stałoczasowo i zwraca 500 przy braku zmiennej', () => {
   // Brak zmiennej na serwerze -> 500 bez wykonania
   assert.equal(verifyCronSecret('Bearer abc', undefined).status, 500);
@@ -38,7 +49,8 @@ test('DECYZJA 7: verifyCronSecret autoryzuje Bearer stałoczasowo i zwraca 500 p
 
 test('DECYZJA 7: handleCreateSeries i handleGetSeries pilnują ownerUid (inny lektor 403)', async () => {
   const db = new InMemoryDb();
-  const deps = { db, cronSecret: 'secret' };
+  const deps = { db, cronSecret: 'secret', now: CREATED_AT };
+  seedStudent(db, 'student_1');
 
   const validBody = {
     title: 'Seria 1',
@@ -92,7 +104,8 @@ test('DECYZJA 7: handleCreateSeries i handleGetSeries pilnują ownerUid (inny le
 
 test('DECYZJA 6: Idempotencja i test równoległych wydań tej samej pozycji (tylko 1 zadanie powołane)', async () => {
   const db = new InMemoryDb();
-  const deps = { db, cronSecret: 'secret' };
+  const deps = { db, cronSecret: 'secret', now: CREATED_AT };
+  seedStudent(db, 'student_1');
 
   // Utwórz serię z 1 pozycją na dziś
   const createRes = await handleCreateSeries(deps, {
@@ -158,7 +171,8 @@ test('DECYZJA 6: Idempotencja i test równoległych wydań tej samej pozycji (ty
 
 test('cron release: skanuje aktywne serie, wydaje gotowe pozycje i zamyka serię po wydaniu wszystkich', async () => {
   const db = new InMemoryDb();
-  const deps = { db, cronSecret: 'cron_super_secret_123' };
+  const deps = { db, cronSecret: 'cron_super_secret_123', now: CREATED_AT };
+  seedStudent(db, 'student_1');
 
   // Utwórz serię z 2 pozycjami: 1 zaległa, 1 przyszła
   const createRes = await handleCreateSeries(deps, {
@@ -237,7 +251,8 @@ const createSeries = async (
   opts: { studentUid: string; slots: string[]; title?: string; extra?: Record<string, unknown> }
 ) => {
   const items = opts.slots.map((slotDate, i) => ({ itemId: `item_${i + 1}`, slotDate, dueInDays: 3 }));
-  const res = await handleCreateSeries(deps, {
+  seedStudent(deps.db, opts.studentUid);
+  const res = await handleCreateSeries({ ...deps, now: CREATED_AT }, {
     callerUid: 'teacher_1',
     body: {
       title: opts.title || 'Seria',
@@ -296,6 +311,8 @@ test('wydanie bez profilu kursanta nie wywraca transakcji; z profilem ustawia ha
   const db = new InMemoryDb();
   const deps = { db, cronSecret: 's3cret' };
   const noProfile = await createSeries(deps, { studentUid: 'student_ghost', slots: ['2026-10-10'] });
+  // Profil usunięty już po zaplanowaniu serii — wydanie nie może się wywrócić.
+  db.data.delete('users/student_ghost');
   db.data.set('users/student_real', { firstName: 'Ola', email: 'ola@example.test' });
   await createSeries(deps, { studentUid: 'student_real', slots: ['2026-10-10'] });
 
@@ -317,9 +334,11 @@ test('autoEmail: bez potwierdzenia 400; z potwierdzeniem data potwierdzenia i fl
     title: 'Seria z mailem',
     studentUid: 'student_1',
     ownerUid: 'teacher_1',
-    items: [{ itemId: 'item_1', slotDate: '2026-10-10', dueInDays: 3 }],
+    items: [{ itemId: 'item_1', slotDate: '2026-10-11', dueInDays: 3 }],
     itemPayloads: { item_1: payloadFor('item_1') },
   };
+  seedStudent(db, 'student_1');
+  seedStudent(db, 'student_2');
 
   const rejected = await handleCreateSeries(deps, { callerUid: 'teacher_1', body: { ...base, autoEmail: true } });
   assert.equal(rejected.status, 400);
@@ -341,7 +360,7 @@ test('autoEmail: bez potwierdzenia 400; z potwierdzeniem data potwierdzenia i fl
   assert.equal(stored.autoEmail, true);
   assert.equal(stored.autoEmailConfirmedAt, fixedNow.toISOString());
 
-  await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: '2026-10-10' });
+  await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: '2026-10-11' });
   const byStudent = Object.fromEntries(releasedTasks(db).map((t) => [t.studentUid, t]));
   assert.equal(byStudent.student_1.seriesAutoEmailConfirmed, false);
   assert.equal(byStudent.student_1.skipAutoEmail, true);
@@ -571,4 +590,53 @@ test('limit dzienny: ręczne „Wydaj” rano blokuje crona dla tego kursanta do
   const cron = await handleCronRelease(deps, { authHeader: 'Bearer s3cret' });
   assert.equal(cron.body.releasedCount, 1, 'tylko student_2');
   assert.deepEqual(releasedTasks(db).map((t) => t.studentUid).sort(), ['student_1', 'student_2']);
+});
+
+test('tworzenie serii: kursant musi istnieć i nie być grupą ani lektorem — 400 bez żadnego zapisu', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, now: CREATED_AT };
+  seedStudent(db, 'group_legacy', { role: 'user', isGroup: true });
+  seedStudent(db, 'group_lesson', { lessonType: 'Group' });
+  seedStudent(db, 'teacher_x', { role: 'teacher' });
+  const body = (studentUid: string) => ({
+    title: 'S',
+    studentUid,
+    ownerUid: 'teacher_1',
+    items: [{ itemId: 'item_1', slotDate: '2026-10-10', dueInDays: 3 }],
+    itemPayloads: { item_1: payloadFor('item_1') },
+  });
+
+  for (const uid of ['nie_istnieje', 'group_legacy', 'group_lesson', 'teacher_x']) {
+    const res = await handleCreateSeries(deps, { callerUid: 'teacher_1', body: body(uid) });
+    assert.equal(res.status, 400, uid);
+  }
+  assert.equal(
+    Array.from(db.data.keys()).filter((k) => k.startsWith('homeworkSeries/')).length,
+    0,
+    'odrzucona seria nie zostawia dokumentów'
+  );
+
+  seedStudent(db, 'student_ok');
+  assert.equal((await handleCreateSeries(deps, { callerUid: 'teacher_1', body: body('student_ok') })).status, 201);
+});
+
+test('tworzenie serii: slot na dziś albo z przeszłości (dzień warszawski) — 400; jutro — 201', async () => {
+  const db = new InMemoryDb();
+  // 22:30 UTC 15.10 to już 16.10 w Warszawie.
+  const deps = { db, now: () => new Date('2026-10-15T22:30:00.000Z') };
+  seedStudent(db, 'student_1');
+  const body = (slotDate: string) => ({
+    title: 'S',
+    studentUid: 'student_1',
+    ownerUid: 'teacher_1',
+    items: [{ itemId: 'item_1', slotDate, dueInDays: 3 }],
+    itemPayloads: { item_1: payloadFor('item_1') },
+  });
+
+  for (const slot of ['2026-10-16', '2026-10-15', '2026-01-01']) {
+    const res = await handleCreateSeries(deps, { callerUid: 'teacher_1', body: body(slot) });
+    assert.equal(res.status, 400, slot);
+    assert.match(res.body.error, /najwcześniej jutro/);
+  }
+  assert.equal((await handleCreateSeries(deps, { callerUid: 'teacher_1', body: body('2026-10-17') })).status, 201);
 });

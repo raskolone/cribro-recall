@@ -50,8 +50,10 @@ let cronSecret: string | undefined = CRON_SECRET;
 
 before(async () => {
   db = new InMemorySeriesDb();
+  db.data.set('users/student_1', { role: 'user' });
   const created = await handleCreateSeries(
-    { db },
+    // Zegar tworzenia przed slotem: serwer odrzuca sloty na dziś i z przeszłości.
+    { db, now: () => new Date('2019-12-01T12:00:00.000Z') },
     {
       callerUid: 'teacher_1',
       body: {

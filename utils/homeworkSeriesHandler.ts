@@ -5,6 +5,7 @@ import {
   HomeworkSeriesItemPayload,
   buildReleasedTaskDocument,
   buildSeriesTaskId,
+  checkSeriesStudentProfile,
   computeSeriesStatus,
   findItemsToRelease,
   getWarsawDateString,
@@ -120,7 +121,8 @@ export async function handleCreateSeries(
   }
 ): Promise<HandlerResult> {
   const { callerUid, body } = input;
-  const validation = validateCreateSeriesInput(body);
+  const now = deps.now ? deps.now() : new Date();
+  const validation = validateCreateSeriesInput(body, { todayWarsaw: getWarsawDateString(now) });
   if (validation.ok === false) {
     return { status: 400, body: { error: validation.error } };
   }
@@ -150,7 +152,14 @@ export async function handleCreateSeries(
     cleanPayloads.push(itemValidation.sanitized);
   }
 
-  const now = deps.now ? deps.now() : new Date();
+  // Seria tylko dla istniejącego konta kursanta (nie grupy, nie lektora) — sprawdzane
+  // przed pierwszym zapisem, żeby błędny uid nie zostawił po sobie serii-widma.
+  const studentSnap = await deps.db.collection('users').doc(sanitized.studentUid).get();
+  const studentCheck = checkSeriesStudentProfile(studentSnap.exists ? studentSnap.data() : null);
+  if (studentCheck.ok === false) {
+    return { status: 400, body: { error: studentCheck.error } };
+  }
+
   const nowIso = now.toISOString();
   const randomSuffix = crypto.randomBytes(4).toString('hex');
   const seriesId = `series_${now.getTime()}_${randomSuffix}`;

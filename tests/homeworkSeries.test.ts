@@ -24,6 +24,7 @@ import {
   isSeriesAutoEmailConfirmed,
   itemReleaseWarsawDate,
   studentsWithReleaseOn,
+  checkSeriesStudentProfile,
 } from '../utils/homeworkSeries';
 import { HomeworkType, User } from '../types';
 
@@ -541,4 +542,32 @@ test('itemReleaseWarsawDate: pole releasedWarsawDate, a dla starszych pozycji dz
   // 22:30 UTC 24.10 to już 25.10 w Warszawie (CEST).
   assert.equal(itemReleaseWarsawDate({ ...base, state: 'released', releasedAt: '2026-10-24T22:30:00.000Z' }), '2026-10-25');
   assert.equal(itemReleaseWarsawDate({ ...base, state: 'released' }), null);
+});
+
+test('validateCreateSeriesInput z todayWarsaw: slot najwcześniej jutro (dziś i przeszłość odrzucone)', () => {
+  const body = (slotDate: string) => ({
+    title: 'S',
+    studentUid: 'stu',
+    ownerUid: 't',
+    items: [{ itemId: 'a', slotDate, dueInDays: 3 }],
+  });
+  assert.equal(validateCreateSeriesInput(body('2026-10-17'), { todayWarsaw: '2026-10-16' }).ok, true);
+  for (const slot of ['2026-10-16', '2026-10-15', '2020-01-01']) {
+    const res = validateCreateSeriesInput(body(slot), { todayWarsaw: '2026-10-16' });
+    assert.equal(res.ok, false, slot);
+    assert.match((res as { error: string }).error, /najwcześniej jutro/);
+  }
+  // Bez todayWarsaw (czysta walidacja kształtu) daty z przeszłości nadal przechodzą.
+  assert.equal(validateCreateSeriesInput(body('2020-01-01')).ok, true);
+});
+
+test('checkSeriesStudentProfile: tylko istniejące konto kursanta, nie grupa ani lektor', () => {
+  assert.equal(checkSeriesStudentProfile({ role: 'user' }).ok, true);
+  assert.equal(checkSeriesStudentProfile({ firstName: 'Ola' }).ok, true, 'starsze profile bez roli to kursanci');
+  assert.equal(checkSeriesStudentProfile(null).ok, false);
+  assert.equal(checkSeriesStudentProfile(undefined).ok, false);
+  assert.equal(checkSeriesStudentProfile({ role: 'user', isGroup: true }).ok, false);
+  assert.equal(checkSeriesStudentProfile({ lessonType: 'Group' }).ok, false);
+  assert.equal(checkSeriesStudentProfile({ role: 'teacher' }).ok, false);
+  assert.equal(checkSeriesStudentProfile({ role: 'admin' }).ok, false);
 });

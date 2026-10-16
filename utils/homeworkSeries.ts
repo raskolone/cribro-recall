@@ -383,7 +383,15 @@ export interface CreateSeriesInput {
  * Waliduje dane wejściowe tworzenia nowej serii prac domowych.
  */
 export function validateCreateSeriesInput(
-  input: unknown
+  input: unknown,
+  options: {
+    /**
+     * Dzisiejszy dzień warszawski. Podany = sloty muszą być najwcześniej jutro: cron
+     * wydaje rano, więc slot na dziś (albo z przeszłości) wyszedłby dopiero następnego
+     * dnia, jako opóźniony.
+     */
+    todayWarsaw?: string;
+  } = {}
 ): { ok: true; sanitized: CreateSeriesInput } | { ok: false; error: string } {
   if (!input || typeof input !== 'object') {
     return { ok: false, error: 'Dane serii muszą być obiektem JSON' };
@@ -437,6 +445,12 @@ export function validateCreateSeriesInput(
     if (!validateSlotDate(slotDate)) {
       return { ok: false, error: `Pozycja #${i + 1} (${itemId}): niepoprawny format daty slotDate (wymagany YYYY-MM-DD)` };
     }
+    if (options.todayWarsaw && slotDate <= options.todayWarsaw) {
+      return {
+        ok: false,
+        error: `Pozycja #${i + 1} (${itemId}): dzień wydania musi być najwcześniej jutro (dziś w Warszawie: ${options.todayWarsaw})`,
+      };
+    }
 
     const dueInDays = Number(item.dueInDays);
     if (!Number.isInteger(dueInDays) || dueInDays < 1 || dueInDays > 60) {
@@ -472,6 +486,24 @@ export function validateCreateSeriesInput(
       items: sanitizedItems,
     },
   };
+}
+
+/**
+ * Czy profil z `users/{uid}` może dostać serię: istnieje, jest kontem kursanta
+ * (nie lektora ani administratora) i nie jest dawnym pseudo-kursantem grupy
+ * (`isGroup` / `lessonType: 'Group'`) — analogicznie do SEC2 dla v2 `assign`.
+ */
+export function checkSeriesStudentProfile(
+  profile: Record<string, any> | null | undefined
+): { ok: true } | { ok: false; error: string } {
+  if (!profile) return { ok: false, error: 'Wskazany kursant nie istnieje.' };
+  if (profile.isGroup === true || profile.lessonType === 'Group') {
+    return { ok: false, error: 'Serię można zaplanować tylko pojedynczemu kursantowi, nie grupie.' };
+  }
+  if (profile.role && profile.role !== 'user') {
+    return { ok: false, error: 'Wskazane konto nie jest kontem kursanta.' };
+  }
+  return { ok: true };
 }
 
 /**
