@@ -222,6 +222,7 @@ import { buildNewGroupPayload, MissingTeacherProfileError } from "./utils/groupP
 import { evaluateDirectHomework, stripUndefinedDeep } from "./utils/directHomeworkEvaluation";
 import { sanitizeWarmup } from "./utils/warmupSanitize";
 import { sanitizeWarmupCards } from "./utils/warmupCards";
+import { registerHomeworkSeriesRoutes } from "./utils/homeworkSeriesRoutes";
 import crypto from 'crypto';
 let pdfParse: any;
 try {
@@ -5914,6 +5915,17 @@ Zwróć obiekt JSON z polami: overallTeacherCommentary (string), keyStrengths (a
   app.post("/api/anthropic/generate", ...aiProxyGuards, handleAnthropic);
   app.post("/api/deepseek", ...aiProxyGuards, handleDeepSeek);
   app.post("/api/deepseek/generate", ...aiProxyGuards, handleDeepSeek);
+
+  // ---------------------------------------------------------------------------
+  // Serie prac domowych (Homework Series & Cron Release) — utils/homeworkSeriesRoutes.ts.
+  // Trasy crona rejestrowane są tam PRZED `/:id`, inaczej GET z Vercel Cron trafiałby
+  // do requireFirebaseAdmin i dostawał 401.
+  // ---------------------------------------------------------------------------
+  registerHomeworkSeriesRoutes(app, {
+    requireTeacher: requireFirebaseAdmin,
+    getDb: () => getFirestore(getAdminApp(), FIRESTORE_DATABASE_ID) as any,
+    getCronSecret: () => process.env.CRON_SECRET,
+  });
 
   // Blokada dla nieznanych tras /api, aby nie zwracały index.html (SPA)
   app.use('/api', (req, res) => {

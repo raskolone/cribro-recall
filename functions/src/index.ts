@@ -12,6 +12,7 @@ import {
 } from './config';
 import { buildHomeworkEmail, buildHomeworkGradedEmail, buildUnsubscribeUrl } from './emailTemplate';
 import { sendEmail } from './resend';
+import { shouldAutoEmailNewHomework } from './homeworkEmailGate';
 
 
 /**
@@ -99,13 +100,21 @@ export const notifyStudentOnHomework = onDocumentCreated(
       return;
     }
 
-    if (task.manualEmailConfirmationRequired || task.skipAutoEmail || task.emailNotificationSent) {
-      logger.info('Wysyłka e-mail wymaga ręcznego zatwierdzenia przez nauczyciela lub została wstrzymana', {
-        taskId,
-        manualEmailConfirmationRequired: task.manualEmailConfirmationRequired ?? false,
-        skipAutoEmail: task.skipAutoEmail ?? false,
-        emailNotificationSent: task.emailNotificationSent ?? false,
-      });
+    const gate = shouldAutoEmailNewHomework(task);
+    if (!gate.send) {
+      logger.info(
+        gate.reason === 'series_auto_email_not_confirmed'
+          ? 'Praca z serii bez potwierdzonych automatycznych maili — wysyłka wstrzymana'
+          : 'Wysyłka e-mail wymaga ręcznego zatwierdzenia przez nauczyciela lub została wstrzymana',
+        {
+          taskId,
+          reason: gate.reason,
+          seriesId: task.seriesId ?? null,
+          manualEmailConfirmationRequired: task.manualEmailConfirmationRequired ?? false,
+          skipAutoEmail: task.skipAutoEmail ?? false,
+          emailNotificationSent: task.emailNotificationSent ?? false,
+        }
+      );
       return;
     }
 
