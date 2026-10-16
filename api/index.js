@@ -189,11 +189,11 @@ var countPolishSuffixes = (haystack) => haystack.filter(
 var words = (text2) => text2.toLowerCase().replace(/[^\p{L}\s]/gu, " ").split(/\s+/).filter(Boolean);
 var countMatches = (list, haystack) => haystack.filter((w) => list.includes(w)).length;
 var detectLanguage = (text2) => {
-  const clean3 = String(text2 || "").trim();
-  if (clean3.length < 12) return null;
-  const w = words(clean3);
+  const clean4 = String(text2 || "").trim();
+  if (clean4.length < 12) return null;
+  const w = words(clean4);
   if (w.length < 3) return null;
-  const pl = countMatches(POLISH_STOPWORDS, w) + countPolishSuffixes(w) + (POLISH_LETTERS.test(clean3) ? 2 : 0);
+  const pl = countMatches(POLISH_STOPWORDS, w) + countPolishSuffixes(w) + (POLISH_LETTERS.test(clean4) ? 2 : 0);
   const en = countMatches(ENGLISH_STOPWORDS, w);
   if (pl === 0 && en === 0) return null;
   return pl > en ? "pl" : "en";
@@ -299,15 +299,15 @@ var TYPE_RULES = {
 var rulesForTypes = (types) => types.map((t) => TYPE_RULES[t]).filter(Boolean).join("\n\n   ");
 
 // server.ts
-var import_firebase_applet_config = __toESM(require_firebase_applet_config(), 1);
+var import_firebase_applet_config2 = __toESM(require_firebase_applet_config(), 1);
 import express from "express";
 import path from "path";
 import fs from "fs";
-import { initializeApp as initializeApp2, cert, getApps as getApps2, getApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
+import { initializeApp as initializeApp3, cert, getApps as getApps2, getApp } from "firebase-admin/app";
+import { getAuth as getAuth2 } from "firebase-admin/auth";
 import { getFirestore as getFirestore2, FieldValue } from "firebase-admin/firestore";
 import { createHmac } from "crypto";
-import { GoogleGenAI as GoogleGenAI4, Type as Type6 } from "@google/genai";
+import { GoogleGenAI as GoogleGenAI4, Type as Type8 } from "@google/genai";
 
 // services/aiModels.ts
 var PRIMARY_MODEL = "gemini-2.5-flash";
@@ -323,6 +323,20 @@ var AI_MODEL_CASCADE = [
 var OPENAI_MODEL_CASCADE = AI_MODEL_CASCADE.filter(
   (m) => m.startsWith("openai/")
 ).map((m) => m.replace("openai/", ""));
+var HOMEWORK_GENERATION_MODELS = ["gemini-2.5-flash"];
+var DisallowedHomeworkModelError = class extends Error {
+  constructor(model) {
+    super(
+      `Model "${model}" jest niedozwolony dla generowania pracy domowej \u2014 jedyny dopuszczalny model to "${HOMEWORK_GENERATION_MODELS[0]}". Praca domowa nie mo\u017Ce po cichu schodzi\u0107 na inny model ani dostawc\u0119 (patrz AGENT_LOG.md, hotfix P0).`
+    );
+    this.name = "DisallowedHomeworkModelError";
+  }
+};
+function assertHomeworkModelAllowed(model) {
+  if (!HOMEWORK_GENERATION_MODELS.includes(model)) {
+    throw new DisallowedHomeworkModelError(model);
+  }
+}
 var GEMINI_MODEL_CASCADE = AI_MODEL_CASCADE.filter(
   (m) => m.startsWith("gemini")
 );
@@ -839,7 +853,7 @@ async function resolveStudentRef(adminDb, studentRef) {
     return { studentId: directSnap.id, displayName: String(data2.displayName || data2.name || ref) };
   }
   const usersSnap = await adminDb.collection("users").get();
-  const activeStudents = usersSnap.docs.map((doc) => ({ id: doc.id, data: doc.data() || {} })).filter(({ data: data2 }) => isActiveStudent(data2));
+  const activeStudents = usersSnap.docs.map((doc4) => ({ id: doc4.id, data: doc4.data() || {} })).filter(({ data: data2 }) => isActiveStudent(data2));
   const refFold = ref.toLocaleLowerCase("pl");
   const exactMatches = activeStudents.filter(({ data: data2 }) => {
     const name = String(data2.displayName || data2.name || "").trim();
@@ -2013,10 +2027,10 @@ var V2_MODEL_CASCADE = [
   V2_FALLBACK_MODEL
 ];
 var mapToActualGeminiModel = (modelName) => {
-  const clean3 = String(modelName || "").trim().toLowerCase();
-  if (clean3.includes("2.5-flash") || clean3 === "gemini-2.5-flash") return "gemini-2.5-flash";
-  if (clean3.includes("3.8-flash") || clean3 === "gemini-3.8-flash") return "gemini-2.5-flash";
-  if (clean3.includes("1.5-flash")) return "gemini-1.5-flash";
+  const clean4 = String(modelName || "").trim().toLowerCase();
+  if (clean4.includes("2.5-flash") || clean4 === "gemini-2.5-flash") return "gemini-2.5-flash";
+  if (clean4.includes("3.8-flash") || clean4 === "gemini-3.8-flash") return "gemini-2.5-flash";
+  if (clean4.includes("1.5-flash")) return "gemini-1.5-flash";
   return "gemini-2.5-flash";
 };
 var extractJson = (text2) => {
@@ -2642,8 +2656,8 @@ var runQualityGate = async (options) => {
   }
   return { items: kept.slice(0, options.target), unverified, rejected, retries };
 };
-var buildRejectedBlock = (rejected, limit = 8) => {
-  const lines = rejected.slice(-limit).map((r) => `- ${r.text}${r.reason && r.stage === "judge" ? ` (${r.reason})` : ""}`);
+var buildRejectedBlock = (rejected, limit2 = 8) => {
+  const lines = rejected.slice(-limit2).map((r) => `- ${r.text}${r.reason && r.stage === "judge" ? ` (${r.reason})` : ""}`);
   return lines.length === 0 ? "" : `
 
 [ODRZUCONE PRZY KONTROLI \u2014 NIE POWTARZAJ TYCH B\u0141\u0118D\xD3W]:
@@ -3278,8 +3292,8 @@ function formatWeaknessesList(rows, frequentErrors = []) {
 // utils/freePracticeContext.ts
 var DEFAULT_LESSON_CONTEXT = 3;
 var MAX_WEAKNESSES = 15;
-async function readUserDoc(db, uid) {
-  const snap = await db.collection("users").doc(uid).get();
+async function readUserDoc(db2, uid) {
+  const snap = await db2.collection("users").doc(uid).get();
   return snap.exists ? snap.data() ?? {} : {};
 }
 var safe = async (read, fallback) => {
@@ -3289,8 +3303,8 @@ var safe = async (read, fallback) => {
     return fallback;
   }
 };
-async function loadStudentContext(db, uid, userData, lessonRecordIds, now = /* @__PURE__ */ new Date()) {
-  const userRef = db.collection("users").doc(uid);
+async function loadStudentContext(db2, uid, userData, lessonRecordIds, now = /* @__PURE__ */ new Date()) {
+  const userRef = db2.collection("users").doc(uid);
   const [profileSnap, weaknessSnap, lessons] = await Promise.all([
     safe(() => userRef.collection("profile").doc("learningCurve").get(), null),
     safe(() => userRef.collection("weaknesses").orderBy("frequency", "desc").limit(MAX_WEAKNESSES).get(), null),
@@ -3360,19 +3374,19 @@ var countOf = (snap) => {
   const raw = snap.exists ? snap.data()?.count : 0;
   return typeof raw === "number" && Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 0;
 };
-async function reserveSlot(db, uid, now, limit) {
+async function reserveSlot(db2, uid, now, limit2) {
   const day = warsawDayKey(now);
-  const ref = db.collection(FREE_PRACTICE_USAGE_COLLECTION).doc(usageDocId(uid, day));
-  return db.runTransaction(async (tx) => {
+  const ref = db2.collection(FREE_PRACTICE_USAGE_COLLECTION).doc(usageDocId(uid, day));
+  return db2.runTransaction(async (tx) => {
     const used = countOf(await tx.get(ref));
-    if (used >= limit) return { ok: false, used, limit, day };
+    if (used >= limit2) return { ok: false, used, limit: limit2, day };
     tx.set(ref, { uid, day, count: used + 1, updatedAt: now.toISOString() }, { merge: true });
-    return { ok: true, used: used + 1, limit, day };
+    return { ok: true, used: used + 1, limit: limit2, day };
   });
 }
-async function releaseSlot(db, uid, day, now = /* @__PURE__ */ new Date()) {
-  const ref = db.collection(FREE_PRACTICE_USAGE_COLLECTION).doc(usageDocId(uid, day));
-  await db.runTransaction(async (tx) => {
+async function releaseSlot(db2, uid, day, now = /* @__PURE__ */ new Date()) {
+  const ref = db2.collection(FREE_PRACTICE_USAGE_COLLECTION).doc(usageDocId(uid, day));
+  await db2.runTransaction(async (tx) => {
     const used = countOf(await tx.get(ref));
     if (used <= 0) return;
     tx.set(ref, { uid, day, count: used - 1, updatedAt: now.toISOString() }, { merge: true });
@@ -3870,11 +3884,11 @@ function isProxyExempt(role, isAdminEmail) {
   return isAdminEmail || role === "teacher" || role === "admin" || role === "admin_student";
 }
 var num = (v) => typeof v === "number" && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0;
-async function reserveProxyCall(db, uid, now, limits, collection = GEMINI_PROXY_USAGE_COLLECTION) {
-  const ref = db.collection(collection).doc(uid);
+async function reserveProxyCall(db2, uid, now, limits, collection4 = GEMINI_PROXY_USAGE_COLLECTION) {
+  const ref = db2.collection(collection4).doc(uid);
   const minuteKey = Math.floor(now.getTime() / 6e4);
   const dayKey = warsawDayKey(now);
-  return db.runTransaction(async (tx) => {
+  return db2.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.exists ? snap.data() || {} : {};
     const minuteCount = data.minuteKey === minuteKey ? num(data.minuteCount) : 0;
@@ -4561,8 +4575,8 @@ var sanitizeWarmup = (input) => {
   if (input.length === 0) return [];
   const valid = [];
   for (const item of input) {
-    const clean3 = sanitizeWarmupItem(item);
-    if (clean3) valid.push(clean3);
+    const clean4 = sanitizeWarmupItem(item);
+    if (clean4) valid.push(clean4);
     if (valid.length >= WARMUP_MAX_ITEMS) break;
   }
   return valid.length > 0 ? stripUndefinedDeep(valid) : void 0;
@@ -4631,32 +4645,1340 @@ var sanitizeWarmupCards = (input, taskSentences = []) => {
   const { cards } = buildWarmupCards(input, taskSentences);
   return cards.length > 0 ? cards : void 0;
 };
+var warmupCardsFieldEntry = (value) => value === void 0 ? {} : { warmupCards: value };
+
+// utils/homeworkSeriesHandler.ts
+import crypto2 from "node:crypto";
+
+// firebase.ts
+var import_firebase_applet_config = __toESM(require_firebase_applet_config(), 1);
+import { initializeApp as initializeApp2 } from "firebase/app";
+import { connectAuthEmulator, getAuth } from "firebase/auth";
+import { connectFirestoreEmulator, initializeFirestore } from "firebase/firestore";
+import { getFunctions } from "firebase/functions";
+var getFirebaseConfig = () => {
+  let config = { ...import_firebase_applet_config.default };
+  try {
+    if (import.meta.env.VITE_FIREBASE_CONFIG) {
+      const parsed = JSON.parse(import.meta.env.VITE_FIREBASE_CONFIG);
+      if (parsed && typeof parsed === "object") {
+        if (parsed.apiKey && parsed.apiKey !== "..." && parsed.apiKey !== "your_firebase_api_key_here") config.apiKey = parsed.apiKey;
+        if (parsed.authDomain && parsed.authDomain !== "...") config.authDomain = parsed.authDomain;
+        if (parsed.projectId && parsed.projectId !== "...") config.projectId = parsed.projectId;
+        if (parsed.storageBucket && parsed.storageBucket !== "...") config.storageBucket = parsed.storageBucket;
+        if (parsed.messagingSenderId && parsed.messagingSenderId !== "...") config.messagingSenderId = parsed.messagingSenderId;
+        if (parsed.appId && parsed.appId !== "...") config.appId = parsed.appId;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to parse VITE_FIREBASE_CONFIG, falling back to default");
+  }
+  const isValidOverride = (val) => typeof val === "string" && val.trim() !== "" && val !== "..." && val !== "your_firebase_api_key_here";
+  const env = typeof import.meta !== "undefined" && import.meta && import.meta.env ? import.meta.env : typeof process !== "undefined" && process.env ? process.env : {};
+  if (isValidOverride(env.VITE_FIREBASE_API_KEY)) config.apiKey = env.VITE_FIREBASE_API_KEY;
+  if (isValidOverride(env.VITE_FIREBASE_AUTH_DOMAIN)) config.authDomain = env.VITE_FIREBASE_AUTH_DOMAIN;
+  if (isValidOverride(env.VITE_FIREBASE_PROJECT_ID)) config.projectId = env.VITE_FIREBASE_PROJECT_ID;
+  if (isValidOverride(env.VITE_FIREBASE_STORAGE_BUCKET)) config.storageBucket = env.VITE_FIREBASE_STORAGE_BUCKET;
+  if (isValidOverride(env.VITE_FIREBASE_MESSAGING_SENDER_ID)) config.messagingSenderId = env.VITE_FIREBASE_MESSAGING_SENDER_ID;
+  if (isValidOverride(env.VITE_FIREBASE_APP_ID)) config.appId = env.VITE_FIREBASE_APP_ID;
+  return config;
+};
+var firebaseConfig = getFirebaseConfig();
+var app = initializeApp2(firebaseConfig);
+var auth = getAuth(app);
+var db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  ignoreUndefinedProperties: true
+}, firebaseConfig.firestoreDatabaseId || "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d");
+console.log("[FIRESTORE-DB-NAME]", db?._databaseId?.database);
+var functions = getFunctions(app, "us-central1");
+var viteEnv = typeof import.meta !== "undefined" && import.meta && import.meta.env ? import.meta.env : {};
+if (viteEnv.DEV && viteEnv.VITE_USE_EMULATORS === "1") {
+  connectAuthEmulator(auth, "http://127.0.0.1:9099", { disableWarnings: true });
+  connectFirestoreEmulator(db, "127.0.0.1", 8080);
+  console.info("[firebase] Emulatory: Auth :9099, Firestore :8080 \u2014 produkcja nietkni\u0119ta.");
+}
+
+// services/geminiService.ts
+import { collection, getDocs, query, orderBy, limit, doc, getDoc, setDoc, updateDoc, increment } from "firebase/firestore";
+import { Type as Type6, Modality } from "@google/genai";
+
+// services/aiMonitorService.ts
+var STORAGE_KEY = "cribro_admin_ai_monitor_history_v1";
+var AIMonitorService = class {
+  constructor() {
+    this.events = /* @__PURE__ */ new Map();
+    this.listeners = /* @__PURE__ */ new Set();
+    this.maxHistory = 35;
+    if (typeof window !== "undefined") {
+      try {
+        const raw = sessionStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) {
+            parsed.forEach((evt) => {
+              if (evt.status === "pending" || evt.status === "retrying") {
+                evt.status = "success";
+                evt.completedAt = evt.completedAt || evt.startedAt + 1200;
+              }
+              this.events.set(evt.id, evt);
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to restore AI Monitor session history:", e);
+      }
+    }
+  }
+  saveToStorage() {
+    if (typeof window === "undefined") return;
+    try {
+      const list = this.getAllEvents().slice(0, this.maxHistory);
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+    } catch {
+    }
+  }
+  subscribe(listener) {
+    this.listeners.add(listener);
+    listener(this.getAllEvents(), this.getActiveCount());
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+  notify() {
+    const list = this.getAllEvents();
+    const active = this.getActiveCount();
+    this.saveToStorage();
+    this.listeners.forEach((fn) => {
+      try {
+        fn(list, active);
+      } catch (err) {
+        console.error("AIMonitor listener error:", err);
+      }
+    });
+  }
+  getAllEvents() {
+    return Array.from(this.events.values()).sort((a, b) => b.startedAt - a.startedAt);
+  }
+  getActiveCount() {
+    let count = 0;
+    for (const evt of this.events.values()) {
+      if (evt.status === "pending" || evt.status === "retrying") count++;
+    }
+    return count;
+  }
+  startRequest(params) {
+    const id = params.id || `req_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const model = params.initialModel || "openai/gpt-5.6-luna";
+    const provider = params.provider || (model.includes("tts") || model.startsWith("openai") ? "OpenAI" : model.includes("Speech") ? "Native" : "Google Gemini");
+    const newEvent = {
+      id,
+      taskName: params.taskName,
+      category: params.category || "general",
+      currentModel: model,
+      status: "pending",
+      statusMessage: params.statusMessage || `Odpytywanie modelu: ${formatAIModelName(model)}...`,
+      provider,
+      startedAt: Date.now(),
+      promptSnippet: params.promptSnippet ? params.promptSnippet.slice(0, 150) : void 0,
+      attemptHistory: [{ model, timestamp: Date.now() }]
+    };
+    if (this.events.size >= this.maxHistory) {
+      const oldestId = Array.from(this.events.keys())[0];
+      this.events.delete(oldestId);
+    }
+    this.events.set(id, newEvent);
+    this.notify();
+    return id;
+  }
+  updateModelAttempt(id, model, statusMessage) {
+    const evt = this.events.get(id);
+    if (!evt) return;
+    const provider = model.includes("tts") || model.startsWith("openai") ? "OpenAI" : model.includes("Speech") || model.includes("Browser") ? "Native" : "Google Gemini";
+    evt.currentModel = model;
+    evt.provider = provider;
+    evt.status = "retrying";
+    evt.statusMessage = statusMessage || `Prze\u0142\u0105czanie na model: ${formatAIModelName(model)}...`;
+    if (!evt.attemptHistory) evt.attemptHistory = [];
+    evt.attemptHistory.push({ model, timestamp: Date.now() });
+    this.notify();
+  }
+  updateStatus(id, statusMessage) {
+    const evt = this.events.get(id);
+    if (!evt) return;
+    evt.statusMessage = statusMessage;
+    this.notify();
+  }
+  completeRequest(id, result) {
+    const evt = this.events.get(id);
+    if (!evt) return;
+    const now = Date.now();
+    evt.status = "success";
+    evt.completedAt = now;
+    evt.durationMs = Math.max(1, now - evt.startedAt);
+    if (result?.modelUsed) {
+      evt.modelUsed = result.modelUsed;
+      evt.currentModel = result.modelUsed;
+    }
+    const finalModel = evt.modelUsed || evt.currentModel;
+    evt.statusMessage = result?.message || `Odpowied\u017A odebrana pomy\u015Blnie z ${formatAIModelName(finalModel)} (${(evt.durationMs / 1e3).toFixed(1)}s)`;
+    this.notify();
+  }
+  failRequest(id, errorMsg) {
+    const evt = this.events.get(id);
+    if (!evt) return;
+    const now = Date.now();
+    evt.status = "error";
+    evt.completedAt = now;
+    evt.durationMs = Math.max(1, now - evt.startedAt);
+    evt.error = errorMsg;
+    evt.statusMessage = `B\u0142\u0105d zapytania: ${errorMsg.slice(0, 100)}`;
+    this.notify();
+  }
+  clearHistory() {
+    this.events.clear();
+    if (typeof window !== "undefined") {
+      try {
+        sessionStorage.removeItem(STORAGE_KEY);
+      } catch {
+      }
+    }
+    this.notify();
+  }
+};
+var aiMonitor = new AIMonitorService();
+
+// services/aiCouncil.ts
+var DEFAULT_REVIEW_SYSTEM = `
+Jeste\u015B recenzentem metodycznym. Dostajesz WYTYCZNE, POLECENIE i CUDZ\u0104 PROPOZYCJ\u0118 odpowiedzi.
+
+Twoim zadaniem NIE jest napisanie w\u0142asnej wersji. Twoim zadaniem jest wskazanie, gdzie propozycja rozmija si\u0119 z wytycznymi albo z poleceniem.
+
+Sprawdzaj w tej kolejno\u015Bci:
+1. TWARDE LICZBY \u2014 czy zgadza si\u0119 liczba pyta\u0144, zada\u0144, zda\u0144, pozycji s\u0142ownictwa.
+2. SENS I WIARYGODNO\u015A\u0106 ZDA\u0143 \u2014 czy zdania opisuj\u0105 realne, sensowne sytuacje \u017Cyciowe/biznesowe (BEZWZGL\u0118DNY ZAKAZ bezsensownych zlepk\xF3w s\u0142\xF3w czy zda\u0144-wydmuszek).
+3. TEST NATURALNO\u015ACI \u2014 czy ka\u017Cde zdanie po angielsku i po polsku brzmi naturalnie dla rodzimego u\u017Cytkownika j\u0119zyka.
+4. DOPASOWANIE DO KURSANTA \u2014 poziom CEFR, historia b\u0142\u0119d\xF3w, Learning Curve.
+
+Zasady recenzji:
+- Maksymalnie 6 konkretnych zastrze\u017Ce\u0144.
+- Ka\u017Cde zastrze\u017Cenie: CO jest nie tak, GDZIE (cytat lub nr) i JAK to poprawi\u0107.
+- Je\u015Bli propozycja jest poprawna i naturalna, napisz wy\u0142\u0105cznie: \u201EBrak zastrze\u017Ce\u0144."
+
+Odpowiadasz po polsku, zwi\u0119z\u0142\u0105 list\u0105 punktowan\u0105 bez zb\u0119dnych wst\u0119p\xF3w.
+`.trim();
+var EXERCISE_REVIEW_SYSTEM = `
+Jeste\u015B rygorystycznym recenzentem \u0107wicze\u0144 j\u0119zykowych ESL.
+Twoim celem jest wyeliminowanie nielogicznych, sztucznych i dziwacznych zda\u0144.
+
+Kryteria weryfikacji:
+1. SENS ZDANIA: Czy podmiot, czasownik i dope\u0142nienie tworz\u0105 logiczn\u0105 ca\u0142o\u015B\u0107 w realnym \u015Bwiecie? Odrzu\u0107 zdania, kt\xF3re brzmi\u0105 jak wygenerowane losowo.
+2. JEDNOZNACZNO\u015A\u0106: Czy w \u0107wiczeniach typu "U\u0142\xF3\u017C zdanie" lub "Wyb\xF3r wielokrotny" istnieje DOK\u0141ADNIE JEDNA poprawna odpowied\u017A?
+3. POLSZCZYZNA: Czy polskie t\u0142umaczenia/wskaz\xF3wki brzmi\u0105 naturalnie, a nie jak dos\u0142owny translator?
+4. POZIOM I PROFIL: Czy poziom trudno\u015Bci i kontekst odpowiada profilowi kursanta?
+
+Zg\u0142o\u015B maksymalnie 5 najwa\u017Cniejszych uwag z cytatem b\u0142\u0119dnego fragmentu i sugesti\u0105 poprawy. Je\u015Bli wszystko jest bez zarzutu: \u201EBrak zastrze\u017Ce\u0144."
+`.trim();
+var WARMUP_REVIEW_SYSTEM = `
+Jeste\u015B recenzentem rozgrzewek konwersacyjnych (Warm-up & Wheel of Fortune).
+Sprawd\u017A, czy zaproponowane pytania:
+1. Prowokuj\u0105 do naturalnej, p\u0142ynnej wypowiedzi (60-90 sekund),
+2. S\u0105 ciekawe, dojrza\u0142e i adekwatne do doros\u0142ego kursanta (brak infantylnych pyta\u0144),
+3. Nie zawieraj\u0105 nielogicznych konstrukcji gramatycznych ani myl\u0105cych podpowiedzi.
+
+Wypisz zwi\u0119\u017Ale uwagi lub napisz \u201EBrak zastrze\u017Ce\u0144."
+`.trim();
+var SCRATCHPAD_REVIEW_SYSTEM = `
+Jeste\u015B recenzentem asystenta lektora w edytorze notatek lekcyjnych.
+Sprawd\u017A, czy odpowied\u017A:
+1. \u015Aci\u015Ble realizuje polecenie lektora i formatuje tre\u015B\u0107 wg 4/5 blok\xF3w (Podsumowanie, S\u0142ownictwo, Korekty, Zadanie domowe, Kolejna lekcja),
+2. Nie gubi \u017Cadnych kluczowych danych z za\u0142\u0105czonych dokument\xF3w/materia\u0142\xF3w,
+3. Zachowuje czysty format i poprawn\u0105 struktur\u0119.
+
+Wypisz zastrze\u017Cenia lub napisz \u201EBrak zastrze\u017Ce\u0144."
+`.trim();
+
+// services/geminiService.ts
+var formatAIModelName = (model) => {
+  if (!model) return "Gemini 2.5 Flash";
+  const m = model.toLowerCase();
+  if (m.includes("claude-3-7") || m.includes("claude-3.7")) return "Anthropic (Claude 3.7 Sonnet)";
+  if (m.includes("claude-3-5-sonnet") || m.includes("claude-3.5-sonnet")) return "Anthropic (Claude 3.5 Sonnet)";
+  if (m.includes("claude-3-5-haiku") || m.includes("claude-3.5-haiku")) return "Anthropic (Claude 3.5 Haiku)";
+  if (m.includes("claude")) return "Anthropic Claude";
+  if (m.includes("deepseek-reasoner") || m.includes("deepseek-r1") || m.includes("deepseek/deepseek-reasoner")) return "DeepSeek R1 (Reasoner)";
+  if (m.includes("deepseek-chat") || m.includes("deepseek-v3") || m.includes("deepseek/deepseek-chat")) return "DeepSeek V3 (Chat)";
+  if (m.includes("deepseek")) return "DeepSeek";
+  if (m.includes("o3-mini")) return "OpenAI (o3-mini)";
+  if (m.includes("gpt-5.6-luna") || m.includes("gpt-5.6") || m.includes("luna")) return "GPT 5.6 Luna";
+  if (m.includes("gemini-3.8")) return "Gemini 3.8 Flash";
+  if (m.includes("gemini-2.5-pro")) return "Gemini 2.5 Pro";
+  if (m.includes("gemini-2.5")) return "Gemini 2.5 Flash";
+  if (m.includes("tts-1-hd")) return "OpenAI (TTS-1 HD)";
+  if (m.includes("tts-1") || model === "openai-tts-1") return "OpenAI (TTS-1 Audio)";
+  if (m.includes("gpt-4o-mini-audio")) return "OpenAI (GPT-4o mini Audio)";
+  if (m.includes("gpt-4o-mini")) return "OpenAI (GPT-4o mini)";
+  if (m.includes("gpt-4o")) return "OpenAI (GPT-4o)";
+  if (m.includes("gpt-4-turbo")) return "OpenAI (GPT-4 Turbo)";
+  if (m.includes("gpt-4")) return "OpenAI (GPT-4)";
+  if (m.includes("gpt-3.5")) return "OpenAI (GPT-3.5 Turbo)";
+  if (m.includes("gemini-3.1-flash-tts")) return "Gemini 3.1 Flash (TTS Audio)";
+  if (m.includes("gemini-3.7")) return "Gemini 3.7 Flash";
+  if (m.includes("gemini")) return "Gemini Flash";
+  if (m.includes("web speech") || m.includes("browser")) return "Web Speech API (Browser)";
+  return model;
+};
+var vocabularySchema = {
+  type: Type6.ARRAY,
+  items: {
+    type: Type6.OBJECT,
+    properties: {
+      word: { type: Type6.STRING },
+      ipa: { type: Type6.STRING, description: "IPA transcription of the word" },
+      definition: { type: Type6.STRING, description: "A simple definition in English" },
+      example: { type: Type6.STRING, description: "An example sentence using the word" }
+    },
+    required: ["word", "ipa", "definition", "example"]
+  }
+};
+var suggestionSchema = {
+  type: Type6.OBJECT,
+  properties: {
+    paragraph: {
+      type: Type6.STRING,
+      description: "An engaging paragraph using at least 3 of the difficult words."
+    },
+    wordSuggestions: {
+      type: Type6.ARRAY,
+      items: {
+        type: Type6.OBJECT,
+        properties: {
+          word: { type: Type6.STRING },
+          synonym: { type: Type6.STRING },
+          antonym: { type: Type6.STRING }
+        },
+        required: ["word", "synonym", "antonym"]
+      }
+    }
+  },
+  required: ["paragraph", "wordSuggestions"]
+};
+var sentenceGeneratorSchema = {
+  type: Type6.OBJECT,
+  properties: {
+    sentences: {
+      type: Type6.ARRAY,
+      items: {
+        type: Type6.OBJECT,
+        properties: {
+          id: { type: Type6.INTEGER },
+          english_sentence: { type: Type6.STRING, description: "Clean, natural English sentence." },
+          polish_translation: { type: Type6.STRING, description: "Naturalne polskie t\u0142umaczenie." },
+          target_word_used: { type: Type6.STRING, description: "The single target word used in this sentence." },
+          hint: { type: Type6.STRING, description: "Kr\xF3tka podpowied\u017A po polsku. MUSI zawiera\u0107 kluczowe/trudne s\u0142\xF3wka z tego zdania w j\u0119zyku angielskim oraz wskaz\xF3wk\u0119 gramatyczn\u0105 (np. jakiego czasu u\u017Cy\u0107)." },
+          puzzleChunks: { type: Type6.ARRAY, items: { type: Type6.STRING }, description: "Array of sentence chunks for the warmup exercise. Keep phrases logical (e.g. phrasal verbs together, don't split very short words)." }
+        },
+        required: ["english_sentence", "polish_translation", "hint", "puzzleChunks"]
+      }
+    }
+  },
+  required: ["sentences"]
+};
+var evaluationResultSchema = {
+  type: Type6.OBJECT,
+  properties: {
+    evaluations: {
+      type: Type6.ARRAY,
+      items: {
+        type: Type6.OBJECT,
+        properties: {
+          id: { type: Type6.INTEGER },
+          score: { type: Type6.INTEGER, description: "Total score (0-100) = meaning_score + grammar_score + vocabulary_score" },
+          is_correct: { type: Type6.BOOLEAN, description: "True if sentence translation is acceptable/accurate (score >= 75)" },
+          breakdown: {
+            type: Type6.OBJECT,
+            properties: {
+              meaning_score: { type: Type6.INTEGER, description: "Meaning & Accuracy score (0-40)" },
+              grammar_score: { type: Type6.INTEGER, description: "Grammar & Syntax score (0-40)" },
+              vocabulary_score: { type: Type6.INTEGER, description: "Target Vocabulary & Spelling score (0-20)" }
+            },
+            required: ["meaning_score", "grammar_score", "vocabulary_score"]
+          },
+          feedback: { type: Type6.STRING, description: "Kr\xF3tkie, og\xF3lne wyja\u015Bnienie b\u0142\u0119du po polsku." },
+          feedbackSyntax: { type: Type6.STRING, description: "Wyja\u015Bnienie b\u0142\u0119d\xF3w gramatycznych lub szyku (po polsku)." },
+          feedbackVocab: { type: Type6.STRING, description: "Wyja\u015Bnienie b\u0142\u0119d\xF3w s\u0142ownikowych (po polsku)." },
+          feedbackRule: { type: Type6.STRING, description: "Z\u0142ota zasada, \u017Ceby unikn\u0105\u0107 b\u0142\u0119du w przysz\u0142o\u015Bci (po polsku)." },
+          suggested_better_version: { type: Type6.STRING, description: "Idealne zdanie alternatywne." },
+          highlighted_better_version: { type: Type6.STRING, description: "Sugerowana odpowied\u017A z zaznaczonymi b\u0142\u0119dami ucznia. U\u017Cyj tagu <span class='text-red-500 font-bold'>...</span> aby obj\u0105\u0107 fragmenty, kt\xF3re ucze\u0144 napisa\u0142 \u017Ale, a Ty je poprawi\u0142e\u015B w sugerowanej wersji." }
+        },
+        required: ["score", "is_correct", "breakdown", "feedback", "suggested_better_version", "highlighted_better_version"]
+      }
+    }
+  },
+  required: ["evaluations"]
+};
+
+// services/learningProfile.ts
+import { doc as doc2, getDoc as getDoc2, setDoc as setDoc2 } from "firebase/firestore";
+
+// services/lessonRecord.ts
+import { doc as doc3, setDoc as setDoc3, collection as collection2, getDocs as getDocs2, getDoc as getDoc3, query as query2, orderBy as orderBy2, serverTimestamp, updateDoc as updateDoc2, writeBatch, deleteDoc } from "firebase/firestore";
+var LESSON_CACHE_TTL_MS = 5 * 60 * 1e3;
+
+// services/homeworkGenerator.ts
+import { Type as Type7 } from "@google/genai";
+
+// utils/homeworkItems.ts
+var EDIT_FIELD_MAX_LENGTH = 300;
+var EDIT_NOTE_MAX_LENGTH = 400;
+var EDIT_FIELDS = {
+  translation: [
+    { field: "polishSentence", required: true },
+    { field: "englishTranslation", required: true },
+    { field: "hint", required: false, note: true }
+  ],
+  find_errors: [
+    { field: "incorrectSentence", required: true },
+    { field: "correctSentence", required: true },
+    { field: "polishHint", required: false },
+    { field: "hint", required: false, note: true },
+    { field: "explanation", required: false, note: true }
+  ]
+};
+var validateItemEdit = (type, draft) => {
+  const fields = EDIT_FIELDS[type];
+  if (!fields) return { ok: false, errors: [] };
+  const errors = [];
+  const cleaned = {};
+  for (const { field, required, note } of fields) {
+    const value = String(draft?.[field] ?? "").trim();
+    if (required && !value) errors.push({ field, code: "required" });
+    else if (value.length > (note ? EDIT_NOTE_MAX_LENGTH : EDIT_FIELD_MAX_LENGTH)) {
+      errors.push({ field, code: "too_long" });
+    }
+    cleaned[field] = value;
+  }
+  if (type === "find_errors" && cleaned.incorrectSentence && cleaned.correctSentence && normalizeSentence2(cleaned.incorrectSentence) === normalizeSentence2(cleaned.correctSentence)) {
+    errors.push({ field: "incorrectSentence", code: "same_as_correct" });
+  }
+  if (errors.length > 0) return { ok: false, errors };
+  for (const { field, required } of fields) {
+    if (!required && !cleaned[field]) cleaned[field] = void 0;
+  }
+  return { ok: true, item: cleaned };
+};
+var isRegeneratedItemValid = (type, item) => {
+  if (!item || typeof item !== "object") return false;
+  if (type === "translation" || type === "find_errors") return validateItemEdit(type, item).ok;
+  if (type === "multiple_choice") {
+    const options = Array.isArray(item.options) ? item.options.map((o) => String(o).trim()) : [];
+    const distinct = new Set(options.map(normalizeSentence2));
+    return Boolean(String(item.question || "").trim()) && options.length >= 2 && options.every(Boolean) && distinct.size === options.length && Number.isInteger(item.correctIndex) && item.correctIndex >= 0 && item.correctIndex < options.length;
+  }
+  if (type === "matching") {
+    const pairs = Array.isArray(item.pairs) ? item.pairs : [];
+    return pairs.length >= 2 && pairs.every((p) => p?.id && p?.left && p?.right);
+  }
+  if (type === "fill_in_the_blank") return Boolean(item.textWithBlanks) && Boolean(item.blanks);
+  return true;
+};
+
+// services/homeworkGenerator.ts
+var MODELS_FOR_HOMEWORK = [...HOMEWORK_GENERATION_MODELS];
+MODELS_FOR_HOMEWORK.forEach(assertHomeworkModelAllowed);
+var HOMEWORK_TYPE_LABELS = {
+  translation: {
+    pl: "T\u0142umaczenie zda\u0144",
+    en: "Sentence translation",
+    hint: { pl: "T\u0142umaczysz z polskiego na angielski.", en: "Translate from Polish to English." }
+  },
+  word_order: {
+    pl: "Uporz\u0105dkuj",
+    en: "Unjumble",
+    hint: {
+      pl: "Przeci\u0105gnij i upu\u015B\u0107 s\u0142owa, aby u\u0142o\u017Cy\u0107 poprawne zdanie.",
+      en: "Drag and drop the words to build the correct sentence."
+    }
+  },
+  multiple_choice: {
+    pl: "Wybierz form\u0119",
+    en: "Multiple choice",
+    hint: {
+      pl: "Jedna poprawna odpowied\u017A z kilku. Sprawdza si\u0119 od razu.",
+      en: "One correct answer out of several. Checked instantly."
+    }
+  },
+  fill_in_the_blank: {
+    pl: "Uzupe\u0142nij luki",
+    en: "Fill in the blanks",
+    hint: { pl: "Sp\xF3jny tekst z lukami do uzupe\u0142nienia.", en: "A short text with gaps to fill." }
+  },
+  find_errors: {
+    pl: "Znajd\u017A b\u0142\u0119dy",
+    en: "Spot the mistakes",
+    hint: { pl: "Zdania z b\u0142\u0119dami do poprawienia.", en: "Sentences with mistakes to correct." }
+  },
+  matching: {
+    pl: "Dopasuj pary",
+    en: "Matching pairs",
+    hint: {
+      pl: "Dopasuj s\u0142owo lub fraz\u0119 do jej znaczenia.",
+      en: "Match a word or phrase to its meaning."
+    }
+  }
+};
+var OFFERED_HOMEWORK_TYPES = withoutHiddenExerciseTypes([
+  "translation",
+  "find_errors",
+  "multiple_choice",
+  "fill_in_the_blank",
+  "matching"
+]);
+var QUALITY_RULES = `
+${CRIBRO_SENTENCE_NATURALNESS2}
+
+${EXERCISE_IRON_RULES}
+
+ZASADY JAKO\u015ACI \u2014 OBOWI\u0104ZUJ\u0104 W KA\u017BDYM ZADANIU:
+1. SENS PRZED S\u0141OWNICTWEM. Zdanie ma opisywa\u0107 sytuacj\u0119, kt\xF3ra mog\u0142a si\u0119 wydarzy\u0107.
+   Podmiot musi m\xF3c wykona\u0107 czynno\u015B\u0107, dope\u0142nienie musi do niej pasowa\u0107. Je\u015Bli s\u0142owa
+   z materia\u0142u nie daj\u0105 si\u0119 sensownie po\u0142\u0105czy\u0107 w jednym zdaniu \u2014 rozdziel je na dwa zdania.
+2. JEDNO S\u0141OWO DOCELOWE NA ZDANIE. Upychanie kilku nowych s\u0142\xF3w naraz jest
+   najcz\u0119stsz\u0105 przyczyn\u0105 zda\u0144, kt\xF3re brzmi\u0105 jak wyliczanka, a nie jak wypowied\u017A.
+3. SP\xD3JNO\u015A\u0106 WEWN\u0118TRZNA. Czas gramatyczny, liczba i rodzajniki musz\u0105 zgadza\u0107 si\u0119
+   w obr\u0119bie zdania, a okre\u015Blenia czasu nie mog\u0105 przeczy\u0107 u\u017Cytemu czasowi
+   (\u201EYesterday I will call him" jest b\u0142\u0119dem).
+4. KONTEKST Z LEKCJI. Sytuacje maj\u0105 nawi\u0105zywa\u0107 do tematu materia\u0142u \u2014 je\u015Bli
+   materia\u0142 dotyczy podr\xF3\u017Cy, zdania dziej\u0105 si\u0119 na lotnisku, w hotelu, w rozmowie
+   o planach, a nie w przypadkowych, oderwanych scenkach.
+5. BEZ ZDA\u0143-WYDMUSZEK. \u017Badnych \u201EThis is a sentence with the word X" ani zda\u0144,
+   kt\xF3rych jedyn\u0105 tre\u015Bci\u0105 jest to, \u017Ce zawieraj\u0105 s\u0142owo z listy.`;
+var WARMUP_CARDS_SCHEMA = {
+  type: Type7.OBJECT,
+  properties: {
+    cards: {
+      type: Type7.ARRAY,
+      items: {
+        type: Type7.OBJECT,
+        properties: {
+          term: { type: Type7.STRING, description: "Angielska FRAZA lub s\u0142owo (1-5 s\u0142\xF3w), nie zdanie." },
+          definition: { type: Type7.STRING, description: "Kr\xF3tkie polskie znaczenie, do 60 znak\xF3w." },
+          contextSentence: { type: Type7.STRING, description: "Opcjonalne kr\xF3tkie angielskie zdanie z przyk\u0142adem u\u017Cycia frazy." }
+        },
+        required: ["term", "definition"],
+        propertyOrdering: ["term", "definition", "contextSentence"]
+      }
+    }
+  },
+  required: ["cards"]
+};
+var MULTIPLE_CHOICE_SCHEMA = {
+  type: Type7.OBJECT,
+  properties: {
+    items: {
+      type: Type7.ARRAY,
+      items: {
+        type: Type7.OBJECT,
+        properties: {
+          question: { type: Type7.STRING, description: "Angielskie zdanie z jedn\u0105 luk\u0105 \u201E___\u201D, \u0142\u0105cz\u0105ce s\u0142ownictwo z lekcji z jednym zagadnieniem gramatycznym." },
+          grammarFocus: { type: Type7.STRING, enum: [...GRAMMAR_FOCUS_IDS], description: "Zagadnienie gramatyczne sprawdzane w tym pytaniu." },
+          options: { type: Type7.ARRAY, items: { type: Type7.STRING }, description: "DOK\u0141ADNIE 4 opcje: jedna poprawna i trzy typowe b\u0142\u0119dy polskiego ucznia." },
+          correctIndex: { type: Type7.INTEGER, description: "Indeks poprawnej opcji (0\u20133)." },
+          explanation: { type: Type7.STRING, description: "Po polsku, 1\u20132 zdania: regu\u0142a gramatyczna, dlaczego ta forma." }
+        },
+        required: ["question", "grammarFocus", "options", "correctIndex", "explanation"],
+        propertyOrdering: ["question", "grammarFocus", "options", "correctIndex", "explanation"]
+      }
+    }
+  },
+  required: ["items"]
+};
+var FIX_SENTENCE_SCHEMA = {
+  type: Type7.OBJECT,
+  properties: {
+    items: {
+      type: Type7.ARRAY,
+      items: {
+        type: Type7.OBJECT,
+        properties: {
+          correct_sentence: { type: Type7.STRING, description: "Naturalne, w pe\u0142ni poprawne zdanie po angielsku \u2014 uk\u0142adane NAJPIERW." },
+          error_type: { type: Type7.STRING, enum: [...FIX_SENTENCE_ERROR_TYPES2], description: "Jeden typ b\u0142\u0119du pasuj\u0105cy do tego zdania." },
+          error_sentence: { type: Type7.STRING, description: "correct_sentence z DOK\u0141ADNIE jednym b\u0142\u0119dem typu error_type. Musi r\xF3\u017Cni\u0107 si\u0119 od correct_sentence." },
+          explanation: { type: Type7.STRING, description: "Zwi\u0119z\u0142e wyja\u015Bnienie regu\u0142y po polsku." },
+          hint: { type: Type7.STRING, description: "Wskaz\xF3wka po polsku kieruj\u0105ca uwag\u0119 na obszar b\u0142\u0119du, bez podawania poprawki." },
+          polish_hint: { type: Type7.STRING, description: "Naturalne polskie znaczenie zdania." }
+        },
+        required: ["correct_sentence", "error_type", "error_sentence", "explanation", "hint", "polish_hint"],
+        propertyOrdering: ["correct_sentence", "error_type", "error_sentence", "explanation", "hint", "polish_hint"]
+      }
+    }
+  },
+  required: ["items"]
+};
+
+// utils/homework.ts
+import { collection as collection3, query as query3, where as where2 } from "firebase/firestore";
+var taskOwnerFields = (studentUid) => ({
+  studentUid,
+  studentId: studentUid,
+  userId: studentUid,
+  studentIds: [studentUid]
+});
+
+// utils/warmupField.ts
+var warmupFieldEntry = (value) => value === void 0 ? {} : { warmup: value };
+
+// utils/token.ts
+var generateSecureToken = (byteLength = 32) => {
+  if (typeof window !== "undefined" && window.crypto && window.crypto.getRandomValues) {
+    const array = new Uint8Array(byteLength);
+    window.crypto.getRandomValues(array);
+    return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  }
+  try {
+    const crypto4 = __require("crypto");
+    return crypto4.randomBytes(byteLength).toString("hex");
+  } catch {
+    const array = new Uint8Array(byteLength);
+    if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+      crypto.getRandomValues(array);
+      return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+    }
+    return "sec_" + Date.now().toString(36) + "_" + Math.random().toString(36).substring(2, 15);
+  }
+};
+var generateSecureHomeworkToken = () => {
+  return "hw_" + generateSecureToken(16);
+};
+
+// utils/buildHomeworkAssignment.ts
+var formatStudentLabel = (student) => {
+  if (!student) return "Kursant";
+  const name = `${student.firstName || ""} ${student.lastName || ""}`.trim();
+  return name || student.username || student.email || student.id || "Kursant";
+};
+function buildHomeworkAssignment(input) {
+  const {
+    student,
+    studentId,
+    title,
+    usable,
+    items,
+    dueDate,
+    createdAt = (/* @__PURE__ */ new Date()).toISOString(),
+    finalWarmup,
+    finalCards,
+    origin = typeof window !== "undefined" ? window.location.origin : "https://app.maciej.pro",
+    includeToken = true,
+    token,
+    accessExpiresAt,
+    skipAutoEmail = true,
+    manualEmailConfirmationRequired = true,
+    emailNotificationSent = false,
+    status = "pending"
+  } = input;
+  const ownerFields = taskOwnerFields(studentId);
+  const studentName = student ? formatStudentLabel(student) : "Kursant";
+  const studentEmail = student?.email || "";
+  const studentUsername = student?.username || "";
+  const firstType = usable[0]?.type;
+  const types = usable.map((section) => section.type);
+  const instructions = usable.map((section) => HOMEWORK_TYPE_LABELS[section.type]?.hint.pl || "").join(" ");
+  const payload = {
+    ...ownerFields,
+    studentName,
+    studentEmail,
+    studentUsername,
+    title,
+    type: firstType,
+    types,
+    instructions,
+    createdAt,
+    dueDate,
+    status,
+    sentences: items,
+    ...warmupFieldEntry(finalWarmup),
+    ...warmupCardsFieldEntry(finalCards),
+    manualEmailConfirmationRequired,
+    skipAutoEmail,
+    emailNotificationSent
+  };
+  if (includeToken) {
+    const accessToken = token || generateSecureHomeworkToken();
+    const expiresAt = accessExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1e3).toISOString();
+    const accessUrl = `${origin}/hw?token=${accessToken}`;
+    payload.accessToken = accessToken;
+    payload.accessExpiresAt = expiresAt;
+    payload.accessUrl = accessUrl;
+  }
+  return payload;
+}
+
+// utils/homeworkSeries.ts
+var MAX_SERIES_ITEMS = 5;
+var MAX_ITEM_PAYLOAD_BYTES = 200 * 1024;
+function buildSeriesTaskId(seriesId, itemId) {
+  const cleanSeries = String(seriesId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+  const cleanItem = String(itemId || "").trim().replace(/[^a-zA-Z0-9_-]/g, "_");
+  return `task_s_${cleanSeries}_${cleanItem}`;
+}
+function getWarsawDateString(date = /* @__PURE__ */ new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Warsaw",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(date);
+}
+function computeDueDate(releaseDate, dueInDays) {
+  const base = typeof releaseDate === "string" ? new Date(releaseDate) : new Date(releaseDate.getTime());
+  if (isNaN(base.getTime())) {
+    throw new Error("Niepoprawna data wydania");
+  }
+  const days = Math.max(1, Math.round(dueInDays || 7));
+  base.setDate(base.getDate() + days);
+  return getWarsawDateString(base);
+}
+function isSlotReadyToRelease(slotDate, todayWarsaw) {
+  if (!slotDate || !todayWarsaw) return false;
+  return slotDate <= todayWarsaw;
+}
+function isDelayedRelease(slotDate, todayWarsaw) {
+  if (!slotDate || !todayWarsaw) return false;
+  return slotDate < todayWarsaw;
+}
+function findItemsToRelease(items, todayWarsaw) {
+  if (!Array.isArray(items)) return [];
+  let oldest = null;
+  for (const item of items) {
+    if (item.state !== "ready" || !isSlotReadyToRelease(item.slotDate, todayWarsaw)) continue;
+    if (!oldest || item.slotDate < oldest.slotDate) oldest = item;
+  }
+  return oldest ? [oldest] : [];
+}
+function planCronReleases(seriesList, todayWarsaw) {
+  const byStudent = /* @__PURE__ */ new Map();
+  for (const series of seriesList || []) {
+    if (!series || series.status !== "active" || !series.studentUid) continue;
+    const [candidate] = findItemsToRelease(series.items, todayWarsaw);
+    if (!candidate) continue;
+    const current = byStudent.get(series.studentUid);
+    if (!current || candidate.slotDate < current.slotDate) {
+      byStudent.set(series.studentUid, {
+        seriesId: series.id,
+        studentUid: series.studentUid,
+        itemId: candidate.itemId,
+        slotDate: candidate.slotDate
+      });
+    }
+  }
+  return Array.from(byStudent.values());
+}
+function updateSeriesItemAfterRelease(items, itemId, update) {
+  return items.map((item) => {
+    if (item.itemId !== itemId) return item;
+    return {
+      ...item,
+      state: "released",
+      releasedTaskId: update.taskId,
+      releasedAt: update.releasedAt,
+      releasedDelayed: update.delayed,
+      lastError: void 0
+    };
+  });
+}
+function updateSeriesItemAfterFailure(items, itemId, error) {
+  return items.map((item) => {
+    if (item.itemId !== itemId) return item;
+    return {
+      ...item,
+      state: "failed",
+      lastError: error
+    };
+  });
+}
+function computeSeriesStatus(currentStatus, items) {
+  if (currentStatus === "paused" || currentStatus === "archived") {
+    return currentStatus;
+  }
+  if (!Array.isArray(items) || items.length === 0) {
+    return currentStatus;
+  }
+  const allReleased = items.every((item) => item.state === "released");
+  return allReleased ? "completed" : "active";
+}
+function validateSlotDate(slotDate) {
+  if (typeof slotDate !== "string") return false;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(slotDate.trim());
+  if (!match) return false;
+  const year = parseInt(match[1], 10);
+  const month = parseInt(match[2], 10);
+  const day = parseInt(match[3], 10);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const d = new Date(year, month - 1, day);
+  return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day;
+}
+function validateSeriesItemPayload(rawPayload) {
+  if (!rawPayload || typeof rawPayload !== "object") {
+    return { ok: false, error: "Payload pozycji musi by\u0107 obiektem JSON" };
+  }
+  const rawJson = JSON.stringify(rawPayload);
+  const byteLength = typeof Buffer !== "undefined" ? Buffer.byteLength(rawJson, "utf8") : rawJson.length;
+  if (byteLength > MAX_ITEM_PAYLOAD_BYTES) {
+    return {
+      ok: false,
+      error: `Rozmiar pozycji przekracza dozwolony limit ${MAX_ITEM_PAYLOAD_BYTES / 1024} KB (${Math.round(byteLength / 1024)} KB)`
+    };
+  }
+  const p = rawPayload;
+  const itemId = String(p.itemId || "").trim();
+  if (!itemId || !/^[a-zA-Z0-9_-]+$/.test(itemId) || itemId.length > 64) {
+    return { ok: false, error: "Niepoprawny itemId pozycji (dozwolone znaki alfanumeryczne, _, -, max 64 znaki)" };
+  }
+  const type = p.type;
+  if (!type || typeof type !== "string") {
+    return { ok: false, error: "Brak lub niepoprawny typ zadania (type)" };
+  }
+  if (!Array.isArray(p.sentences) || p.sentences.length === 0) {
+    return { ok: false, error: "Pozycja musi zawiera\u0107 co najmniej jedno \u0107wiczenie w tablicy sentences" };
+  }
+  for (let i = 0; i < p.sentences.length; i++) {
+    const item = p.sentences[i];
+    const itemType = item?.type || type;
+    if (!isRegeneratedItemValid(itemType, item)) {
+      return { ok: false, error: `\u0106wiczenie #${i + 1} (${itemType}) nie spe\u0142nia kryteri\xF3w poprawno\u015Bci` };
+    }
+  }
+  let cleanWarmup = void 0;
+  if (p.warmup !== void 0) {
+    cleanWarmup = sanitizeWarmup(p.warmup);
+  }
+  let cleanCards = void 0;
+  if (p.warmupCards !== void 0) {
+    cleanCards = sanitizeWarmupCards(p.warmupCards);
+  }
+  const types = Array.isArray(p.types) ? p.types.filter((t) => typeof t === "string") : [type];
+  const sanitized = {
+    itemId,
+    title: typeof p.title === "string" && p.title.trim() ? p.title.trim() : void 0,
+    type,
+    types,
+    instructions: typeof p.instructions === "string" ? p.instructions.trim() : void 0,
+    sentences: p.sentences,
+    warmup: cleanWarmup,
+    warmupCards: cleanCards
+  };
+  return { ok: true, sanitized };
+}
+function validateCreateSeriesInput(input) {
+  if (!input || typeof input !== "object") {
+    return { ok: false, error: "Dane serii musz\u0105 by\u0107 obiektem JSON" };
+  }
+  const data = input;
+  const title = String(data.title || "").trim();
+  if (!title || title.length > 200) {
+    return { ok: false, error: "Tytu\u0142 serii jest wymagany i nie mo\u017Ce przekracza\u0107 200 znak\xF3w" };
+  }
+  const studentUid = String(data.studentUid || "").trim();
+  if (!studentUid) {
+    return { ok: false, error: "Pole studentUid jest wymagane" };
+  }
+  const ownerUid = String(data.ownerUid || "").trim();
+  if (!ownerUid) {
+    return { ok: false, error: "Pole ownerUid jest wymagane" };
+  }
+  if (!Array.isArray(data.items) || data.items.length === 0) {
+    return { ok: false, error: "Seria musi zawiera\u0107 co najmniej jedn\u0105 pozycj\u0119" };
+  }
+  if (data.items.length > MAX_SERIES_ITEMS) {
+    return {
+      ok: false,
+      error: `Wersja pilota\u017Cowa pozwala na maksymalnie ${MAX_SERIES_ITEMS} pozycji w serii (przekazano ${data.items.length})`
+    };
+  }
+  const seenIds = /* @__PURE__ */ new Set();
+  const sanitizedItems = [];
+  for (let i = 0; i < data.items.length; i++) {
+    const item = data.items[i];
+    if (!item || typeof item !== "object") {
+      return { ok: false, error: `Pozycja #${i + 1} nie jest prawid\u0142owym obiektem` };
+    }
+    const itemId = String(item.itemId || "").trim();
+    if (!itemId || !/^[a-zA-Z0-9_-]+$/.test(itemId)) {
+      return { ok: false, error: `Pozycja #${i + 1}: nieprawid\u0142owy itemId` };
+    }
+    if (seenIds.has(itemId)) {
+      return { ok: false, error: `Zdublowany itemId: ${itemId}` };
+    }
+    seenIds.add(itemId);
+    const slotDate = String(item.slotDate || "").trim();
+    if (!validateSlotDate(slotDate)) {
+      return { ok: false, error: `Pozycja #${i + 1} (${itemId}): niepoprawny format daty slotDate (wymagany YYYY-MM-DD)` };
+    }
+    const dueInDays = Number(item.dueInDays);
+    if (!Number.isInteger(dueInDays) || dueInDays < 1 || dueInDays > 60) {
+      return { ok: false, error: `Pozycja #${i + 1} (${itemId}): dueInDays musi by\u0107 liczb\u0105 ca\u0142kowit\u0105 z zakresu 1\u201360` };
+    }
+    sanitizedItems.push({
+      itemId,
+      slotDate,
+      dueInDays
+    });
+  }
+  const autoEmail = data.autoEmail === true;
+  if (autoEmail && data.autoEmailConfirmed !== true) {
+    return {
+      ok: false,
+      error: "Automatyczne e-maile wymagaj\u0105 potwierdzenia lektora (autoEmailConfirmed: true)"
+    };
+  }
+  return {
+    ok: true,
+    sanitized: {
+      title,
+      studentUid,
+      studentName: typeof data.studentName === "string" && data.studentName.trim() ? data.studentName.trim() : void 0,
+      ownerUid,
+      autoEmail,
+      autoEmailConfirmed: autoEmail,
+      items: sanitizedItems
+    }
+  };
+}
+function isSeriesAutoEmailConfirmed(series) {
+  return series.autoEmail === true && typeof series.autoEmailConfirmedAt === "string" && series.autoEmailConfirmedAt.length > 0;
+}
+function buildReleasedTaskDocument(params) {
+  const { series, itemMeta, itemPayload, studentUser, origin } = params;
+  const releasedAt = params.releasedAt || (/* @__PURE__ */ new Date()).toISOString();
+  const todayWarsaw = params.todayWarsaw || getWarsawDateString(new Date(releasedAt));
+  const delayed = isDelayedRelease(itemMeta.slotDate, todayWarsaw);
+  const dueDate = computeDueDate(releasedAt, itemMeta.dueInDays);
+  const taskTitle = itemPayload.title || `${series.title} (${itemMeta.slotDate})`;
+  const autoEmail = isSeriesAutoEmailConfirmed(series);
+  const usable = itemPayload.types && itemPayload.types.length > 0 ? itemPayload.types.map((type) => ({ type })) : [{ type: itemPayload.type }];
+  const taskDoc = buildHomeworkAssignment({
+    student: studentUser,
+    studentId: series.studentUid,
+    title: taskTitle,
+    usable,
+    items: itemPayload.sentences,
+    dueDate,
+    createdAt: releasedAt,
+    finalWarmup: itemPayload.warmup,
+    finalCards: itemPayload.warmupCards,
+    origin,
+    includeToken: false,
+    // DECYZJA 4: brak tokenu /hw?token= i brak directHomeworkTokens
+    skipAutoEmail: !autoEmail,
+    // DECYZJA 5: skipAutoEmail, gdy przełącznik wyłączony lub niepotwierdzony
+    manualEmailConfirmationRequired: !autoEmail,
+    emailNotificationSent: false,
+    status: "pending"
+    // DECYZJA 3: status pending (jak w kreatorze)
+  });
+  taskDoc.seriesId = series.id;
+  taskDoc.seriesItemId = itemMeta.itemId;
+  taskDoc.seriesAutoEmailConfirmed = autoEmail;
+  if (delayed) {
+    taskDoc.releasedDelayed = true;
+  }
+  return taskDoc;
+}
+
+// utils/homeworkSeriesHandler.ts
+var clean3 = (value) => stripUndefinedDeep(value);
+function verifyCronSecret(providedHeader, expectedSecret) {
+  if (!expectedSecret || expectedSecret.trim().length === 0) {
+    return { ok: false, status: 500, error: "CRON_SECRET is not configured on server" };
+  }
+  if (!providedHeader || !providedHeader.startsWith("Bearer ")) {
+    return { ok: false, status: 401, error: "Missing Bearer token" };
+  }
+  const provided = providedHeader.slice(7).trim();
+  const bufProvided = Buffer.from(provided, "utf8");
+  const bufExpected = Buffer.from(expectedSecret, "utf8");
+  if (bufProvided.length !== bufExpected.length || !crypto2.timingSafeEqual(bufProvided, bufExpected)) {
+    return { ok: false, status: 401, error: "Invalid CRON_SECRET" };
+  }
+  return { ok: true, status: 200 };
+}
+async function handleCreateSeries(deps, input) {
+  const { callerUid, body } = input;
+  const validation = validateCreateSeriesInput(body);
+  if (validation.ok === false) {
+    return { status: 400, body: { error: validation.error } };
+  }
+  const sanitized = validation.sanitized;
+  if (sanitized.ownerUid !== callerUid) {
+    return { status: 403, body: { error: "Forbidden: ownerUid must match caller UID" } };
+  }
+  const rawPayloads = body.itemPayloads;
+  if (!rawPayloads || typeof rawPayloads !== "object") {
+    return { status: 400, body: { error: "Brak payload\xF3w zada\u0144 w polu itemPayloads" } };
+  }
+  const cleanPayloads = [];
+  for (const itemMeta of sanitized.items) {
+    const rawItemPayload = rawPayloads[itemMeta.itemId];
+    if (!rawItemPayload) {
+      return { status: 400, body: { error: `Brak payloadu dla pozycji ${itemMeta.itemId}` } };
+    }
+    const itemValidation = validateSeriesItemPayload({ ...rawItemPayload, itemId: itemMeta.itemId });
+    if (itemValidation.ok === false) {
+      return { status: 400, body: { error: `Pozycja ${itemMeta.itemId}: ${itemValidation.error}` } };
+    }
+    cleanPayloads.push(itemValidation.sanitized);
+  }
+  const now = deps.now ? deps.now() : /* @__PURE__ */ new Date();
+  const nowIso = now.toISOString();
+  const randomSuffix = crypto2.randomBytes(4).toString("hex");
+  const seriesId = `series_${now.getTime()}_${randomSuffix}`;
+  const itemsMeta = sanitized.items.map((item) => ({
+    itemId: item.itemId,
+    slotDate: item.slotDate,
+    dueInDays: item.dueInDays,
+    state: "ready"
+  }));
+  const seriesDoc = {
+    id: seriesId,
+    title: sanitized.title,
+    studentUid: sanitized.studentUid,
+    studentName: sanitized.studentName,
+    ownerUid: callerUid,
+    status: "active",
+    autoEmail: sanitized.autoEmail === true,
+    // Data potwierdzenia jest warunkiem automatycznych maili (isSeriesAutoEmailConfirmed).
+    autoEmailConfirmedAt: sanitized.autoEmail === true && sanitized.autoEmailConfirmed === true ? nowIso : void 0,
+    items: itemsMeta,
+    createdAt: nowIso,
+    updatedAt: nowIso
+  };
+  const seriesRef = deps.db.collection("homeworkSeries").doc(seriesId);
+  await seriesRef.set(clean3(seriesDoc));
+  for (const itemPayload of cleanPayloads) {
+    const itemRef = seriesRef.collection("items").doc(itemPayload.itemId);
+    await itemRef.set(clean3(itemPayload));
+  }
+  return { status: 201, body: { success: true, series: seriesDoc } };
+}
+async function handleListSeries(deps, input) {
+  const { callerUid, studentUid } = input;
+  let q = deps.db.collection("homeworkSeries").where("ownerUid", "==", callerUid);
+  if (studentUid) {
+    q = q.where("studentUid", "==", studentUid);
+  }
+  const snap = await q.get();
+  const seriesList = snap.docs.map((d) => d.data());
+  return { status: 200, body: { series: seriesList } };
+}
+async function handleGetSeries(deps, input) {
+  const { callerUid, seriesId } = input;
+  const docRef = deps.db.collection("homeworkSeries").doc(seriesId);
+  const snap = await docRef.get();
+  if (!snap.exists) {
+    return { status: 404, body: { error: "Seria nie zosta\u0142a znaleziona" } };
+  }
+  const series = snap.data();
+  if (series.ownerUid !== callerUid) {
+    return { status: 403, body: { error: "Forbidden: access denied" } };
+  }
+  const itemsSnap = await docRef.collection("items").get();
+  const payloads = {};
+  itemsSnap.docs.forEach((d) => {
+    payloads[d.id] = d.data();
+  });
+  return { status: 200, body: { series, itemsPayloads: payloads } };
+}
+async function handleDeleteSeries(deps, input) {
+  const { callerUid, seriesId } = input;
+  const docRef = deps.db.collection("homeworkSeries").doc(seriesId);
+  const snap = await docRef.get();
+  if (!snap.exists) {
+    return { status: 404, body: { error: "Seria nie zosta\u0142a znaleziona" } };
+  }
+  const series = snap.data();
+  if (series.ownerUid !== callerUid) {
+    return { status: 403, body: { error: "Forbidden: access denied" } };
+  }
+  await docRef.delete();
+  return { status: 200, body: { success: true } };
+}
+async function releaseSingleSeriesItem(deps, params) {
+  const { seriesId, itemId, todayWarsaw, origin } = params;
+  const now = deps.now ? deps.now() : /* @__PURE__ */ new Date();
+  const nowIso = now.toISOString();
+  const seriesRef = deps.db.collection("homeworkSeries").doc(seriesId);
+  const itemPayloadRef = seriesRef.collection("items").doc(itemId);
+  const payloadSnap = await itemPayloadRef.get();
+  if (!payloadSnap.exists) {
+    return { success: false, error: `Brak payloadu pozycji ${itemId}` };
+  }
+  const itemPayload = payloadSnap.data();
+  const taskId = buildSeriesTaskId(seriesId, itemId);
+  const taskRef = deps.db.collection("specialTasks").doc(taskId);
+  try {
+    const result = await deps.db.runTransaction(async (transaction) => {
+      const currentSeriesSnap = await transaction.get(seriesRef);
+      if (!currentSeriesSnap.exists) {
+        throw new Error("Seria nie istnieje");
+      }
+      const seriesData = currentSeriesSnap.data();
+      if (seriesData.status !== "active") {
+        return { skipped: true, reason: "series_not_active" };
+      }
+      const itemMeta = seriesData.items.find((it) => it.itemId === itemId);
+      if (!itemMeta) {
+        throw new Error(`Pozycja ${itemId} nie istnieje w serii`);
+      }
+      if (itemMeta.state !== "ready") {
+        return { skipped: true, reason: "already_processed", taskId: itemMeta.releasedTaskId };
+      }
+      if (!isSlotReadyToRelease(itemMeta.slotDate, todayWarsaw)) {
+        return { skipped: true, reason: "not_ready_yet" };
+      }
+      const existingTaskSnap = await transaction.get(taskRef);
+      if (existingTaskSnap.exists) {
+        const updatedItems2 = updateSeriesItemAfterRelease(seriesData.items, itemId, {
+          taskId,
+          releasedAt: nowIso,
+          delayed: isDelayedRelease(itemMeta.slotDate, todayWarsaw)
+        });
+        const newStatus2 = computeSeriesStatus(seriesData.status, updatedItems2);
+        transaction.update(seriesRef, clean3({ items: updatedItems2, status: newStatus2, updatedAt: nowIso }));
+        return { skipped: true, reason: "task_already_exists", taskId };
+      }
+      let studentUser = null;
+      const userRef = deps.db.collection("users").doc(seriesData.studentUid);
+      try {
+        const userSnap = await transaction.get(userRef);
+        if (userSnap.exists) {
+          studentUser = userSnap.data();
+        }
+      } catch {
+      }
+      const taskDoc = buildReleasedTaskDocument({
+        series: seriesData,
+        itemMeta,
+        itemPayload,
+        studentUser,
+        releasedAt: nowIso,
+        todayWarsaw,
+        origin: origin || deps.origin
+      });
+      transaction.create(taskRef, clean3(taskDoc));
+      const delayed = isDelayedRelease(itemMeta.slotDate, todayWarsaw);
+      const updatedItems = updateSeriesItemAfterRelease(seriesData.items, itemId, {
+        taskId,
+        releasedAt: nowIso,
+        delayed
+      });
+      const newStatus = computeSeriesStatus(seriesData.status, updatedItems);
+      transaction.update(seriesRef, clean3({ items: updatedItems, status: newStatus, updatedAt: nowIso }));
+      if (studentUser) {
+        transaction.update(userRef, { hasNewHomework: true });
+      }
+      return { success: true, taskId };
+    });
+    if (result.skipped) {
+      return { success: true, skipped: true, taskId: result.taskId };
+    }
+    return { success: true, taskId: result.taskId };
+  } catch (err) {
+    if (err.code === 6 || err.code === "already-exists" || String(err.message).toLowerCase().includes("already exists")) {
+      return { success: true, taskId, skipped: true };
+    }
+    try {
+      const snap = await seriesRef.get();
+      if (snap.exists) {
+        const seriesData = snap.data();
+        const failedItems = updateSeriesItemAfterFailure(seriesData.items, itemId, err.message || "Transaction error");
+        await seriesRef.update(clean3({ items: failedItems, updatedAt: nowIso }));
+      }
+    } catch {
+    }
+    return { success: false, error: err.message };
+  }
+}
+async function handleCronRelease(deps, input) {
+  const secretCheck = verifyCronSecret(input.authHeader, deps.cronSecret);
+  if (!secretCheck.ok) {
+    return { status: secretCheck.status, body: { error: secretCheck.error } };
+  }
+  const now = deps.now ? deps.now() : /* @__PURE__ */ new Date();
+  const todayWarsaw = input.todayWarsaw || getWarsawDateString(now);
+  const snap = await deps.db.collection("homeworkSeries").where("status", "==", "active").get();
+  const seriesList = snap.docs.map((doc4) => {
+    const data = doc4.data();
+    return { ...data, id: data.id || doc4.id };
+  });
+  const plan = planCronReleases(seriesList, todayWarsaw);
+  const dueCount = seriesList.reduce(
+    (sum, series) => sum + (series.items || []).filter((it) => it.state === "ready" && isSlotReadyToRelease(it.slotDate, todayWarsaw)).length,
+    0
+  );
+  let releasedCount = 0;
+  let skippedCount = 0;
+  let errorCount = 0;
+  for (const planned of plan) {
+    const res = await releaseSingleSeriesItem(deps, {
+      seriesId: planned.seriesId,
+      itemId: planned.itemId,
+      todayWarsaw
+    });
+    if (res.success && !res.skipped) {
+      releasedCount++;
+    } else if (res.skipped) {
+      skippedCount++;
+    } else {
+      errorCount++;
+    }
+  }
+  return {
+    status: 200,
+    body: {
+      success: true,
+      todayWarsaw,
+      seriesProcessed: seriesList.length,
+      releasedCount,
+      deferredCount: Math.max(0, dueCount - plan.length),
+      skippedCount,
+      errorCount
+    }
+  };
+}
+async function handleReleaseNow(deps, input) {
+  const { callerUid, seriesId } = input;
+  const seriesSnap = await deps.db.collection("homeworkSeries").doc(seriesId).get();
+  if (!seriesSnap.exists) {
+    return { status: 404, body: { error: "Seria nie istnieje" } };
+  }
+  const seriesData = seriesSnap.data();
+  if (seriesData.ownerUid !== callerUid) {
+    return { status: 403, body: { error: "Forbidden: access denied" } };
+  }
+  const now = deps.now ? deps.now() : /* @__PURE__ */ new Date();
+  const todayWarsaw = getWarsawDateString(now);
+  if (input.itemId !== void 0 && input.itemId !== null && input.itemId !== "") {
+    if (typeof input.itemId !== "string") {
+      return { status: 400, body: { error: "Nieprawid\u0142owy itemId" } };
+    }
+    const releaseRes = await releaseSingleSeriesItem(deps, { seriesId, itemId: input.itemId, todayWarsaw });
+    return { status: releaseRes.success ? 200 : 400, body: releaseRes };
+  }
+  const toRelease = findItemsToRelease(seriesData.items || [], todayWarsaw);
+  const results = [];
+  for (const it of toRelease) {
+    results.push(await releaseSingleSeriesItem(deps, { seriesId, itemId: it.itemId, todayWarsaw }));
+  }
+  return { status: 200, body: { success: true, released: results } };
+}
+
+// utils/homeworkSeriesRoutes.ts
+var CRON_PATH = "/api/homework-series/cron-release";
+function registerHomeworkSeriesRoutes(app3, deps) {
+  const handlerDeps = (req) => ({
+    db: deps.getDb(),
+    now: deps.now,
+    cronSecret: deps.getCronSecret(),
+    origin: req && typeof req.headers.origin === "string" ? req.headers.origin : void 0
+  });
+  const send = (res, result) => res.status(result.status).json(result.body);
+  const teacherRoute = (label, run) => async (req, res) => {
+    try {
+      send(res, await run(req));
+    } catch (err) {
+      console.error(`[homework-series] ${label}:`, err);
+      res.status(500).json({ error: err?.message || "Internal server error" });
+    }
+  };
+  const cronReleaseHandler = async (req, res) => {
+    try {
+      const secretCheck = verifyCronSecret(req.headers.authorization, deps.getCronSecret());
+      if (!secretCheck.ok) {
+        return res.status(secretCheck.status).json({ error: secretCheck.error });
+      }
+      send(res, await handleCronRelease(handlerDeps(), { authHeader: req.headers.authorization }));
+    } catch (err) {
+      console.error("[homework-series] B\u0142\u0105d w cronReleaseHandler:", err);
+      res.status(500).json({ error: err?.message || "Cron execution failed" });
+    }
+  };
+  app3.get(CRON_PATH, cronReleaseHandler);
+  app3.post(CRON_PATH, cronReleaseHandler);
+  app3.post(
+    "/api/homework-series",
+    deps.requireTeacher,
+    teacherRoute(
+      "B\u0142\u0105d tworzenia serii",
+      (req) => handleCreateSeries(handlerDeps(req), { callerUid: req.adminUid, body: req.body })
+    )
+  );
+  app3.get(
+    "/api/homework-series",
+    deps.requireTeacher,
+    teacherRoute(
+      "B\u0142\u0105d pobierania listy serii",
+      (req) => handleListSeries(handlerDeps(req), {
+        callerUid: req.adminUid,
+        studentUid: typeof req.query.studentUid === "string" ? req.query.studentUid : void 0
+      })
+    )
+  );
+  app3.get(
+    "/api/homework-series/:id",
+    deps.requireTeacher,
+    teacherRoute(
+      "B\u0142\u0105d pobierania serii",
+      (req) => handleGetSeries(handlerDeps(req), { callerUid: req.adminUid, seriesId: String(req.params.id) })
+    )
+  );
+  app3.delete(
+    "/api/homework-series/:id",
+    deps.requireTeacher,
+    teacherRoute(
+      "B\u0142\u0105d usuwania serii",
+      (req) => handleDeleteSeries(handlerDeps(req), { callerUid: req.adminUid, seriesId: String(req.params.id) })
+    )
+  );
+  app3.post(
+    "/api/homework-series/:id/release-now",
+    deps.requireTeacher,
+    teacherRoute(
+      "B\u0142\u0105d r\u0119cznego wydania serii",
+      (req) => handleReleaseNow(handlerDeps(req), {
+        callerUid: req.adminUid,
+        seriesId: String(req.params.id),
+        itemId: req.body?.itemId
+      })
+    )
+  );
+}
 
 // server.ts
-import crypto from "crypto";
+import crypto3 from "crypto";
 function mapToActualOpenAIModel(modelName) {
-  const clean3 = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
-  if (clean3 === "gpt-5.6-luna" || clean3 === "gpt-5.6" || clean3.includes("luna")) {
+  const clean4 = String(modelName || "").replace(/^openai\//, "").trim().toLowerCase();
+  if (clean4 === "gpt-5.6-luna" || clean4 === "gpt-5.6" || clean4.includes("luna")) {
     return "gpt-4o";
   }
-  if (clean3.includes("gpt-4o-mini")) return "gpt-4o-mini";
-  if (clean3.includes("gpt-4o")) return "gpt-4o";
-  if (clean3.includes("o3-mini")) return "o3-mini";
-  if (clean3.includes("gpt-4-turbo")) return "gpt-4-turbo";
-  if (clean3.includes("gpt-4")) return "gpt-4";
-  if (clean3.includes("gpt-3.5-turbo") || clean3.includes("gpt-3.5")) return "gpt-3.5-turbo";
+  if (clean4.includes("gpt-4o-mini")) return "gpt-4o-mini";
+  if (clean4.includes("gpt-4o")) return "gpt-4o";
+  if (clean4.includes("o3-mini")) return "o3-mini";
+  if (clean4.includes("gpt-4-turbo")) return "gpt-4-turbo";
+  if (clean4.includes("gpt-4")) return "gpt-4";
+  if (clean4.includes("gpt-3.5-turbo") || clean4.includes("gpt-3.5")) return "gpt-3.5-turbo";
   return "gpt-4o-mini";
 }
 function mapToActualAnthropicModel(modelName) {
-  const clean3 = String(modelName || "").replace(/^anthropic\//, "").trim().toLowerCase();
-  if (clean3.includes("3-7") || clean3.includes("3.7")) return "claude-3-7-sonnet-20250219";
-  if (clean3.includes("3-5-haiku") || clean3.includes("3.5-haiku") || clean3.includes("haiku")) return "claude-3-5-haiku-20241022";
-  if (clean3.includes("3-5-sonnet") || clean3.includes("3.5-sonnet") || clean3.includes("sonnet")) return "claude-3-5-sonnet-20241022";
+  const clean4 = String(modelName || "").replace(/^anthropic\//, "").trim().toLowerCase();
+  if (clean4.includes("3-7") || clean4.includes("3.7")) return "claude-3-7-sonnet-20250219";
+  if (clean4.includes("3-5-haiku") || clean4.includes("3.5-haiku") || clean4.includes("haiku")) return "claude-3-5-haiku-20241022";
+  if (clean4.includes("3-5-sonnet") || clean4.includes("3.5-sonnet") || clean4.includes("sonnet")) return "claude-3-5-sonnet-20241022";
   return "claude-3-7-sonnet-20250219";
 }
 function mapToActualDeepSeekModel(modelName) {
-  const clean3 = String(modelName || "").replace(/^deepseek\//, "").trim().toLowerCase();
-  if (clean3.includes("reasoner") || clean3.includes("r1")) return "deepseek-reasoner";
+  const clean4 = String(modelName || "").replace(/^deepseek\//, "").trim().toLowerCase();
+  if (clean4.includes("reasoner") || clean4.includes("r1")) return "deepseek-reasoner";
   return "deepseek-chat";
 }
 function extractJsonFromString(str) {
@@ -4908,7 +6230,7 @@ function getAdminProjectId() {
     if (parsed?.projectId) return parsed.projectId;
   } catch {
   }
-  return import_firebase_applet_config.default?.projectId || "";
+  return import_firebase_applet_config2.default?.projectId || "";
 }
 function getAdminApp() {
   if (getApps2().length > 0) return getApp();
@@ -4916,7 +6238,7 @@ function getAdminApp() {
   if (serviceAccountStr) {
     try {
       const parsed = JSON.parse(serviceAccountStr);
-      return initializeApp2({ credential: cert(parsed) });
+      return initializeApp3({ credential: cert(parsed) });
     } catch {
       console.warn("[Firebase Admin] Failed to parse service account");
     }
@@ -4926,14 +6248,14 @@ function getAdminApp() {
     console.warn(
       `[Firebase Admin] Brak FIREBASE_SERVICE_ACCOUNT \u2014 weryfikuj\u0119 tokeny samym ID projektu (${projectId}). Wystarczy do ochrony tras /api; operacje wymagaj\u0105ce uprawnie\u0144 administratora b\u0119d\u0105 niedost\u0119pne.`
     );
-    return initializeApp2({ projectId });
+    return initializeApp3({ projectId });
   }
   console.error("[Firebase Admin] Brak konta us\u0142ugi i ID projektu \u2014 trasy /api b\u0119d\u0105 odrzuca\u0107 wszystkie \u017C\u0105dania.");
-  return initializeApp2();
+  return initializeApp3();
 }
 function createApp() {
-  const app2 = express();
-  app2.use((req, res, next) => {
+  const app3 = express();
+  app3.use((req, res, next) => {
     const forwardPath = req.headers["x-matched-path"] || req.headers["x-forwarded-uri"] || req.headers["x-original-url"];
     if (forwardPath && forwardPath.startsWith("/api") && (req.url === "/api" || req.url === "/api/" || req.url.startsWith("/api?"))) {
       req.url = forwardPath;
@@ -4952,7 +6274,7 @@ function createApp() {
   ]);
   const globalJsonParser = express.json({ limit: "50mb" });
   const isAiProxyPath = (p) => AI_PROXY_PATHS.has(p.replace(/\/+$/, "").toLowerCase());
-  app2.use((req, res, next) => isAiProxyPath(req.path) ? next() : globalJsonParser(req, res, next));
+  app3.use((req, res, next) => isAiProxyPath(req.path) ? next() : globalJsonParser(req, res, next));
   const jsonBodyErrorHandler = (err, req, res, next) => {
     if (err instanceof SyntaxError && "body" in err) {
       return res.status(400).json({ error: "Invalid JSON payload" });
@@ -4962,9 +6284,9 @@ function createApp() {
     }
     next(err);
   };
-  app2.use(jsonBodyErrorHandler);
+  app3.use(jsonBodyErrorHandler);
   const adminApp = getAdminApp();
-  const adminAuth = getAuth(adminApp);
+  const adminAuth = getAuth2(adminApp);
   const FIRESTORE_DATABASE_ID = "ai-studio-520a4841-33d0-41ef-829a-838ebc44072d";
   if (adminApp) {
     (async () => {
@@ -5073,7 +6395,7 @@ function createApp() {
       res.status(401).json({ error: "Invalid or expired token" });
     }
   }
-  app2.get("/api/admin-users/users", requireFirebaseAdmin, async (req, res) => {
+  app3.get("/api/admin-users/users", requireFirebaseAdmin, async (req, res) => {
     try {
       const listUsersResult = await adminAuth.listUsers(1e3);
       res.json(listUsersResult.users);
@@ -5081,7 +6403,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/admin-users/users", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/admin-users/users", requireFirebaseAdmin, async (req, res) => {
     try {
       const { email, password, role, username, displayName, firstName, lastName, ...extraData } = req.body;
       const cleanEmail = String(email || "").trim().toLowerCase();
@@ -5138,7 +6460,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.delete("/api/admin-users/users/:uid", requireFirebaseAdmin, async (req, res) => {
+  app3.delete("/api/admin-users/users/:uid", requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid;
       await adminAuth.deleteUser(uid);
@@ -5147,7 +6469,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/admin-users/users/:uid/password", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/admin-users/users/:uid/password", requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid;
       const { password } = req.body;
@@ -5157,7 +6479,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.get("/api/groups", requireFirebaseAuth, async (req, res) => {
+  app3.get("/api/groups", requireFirebaseAuth, async (req, res) => {
     try {
       const callerUid = req.userUid;
       const adminApp2 = getAdminApp();
@@ -5174,13 +6496,13 @@ function createApp() {
       } else {
         querySnap = await adminDb.collection("groups").where("memberProfileIds", "array-contains", callerUid).where("status", "==", "active").get();
       }
-      const groups = querySnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+      const groups = querySnap.docs.map((doc4) => ({ id: doc4.id, ...doc4.data() }));
       res.json({ ok: true, groups });
     } catch (error) {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.get("/api/groups/:id", requireFirebaseAuth, async (req, res) => {
+  app3.get("/api/groups/:id", requireFirebaseAuth, async (req, res) => {
     try {
       const groupId = req.params.id;
       const callerUid = req.userUid;
@@ -5226,7 +6548,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/groups", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/groups", requireFirebaseAdmin, async (req, res) => {
     try {
       const teacherUid = req.adminUid;
       const { name, level, company, memberProfileIds, activeScratchpadId } = req.body;
@@ -5236,7 +6558,7 @@ function createApp() {
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-      const groupId = `grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+      const groupId = `grp_${Date.now().toString(36)}_${crypto3.randomBytes(4).toString("hex")}`;
       let groupPayload;
       try {
         groupPayload = buildNewGroupPayload(
@@ -5257,7 +6579,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.put("/api/groups/:id", requireFirebaseAdmin, async (req, res) => {
+  app3.put("/api/groups/:id", requireFirebaseAdmin, async (req, res) => {
     try {
       const groupId = req.params.id;
       const teacherUid = req.adminUid;
@@ -5302,7 +6624,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/groups/:id/assign-homework", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/groups/:id/assign-homework", requireFirebaseAdmin, async (req, res) => {
     try {
       const groupId = req.params.id;
       const callerUid = req.adminUid;
@@ -5358,15 +6680,15 @@ function createApp() {
         });
       }
       const nowIso = (/* @__PURE__ */ new Date()).toISOString();
-      const homeworkSetId = `hwset_grp_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+      const homeworkSetId = `hwset_grp_${Date.now().toString(36)}_${crypto3.randomBytes(4).toString("hex")}`;
       const expiresAt = accessExpiresAt || new Date(Date.now() + 14 * 24 * 60 * 60 * 1e3).toISOString();
       const baseUrl = clientOrigin || "https://app.maciej.pro";
       const batch = adminDb.batch();
       const assignments = [];
       for (const member of activeMembers) {
-        const rawToken = "hw_" + crypto.randomBytes(16).toString("hex");
-        const tokenHash = crypto.createHash("sha256").update(rawToken).digest("hex");
-        const taskId = `task_${Date.now().toString(36)}_${crypto.randomBytes(4).toString("hex")}`;
+        const rawToken = "hw_" + crypto3.randomBytes(16).toString("hex");
+        const tokenHash = crypto3.createHash("sha256").update(rawToken).digest("hex");
+        const taskId = `task_${Date.now().toString(36)}_${crypto3.randomBytes(4).toString("hex")}`;
         const taskDocRef = adminDb.collection("specialTasks").doc(taskId);
         const directTokenRef = adminDb.collection("directHomeworkTokens").doc(tokenHash);
         const taskPayload = stripUndefinedDeep({
@@ -5428,7 +6750,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/lessons/reject-pending", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/lessons/reject-pending", requireFirebaseAdmin, async (req, res) => {
     try {
       const { studentId, lessonId, vocabularySetId, notionPageId, topic, date, reason } = req.body;
       if (!studentId || !lessonId) {
@@ -5461,7 +6783,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/admin-users/users/:uid/role", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/admin-users/users/:uid/role", requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid;
       const { role } = req.body;
@@ -5471,7 +6793,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/admin-users/users/:uid/email", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/admin-users/users/:uid/email", requireFirebaseAdmin, async (req, res) => {
     try {
       const uid = req.params.uid;
       const { email } = req.body;
@@ -5508,7 +6830,7 @@ function createApp() {
   function normalizeUsername(username) {
     return (username || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ł/g, "l").replace(/[^a-z0-9]/g, "").slice(0, 30) || "student";
   }
-  app2.post("/api/admin-users/bulk-import", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/admin-users/bulk-import", requireFirebaseAdmin, async (req, res) => {
     try {
       const { students } = req.body;
       if (!Array.isArray(students) || students.length === 0) {
@@ -5605,7 +6927,7 @@ function createApp() {
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/web-research/scrape", requireFirebaseAuth, async (req, res) => {
+  app3.post("/api/web-research/scrape", requireFirebaseAuth, async (req, res) => {
     try {
       const { url } = req.body || {};
       if (!url || typeof url !== "string" || !url.startsWith("http://") && !url.startsWith("https://")) {
@@ -5647,7 +6969,7 @@ function createApp() {
       res.status(500).json({ error: `Nie uda\u0142o si\u0119 pobra\u0107 strony: ${formatErrorString(error)}` });
     }
   });
-  app2.get("/api/og-preview", requireFirebaseAuth, async (req, res) => {
+  app3.get("/api/og-preview", requireFirebaseAuth, async (req, res) => {
     try {
       const rawUrl = typeof req.query.url === "string" ? req.query.url : "";
       if (!rawUrl || !rawUrl.startsWith("http://") && !rawUrl.startsWith("https://")) {
@@ -5723,7 +7045,7 @@ function createApp() {
   const generateUnsubscribeToken = (uid) => {
     return createHmac("sha256", UNSUBSCRIBE_SECRET).update(uid).digest("hex").slice(0, 16);
   };
-  app2.post("/api/unsubscribe", async (req, res) => {
+  app3.post("/api/unsubscribe", async (req, res) => {
     try {
       const { uid, token, action } = req.body;
       if (!uid || typeof uid !== "string") {
@@ -5769,7 +7091,7 @@ function createApp() {
       return res.status(500).json({ error: "B\u0142\u0105d zapisu preferencji powiadomie\u0144: " + formatErrorString(err) });
     }
   });
-  app2.get("/api/homework/direct/:token", async (req, res) => {
+  app3.get("/api/homework/direct/:token", async (req, res) => {
     try {
       const token = String(req.params.token || req.query.token || "").trim();
       if (!token) {
@@ -5869,7 +7191,7 @@ function createApp() {
       return res.status(500).json({ error: "server_error", message: "Wyst\u0105pi\u0142 b\u0142\u0105d podczas \u0142adowania pracy domowej: " + formatErrorString(err) });
     }
   });
-  app2.post("/api/homework/direct-submit", async (req, res) => {
+  app3.post("/api/homework/direct-submit", async (req, res) => {
     try {
       const { token, answers, warmupAttempts } = req.body;
       if (!token || typeof token !== "string") {
@@ -6000,7 +7322,7 @@ function createApp() {
       return res.status(500).json({ error: "server_error", message: "Wyst\u0105pi\u0142 b\u0142\u0105d podczas wysy\u0142ania pracy domowej: " + formatErrorString(err) });
     }
   });
-  app2.get("/api/mailing/status", requireFirebaseAdmin, async (_req, res) => {
+  app3.get("/api/mailing/status", requireFirebaseAdmin, async (_req, res) => {
     try {
       let dbKey = null;
       let enableBccSender = true;
@@ -6045,7 +7367,7 @@ function createApp() {
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/homework-v2/generate", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/homework-v2/generate", requireFirebaseAdmin, async (req, res) => {
     try {
       if (!isHomeworkEngineV2Enabled()) {
         return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
@@ -6106,7 +7428,7 @@ function createApp() {
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 u\u0142o\u017Cy\u0107 zestawu." });
     }
   });
-  app2.post("/api/homework-v2/assign", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/homework-v2/assign", requireFirebaseAdmin, async (req, res) => {
     try {
       if (!isHomeworkEngineV2Enabled()) {
         return res.status(412).json({ error: ENGINE_DISABLED_MESSAGE });
@@ -6192,7 +7514,7 @@ function createApp() {
     }
     return { ...localData || {}, ...firestoreData || {} };
   };
-  app2.get("/api/ai/config", requireFirebaseAuth, async (_req, res) => {
+  app3.get("/api/ai/config", requireFirebaseAuth, async (_req, res) => {
     try {
       const settings = await readAiSettings();
       const keys = {};
@@ -6212,7 +7534,7 @@ function createApp() {
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/ai/config", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/ai/config", requireFirebaseAdmin, async (req, res) => {
     try {
       const { models, council, chatConfig } = req.body || {};
       if ((!models || typeof models !== "object") && !council && !chatConfig) {
@@ -6233,11 +7555,11 @@ function createApp() {
         "deepseek/deepseek-chat",
         "deepseek/deepseek-reasoner"
       ];
-      const clean3 = {};
+      const clean4 = {};
       for (const [task, model] of Object.entries(models || {})) {
         if (!allowedTasks.includes(task)) continue;
         if (typeof model !== "string" || !allowedModels.includes(model)) continue;
-        clean3[task] = model;
+        clean4[task] = model;
       }
       let cleanCouncil = void 0;
       if (council && typeof council === "object") {
@@ -6266,7 +7588,7 @@ function createApp() {
         }
         const updated = {
           ...currentData,
-          ...models ? { models: clean3 } : {},
+          ...models ? { models: clean4 } : {},
           ...cleanCouncil ? { council: cleanCouncil } : {},
           ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
           updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -6280,7 +7602,7 @@ function createApp() {
           const adminDb = getFirestore2(adminApp, FIRESTORE_DATABASE_ID);
           await adminDb.collection("system").doc("ai").set(
             {
-              ...models ? { models: clean3 } : {},
+              ...models ? { models: clean4 } : {},
               ...cleanCouncil ? { council: cleanCouncil } : {},
               ...cleanChatConfig !== void 0 ? { chatConfig: cleanChatConfig } : {},
               updatedAt: (/* @__PURE__ */ new Date()).toISOString()
@@ -6291,12 +7613,12 @@ function createApp() {
           console.warn("[AI] Nie uda\u0142o si\u0119 zapisa\u0107 konfiguracji do Firestore (brak po\u015Bwiadcze\u0144 Admin):", dbErr);
         }
       }
-      return res.json({ ok: true, models: clean3, council: cleanCouncil, chatConfig: cleanChatConfig });
+      return res.json({ ok: true, models: clean4, council: cleanCouncil, chatConfig: cleanChatConfig });
     } catch (err) {
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/ai/save-key", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/ai/save-key", requireFirebaseAdmin, async (req, res) => {
     try {
       const { provider, apiKey } = req.body || {};
       const envName = AI_KEY_ENV[String(provider)];
@@ -6365,7 +7687,7 @@ ${envName}=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/mailing/save-key", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/mailing/save-key", requireFirebaseAdmin, async (req, res) => {
     try {
       const { apiKey } = req.body;
       if (!apiKey || typeof apiKey !== "string" || !apiKey.trim().startsWith("re_")) {
@@ -6410,7 +7732,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/homework/notify-graded", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/homework/notify-graded", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentUid = typeof req.body?.studentUid === "string" ? req.body.studentUid.trim() : "";
       const taskId = typeof req.body?.taskId === "string" ? req.body.taskId.trim() : "";
@@ -6538,7 +7860,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/mailing/test-send", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/mailing/test-send", requireFirebaseAdmin, async (req, res) => {
     try {
       const { to, from: clientFrom, subject, html, text: text2, apiKey: clientApiKey, replyTo, bcc: clientBcc } = req.body;
       if (!to || typeof to !== "string" || !to.includes("@")) {
@@ -6656,7 +7978,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/mailing/inbound-webhook", async (req, res) => {
+  app3.post("/api/mailing/inbound-webhook", async (req, res) => {
     try {
       const payload = req.body?.data || req.body || {};
       const rawFrom = String(payload.from || payload.sender || "");
@@ -6701,7 +8023,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.get("/api/mailing/inbound-messages", requireFirebaseAdmin, async (req, res) => {
+  app3.get("/api/mailing/inbound-messages", requireFirebaseAdmin, async (req, res) => {
     try {
       const adminApp2 = getAdminApp();
       const adminDb = getFirestore2(adminApp2, FIRESTORE_DATABASE_ID);
@@ -6713,7 +8035,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.patch("/api/mailing/inbound-messages/:id", requireFirebaseAdmin, async (req, res) => {
+  app3.patch("/api/mailing/inbound-messages/:id", requireFirebaseAdmin, async (req, res) => {
     try {
       const id = String(req.params.id);
       const { read } = req.body;
@@ -6726,7 +8048,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.delete("/api/mailing/inbound-messages/:id", requireFirebaseAdmin, async (req, res) => {
+  app3.delete("/api/mailing/inbound-messages/:id", requireFirebaseAdmin, async (req, res) => {
     try {
       const id = String(req.params.id);
       const adminApp2 = getAdminApp();
@@ -6738,7 +8060,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/mailing/simulate-inbound", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/mailing/simulate-inbound", requireFirebaseAdmin, async (req, res) => {
     try {
       const { fromEmail, fromName, subject, text: text2 } = req.body;
       const adminApp2 = getAdminApp();
@@ -6780,8 +8102,8 @@ RESEND_API_KEY=${cleanKey}
     const trimmed = input.trim();
     const match = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}|[a-f0-9]{32})/i);
     if (match) {
-      const clean3 = match[1].replace(/-/g, "").toLowerCase();
-      return `${clean3.slice(0, 8)}-${clean3.slice(8, 12)}-${clean3.slice(12, 16)}-${clean3.slice(16, 20)}-${clean3.slice(20)}`;
+      const clean4 = match[1].replace(/-/g, "").toLowerCase();
+      return `${clean4.slice(0, 8)}-${clean4.slice(8, 12)}-${clean4.slice(12, 16)}-${clean4.slice(16, 20)}-${clean4.slice(20)}`;
     }
     return trimmed;
   }
@@ -6821,7 +8143,7 @@ RESEND_API_KEY=${cleanKey}
       lastFetchStatus
     };
   }
-  app2.get("/api/notion/config", requireFirebaseAdmin, async (_req, res) => {
+  app3.get("/api/notion/config", requireFirebaseAdmin, async (_req, res) => {
     try {
       const cfg = await getNotionConfig();
       const maskedToken = cfg.token ? `${cfg.token.slice(0, 8)}\u2022\u2022\u2022\u2022${cfg.token.slice(-4)}` : null;
@@ -6839,7 +8161,7 @@ RESEND_API_KEY=${cleanKey}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/notion/save-config", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/notion/save-config", requireFirebaseAdmin, async (req, res) => {
     try {
       const { token, meetingNotesDbId, studentsDbId, autoFetchEnabled, autoFetchIntervalMinutes } = req.body;
       const updates = { updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
@@ -6925,7 +8247,7 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/notion/clear-config", requireFirebaseAdmin, async (_req, res) => {
+  app3.post("/api/notion/clear-config", requireFirebaseAdmin, async (_req, res) => {
     try {
       process.env.NOTION_API_KEY = "";
       process.env.NOTION_TOKEN = "";
@@ -6969,7 +8291,7 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/notion/search-databases", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/notion/search-databases", requireFirebaseAdmin, async (req, res) => {
     try {
       const cfg = await getNotionConfig();
       let rawToken = typeof req.body?.token === "string" ? req.body.token.trim() : "";
@@ -7023,18 +8345,18 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
         }
         const searchData = await searchRes.json();
         const rawResults = searchData.results || [];
-        for (const db of rawResults) {
-          const title = (db.title || []).map((t) => t.plain_text || "").join("").trim() || "Baza bez tytu\u0142u";
-          const description = (db.description || []).map((d) => d.plain_text || "").join("").trim();
-          const icon = db.icon?.emoji || db.icon?.external?.url || null;
-          const properties = Object.keys(db.properties || {});
+        for (const db2 of rawResults) {
+          const title = (db2.title || []).map((t) => t.plain_text || "").join("").trim() || "Baza bez tytu\u0142u";
+          const description = (db2.description || []).map((d) => d.plain_text || "").join("").trim();
+          const icon = db2.icon?.emoji || db2.icon?.external?.url || null;
+          const properties = Object.keys(db2.properties || {});
           allDatabases.push({
-            id: db.id,
+            id: db2.id,
             title,
             description,
             icon,
-            url: db.url || `https://notion.so/${db.id.replace(/-/g, "")}`,
-            lastEditedTime: db.last_edited_time || db.created_time || null,
+            url: db2.url || `https://notion.so/${db2.id.replace(/-/g, "")}`,
+            lastEditedTime: db2.last_edited_time || db2.created_time || null,
             properties
           });
         }
@@ -7050,7 +8372,7 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/notion/test-connection", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/notion/test-connection", requireFirebaseAdmin, async (req, res) => {
     try {
       const cfg = await getNotionConfig();
       let rawToken = typeof req.body?.token === "string" ? req.body.token.trim() : "";
@@ -7142,31 +8464,31 @@ NOTION_STUDENTS_DB=${updates.studentsDbId}
       const apiKey = getGeminiApiKey();
       const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const schema = {
-        type: Type6.OBJECT,
+        type: Type8.OBJECT,
         properties: {
-          topic: { type: Type6.STRING, description: "Zwi\u0119z\u0142y, merytoryczny temat lekcji po angielsku (max 6-8 s\u0142\xF3w)" },
-          date: { type: Type6.STRING, description: "Rzeczywista data spotkania w formacie YYYY-MM-DD, je\u015Bli pada w transkrypcji" },
-          summary: { type: Type6.STRING, description: "2-3 zdania podsumowania po polsku o czym by\u0142a lekcja" },
+          topic: { type: Type8.STRING, description: "Zwi\u0119z\u0142y, merytoryczny temat lekcji po angielsku (max 6-8 s\u0142\xF3w)" },
+          date: { type: Type8.STRING, description: "Rzeczywista data spotkania w formacie YYYY-MM-DD, je\u015Bli pada w transkrypcji" },
+          summary: { type: Type8.STRING, description: "2-3 zdania podsumowania po polsku o czym by\u0142a lekcja" },
           keyLanguage: {
-            type: Type6.ARRAY,
+            type: Type8.ARRAY,
             items: {
-              type: Type6.OBJECT,
+              type: Type8.OBJECT,
               properties: {
-                phrase: { type: Type6.STRING },
-                translation: { type: Type6.STRING },
-                context: { type: Type6.STRING }
+                phrase: { type: Type8.STRING },
+                translation: { type: Type8.STRING },
+                context: { type: Type8.STRING }
               },
               required: ["phrase", "translation"]
             }
           },
           corrections: {
-            type: Type6.ARRAY,
+            type: Type8.ARRAY,
             items: {
-              type: Type6.OBJECT,
+              type: Type8.OBJECT,
               properties: {
-                original: { type: Type6.STRING },
-                correction: { type: Type6.STRING },
-                rule: { type: Type6.STRING }
+                original: { type: Type8.STRING },
+                correction: { type: Type8.STRING },
+                rule: { type: Type8.STRING }
               },
               required: ["original", "correction"]
             }
@@ -7437,7 +8759,7 @@ ${item.rule}` : ""}`).join("\n");
       lastFetchTime: nowIso
     };
   }
-  app2.post("/api/notion/fetch-transcripts", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/notion/fetch-transcripts", requireFirebaseAdmin, async (req, res) => {
     try {
       const mode = req.body?.mode === "import" ? "import" : "preview";
       const studentId = typeof req.body?.studentId === "string" && req.body.studentId ? req.body.studentId : void 0;
@@ -7456,7 +8778,7 @@ ${item.rule}` : ""}`).join("\n");
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.get("/api/notion/recent-meetings", requireFirebaseAdmin, async (_req, res) => {
+  app3.get("/api/notion/recent-meetings", requireFirebaseAdmin, async (_req, res) => {
     try {
       const cfg = await getNotionConfig();
       const token = cfg.token;
@@ -7571,7 +8893,7 @@ ${item.rule}` : ""}`).join("\n");
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.get("/api/notion/meeting-content/:pageId", requireFirebaseAdmin, async (req, res) => {
+  app3.get("/api/notion/meeting-content/:pageId", requireFirebaseAdmin, async (req, res) => {
     try {
       const pageId = String(req.params.pageId || "").trim();
       if (!pageId) {
@@ -7594,7 +8916,7 @@ ${item.rule}` : ""}`).join("\n");
       return res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/gemini/generate-test", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/gemini/generate-test", requireFirebaseAdmin, async (req, res) => {
     try {
       const { level, testTitle, scope, studentProfile, lessonContext, allLessonsContext, tasksCount, attemptsLimit, selectedTypes, typeCounts, fileData, driveFile } = req.body;
       const apiKey = getGeminiApiKey();
@@ -7710,26 +9032,26 @@ Zwr\xF3\u0107 wynik jako obiekt JSON zawieraj\u0105cy tablic\u0119 obiekt\xF3w p
         contents = [{ text: prompt }];
       }
       const schema = {
-        type: Type6.ARRAY,
+        type: Type8.ARRAY,
         description: "Array of test questions",
         items: {
-          type: Type6.OBJECT,
+          type: Type8.OBJECT,
           properties: {
-            type: { type: Type6.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
-            instruction: { type: Type6.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
-            prompt: { type: Type6.STRING, description: "The question or the sentence to translate/fill" },
+            type: { type: Type8.STRING, enum: ["multiple_choice", "fill_in_blank", "fill_in_blank_bank", "translation", "matching", "writing", "find_mistake"], description: "Type of the question" },
+            instruction: { type: Type8.STRING, description: 'Short instruction in Polish, e.g. "Uzupe\u0142nij luki:"' },
+            prompt: { type: Type8.STRING, description: "The question or the sentence to translate/fill" },
             options: {
-              type: Type6.ARRAY,
-              items: { type: Type6.STRING },
+              type: Type8.ARRAY,
+              items: { type: Type8.STRING },
               description: "Options for multiple_choice, find_mistake or matching pairs."
             },
             wordBank: {
-              type: Type6.ARRAY,
-              items: { type: Type6.STRING },
+              type: Type8.ARRAY,
+              items: { type: Type8.STRING },
               description: "List of words in the word bank for fill_in_blank_bank"
             },
-            correctAnswer: { type: Type6.STRING, description: "The correct answer (exact string)." },
-            hint: { type: Type6.STRING, description: "Optional hint in Polish." }
+            correctAnswer: { type: Type8.STRING, description: "The correct answer (exact string)." },
+            hint: { type: Type8.STRING, description: "Optional hint in Polish." }
           },
           required: ["type", "instruction", "prompt", "correctAnswer"]
         }
@@ -7825,7 +9147,7 @@ tak, \u017Ceby \u0107wiczenie dalej sprawdza\u0142o to samo. Zwr\xF3\u0107 wynik
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/gemini/import-lessons-batch", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/gemini/import-lessons-batch", requireFirebaseAdmin, async (req, res) => {
     try {
       const { textContent, pdfBase64, driveFile, students, targetStudentId, targetStudentName } = req.body;
       if (!textContent && !pdfBase64 && !driveFile) {
@@ -7950,22 +9272,22 @@ Zwr\xF3\u0107 dok\u0142adnie taki kszta\u0142t, bez komentarzy i bez bloku markd
 {"lessons":[{"date":"2024-03-12","studentId":"abc123","studentIds":["abc123"],"lessonTopic":"Present Perfect","revisionNotes":"...","vocabularyText":"deadline - termin\\nto meet - spotka\u0107","studentSpeaking":"...","thingsToImprove":"...","suggestedFollowUp":"..."}]}
 Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 nigdy nie wymy\u015Blaj lekcji, kt\xF3rych nie ma w tek\u015Bcie.`;
       const schema = {
-        type: Type6.OBJECT,
+        type: Type8.OBJECT,
         properties: {
           lessons: {
-            type: Type6.ARRAY,
+            type: Type8.ARRAY,
             items: {
-              type: Type6.OBJECT,
+              type: Type8.OBJECT,
               properties: {
-                date: { type: Type6.STRING },
-                studentId: { type: Type6.STRING },
-                studentIds: { type: Type6.ARRAY, items: { type: Type6.STRING } },
-                lessonTopic: { type: Type6.STRING },
-                revisionNotes: { type: Type6.STRING },
-                vocabularyText: { type: Type6.STRING },
-                studentSpeaking: { type: Type6.STRING },
-                thingsToImprove: { type: Type6.STRING },
-                suggestedFollowUp: { type: Type6.STRING }
+                date: { type: Type8.STRING },
+                studentId: { type: Type8.STRING },
+                studentIds: { type: Type8.ARRAY, items: { type: Type8.STRING } },
+                lessonTopic: { type: Type8.STRING },
+                revisionNotes: { type: Type8.STRING },
+                vocabularyText: { type: Type8.STRING },
+                studentSpeaking: { type: Type8.STRING },
+                thingsToImprove: { type: Type8.STRING },
+                suggestedFollowUp: { type: Type8.STRING }
               },
               required: ["date", "studentId", "lessonTopic", "revisionNotes", "vocabularyText"]
             }
@@ -8003,7 +9325,7 @@ Gdy w materiale nie ma \u017Cadnej lekcji, zwr\xF3\u0107 {"lessons":[]} \u2014 n
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/gemini/analyze-student-import", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/gemini/analyze-student-import", requireFirebaseAdmin, async (req, res) => {
     try {
       const { textContent, pdfBase64 } = req.body;
       if (!textContent && !pdfBase64) {
@@ -8074,27 +9396,27 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
 - aiComment: kr\xF3tkie podsumowanie w 1-2 zdaniach PO POLSKU \u2014 co znalaz\u0142e\u015B i na co lektor powinien zwr\xF3ci\u0107 uwag\u0119.
 - Zwr\xF3\u0107 wy\u0142\u0105cznie poprawny obiekt JSON zgodny ze schematem, bez komentarzy i bloku markdown.`;
       const schema = {
-        type: Type6.OBJECT,
+        type: Type8.OBJECT,
         properties: {
           extractedData: {
-            type: Type6.OBJECT,
+            type: Type8.OBJECT,
             properties: {
-              fullName: { type: Type6.STRING },
-              email: { type: Type6.STRING },
-              level: { type: Type6.STRING },
-              targetGoals: { type: Type6.STRING },
-              industry: { type: Type6.STRING },
-              generalNotes: { type: Type6.STRING },
+              fullName: { type: Type8.STRING },
+              email: { type: Type8.STRING },
+              level: { type: Type8.STRING },
+              targetGoals: { type: Type8.STRING },
+              industry: { type: Type8.STRING },
+              generalNotes: { type: Type8.STRING },
               historicalLessons: {
-                type: Type6.ARRAY,
+                type: Type8.ARRAY,
                 items: {
-                  type: Type6.OBJECT,
+                  type: Type8.OBJECT,
                   properties: {
-                    date: { type: Type6.STRING },
-                    dateAmbiguous: { type: Type6.BOOLEAN },
-                    summary: { type: Type6.STRING },
-                    vocabulary: { type: Type6.ARRAY, items: { type: Type6.STRING } },
-                    corrections: { type: Type6.ARRAY, items: { type: Type6.STRING } }
+                    date: { type: Type8.STRING },
+                    dateAmbiguous: { type: Type8.BOOLEAN },
+                    summary: { type: Type8.STRING },
+                    vocabulary: { type: Type8.ARRAY, items: { type: Type8.STRING } },
+                    corrections: { type: Type8.ARRAY, items: { type: Type8.STRING } }
                   },
                   required: ["date", "summary"]
                 }
@@ -8102,7 +9424,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
             },
             required: ["historicalLessons"]
           },
-          aiComment: { type: Type6.STRING }
+          aiComment: { type: Type8.STRING }
         },
         required: ["extractedData", "aiComment"]
       };
@@ -8131,7 +9453,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/scenario/generate", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/scenario/generate", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const durationMin = Number(req.body?.durationMin);
@@ -8162,7 +9484,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 scenariusza." });
     }
   });
-  app2.post("/api/scenario/generate-for-chat", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/scenario/generate-for-chat", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentRef = String(req.body?.studentRef || "").trim();
       if (!studentRef) return res.status(400).json({ error: "Nie podano kursanta." });
@@ -8197,7 +9519,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 scenariusza." });
     }
   });
-  app2.post("/api/scenario/save", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/scenario/save", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const targetLessonId = String(req.body?.targetLessonId || "").trim();
@@ -8222,7 +9544,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 zapisa\u0107 scenariusza." });
     }
   });
-  app2.post("/api/scenario/canvas/generate", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/scenario/canvas/generate", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const durationMin = Number(req.body?.durationMin);
@@ -8253,7 +9575,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 wygenerowa\u0107 canvasu." });
     }
   });
-  app2.post("/api/scenario/canvas/save", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/scenario/canvas/save", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const targetLessonId = String(req.body?.targetLessonId || "").trim();
@@ -8278,7 +9600,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 zapisa\u0107 canvasu." });
     }
   });
-  app2.post("/api/scenario/canvas/refresh", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/scenario/canvas/refresh", requireFirebaseAdmin, async (req, res) => {
     try {
       const studentId = String(req.body?.studentId || "").trim();
       const targetLessonId = String(req.body?.targetLessonId || "").trim();
@@ -8331,7 +9653,7 @@ Jeste\u015B skrupulatnym asystentem lektora j\u0119zyka angielskiego weryfikuj\u
       return res.status(500).json({ error: err?.message || "Nie uda\u0142o si\u0119 od\u015Bwie\u017Cy\u0107 canvasu." });
     }
   });
-  app2.post("/api/gemini/lesson-summary", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/gemini/lesson-summary", requireFirebaseAdmin, async (req, res) => {
     try {
       const { notes, pdfBase64, driveFile, students, mode } = req.body;
       const isTranscript = mode === "transcript";
@@ -8465,25 +9787,25 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
 - suggestedFollowUp (string, Ustalenia i najlepsze tematy na kolejn\u0105 lekcj\u0119, po polsku)
 `;
       const schema = {
-        type: Type6.OBJECT,
+        type: Type8.OBJECT,
         properties: {
-          studentId: { type: Type6.STRING },
-          studentIds: { type: Type6.ARRAY, items: { type: Type6.STRING } },
-          lessonTopic: { type: Type6.STRING },
-          revisionNotes: { type: Type6.STRING },
-          vocabularyText: { type: Type6.STRING },
-          studentSpeaking: { type: Type6.STRING },
-          thingsToImprove: { type: Type6.STRING },
-          suggestedFollowUp: { type: Type6.STRING },
+          studentId: { type: Type8.STRING },
+          studentIds: { type: Type8.ARRAY, items: { type: Type8.STRING } },
+          lessonTopic: { type: Type8.STRING },
+          revisionNotes: { type: Type8.STRING },
+          vocabularyText: { type: Type8.STRING },
+          studentSpeaking: { type: Type8.STRING },
+          thingsToImprove: { type: Type8.STRING },
+          suggestedFollowUp: { type: Type8.STRING },
           /* Blok 2b i 4 wprost. Wersja notatkowa ich nie wypełnia i nie musi —
              pola są opcjonalne, więc schemat jest jeden dla obu trybów.
              Świadomie BEZ homeworkText/homeworkAnswerKey (dawny Blok 3):
              praca domowa żyje wyłącznie w module ćwiczeń, nie w notatce
              z lekcji — nawet jeśli transkrypcja ją zawiera, ma być
              pominięta. */
-          date: { type: Type6.STRING },
-          corrections: { type: Type6.STRING },
-          nextLessonPlan: { type: Type6.STRING }
+          date: { type: Type8.STRING },
+          corrections: { type: Type8.STRING },
+          nextLessonPlan: { type: Type8.STRING }
         },
         required: ["studentId", "lessonTopic", "revisionNotes", "vocabularyText", "studentSpeaking", "thingsToImprove", "suggestedFollowUp"]
       };
@@ -8501,7 +9823,7 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/notebook/spellcheck", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/notebook/spellcheck", requireFirebaseAdmin, async (req, res) => {
     try {
       const { text: text2 } = req.body;
       if (typeof text2 !== "string" || !text2.trim()) {
@@ -8513,19 +9835,19 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
       }
       const ai = new GoogleGenAI4({ apiKey: apiKey || "dummy" });
       const schema = {
-        type: Type6.OBJECT,
+        type: Type8.OBJECT,
         properties: {
           issues: {
-            type: Type6.ARRAY,
+            type: Type8.ARRAY,
             items: {
-              type: Type6.OBJECT,
+              type: Type8.OBJECT,
               properties: {
-                id: { type: Type6.STRING },
-                matchedText: { type: Type6.STRING },
-                contextSnippet: { type: Type6.STRING },
-                suggestion: { type: Type6.STRING },
-                type: { type: Type6.STRING, enum: ["spelling", "grammar", "awkward"] },
-                shortReason: { type: Type6.STRING }
+                id: { type: Type8.STRING },
+                matchedText: { type: Type8.STRING },
+                contextSnippet: { type: Type8.STRING },
+                suggestion: { type: Type8.STRING },
+                type: { type: Type8.STRING, enum: ["spelling", "grammar", "awkward"] },
+                shortReason: { type: Type8.STRING }
               },
               required: ["id", "matchedText", "contextSnippet", "suggestion", "type", "shortReason"]
             }
@@ -8549,7 +9871,7 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
       res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/lesson-studio/personalize", requireFirebaseAdmin, async (req, res) => {
+  app3.post("/api/lesson-studio/personalize", requireFirebaseAdmin, async (req, res) => {
     try {
       const { studentId, blueprint, settings } = req.body;
       if (!blueprint || !Array.isArray(blueprint.blocks)) {
@@ -8575,7 +9897,7 @@ Zwr\xF3\u0107 wynik jako JSON z poni\u017Cszymi polami:
       return res.status(500).json({ error: formatErrorString(error) });
     }
   });
-  app2.post("/api/gemini/grade-test", requireFirebaseAuth, async (req, res) => {
+  app3.post("/api/gemini/grade-test", requireFirebaseAuth, async (req, res) => {
     try {
       const { testTitle, questions, studentAnswers } = req.body;
       const prompt = `Jeste\u015B nauczycielem j\u0119zyka angielskiego. Sprawd\u017A odpowiedzi ucznia w te\u015Bcie o tytule "${testTitle}".
@@ -8603,10 +9925,10 @@ Zwr\xF3\u0107 JSON z polami:
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type6.OBJECT,
+          type: Type8.OBJECT,
           properties: {
-            score: { type: Type6.NUMBER },
-            feedback: { type: Type6.STRING }
+            score: { type: Type8.NUMBER },
+            feedback: { type: Type8.STRING }
           },
           required: ["score", "feedback"]
         }
@@ -8618,7 +9940,7 @@ Zwr\xF3\u0107 JSON z polami:
       res.status(500).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/gemini/student-stats-summary", requireFirebaseAuth, async (req, res) => {
+  app3.post("/api/gemini/student-stats-summary", requireFirebaseAuth, async (req, res) => {
     try {
       const { stats, logsSummary, language } = req.body;
       const geminiApiKey = getGeminiApiKey();
@@ -8651,18 +9973,18 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       const response = await generateContentWithRetry(ai, prompt, {
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type6.OBJECT,
+          type: Type8.OBJECT,
           properties: {
-            overallTeacherCommentary: { type: Type6.STRING },
+            overallTeacherCommentary: { type: Type8.STRING },
             keyStrengths: {
-              type: Type6.ARRAY,
-              items: { type: Type6.STRING }
+              type: Type8.ARRAY,
+              items: { type: Type8.STRING }
             },
             areasToImprove: {
-              type: Type6.ARRAY,
-              items: { type: Type6.STRING }
+              type: Type8.ARRAY,
+              items: { type: Type8.STRING }
             },
-            pedagogicalTip: { type: Type6.STRING }
+            pedagogicalTip: { type: Type8.STRING }
           },
           required: ["overallTeacherCommentary", "keyStrengths", "areasToImprove", "pedagogicalTip"]
         }
@@ -8713,8 +10035,8 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       }
       const trimmedText = text2.replace(/<[^>]+>/g, "").trim();
       const formattedText = /[.?!]$/.test(trimmedText) ? trimmedText : `${trimmedText}.`;
-      const crypto2 = await import("crypto");
-      const hash = crypto2.default.createHash("sha256").update(`${formattedText}_${isUK ? "UK" : "US"}_${isMale ? "M" : "F"}_${speed.toFixed(2)}_${engine}`).digest("hex");
+      const crypto4 = await import("crypto");
+      const hash = crypto4.default.createHash("sha256").update(`${formattedText}_${isUK ? "UK" : "US"}_${isMale ? "M" : "F"}_${speed.toFixed(2)}_${engine}`).digest("hex");
       const fileName = `tts_cache/${hash}.mp3`;
       const os = await import("os");
       const path2 = await import("path");
@@ -8899,8 +10221,8 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       res.status(500).json({ error: formatErrorString(error) });
     }
   };
-  app2.get("/api/tts", handleTTS);
-  app2.post("/api/tts", handleTTS);
+  app3.get("/api/tts", handleTTS);
+  app3.post("/api/tts", handleTTS);
   const handleOpenAI = async (req, res) => {
     try {
       const { prompt, systemInstruction, isJson, messages, model } = req.body || {};
@@ -9177,14 +10499,14 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
     "wyrozumski@maciej.pro",
     "maciej@learnwithmaciej.com"
   ];
-  const makeAiProxyRateLimit = (collection, label) => async (req, res, next) => {
+  const makeAiProxyRateLimit = (collection4, label) => async (req, res, next) => {
     const uid = req.userUid;
     try {
       const adminDb = getFirestore2(getAdminApp(), FIRESTORE_DATABASE_ID);
       const email = String(req.userEmail || "").toLowerCase();
       const role = (await adminDb.collection("users").doc(uid).get()).data()?.role;
       if (isProxyExempt(role, AI_PROXY_EXEMPT_EMAILS.includes(email))) return next();
-      const reservation = await reserveProxyCall(adminDb, uid, /* @__PURE__ */ new Date(), aiProxyLimits, collection);
+      const reservation = await reserveProxyCall(adminDb, uid, /* @__PURE__ */ new Date(), aiProxyLimits, collection4);
       if (reservation.ok === false) {
         res.setHeader("Retry-After", String(reservation.retryAfterSec));
         return res.status(429).json({
@@ -9200,7 +10522,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
   };
   const geminiProxyRateLimit = makeAiProxyRateLimit("geminiProxyUsage", "Gemini");
   const otherAiProxyRateLimit = makeAiProxyRateLimit(AI_PROXY_USAGE_COLLECTION, "AI");
-  app2.post("/api/gemini/generate", requireFirebaseAuth, aiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
+  app3.post("/api/gemini/generate", requireFirebaseAuth, aiProxyBodyParser, jsonBodyErrorHandler, geminiProxyRateLimit, async (req, res) => {
     try {
       const { model, contents } = req.body || {};
       const config = clampGeminiConfig(req.body?.config);
@@ -9257,7 +10579,7 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
       return res.status(status >= 400 && status < 600 ? status : 503).json({ error: formatErrorString(err) });
     }
   });
-  app2.post("/api/free-practice/generate", requireFirebaseAuth, async (req, res) => {
+  app3.post("/api/free-practice/generate", requireFirebaseAuth, async (req, res) => {
     const apiKey = getGeminiApiKey();
     const adminDb = getFirestore2(getAdminApp(), FIRESTORE_DATABASE_ID);
     const callModel = async ({ prompt, schema }) => {
@@ -9300,19 +10622,24 @@ Zwr\xF3\u0107 obiekt JSON z polami: overallTeacherCommentary (string), keyStreng
     return res.status(result.status).json(result.body);
   });
   const aiProxyGuards = [requireFirebaseAuth, aiProxyBodyParser, jsonBodyErrorHandler, otherAiProxyRateLimit];
-  app2.post("/api/openai", ...aiProxyGuards, handleOpenAI);
-  app2.post("/api/openai/generate", ...aiProxyGuards, handleOpenAI);
-  app2.post("/api/anthropic", ...aiProxyGuards, handleAnthropic);
-  app2.post("/api/anthropic/generate", ...aiProxyGuards, handleAnthropic);
-  app2.post("/api/deepseek", ...aiProxyGuards, handleDeepSeek);
-  app2.post("/api/deepseek/generate", ...aiProxyGuards, handleDeepSeek);
-  app2.use("/api", (req, res) => {
+  app3.post("/api/openai", ...aiProxyGuards, handleOpenAI);
+  app3.post("/api/openai/generate", ...aiProxyGuards, handleOpenAI);
+  app3.post("/api/anthropic", ...aiProxyGuards, handleAnthropic);
+  app3.post("/api/anthropic/generate", ...aiProxyGuards, handleAnthropic);
+  app3.post("/api/deepseek", ...aiProxyGuards, handleDeepSeek);
+  app3.post("/api/deepseek/generate", ...aiProxyGuards, handleDeepSeek);
+  registerHomeworkSeriesRoutes(app3, {
+    requireTeacher: requireFirebaseAdmin,
+    getDb: () => getFirestore2(getAdminApp(), FIRESTORE_DATABASE_ID),
+    getCronSecret: () => process.env.CRON_SECRET
+  });
+  app3.use("/api", (req, res) => {
     res.status(404).json({ error: `Nie odnaleziono endpointu API: ${req.method} ${req.originalUrl || req.path}` });
   });
-  return app2;
+  return app3;
 }
 async function startServer() {
-  const app2 = await createApp();
+  const app3 = await createApp();
   const PORT = Number(process.env.PORT) || 3e3;
   if (process.env.NODE_ENV !== "production") {
     const { createServer: createViteServer } = await import("vite");
@@ -9320,7 +10647,7 @@ async function startServer() {
       server: { middlewareMode: true },
       appType: "spa"
     });
-    app2.use(vite.middlewares);
+    app3.use(vite.middlewares);
     const handleDevHtml = async (req, res, next) => {
       if (req.originalUrl.startsWith("/api")) {
         return next();
@@ -9335,26 +10662,26 @@ async function startServer() {
         next(e);
       }
     };
-    app2.get("/", handleDevHtml);
-    app2.get("{*all}", handleDevHtml);
+    app3.get("/", handleDevHtml);
+    app3.get("{*all}", handleDevHtml);
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    app2.use(express.static(distPath));
-    app2.get("/", (req, res) => {
+    app3.use(express.static(distPath));
+    app3.get("/", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
-    app2.get("{*all}", (req, res) => {
+    app3.get("{*all}", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
   }
-  const server = app2.listen(PORT, "0.0.0.0", () => {
+  const server = app3.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
   server.on("error", (err) => {
     if (err.code === "EADDRINUSE") {
       const altPort = PORT + 1;
       console.warn(`[Server] Port ${PORT} busy, starting on http://localhost:${altPort}`);
-      app2.listen(altPort, "0.0.0.0", () => {
+      app3.listen(altPort, "0.0.0.0", () => {
         console.log(`Server running on http://localhost:${altPort}`);
       });
     } else {
@@ -9369,7 +10696,7 @@ if (isDirectExecution) {
 
 // api/serverless.ts
 var maxDuration = 60;
-var app = createApp();
+var app2 = createApp();
 function handler(req, res) {
   try {
     if (req.url) {
@@ -9383,7 +10710,7 @@ function handler(req, res) {
         }
       }
     }
-    app(req, res);
+    app2(req, res);
   } catch (err) {
     console.error("[API Gateway Crash]:", err);
     if (!res.headersSent) {
