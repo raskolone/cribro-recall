@@ -8,8 +8,9 @@ import {
   getWarsawDateString,
   isDelayedRelease,
   isSlotReadyToRelease,
-  updateSeriesItemAfterFailure,
   updateSeriesItemAfterRelease,
+  updateSeriesItemAfterReleaseError,
+  MAX_RELEASE_ATTEMPTS,
   validateCreateSeriesInput,
   validateSeriesItemPayload,
   validateSlotDate,
@@ -194,9 +195,47 @@ test('aktualizacja pozycji: release oraz failure', () => {
   assert.equal(afterRelease[0].releasedDelayed, true);
   assert.equal(afterRelease[1].state, 'ready');
 
-  const afterFail = updateSeriesItemAfterFailure(items, 'item_2', 'Błąd bazy');
-  assert.equal(afterFail[1].state, 'failed');
-  assert.equal(afterFail[1].lastError, 'Błąd bazy');
+  // Błąd deterministyczny: od razu `failed`.
+  const afterPermanent = updateSeriesItemAfterReleaseError(items, 'item_2', {
+    error: 'Brak payloadu pozycji item_2',
+    permanent: true,
+    attemptedAt: '2026-10-10T05:00:00.000Z',
+  });
+  assert.equal(afterPermanent[1].state, 'failed');
+  assert.equal(afterPermanent[1].releaseAttempts, 1);
+  assert.equal(afterPermanent[1].lastError, 'Brak payloadu pozycji item_2');
+});
+
+test('błąd przejściowy: pozycja zostaje ready z licznikiem prób, failed dopiero po MAX_RELEASE_ATTEMPTS', () => {
+  let items: HomeworkSeriesItemMeta[] = [{ itemId: 'a', slotDate: '2026-10-08', dueInDays: 3, state: 'ready' }];
+  assert.equal(MAX_RELEASE_ATTEMPTS, 5);
+  for (let attempt = 1; attempt < MAX_RELEASE_ATTEMPTS; attempt++) {
+    items = updateSeriesItemAfterReleaseError(items, 'a', {
+      error: 'DEADLINE_EXCEEDED',
+      permanent: false,
+      attemptedAt: `2026-10-1${attempt}T05:00:00.000Z`,
+    });
+    assert.equal(items[0].state, 'ready', `próba ${attempt}: nadal ready`);
+    assert.equal(items[0].releaseAttempts, attempt);
+  }
+  items = updateSeriesItemAfterReleaseError(items, 'a', { error: 'UNAVAILABLE', permanent: false, attemptedAt: 'x' });
+  assert.equal(items[0].state, 'failed');
+  assert.equal(items[0].releaseAttempts, MAX_RELEASE_ATTEMPTS);
+  assert.equal(items[0].lastError, 'UNAVAILABLE');
+
+  // Pozycji, która nie jest już ready (np. wydana równolegle), błąd nie rusza.
+  const released: HomeworkSeriesItemMeta[] = [{ itemId: 'b', slotDate: '2026-10-08', dueInDays: 3, state: 'released' }];
+  assert.deepEqual(
+    updateSeriesItemAfterReleaseError(released, 'b', { error: 'x', permanent: true, attemptedAt: 'x' }),
+    released
+  );
+  // Długi komunikat przycinany przed zapisem.
+  const long = updateSeriesItemAfterReleaseError(
+    [{ itemId: 'c', slotDate: '2026-10-08', dueInDays: 3, state: 'ready' }],
+    'c',
+    { error: 'e'.repeat(5000), permanent: false, attemptedAt: 'x' }
+  );
+  assert.equal(long[0].lastError!.length, 500);
 });
 
 test('status serii: przejście active -> completed gdy wszystkie pozycje wydane', () => {

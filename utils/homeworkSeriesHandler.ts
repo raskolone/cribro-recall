@@ -11,8 +11,8 @@ import {
   isDelayedRelease,
   isSlotReadyToRelease,
   planCronReleases,
-  updateSeriesItemAfterFailure,
   updateSeriesItemAfterRelease,
+  updateSeriesItemAfterReleaseError,
   validateCreateSeriesInput,
   validateSeriesItemPayload,
 } from './homeworkSeries';
@@ -261,7 +261,61 @@ export async function handleDeleteSeries(
 }
 
 /**
+ * Błąd deterministyczny wydania — ponowienie nic nie zmieni (brak lub niepoprawny
+ * payload). Pozycja od razu przechodzi w `failed`.
+ */
+export class PermanentReleaseError extends Error {
+  readonly permanent = true;
+}
+
+/**
+ * Czy błąd wydania jest deterministyczny. Wszystko inne — DEADLINE_EXCEEDED,
+ * UNAVAILABLE, ABORTED, RESOURCE_EXHAUSTED, INTERNAL i błędy nieznane — traktujemy
+ * jako przejściowe: pozycja zostaje `ready` do `MAX_RELEASE_ATTEMPTS` prób. Celowo
+ * także PERMISSION_DENIED/UNAUTHENTICATED: awaria poświadczeń serwera nie może
+ * jednym uruchomieniem oznaczyć wszystkich pozycji jako `failed`.
+ */
+export function isPermanentReleaseError(err: unknown): boolean {
+  return err instanceof PermanentReleaseError;
+}
+
+export interface ReleaseItemResult {
+  success: boolean;
+  taskId?: string;
+  skipped?: boolean;
+  reason?: string;
+  error?: string;
+  /** Po błędzie: pozycja została `ready` i będzie ponowiona. */
+  willRetry?: boolean;
+  /** Po błędzie: pozycja przeszła w `failed`. */
+  failed?: boolean;
+  releaseAttempts?: number;
+}
+
+/**
+ * Zapisuje nieudaną próbę w metadanych pozycji — w transakcji, żeby nie nadpisać
+ * równoległego wydania innej pozycji tej samej serii (tablica `items` jest wspólna).
+ */
+async function recordReleaseError(
+  deps: HomeworkSeriesHandlerDeps,
+  seriesRef: SeriesDocRef,
+  itemId: string,
+  failure: { error: string; permanent: boolean; attemptedAt: string }
+): Promise<HomeworkSeriesItemMeta | null> {
+  return deps.db.runTransaction(async (transaction) => {
+    const snap = await transaction.get(seriesRef);
+    if (!snap.exists) return null;
+    const seriesData = snap.data() as HomeworkSeriesDocument;
+    const items = updateSeriesItemAfterReleaseError(seriesData.items || [], itemId, failure);
+    transaction.update(seriesRef, clean({ items, updatedAt: failure.attemptedAt }));
+    return items.find((it) => it.itemId === itemId) || null;
+  });
+}
+
+/**
  * Wydanie pojedynczej pozycji serii w transakcji Firestore (idempotencja: create()).
+ * Nie rzuca: każdy błąd kończy się wynikiem `success: false`, więc pętla crona
+ * przechodzi do kolejnych pozycji.
  */
 export async function releaseSingleSeriesItem(
   deps: HomeworkSeriesHandlerDeps,
@@ -271,7 +325,7 @@ export async function releaseSingleSeriesItem(
     todayWarsaw: string;
     origin?: string;
   }
-): Promise<{ success: boolean; taskId?: string; skipped?: boolean; error?: string }> {
+): Promise<ReleaseItemResult> {
   const { seriesId, itemId, todayWarsaw, origin } = params;
   const now = deps.now ? deps.now() : new Date();
   const nowIso = now.toISOString();
@@ -279,20 +333,25 @@ export async function releaseSingleSeriesItem(
   const seriesRef = deps.db.collection('homeworkSeries').doc(seriesId);
   const itemPayloadRef = seriesRef.collection('items').doc(itemId);
 
-  const payloadSnap = await itemPayloadRef.get();
-  if (!payloadSnap.exists) {
-    return { success: false, error: `Brak payloadu pozycji ${itemId}` };
-  }
-  const itemPayload = payloadSnap.data() as HomeworkSeriesItemPayload;
-
   const taskId = buildSeriesTaskId(seriesId, itemId);
   const taskRef = deps.db.collection('specialTasks').doc(taskId);
 
   try {
+    const payloadSnap = await itemPayloadRef.get();
+    if (!payloadSnap.exists) {
+      throw new PermanentReleaseError(`Brak payloadu pozycji ${itemId}`);
+    }
+    const itemPayload = payloadSnap.data() as HomeworkSeriesItemPayload;
+    const payloadCheck = validateSeriesItemPayload({ ...itemPayload, itemId });
+    if (payloadCheck.ok === false) {
+      throw new PermanentReleaseError(`Niepoprawny payload pozycji ${itemId}: ${payloadCheck.error}`);
+    }
+
     const result = await deps.db.runTransaction(async (transaction) => {
       const currentSeriesSnap = await transaction.get(seriesRef);
       if (!currentSeriesSnap.exists) {
-        throw new Error('Seria nie istnieje');
+        // Seria usunięta między planem a wydaniem — nie ma czego wydawać ani gdzie zapisać błędu.
+        return { skipped: true, reason: 'series_missing' };
       }
       const seriesData = currentSeriesSnap.data() as HomeworkSeriesDocument;
       if (seriesData.status !== 'active') {
@@ -301,7 +360,7 @@ export async function releaseSingleSeriesItem(
 
       const itemMeta = seriesData.items.find((it) => it.itemId === itemId);
       if (!itemMeta) {
-        throw new Error(`Pozycja ${itemId} nie istnieje w serii`);
+        return { skipped: true, reason: 'item_missing' };
       }
 
       if (itemMeta.state !== 'ready') {
@@ -371,30 +430,34 @@ export async function releaseSingleSeriesItem(
     });
 
     if (result.skipped) {
-      return { success: true, skipped: true, taskId: result.taskId };
+      return { success: true, skipped: true, reason: result.reason, taskId: result.taskId };
     }
     return { success: true, taskId: result.taskId };
   } catch (err: any) {
     if (
-      err.code === 6 ||
-      err.code === 'already-exists' ||
-      String(err.message).toLowerCase().includes('already exists')
+      err?.code === 6 ||
+      err?.code === 'already-exists' ||
+      String(err?.message).toLowerCase().includes('already exists')
     ) {
       // Zadanie zostało już utworzone (np. w równoległej transakcji) — idempotencja zachowana
-      return { success: true, taskId, skipped: true };
+      return { success: true, taskId, skipped: true, reason: 'task_already_exists' };
     }
-    // Zapis błędu w metadanych pozycji poza transakcją
+    const permanent = isPermanentReleaseError(err);
+    const error = String(err?.message || err || 'Nieznany błąd');
     try {
-      const snap = await seriesRef.get();
-      if (snap.exists) {
-        const seriesData = snap.data() as HomeworkSeriesDocument;
-        const failedItems = updateSeriesItemAfterFailure(seriesData.items, itemId, err.message || 'Transaction error');
-        await seriesRef.update(clean({ items: failedItems, updatedAt: nowIso }));
-      }
+      const updated = await recordReleaseError(deps, seriesRef, itemId, { error, permanent, attemptedAt: nowIso });
+      return {
+        success: false,
+        error,
+        failed: updated?.state === 'failed',
+        willRetry: updated?.state === 'ready',
+        releaseAttempts: updated?.releaseAttempts,
+      };
     } catch {
-      // Ignoruj błąd zapisu błędu
+      // Nie udało się nawet zapisać próby (np. baza niedostępna) — pozycja zostaje `ready`
+      // bez zmiany licznika, więc kolejne uruchomienie i tak spróbuje ponownie.
+      return { success: false, error, willRetry: true };
     }
-    return { success: false, error: err.message };
   }
 }
 
@@ -436,13 +499,22 @@ export async function handleCronRelease(
   let releasedCount = 0;
   let skippedCount = 0;
   let errorCount = 0;
+  let retryCount = 0;
+  let failedCount = 0;
 
+  // Każda pozycja osobno: błąd jednej (także nieoczekiwany wyjątek) nie zatrzymuje
+  // pozostałych — cron kończy się 200 z podsumowaniem.
   for (const planned of plan) {
-    const res = await releaseSingleSeriesItem(deps, {
-      seriesId: planned.seriesId,
-      itemId: planned.itemId,
-      todayWarsaw,
-    });
+    let res: ReleaseItemResult;
+    try {
+      res = await releaseSingleSeriesItem(deps, {
+        seriesId: planned.seriesId,
+        itemId: planned.itemId,
+        todayWarsaw,
+      });
+    } catch (err: any) {
+      res = { success: false, error: String(err?.message || err), willRetry: true };
+    }
 
     if (res.success && !res.skipped) {
       releasedCount++;
@@ -450,6 +522,8 @@ export async function handleCronRelease(
       skippedCount++;
     } else {
       errorCount++;
+      if (res.failed) failedCount++;
+      else retryCount++;
     }
   }
 
@@ -459,10 +533,13 @@ export async function handleCronRelease(
       success: true,
       todayWarsaw,
       seriesProcessed: seriesList.length,
+      plannedCount: plan.length,
       releasedCount,
       deferredCount: Math.max(0, dueCount - plan.length),
       skippedCount,
       errorCount,
+      retryCount,
+      failedCount,
     },
   };
 }

@@ -9,6 +9,9 @@ export type HomeworkSeriesStatus = 'active' | 'completed' | 'paused' | 'archived
 
 export const MAX_SERIES_ITEMS = 5;
 export const MAX_ITEM_PAYLOAD_BYTES = 200 * 1024; // 200 KB
+/** Po tylu nieudanych próbach wydania z błędem przejściowym pozycja przechodzi w `failed`. */
+export const MAX_RELEASE_ATTEMPTS = 5;
+const MAX_STORED_ERROR_LENGTH = 500;
 
 export interface HomeworkSeriesItemMeta {
   itemId: string;
@@ -18,6 +21,9 @@ export interface HomeworkSeriesItemMeta {
   releasedAt?: string;
   releasedTaskId?: string;
   releasedDelayed?: boolean;
+  /** Liczba nieudanych prób wydania (błędy przejściowe i deterministyczne). */
+  releaseAttempts?: number;
+  lastAttemptAt?: string;
   lastError?: string;
 }
 
@@ -183,19 +189,27 @@ export function updateSeriesItemAfterRelease(
 }
 
 /**
- * Aktualizuje listę metadanych pozycji po błędzie wydania.
+ * Aktualizuje listę metadanych pozycji po nieudanej próbie wydania.
+ *
+ * Błąd deterministyczny (`permanent`: brak lub niepoprawny payload) od razu kończy
+ * pozycję stanem `failed`. Każdy inny (przejściowy albo nieznany) zostawia ją `ready`
+ * — kolejne uruchomienie spróbuje ponownie — aż do `MAX_RELEASE_ATTEMPTS` prób.
+ * Pozycji, która nie jest już `ready` (np. wydana równolegle), nie rusza.
  */
-export function updateSeriesItemAfterFailure(
+export function updateSeriesItemAfterReleaseError(
   items: HomeworkSeriesItemMeta[],
   itemId: string,
-  error: string
+  failure: { error: string; permanent: boolean; attemptedAt: string }
 ): HomeworkSeriesItemMeta[] {
   return items.map((item) => {
-    if (item.itemId !== itemId) return item;
+    if (item.itemId !== itemId || item.state !== 'ready') return item;
+    const releaseAttempts = (item.releaseAttempts || 0) + 1;
     return {
       ...item,
-      state: 'failed',
-      lastError: error,
+      state: failure.permanent || releaseAttempts >= MAX_RELEASE_ATTEMPTS ? 'failed' : 'ready',
+      releaseAttempts,
+      lastAttemptAt: failure.attemptedAt,
+      lastError: String(failure.error || 'Nieznany błąd').slice(0, MAX_STORED_ERROR_LENGTH),
     };
   });
 }

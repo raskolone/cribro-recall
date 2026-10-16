@@ -367,3 +367,144 @@ test('handleReleaseNow: tylko właściciel; bez itemId wydaje najwyżej jedną, 
   assert.equal(future.body.skipped, true);
   assert.equal(releasedTasks(db).length, 1);
 });
+
+const grpcError = (code: number, message: string) => Object.assign(new Error(message), { code });
+
+/** Błąd przy `create()` pracy w transakcji wydania — zapis próby (osobna transakcja bez create) przechodzi. */
+const failReleaseCreate = (db: InMemoryDb, times: number, code = 4, message = 'DEADLINE_EXCEEDED') => {
+  const original = db.runTransaction.bind(db);
+  let left = times;
+  (db as any).runTransaction = (fn: any) =>
+    original((tx: any) =>
+      fn({
+        ...tx,
+        create: (ref: any, val: any) => {
+          if (left > 0) {
+            left--;
+            throw grpcError(code, message);
+          }
+          return tx.create(ref, val);
+        },
+      })
+    );
+};
+
+const seriesDoc = async (db: InMemoryDb, seriesId: string) => (await db.collection('homeworkSeries').doc(seriesId).get()).data();
+
+test('błąd przejściowy wydania: pozycja zostaje ready z licznikiem prób i wychodzi przy kolejnym uruchomieniu', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, cronSecret: 's3cret' };
+  const seriesId = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-10'] });
+  failReleaseCreate(db, 1);
+
+  const r1 = await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: '2026-10-10' });
+  assert.equal(r1.status, 200);
+  assert.equal(r1.body.errorCount, 1);
+  assert.equal(r1.body.retryCount, 1);
+  assert.equal(r1.body.failedCount, 0);
+  let item = (await seriesDoc(db, seriesId)).items[0];
+  assert.equal(item.state, 'ready');
+  assert.equal(item.releaseAttempts, 1);
+  assert.equal(item.lastError, 'DEADLINE_EXCEEDED');
+  assert.equal(releasedTasks(db).length, 0);
+
+  const r2 = await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: '2026-10-11' });
+  assert.equal(r2.body.releasedCount, 1);
+  item = (await seriesDoc(db, seriesId)).items[0];
+  assert.equal(item.state, 'released');
+  assert.equal('lastError' in item, false);
+  assert.equal(releasedTasks(db).length, 1);
+});
+
+test('błąd przejściowy: po 5 nieudanych próbach (UNAVAILABLE, ABORTED, nieznany…) pozycja przechodzi w failed', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, cronSecret: 's3cret' };
+  const seriesId = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-01'] });
+  const codes: Array<[number | undefined, string]> = [
+    [14, 'UNAVAILABLE'],
+    [10, 'ABORTED'],
+    [8, 'RESOURCE_EXHAUSTED'],
+    [13, 'INTERNAL'],
+    [undefined, 'coś zupełnie nieznanego'],
+  ];
+  for (let i = 0; i < codes.length; i++) {
+    failReleaseCreate(db, 1, codes[i][0] as number, codes[i][1]);
+    const res = await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: `2026-10-1${i}` });
+    assert.equal(res.status, 200);
+    const item = (await seriesDoc(db, seriesId)).items[0];
+    assert.equal(item.releaseAttempts, i + 1);
+    assert.equal(item.state, i + 1 < 5 ? 'ready' : 'failed', `próba ${i + 1}`);
+  }
+  assert.equal(releasedTasks(db).length, 0);
+  const after = await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: '2026-10-20' });
+  assert.equal(after.body.plannedCount, 0, 'pozycji failed cron już nie bierze');
+});
+
+test('błąd deterministyczny: brak lub niepoprawny payload — pozycja od razu failed', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, cronSecret: 's3cret' };
+  const missing = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-10'] });
+  const invalid = await createSeries(deps, { studentUid: 'student_2', slots: ['2026-10-10'] });
+  db.data.delete(`homeworkSeries/${missing}/items/item_1`);
+  db.data.set(`homeworkSeries/${invalid}/items/item_1`, { itemId: 'item_1', type: 'translation', sentences: [] });
+
+  const res = await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: '2026-10-10' });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.failedCount, 2);
+  assert.equal(res.body.retryCount, 0);
+  for (const id of [missing, invalid]) {
+    const item = (await seriesDoc(db, id)).items[0];
+    assert.equal(item.state, 'failed');
+    assert.equal(item.releaseAttempts, 1);
+    assert.match(item.lastError, /payload/i);
+  }
+  assert.equal(releasedTasks(db).length, 0);
+});
+
+test('pętla crona: wyjątek przy odczycie payloadu jednej pozycji nie zatrzymuje pozostałych kursantów', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, cronSecret: 's3cret' };
+  const broken = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-10'] });
+  await createSeries(deps, { studentUid: 'student_2', slots: ['2026-10-10'] });
+  await createSeries(deps, { studentUid: 'student_3', slots: ['2026-10-10'] });
+
+  // Odczyt payloadu zepsutej serii rzuca UNAVAILABLE (wcześniej: poza try → cały cron 500).
+  const originalCollection = db.collection.bind(db);
+  (db as any).collection = (name: string) => {
+    const col = originalCollection(name);
+    if (name !== 'homeworkSeries') return col;
+    return {
+      ...col,
+      doc: (id?: string) => {
+        const ref = col.doc(id);
+        if (id !== broken) return ref;
+        return {
+          ...ref,
+          collection: (sub: string) => {
+            const subCol = ref.collection(sub);
+            return {
+              ...subCol,
+              doc: (itemId?: string) => ({
+                ...subCol.doc(itemId),
+                get: async () => {
+                  throw grpcError(14, 'UNAVAILABLE');
+                },
+              }),
+            };
+          },
+        };
+      },
+    };
+  };
+
+  const res = await handleCronRelease(deps, { authHeader: 'Bearer s3cret', todayWarsaw: '2026-10-10' });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.plannedCount, 3);
+  assert.equal(res.body.releasedCount, 2);
+  assert.equal(res.body.errorCount, 1);
+  assert.equal(res.body.retryCount, 1);
+  assert.deepEqual(releasedTasks(db).map((t) => t.studentUid).sort(), ['student_2', 'student_3']);
+  const item = (await seriesDoc(db, broken)).items[0];
+  assert.equal(item.state, 'ready');
+  assert.equal(item.releaseAttempts, 1);
+});
