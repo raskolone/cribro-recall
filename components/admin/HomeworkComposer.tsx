@@ -29,6 +29,7 @@ import {
   warmupCardsFieldEntry,
 } from '../../utils/warmupCards';
 import { taskOwnerFields } from '../../utils/homework';
+import { buildHomeworkAssignment } from '../../utils/buildHomeworkAssignment';
 import {
   EDIT_FIELDS,
   EDIT_FIELD_MAX_LENGTH,
@@ -600,37 +601,20 @@ const HomeworkComposer: React.FC<HomeworkComposerProps> = ({ initialStudentId, i
         return;
       }
 
-      const accessToken = generateSecureHomeworkToken();
-      const accessExpiresAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString();
       const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.maciej.pro';
-      const accessUrl = `${origin}/hw?token=${accessToken}`;
-
-      const taskPayload = {
-        ...taskOwnerFields(studentId),
-        studentName: student ? studentLabel(student) : 'Kursant',
-        studentEmail: student?.email || '',
-        studentUsername: student?.username || '',
+      const taskPayload = buildHomeworkAssignment({
+        student,
+        studentId,
         title,
-        // `type` zostaje dla widoków sprzed scalenia, które czytają jedno pole.
-        // Przy pracy mieszanej jest tylko etykietą — rozstrzyga `type` elementu.
-        type: usable[0].type,
-        types: usable.map((section) => section.type),
-        instructions: usable
-          .map((section) => HOMEWORK_TYPE_LABELS[section.type].hint.pl)
-          .join(' '),
-        createdAt: nowIso,
+        usable,
+        items,
         dueDate,
-        status: 'pending' as const,
-        sentences: items,
-        ...warmupFieldEntry(finalWarmup),
-        ...warmupCardsFieldEntry(finalCards),
-        manualEmailConfirmationRequired: true,
-        skipAutoEmail: true,
-        emailNotificationSent: false,
-        accessToken,
-        accessExpiresAt,
-        accessUrl,
-      };
+        createdAt: nowIso,
+        finalWarmup,
+        finalCards,
+        origin,
+        includeToken: true,
+      });
 
       const docRef = await addDoc(collection(db, 'specialTasks'), taskPayload);
 
