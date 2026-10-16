@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   handleCreateSeries,
   handleCronRelease,
+  handleDeleteSeries,
   handleGetSeries,
   handleListSeries,
   handleReleaseNow,
@@ -639,4 +640,20 @@ test('tworzenie serii: slot na dziś albo z przeszłości (dzień warszawski) �
     assert.match(res.body.error, /najwcześniej jutro/);
   }
   assert.equal((await handleCreateSeries(deps, { callerUid: 'teacher_1', body: body('2026-10-17') })).status, 201);
+});
+
+test('usuwanie serii: inny lektor 403 i seria zostaje; właściciel 200; brak serii 404', async () => {
+  const db = new InMemoryDb();
+  const deps = { db, cronSecret: 's3cret' };
+  const seriesId = await createSeries(deps, { studentUid: 'student_1', slots: ['2026-10-10'] });
+
+  const forbidden = await handleDeleteSeries(deps, { callerUid: 'teacher_2', seriesId });
+  assert.equal(forbidden.status, 403);
+  assert.equal(db.data.has(`homeworkSeries/${seriesId}`), true, 'cudza seria nie może zniknąć');
+
+  const ok = await handleDeleteSeries(deps, { callerUid: 'teacher_1', seriesId });
+  assert.equal(ok.status, 200);
+  assert.equal(db.data.has(`homeworkSeries/${seriesId}`), false);
+
+  assert.equal((await handleDeleteSeries(deps, { callerUid: 'teacher_1', seriesId })).status, 404);
 });
