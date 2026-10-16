@@ -27,6 +27,13 @@ test('DECYZJA 7: verifyCronSecret autoryzuje Bearer stałoczasowo i zwraca 500 p
 
   // Poprawny sekret -> 200
   assert.equal(verifyCronSecret('Bearer my_secret_123', 'my_secret_123').status, 200);
+
+  // Białe znaki w zmiennej środowiskowej (np. końcowy \n wklejony na Vercelu) i w nagłówku
+  assert.equal(verifyCronSecret('Bearer my_secret_123', 'my_secret_123\n').status, 200);
+  assert.equal(verifyCronSecret('Bearer my_secret_123', '  my_secret_123 \r\n').status, 200);
+  assert.equal(verifyCronSecret('Bearer my_secret_123  ', 'my_secret_123').status, 200);
+  assert.equal(verifyCronSecret('Bearer my_secret_123', ' \n ').status, 500);
+  assert.equal(verifyCronSecret('Bearer my_secret_12', 'my_secret_123\n').status, 401);
 });
 
 test('DECYZJA 7: handleCreateSeries i handleGetSeries pilnują ownerUid (inny lektor 403)', async () => {

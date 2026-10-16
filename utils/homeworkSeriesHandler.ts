@@ -86,10 +86,13 @@ export interface HandlerResult {
 }
 
 /**
- * Stałoczasowe porównanie sekretu CRON_SECRET.
+ * Stałoczasowe porównanie sekretu CRON_SECRET. Białe znaki przycinane po obu
+ * stronach — końcowy `\n` wklejony do zmiennej na Vercelu nie może dawać 401
+ * przy każdym uruchomieniu.
  */
 export function verifyCronSecret(providedHeader?: string, expectedSecret?: string): { ok: boolean; status: number; error?: string } {
-  if (!expectedSecret || expectedSecret.trim().length === 0) {
+  const expected = (expectedSecret || '').trim();
+  if (expected.length === 0) {
     return { ok: false, status: 500, error: 'CRON_SECRET is not configured on server' };
   }
   if (!providedHeader || !providedHeader.startsWith('Bearer ')) {
@@ -97,7 +100,7 @@ export function verifyCronSecret(providedHeader?: string, expectedSecret?: strin
   }
   const provided = providedHeader.slice(7).trim();
   const bufProvided = Buffer.from(provided, 'utf8');
-  const bufExpected = Buffer.from(expectedSecret, 'utf8');
+  const bufExpected = Buffer.from(expected, 'utf8');
 
   if (bufProvided.length !== bufExpected.length || !crypto.timingSafeEqual(bufProvided, bufExpected)) {
     return { ok: false, status: 401, error: 'Invalid CRON_SECRET' };
