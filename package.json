@@ -11,7 +11,7 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/*.test.tsx",
-    "test:browser": "node scripts/browser/vocabulary-layout.mjs && node scripts/browser/vocabulary-return.mjs && node tests/browser/flashcardCardSize.browser.mjs",
+    "test:browser": "node scripts/browser/vocabulary-layout.mjs && node scripts/browser/vocabulary-return.mjs && node tests/browser/flashcardCardSize.browser.mjs && node tests/browser/flashcardSwipe.browser.mjs",
     "test:browser:flow": "node scripts/browser/vocabulary-return.mjs",
     "migrate:notion": "tsx scripts/migrate-notion-archive.ts",
     "dev:emulated": "VITE_USE_EMULATORS=1 vite",
@@ -31,7 +31,8 @@
     "deploy:functions": "PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase deploy --only functions",
     "deploy:hosting": "npm run build && PATH=\"/opt/homebrew/opt/node@22/bin:$PATH\" firebase deploy --only hosting",
     "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build"
+    "desktop:build": "tauri build",
+    "harness:flashcards": "node scripts/browser/flashcard-harness-server.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.11.0",

@@ -24,7 +24,7 @@ export const FIT_MIN_REM = 0.9;
 export const CARD_SIZE_CLASS = 'w-[min(100%,26rem)] h-80 shrink-0 justify-self-center';
 
 export const FACE_BASE_CLASS =
-  'col-start-1 row-start-1 min-h-0 overflow-hidden backface-hidden flex flex-col items-center justify-start text-center p-4 sm:p-6 ' + CARD_SIZE_CLASS;
+  'col-start-1 row-start-1 min-h-0 overflow-hidden backface-hidden flex flex-col items-center justify-start text-center p-4 sm:p-6 select-none touch-pan-y ' + CARD_SIZE_CLASS;
 export const FRONT_CLASS = 'border border-line-strong hover:border-primary/50 transition-colors';
 export const BACK_CLASS = 'border border-primary/50 shadow-[0_0_30px_rgba(114,240,180,0.15)]';
 export const HEADER_CLASS = 'flex shrink-0 flex-nowrap items-center justify-between gap-2 w-full mb-3';
@@ -33,7 +33,7 @@ export const FRONT_LABEL_CLASS = 'min-w-0 truncate text-sm font-mono text-text-2
 export const BACK_LABEL_CLASS = 'min-w-0 truncate text-sm font-mono text-primary uppercase tracking-widest';
 export const FRONT_BODY_CLASS = 'my-auto font-bold leading-tight text-text-hi break-words max-w-full';
 /** Pole na tekst: zajmuje resztę karty, przewija się tylko, gdy tekst nie mieści się przy minimum. */
-export const BODY_BOX_CLASS = 'flex flex-col flex-1 min-h-0 w-full overflow-y-auto';
+export const BODY_BOX_CLASS = 'flex flex-col flex-1 min-h-0 w-full overflow-y-auto touch-pan-y overscroll-y-contain';
 export const BACK_BODY_CLASS = 'my-auto font-bold leading-tight text-text-hi break-words max-w-full';
 
 export interface FlashcardFaceProps {
@@ -101,7 +101,7 @@ const FlashcardFace: React.FC<FlashcardFaceProps> = ({
           <div ref={textRef} className={bodyClass} style={bodyStyle}>{children}</div>
         )}
       </div>
-      {footer && <div className="shrink-0 w-full max-h-[35%] overflow-y-auto">{footer}</div>}
+      {footer && <div className="shrink-0 w-full max-h-[35%] overflow-y-auto touch-pan-y overscroll-y-contain">{footer}</div>}
     </Card>
   );
 };
