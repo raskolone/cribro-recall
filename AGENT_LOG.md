@@ -7541,3 +7541,53 @@ Zrobione:
 - Pełna weryfikacja końcowa: tsc, test, test:browser, build, git diff api/index.js.
 Decyzje architektoniczne: czysta 5-commitowa historia gałęzi przed ewentualnym rebasingiem lub scaleniem.
 Ryzyka: reguły firestore/storage, autoryzacja, baza Firestore, działający serwer 3006 — NIETKNIĘTE.
+
+---
+
+2026-10-17 — Antigravity / Gemini 3.8 Flash
+
+Zadanie: FLASH-SWIPE-1 — naprawa swipe na fiszkach w telefonie (regres po UI-POLISH).
+
+Interpretacja: Przyjąłem interpretację, że po zmianach w commitach UI-POLISH (konkretnie 7d2a214) gest swipe na karcie fiszki na urządzeniach mobilnych (iPhone 17 Pro; Safari oraz Chrome na iOS / WebKit) zacina się i nie pozwala ocenić ani przejść do kolejnej karty, ponieważ kontener tekstu otrzymał overflow-y-auto bez jawnego touch-action: pan-y, co powoduje emitowanie pointercancel przez silnik przeglądarki przy poziomym przeciąganiu karty; celem jest odtworzenie błędu testem Playwright z emulacją dotyku CDP, przeprowadzenie bisectu, minimalna naprawa w FlashcardFace bez regresu UI-POLISH, dodanie dev harness na porcie 3009 oraz pełna weryfikacja.
+
+Przyczyna z dowodem i tabela bisectu:
+- W commicie 7d2a214 wprowadzono `BODY_BOX_CLASS = 'flex flex-col flex-1 min-h-0 w-full overflow-y-auto'`. Ponieważ `touch-action` w CSS nie jest dziedziczone (initial: auto), element przewijalny na karcie miał obliczone `touch-action: auto`.
+- Podczas poziomego przeciągania palcem po ekranie dotykowym (oraz przy drganiach pionowych) silnik przeglądarki (Blink / WebKit) uznaje gest za próbę przewijania wewnątrz kontenera i wysyła `pointercancel`. W konsekwencji `useCardSwipe` przerywał gest i wywoływał `onSnapBack` zamiast `onRate`.
+- Tabela bisectu (test CDP Input.dispatchTouchEvent z jitterY):
+  | Commit | SHA | Wynik | Zdarzenia / zachowanie |
+  |---|---|---|---|
+  | Przed UI-POLISH | b8dca2d | PASS | Brak pointercancel, ocena Umiem zaliczona (counter: 1 z 2) |
+  | Stały rozmiar fiszki | 7d2a214 | FAIL (pierwszy zły) | pointercancel=true, counter: 0 z 2, karta zacięta/anulowana |
+  | Polecenie ćwiczenia | 56cb207 | FAIL | pointercancel=true, counter: 0 z 2 |
+  | Pastelowe bloki lekcji | f9c22c2 | FAIL | pointercancel=true, counter: 0 z 2 |
+  | Przyciski i skróty | 65348f0 | FAIL | pointercancel=true, counter: 0 z 2 |
+  | HEAD (docs) | fa38d35 | FAIL | pointercancel=true, counter: 0 z 2 |
+- Luka testowa: UI-POLISH-4 testował wyłącznie kliknięcia i klawiaturę, brakowało testu dotykowego weryfikującego touch-action i emulację gestu palcem.
+
+Zrobione:
+- `components/flashcards/FlashcardFace.tsx`:
+  - `FACE_BASE_CLASS`: dodano `select-none touch-pan-y`
+  - `BODY_BOX_CLASS`: dodano `touch-pan-y overscroll-y-contain`
+  - `footer`: dodano `touch-pan-y overscroll-y-contain`
+- `tests/browser/flashcardSwipe.browser.mjs`:
+  - Kompletny test dotykowy Playwright w Chromium (CDP `Input.dispatchTouchEvent`) i WebKit (iPhone viewport 375×812).
+  - 13 scenariuszy: swipe prawo/lewo przed i po obrocie, szybki ruch (80ms), wolny ruch (300ms), krótki dystans (88px), głęboki swipe (200px), drgania pionowe (jitterY = 6px).
+- `package.json`:
+  - `test:browser`: dołączono `tests/browser/flashcardSwipe.browser.mjs`
+  - `harness:flashcards`: dodano skrypt uruchamiający dev harness fiszek na 0.0.0.0:3009 (`scripts/browser/flashcard-harness-server.mjs`)
+- `scripts/browser/flashcard-harness-server.mjs`:
+  - Serwer HTTP dev-only serwujący stuby fiszek bez bazy i bez logowania na porcie 3009 dla urządzeń mobilnych w sieci lokalnej (LAN: `http://192.168.1.148:3009`).
+  - Uruchomiony w tle (PID 29986).
+
+Weryfikacja:
+- `npx tsc --noEmit` -> exit code 0
+- `npm test` -> 1815/1815 passing (64 suites)
+- `npm run test:browser` -> 4/4 pliki zielone (układ, powrót, rozmiar 48 kombinacji, swipe 13 scenariuszy)
+- `npm run build` -> sukces
+- `git diff api/index.js` -> puste
+- `git status` -> weryfikacja plików
+
+Decyzje architektoniczne:
+- Rozwiązanie problemu na poziomie CSS (`touch-pan-y` na przewijalnym pudełku i karcie), bez wprowadzania bibliotek drag-and-drop ani modyfikacji logiki `useRatingSwipe` i SRS.
+- Zachowanie `overflow-y-auto` dla długich definicji przy jednoczesnym zablokowaniu przechwytywania gestu poziomego przez natywne mechanizmy przewijania.
+Ryzyka: reguły firestore/storage, autoryzacja, baza danych, backend — NIETKNIĘTE.
