@@ -8,6 +8,7 @@ import Button from '../ui/Button';
 import TTSButtons from './TTSButtons';
 import { FlashcardSet } from '../../types';
 import { cleanVocabularyTopic } from '../../utils/vocabulary';
+import { areLessonSetAliases, getCanonicalLessonRecordId, getLessonSetAliases } from '../../utils/lessonCanonicalKey';
 import { formatDisplayDateValue } from '../../utils/displayDate';
 import { useEscapeModal } from '../../hooks/useEscapeModal';
 
@@ -36,9 +37,12 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
 
   const handlePreviewSet = async (setId: string) => {
     try {
-      const local = JSON.parse(localStorage.getItem('checked_sets') || '[]');
-      if (!local.includes(setId)) {
-        localStorage.setItem('checked_sets', JSON.stringify([...local, setId]));
+      const local: string[] = JSON.parse(localStorage.getItem('checked_sets') || '[]');
+      const canonKey = getCanonicalLessonRecordId(setId);
+      const aliases = canonKey ? getLessonSetAliases(canonKey, [setId]) : [setId];
+      const toAdd = aliases.filter(a => !local.includes(a));
+      if (toAdd.length > 0) {
+        localStorage.setItem('checked_sets', JSON.stringify([...local, ...toAdd]));
       }
     } catch(e) {}
     
@@ -121,7 +125,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const setMastery = useMemo(() => {
     const mastery: Record<string, number> = {};
     sets.forEach(set => {
-      const setSessions = sessions.filter(s => s.setId === set.id);
+      const setSessions = sessions.filter(s => s.setId === set.id || areLessonSetAliases(s.setId, set.id));
       if (setSessions.length === 0) {
         mastery[set.id] = 0;
       } else {
@@ -138,7 +142,7 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   const lastPracticed = useMemo(() => {
     const last: Record<string, Date | null> = {};
     sets.forEach(set => {
-      const setSessions = sessions.filter(s => s.setId === set.id);
+      const setSessions = sessions.filter(s => s.setId === set.id || areLessonSetAliases(s.setId, set.id));
       if (setSessions.length === 0) {
         last[set.id] = null;
       } else {
@@ -156,10 +160,17 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
     try {
       checkedSets = JSON.parse(localStorage.getItem('checked_sets') || '[]');
     } catch(e) {}
-    if (checkedSets.includes(set.id)) return false;
 
     const dismissed = user?.dismissedNotifications || [];
-    if (dismissed.includes(set.id)) return false;
+    const canonKey = getCanonicalLessonRecordId(set.id, {
+      lessonRecordId: set.lessonRecordId,
+      lessonTopic: set.lessonTopic || set.title,
+      lessonDate: set.lessonDate,
+    });
+    const aliases = canonKey ? getLessonSetAliases(canonKey, [set.id]) : [set.id];
+
+    if (aliases.some(id => checkedSets.includes(id))) return false;
+    if (aliases.some(id => dismissed.includes(id))) return false;
 
     // If assigned by teacher or is a lesson vocabulary, and not checked, it IS new
     if (set.assignedByTeacher || set.isLessonVocabulary) {
@@ -181,9 +192,12 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
 
   const markSetAsChecked = (setId: string) => {
     try {
-      const local = JSON.parse(localStorage.getItem('checked_sets') || '[]');
-      if (!local.includes(setId)) {
-        localStorage.setItem('checked_sets', JSON.stringify([...local, setId]));
+      const local: string[] = JSON.parse(localStorage.getItem('checked_sets') || '[]');
+      const canonKey = getCanonicalLessonRecordId(setId);
+      const aliases = canonKey ? getLessonSetAliases(canonKey, [setId]) : [setId];
+      const toAdd = aliases.filter(a => !local.includes(a));
+      if (toAdd.length > 0) {
+        localStorage.setItem('checked_sets', JSON.stringify([...local, ...toAdd]));
       }
     } catch (e) {}
   };
@@ -217,11 +231,10 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
   
   const renderLessonSet = (set: FlashcardSet, index: number, view: 'list' | 'grid') => {
     const cleanTitle = getSetCleanTitle(set);
-    /* Numer OD NAJSTARSZEJ lekcji: `lessonNumber` zapisany w zestawie liczy
-       się chronologicznie (services/vocabularyService.ts), a zapasowe
-       wyliczenie daje to samo, bo `lessonSets` są posortowane od najnowszej —
-       ostatni element listy dostaje numer 1. */
-    const lessonNum = set.lessonNumber || (lessonSets.length - index);
+    /* Numer OD NAJSTARSZEJ lekcji wyliczony stabilnie z chronologii lekcji
+       (services/vocabularyService.ts i FlashcardContext.tsx).
+       Dla zestawu bez ustalonego numeru ukrywamy etykietę numeru (VOCAB-DUP-2). */
+    const lessonNum = set.lessonNumber;
     const lessonDate = formatDisplayDate(set.lessonDate || set.createdAt);
     const isNew = isNewSet(set);
 
@@ -246,9 +259,11 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
                 {set.isDraft && <span className="ml-2 text-[12px] uppercase bg-text-faint text-white px-2 py-0.5 rounded-full">DRAFT</span>}
             </h3>
             <div className="flex flex-wrap items-center gap-1.5 mb-2.5 text-[12px] text-content-muted">
-              <span className="inline-flex items-center gap-1 font-mono font-bold text-warn bg-warn/15 px-2 py-0.5 rounded border border-warn/30">
-                {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
-              </span>
+              {lessonNum ? (
+                <span className="inline-flex items-center gap-1 font-mono font-bold text-warn bg-warn/15 px-2 py-0.5 rounded border border-warn/30">
+                  {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
+                </span>
+              ) : null}
               <span className="bg-base-300 px-2 py-0.5 rounded font-mono text-content">
                 {set.cardCount} {t('flashcards.cards')}
               </span>
@@ -312,9 +327,11 @@ const FlashcardSetsScreen: React.FC<FlashcardSetsScreenProps> = ({ onStudySet, o
             </h3>
           </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-content-muted mt-2">
-            <span className="inline-flex items-center gap-1 font-mono font-bold text-warn bg-warn/15 px-2.5 py-0.5 rounded-md border border-warn/30">
-              {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
-            </span>
+            {lessonNum ? (
+              <span className="inline-flex items-center gap-1 font-mono font-bold text-warn bg-warn/15 px-2.5 py-0.5 rounded-md border border-warn/30">
+                {language === 'pl' ? `Lekcja #${lessonNum}` : `Lesson #${lessonNum}`}
+              </span>
+            ) : null}
             {lessonDate && (
               <span className="font-mono text-content">
                 {language === 'pl' ? `Data lekcji: ${lessonDate}` : `Date: ${lessonDate}`}

@@ -7,6 +7,7 @@ import { GENERAL_VOCABULARY_SETS } from '../data/generalVocabulary';
 import { logMistakesToFirebase, generateFlashcardsFromTopicWithGPT } from '../services/geminiService';
 import { recordExerciseResults } from '../services/learningProfile';
 import { normalizeLevel } from '../utils/learningCurve';
+import { deduplicateFlashcardSets, areLessonSetAliases, getCanonicalLessonRecordId } from '../utils/lessonCanonicalKey';
 
 interface FlashcardContextType {
   sets: FlashcardSet[];
@@ -38,8 +39,9 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
 
     let currentDbSets: FlashcardSet[] = [];
     let currentLessonSets: FlashcardSet[] = [];
+    let knownLessons: Array<{ id: string; date?: string; topic?: string }> = [];
+    let chronologicalLessonNumbers = new Map<string, number>();
 
-    
     const generalSets = GENERAL_VOCABULARY_SETS.map(gs => ({
       id: gs.id,
       userId: 'system',
@@ -61,7 +63,13 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     } as any));
 
     const updateMergedSets = () => {
-      setSets([...currentDbSets, ...currentLessonSets, ...generalSets]);
+      const deduplicated = deduplicateFlashcardSets(
+        currentDbSets,
+        currentLessonSets,
+        knownLessons,
+        chronologicalLessonNumbers
+      );
+      setSets([...deduplicated, ...generalSets]);
     };
 
 
@@ -79,19 +87,36 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     const qLessons = query(lessonsRef, orderBy('date', 'desc'));
     const unsubscribeLessons = onSnapshot(qLessons, (snapshot) => {
       const lessonSets: FlashcardSet[] = [];
-      const validDocs = snapshot.docs.filter(doc => {
-        const d = doc.data();
-        return d.vocabularyText && d.vocabularyText.trim().length > 0;
+      const rawLessonDocs: Array<{ id: string; date?: string; topic?: string; vocabularyText?: string; createdAt?: any }> = [];
+
+      snapshot.docs.forEach(docSnap => {
+        const d = docSnap.data();
+        rawLessonDocs.push({
+          id: docSnap.id,
+          date: d.date,
+          topic: d.topic,
+          vocabularyText: d.vocabularyText,
+          createdAt: d.createdAt,
+        });
       });
-      const totalDocs = validDocs.length;
+
+      knownLessons = rawLessonDocs;
+
+      // Budujemy stabilne, chronologiczne numery lekcji (od najstarszej = 1)
+      const validDocs = rawLessonDocs.filter(d => d.vocabularyText && d.vocabularyText.trim().length > 0);
+      const sortedChronologically = [...validDocs].sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime());
       
-      validDocs.forEach((doc, index) => {
-        const data = doc.data();
+      chronologicalLessonNumbers = new Map<string, number>();
+      sortedChronologically.forEach((rec, idx) => {
+        chronologicalLessonNumbers.set(rec.id, idx + 1);
+      });
+
+      validDocs.forEach((data) => {
         let rawLines: string[] = [];
-        if (data.vocabularyText.includes('\n')) {
-          rawLines = data.vocabularyText.split('\n');
+        if (data.vocabularyText!.includes('\n')) {
+          rawLines = data.vocabularyText!.split('\n');
         } else {
-          rawLines = data.vocabularyText.split(/[,;]+/);
+          rawLines = data.vocabularyText!.split(/[,;]+/);
         }
         const vocabList = rawLines.map((i: string) => i.trim()).filter((i: string) => i.length > 0);
         if (vocabList.length > 0) {
@@ -105,12 +130,12 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
               .trim();
             
             const title = cleanTopic || data.date || 'Bez tematu';
-            const lessonNum = totalDocs - index;
+            const lessonNum = chronologicalLessonNumbers.get(data.id);
 
             const parsedFlashcards = vocabList.map((line: string, idx: number) => {
               const { word, translation } = parseVocabularyLine(line);
               return {
-                id: `card_lesson_${doc.id}_${idx}`,
+                id: `card_lesson_${data.id}_${idx}`,
                 front: word,
                 back: translation || '',
                 term: word,
@@ -121,7 +146,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
             });
 
             lessonSets.push({
-                id: `lesson_${doc.id}`,
+                id: `lesson_${data.id}`,
                 userId: userId,
                 title: title,
                 description: `Data: ${data.date}`,
@@ -133,6 +158,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
                 lessonNumber: lessonNum,
                 lessonDate: data.date,
                 lessonTopic: cleanTopic,
+                lessonRecordId: data.id,
                 flashcards: parsedFlashcards as any
             });
         }
@@ -297,6 +323,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     // 3. Check loaded sets in context state
     const matchInLoadedSets = sets.find(s => 
       s.id === setId || 
+      areLessonSetAliases(s.id, setId) ||
       s.id === cleanId || 
       s.id === `set-${cleanId}` || 
       s.id === `set-lesson-${cleanId}` ||
@@ -609,7 +636,7 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
       
       // Determine exercise type
       let exType = sessionData.mode || 'flashcards';
-      const matchedSet = sets.find(s => s.id === sessionData.setId);
+      const matchedSet = sets.find(s => s.id === sessionData.setId || areLessonSetAliases(s.id, sessionData.setId));
       const setDisplayName = matchedSet ? matchedSet.title : (sessionData.setId || 'Fiszki');
       
       const failedCardIds = results.filter(r => r.isCorrect === false && r.flashcardId).map(r => r.flashcardId as string);
@@ -695,14 +722,11 @@ export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children 
     if (!userId) return [];
     try {
       const sessionsRef = collection(db, 'sessions');
-      let q = query(sessionsRef, where('userId', '==', userId), orderBy('completedAt', 'desc'));
-      
-      if (setId) {
-        q = query(sessionsRef, where('userId', '==', userId), where('setId', '==', setId), orderBy('completedAt', 'desc'));
-      }
-      
+      const q = query(sessionsRef, where('userId', '==', userId), orderBy('completedAt', 'desc'));
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
+      const allSessions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as StudySession));
+      if (!setId) return allSessions;
+      return allSessions.filter(s => s.setId === setId || areLessonSetAliases(s.setId, setId));
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, 'sessions');
       return [];

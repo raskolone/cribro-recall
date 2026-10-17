@@ -325,6 +325,8 @@ export interface FlashcardSet {
   lessonNumber?: number;
   lessonDate?: string;
   lessonTopic?: string;
+  /** Kanoniczny identyfikator rekordu lekcji, z którego pochodzi zestaw (używany do deduplikacji). */
+  lessonRecordId?: string;
 }
 
 export interface Flashcard {

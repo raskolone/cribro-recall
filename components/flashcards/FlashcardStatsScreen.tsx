@@ -8,6 +8,7 @@ import { FlashcardSet, Flashcard, StudySession, SessionResult } from '../../type
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import i18n from "i18next";
 import { token } from '../../utils/themeTokens';
+import { areLessonSetAliases } from '../../utils/lessonCanonicalKey';
 
 interface FlashcardStatsScreenProps {
   setId: string;
@@ -24,7 +25,7 @@ const FlashcardStatsScreen: React.FC<FlashcardStatsScreenProps> = ({ setId, onBa
 
   const setSessions = useMemo(() => {
     return sessions
-      .filter(s => s.setId === setId)
+      .filter(s => s.setId === setId || areLessonSetAliases(s.setId, setId))
       .sort((a, b) => (a.completedAt?.toMillis() || 0) - (b.completedAt?.toMillis() || 0));
   }, [sessions, setId]);
 
