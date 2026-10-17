@@ -155,31 +155,31 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
 
       {/* BLOK 1: Lekcja w skrócie */}
       {blocks.summary && (
-        <div className="rounded-2xl border border-sky-500/20 bg-sky-950/15 overflow-hidden shadow-sm transition-all">
+        <div data-tone="sky" className="lesson-pastel rounded-2xl border border-sky-500/20 bg-sky-950/15 overflow-hidden shadow-sm transition-all">
           <div
             onClick={() => toggleSection('block1')}
-            className="p-3.5 bg-gradient-to-r from-sky-900/40 via-sky-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-sky-900/50 transition-colors select-none border-b border-sky-500/15"
+            className="lesson-pastel__head p-3.5 bg-gradient-to-r from-sky-900/40 via-sky-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-sky-900/50 transition-colors select-none border-b border-sky-500/15"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0">
+              <div className="lesson-pastel__icon w-8 h-8 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30 flex items-center justify-center shrink-0">
                 <BookOpen size={16} />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
+                  <span className="lesson-pastel__badge px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-sky-500/20 text-sky-300 border border-sky-500/30">
                     BLOK 1
                   </span>
-                  <h4 className="font-extrabold text-sm text-white">{L.block1Title}</h4>
+                  <h4 className="lesson-pastel__title font-extrabold text-sm text-white">{L.block1Title}</h4>
                 </div>
-                <p className="text-[12px] text-sky-200/70">{L.block1Desc}</p>
+                <p className="lesson-pastel__desc text-[12px] text-sky-200/70">{L.block1Desc}</p>
               </div>
             </div>
-            <div className="text-sky-300">
+            <div className="lesson-pastel__chevron text-sky-300">
               {expandedSections.block1 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </div>
           </div>
           {expandedSections.block1 && (
-            <div className="p-4 bg-sky-950/10 space-y-2">
+            <div className="lesson-pastel__body p-4 bg-sky-950/10 space-y-2">
               <div className="prose-justified text-[15px] sm:text-sm text-content leading-relaxed">
                 <Markdown>{showFullSummary ? blocks.summary : summary.short}</Markdown>
               </div>
@@ -204,37 +204,37 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
       )}
 
       {/* BLOK 2: Key Language & Corrections */}
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-950/15 overflow-hidden shadow-sm transition-all">
+      <div data-tone="emerald" className="lesson-pastel rounded-2xl border border-emerald-500/20 bg-emerald-950/15 overflow-hidden shadow-sm transition-all">
         <div
           onClick={() => toggleSection('block2')}
-          className="p-3.5 bg-gradient-to-r from-emerald-900/40 via-emerald-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-900/50 transition-colors select-none border-b border-emerald-500/15"
+          className="lesson-pastel__head p-3.5 bg-gradient-to-r from-emerald-900/40 via-emerald-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-emerald-900/50 transition-colors select-none border-b border-emerald-500/15"
         >
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+            <div className="lesson-pastel__icon w-8 h-8 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
               <Tag size={16} />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                <span className="lesson-pastel__badge px-2 py-0.5 rounded-md text-[12px] font-mono font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                   BLOK 2
                 </span>
-                <h4 className="font-extrabold text-sm text-white">{L.block2Title}</h4>
+                <h4 className="lesson-pastel__title font-extrabold text-sm text-white">{L.block2Title}</h4>
                 {items.length > 0 && (
-                  <span className="text-[12px] text-emerald-400/80 font-bold">
+                  <span className="lesson-pastel__meta text-[12px] text-emerald-400/80 font-bold">
                     ({L.count(items.length)})
                   </span>
                 )}
               </div>
-              <p className="text-[12px] text-emerald-200/70">{L.block2Desc}</p>
+              <p className="lesson-pastel__desc text-[12px] text-emerald-200/70">{L.block2Desc}</p>
             </div>
           </div>
-          <div className="text-emerald-300">
+          <div className="lesson-pastel__chevron text-emerald-300">
             {expandedSections.block2 ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </div>
 
         {expandedSections.block2 && (
-          <div className="p-4 bg-emerald-950/10">
+          <div className="lesson-pastel__body p-4 bg-emerald-950/10">
             {isLoading ? (
               <div className="flex items-center gap-2 py-2 text-xs text-content-muted">
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -244,7 +244,7 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
                 {items.map((item, index) => (
                   <li
                     key={`${index}-${item.word}`}
-                    className="flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-base-100/50 border border-white/[0.07] hover:border-emerald-500/30 transition-colors"
+                    className="lesson-pastel__card flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl bg-base-100/50 border border-white/[0.07] hover:border-emerald-500/30 transition-colors"
                   >
                     <div className="min-w-0">
                       <span className="block font-semibold text-white text-[15px] sm:text-sm leading-snug">
@@ -269,26 +269,26 @@ const LessonDetails: React.FC<LessonDetailsProps> = ({
 
       {/* Things to Improve (korekty i uwagi językowe) */}
       {blocks.corrections && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-950/15 overflow-hidden shadow-sm transition-all">
+        <div data-tone="amber" className="lesson-pastel rounded-2xl border border-amber-500/20 bg-amber-950/15 overflow-hidden shadow-sm transition-all">
           <div
             onClick={() => toggleSection('corrections')}
-            className="p-3.5 bg-gradient-to-r from-amber-900/40 via-amber-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-amber-900/50 transition-colors select-none border-b border-amber-500/15"
+            className="lesson-pastel__head p-3.5 bg-gradient-to-r from-amber-900/40 via-amber-950/30 to-transparent flex items-center justify-between gap-3 cursor-pointer hover:bg-amber-900/50 transition-colors select-none border-b border-amber-500/15"
           >
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
+              <div className="lesson-pastel__icon w-8 h-8 rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center shrink-0">
                 <AlertCircle size={16} />
               </div>
               <div>
-                <h4 className="font-extrabold text-sm text-white">{L.correctionsTitle}</h4>
-                <p className="text-[12px] text-amber-200/70">{L.correctionsDesc}</p>
+                <h4 className="lesson-pastel__title font-extrabold text-sm text-white">{L.correctionsTitle}</h4>
+                <p className="lesson-pastel__desc text-[12px] text-amber-200/70">{L.correctionsDesc}</p>
               </div>
             </div>
-            <div className="text-amber-300">
+            <div className="lesson-pastel__chevron text-amber-300">
               {expandedSections.corrections ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </div>
           </div>
           {expandedSections.corrections && (
-            <div className="p-4 bg-amber-950/10">
+            <div className="lesson-pastel__body p-4 bg-amber-950/10">
               <div className="prose-justified text-[14px] sm:text-xs text-content leading-relaxed">
                 <Markdown>{blocks.corrections}</Markdown>
               </div>

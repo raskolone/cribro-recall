@@ -2499,3 +2499,51 @@ tr.liquid-glass-hover:hover {
     0 0 12px color-mix(in srgb, var(--color-primary) 18%, transparent);
   text-shadow: none;
 }
+
+/* ── PODSUMOWANIE LEKCJI KURSANTA W TRYBIE JASNYM (components/dashboard/LessonDetails.tsx) ──
+   Blok 1 (niebieski), Blok 2 (zielony) i Things to Improve (bursztynowy) miały ciemne,
+   półprzezroczyste tła (-950/15, -900/40) pisane pod ciemny motyw — na jasnej karcie wychodziły
+   brudne plamy, a opisy `text-*-200/70` znikały. Tu: jasne, pastelowe powierzchnie z ciemnym
+   tekstem (text-hi / text-2) i odróżnialnym odcieniem na blok. Wyłącznie pod selektorem trybu
+   jasnego — tryb ciemny zostaje bez zmian. Odcienie to lokalne zmienne bloku (--lp-*). */
+:root:is(.light, [data-theme="light"]) .lesson-pastel[data-tone="sky"] {
+  --lp-surface: #e3effb; --lp-head: #d2e5f8; --lp-line: #7fadda; --lp-ink: #0c3b6b;
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel[data-tone="emerald"] {
+  --lp-surface: #e0f3e8; --lp-head: #cdebdb; --lp-line: #74b896; --lp-ink: #064b32;
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel[data-tone="amber"] {
+  --lp-surface: #fbf0d3; --lp-head: #f6e3b4; --lp-line: #d2a23a; --lp-ink: #5a3704;
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel {
+  background: var(--lp-surface);
+  border-color: var(--lp-line);
+  box-shadow: var(--shadow-sm);
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__head {
+  background: var(--lp-head);
+  border-bottom-color: var(--lp-line);
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__head:hover {
+  background: color-mix(in srgb, var(--lp-line) 28%, var(--lp-head));
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__body { background: transparent; }
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__icon {
+  background: color-mix(in srgb, var(--lp-line) 30%, #ffffff);
+  border-color: var(--lp-line);
+  color: var(--lp-ink);
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__badge {
+  background: color-mix(in srgb, var(--lp-line) 30%, #ffffff);
+  border-color: var(--lp-line);
+  color: var(--lp-ink) !important;
+}
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__title { color: var(--text-hi) !important; }
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__desc { color: var(--text-2) !important; }
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__meta { color: var(--lp-ink) !important; }
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__chevron { color: var(--lp-ink) !important; }
+/* Kafelki słówek w Bloku 2: biała karta na pastelu, obrys w odcieniu bloku. */
+:root:is(.light, [data-theme="light"]) .lesson-pastel .lesson-pastel__card {
+  background: #ffffffcc;
+  border-color: color-mix(in srgb, var(--lp-line) 55%, transparent);
+}
