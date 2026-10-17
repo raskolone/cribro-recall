@@ -58,7 +58,8 @@ try {
             label: R(f.querySelector('[data-face-label]')), buttons: [...f.querySelectorAll('[data-face-actions] button')].map(R),
           }));
           const ctl = document.querySelector('[data-testid=flashcard-actions],[data-testid=warmup-cards-controls]');
-          return { faces, headers, ctlTop: ctl.getBoundingClientRect().top };
+          const btn = ['flashcard-dont-know', 'flashcard-know'].map((id) => document.querySelector(`[data-testid=${id}]`)).map((e) => e && { ...R(e), text: e.textContent.trim(), visible: getComputedStyle(e).visibility === 'visible', disabled: e.disabled });
+          return { faces, headers, ctlTop: ctl.getBoundingClientRect().top, btn };
         });
         const front = await measure();
         await page.keyboard.press('Space');
@@ -80,12 +81,54 @@ try {
         const c = sizes.get(key);
         if (c === undefined) sizes.set(key, front.ctlTop);
         else assert.ok(Math.abs(c - front.ctlTop) < 0.6, `${widthKey} ${theme} ${term}: przyciski pod kartą w innym miejscu (${front.ctlTop} vs ${c})`);
+        if (area === 'study') {
+          // Przyciski oceny: widoczne i aktywne przed obrotem, jedna etykieta, ta sama pozycja i rozmiar po obrocie.
+          for (const [i, label] of ['Nie umiem', 'Umiem'].entries()) {
+            for (const m of [front, back]) {
+              const b = m.btn[i];
+              assert.ok(b && b.visible && !b.disabled, `${widthKey} ${term}: przycisk „${label}" niewidoczny/wyłączony`);
+              assert.equal(b.text, label, `${widthKey} ${term}: widoczny tekst przycisku to „${b.text}"`);
+              assert.ok(b.h >= 40 && b.h <= 46, `${widthKey}: wysokość przycisku ${b.h}`);
+              assert.ok(b.w < 220, `${widthKey}: przycisk za szeroki (${b.w})`);
+            }
+            const fb = front.btn[i], bb = back.btn[i];
+            assert.ok(Math.abs(fb.left - bb.left) < 0.6 && Math.abs(fb.top - bb.top) < 0.6 && Math.abs(fb.w - bb.w) < 0.6, `${widthKey} ${term}: przycisk „${label}" zmienił położenie po obrocie`);
+            const bk = `${area}@${w}|btn${i}`;
+            const prevB = sizes.get(bk);
+            if (!prevB) sizes.set(bk, fb);
+            else assert.ok(Math.abs(prevB.left - fb.left) < 0.6 && Math.abs(prevB.top - fb.top) < 0.6 && Math.abs(prevB.w - fb.w) < 0.6, `${widthKey} ${theme} ${term}: przycisk „${label}" w innym miejscu/rozmiarze niż dla innego pojęcia`);
+          }
+          const [dk, k] = front.btn;
+          assert.ok(Math.abs((dk.left + k.left + k.w) / 2 - w / 2) < 3, `${widthKey}: przyciski nie są wyśrodkowane`);
+        }
         checked++;
         await ctx.close();
       }
     }
   }
-  console.log(`OK: ${checked} kombinacji (ekran × motyw × szerokość × pojęcie), stały rozmiar karty, brak nakładania`);
+  // Klik „Umiem" PRZED i PO obrocie karty ocenia kartę (licznik opanowanych rośnie).
+  for (const flipFirst of [false, true]) {
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 } });
+    const page = await ctx.newPage();
+    await page.goto(`${base}?area=study&theme=dark&term=save`);
+    await page.waitForSelector('[data-face]');
+    if (flipFirst) { await page.keyboard.press('Space'); await page.waitForTimeout(700); }
+    await page.click('[data-testid=flashcard-know]');
+    await page.waitForFunction(() => /1\s*z\s*2/.test(document.querySelector('[data-testid=flashcard-counter]')?.textContent || ''), null, { timeout: 5000 });
+    await ctx.close();
+  }
+  // Klawisz ArrowRight PRZED i PO obrocie karty ocenia kartę tak samo jak klik.
+  for (const flipFirst of [false, true]) {
+    const ctx = await browser.newContext({ viewport: { width: 375, height: 812 } });
+    const page = await ctx.newPage();
+    await page.goto(`${base}?area=study&theme=dark&term=save`);
+    await page.waitForSelector('[data-face]');
+    if (flipFirst) { await page.keyboard.press('Space'); await page.waitForTimeout(700); }
+    await page.keyboard.press('ArrowRight');
+    await page.waitForFunction(() => /1\s*z\s*2/.test(document.querySelector('[data-testid=flashcard-counter]')?.textContent || ''), null, { timeout: 5000 });
+    await ctx.close();
+  }
+console.log(`OK: ${checked} kombinacji (ekran × motyw × szerokość × pojęcie), stały rozmiar karty, brak nakładania`);
 } finally {
   await browser.close();
   server.close();

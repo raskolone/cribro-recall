@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import gsap from 'gsap';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useFlashcards } from '../../context/FlashcardContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useSettings } from '../../context/SettingsContext';
@@ -512,23 +513,15 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
         handleFlip();
       } else if (e.code === 'ArrowLeft') {
         e.preventDefault();
-        if (isFlipped) {
-          handleAnswer(false);
-        } else {
-          handlePrev();
-        }
+        handleAnswer(false);
       } else if (e.code === 'ArrowRight') {
         e.preventDefault();
-        if (isFlipped) {
-          handleAnswer(true);
-        } else {
-          handleNext();
-        }
+        handleAnswer(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFlipped, queueState.isFinished, handleFlip, handleAnswer, handlePrev, handleNext]);
+  }, [queueState.isFinished, handleFlip, handleAnswer]);
 
   if (cards.length === 0) return null;
 
@@ -677,25 +670,43 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
          <button onClick={handleNext} disabled={queueState.queue.length <= 1} className={`p-2 pointer-coarse:min-h-11 pointer-coarse:px-3 ${queueState.queue.length <= 1 ? 'opacity-30' : ''}`}>{language === 'pl' ? 'Następna' : 'Next'} →</button>
       </div>
 
-      {isFlipped ? (
-        <div className="grid grid-cols-2 gap-4 mt-2" data-testid="flashcard-actions">
-          <Button variant="danger" className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(false)}>
-            {/* Czerwony tekst na czerwonawym tle: 4,05:1 w trybie jasnym. Stan niesie obwódka i tło
-                przycisku, tekst idzie tokenem `text-hi` (patrz tests/flashcardRatingContrast.test.ts). */}
-            <span className="text-text-hi">{i18n.t("Nie umiem")}</span>
-            <span className="text-[12px] uppercase text-text-hi">{i18n.t("Nie umiem (Strzałka w lewo)")}</span>
-          </Button>
-          <Button className="py-4 text-lg flex flex-col items-center justify-center gap-1" onClick={() => handleAnswer(true)}>
-            <span>{i18n.t("Umiem")}</span>
-            <span className="text-[12px] uppercase">{i18n.t("Umiem (Strzałka w prawo)")}</span>
-          </Button>
-        </div>
-      ) : (
-        <div className="text-center text-content-muted text-sm animate-pulse mt-2 flex flex-col items-center gap-2" data-testid="flashcard-actions">
-          <span>{t('flashcards.clickReveal')}</span>
-          <span className="bg-base-300 px-2 py-1 rounded text-xs">{i18n.t("Spacja")}</span>
-        </div>
-      )}
+      {/* Przyciski oceny stoją w tym samym miejscu przed i po obrocie (zawsze aktywne): kliknięcie
+          oraz skróty klawiszowe (Strzałka w lewo / Strzałka w prawo) zawsze oceniają kartę
+          (ten sam handleAnswer), niezależnie od stanu odwrócenia. Nawigacja bez oceny pozostaje
+          na bocznych przyciskach < >. */}
+      <div className="flex justify-center gap-3 mt-2" data-testid="flashcard-actions">
+        <button
+          type="button"
+          data-testid="flashcard-dont-know"
+          onClick={() => handleAnswer(false)}
+          aria-label={i18n.t("Nie umiem (Strzałka w lewo)")}
+          title={i18n.t("Nie umiem (Strzałka w lewo)")}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-danger px-5 text-sm font-bold text-accent-ink shadow-btn transition hover:brightness-110 active:brightness-95 cursor-pointer"
+        >
+          <ArrowLeft size={16} aria-hidden="true" className="shrink-0" />
+          <span>{i18n.t("Nie umiem")}</span>
+        </button>
+        <button
+          type="button"
+          data-testid="flashcard-know"
+          onClick={() => handleAnswer(true)}
+          aria-label={i18n.t("Umiem (Strzałka w prawo)")}
+          title={i18n.t("Umiem (Strzałka w prawo)")}
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-accent px-5 text-sm font-bold text-accent-ink shadow-btn transition hover:brightness-110 active:brightness-95 cursor-pointer"
+        >
+          <span>{i18n.t("Umiem")}</span>
+          <ArrowRight size={16} aria-hidden="true" className="shrink-0" />
+        </button>
+      </div>
+      {/* Podpowiedź odwrócenia: zajmuje miejsce także po obrocie (invisible), żeby nic nie skakało */}
+      <div
+        data-testid="flashcard-flip-hint"
+        aria-hidden={isFlipped}
+        className={`text-center text-content-muted text-sm mt-2 flex min-h-14 flex-col items-center gap-2 ${isFlipped ? 'invisible' : 'animate-pulse'}`}
+      >
+        <span>{t('flashcards.clickReveal')}</span>
+        <span className="bg-base-300 px-2 py-1 rounded text-xs">{i18n.t("Spacja")}</span>
+      </div>
 
       {canLeaveLater && (
         <div className="flex flex-col items-center gap-1.5 pt-2 text-center">

@@ -3,28 +3,39 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { AA_TEXT, composite, contrastRatio } from '../utils/contrast';
+import { AA_TEXT, contrastRatio } from '../utils/contrast';
 import { themeColor, type ThemeName } from './helpers/themeColors';
 
 const src = readFileSync(new URL('../components/flashcards/FlashcardStudyScreen.tsx', import.meta.url), 'utf8');
 const themes: ThemeName[] = ['dark', 'light'];
 
-test('podpisy skrótów klawiszowych nie są blednięte przezroczystością', () => {
-  const hints = [...src.matchAll(/<span className="([^"]*)">\{i18n\.t\("(?:Nie umiem|Umiem) \(Strzałka w (?:lewo|prawo)\)"\)\}<\/span>/g)];
-  assert.equal(hints.length, 2);
-  for (const [, cls] of hints) assert.doesNotMatch(cls, /opacity/, cls);
+test('jedna etykieta na przycisk: bez drugiej linii z powtórzeniem i opisem klawisza w widocznym tekście', () => {
+  assert.doesNotMatch(src, /<span[^>]*>\{i18n\.t\("(?:Nie umiem|Umiem) \(Strzałka w (?:lewo|prawo)\)"\)\}<\/span>/);
+  // Opis skrótu tylko w aria-label i title.
+  assert.equal((src.match(/aria-label=\{i18n\.t\("(?:Nie umiem|Umiem) \(Strzałka w (?:lewo|prawo)\)"\)\}/g) || []).length, 2);
+  assert.equal((src.match(/title=\{i18n\.t\("(?:Nie umiem|Umiem) \(Strzałka w (?:lewo|prawo)\)"\)\}/g) || []).length, 2);
 });
 
-test('„Nie umiem": etykieta i podpis idą tokenem text-hi (czerwień na czerwonawym tle nie daje AA w jasnym motywie)', () => {
-  assert.match(src, /<span className="text-text-hi">\{i18n\.t\("Nie umiem"\)\}<\/span>/);
-  assert.match(src, /<span className="text-\[12px\] uppercase text-text-hi">\{i18n\.t\("Nie umiem \(Strzałka w lewo\)"\)\}<\/span>/);
+test('strzałka w lewo PRZED „Nie umiem", strzałka w prawo PO „Umiem"', () => {
+  assert.match(src, /<ArrowLeft [^>]*\/>\s*<span>\{i18n\.t\("Nie umiem"\)\}<\/span>/);
+  assert.match(src, /<span>\{i18n\.t\("Umiem"\)\}<\/span>\s*<ArrowRight /);
+});
+
+test('przyciski oceny są zawsze renderowane (nie zależą od isFlipped) i wołają ten sam handleAnswer', () => {
+  const row = src.slice(src.indexOf('data-testid="flashcard-actions"'), src.indexOf('data-testid="flashcard-flip-hint"'));
+  assert.ok(row.includes('handleAnswer(false)') && row.includes('handleAnswer(true)'));
+  assert.doesNotMatch(row, /isFlipped|disabled/);
+});
+
+test('„Nie umiem" = tło danger, „Umiem" = tło accent, tekst accent-ink (tokeny motywu)', () => {
+  assert.match(src, /bg-danger px-5 text-sm font-bold text-accent-ink/);
+  assert.match(src, /bg-accent px-5 text-sm font-bold text-accent-ink/);
 });
 
 for (const theme of themes) {
-  test(`„Nie umiem" (danger): tekst podpisu ≥ 4,5:1 na tle przycisku — motyw ${theme}`, () => {
-    // Button danger: bg-danger/10 nałożone na tło strony, tekst tokenem text-hi.
-    const bg = composite(themeColor(theme, '--color-danger'), themeColor(theme, '--color-bg'), 0.1);
-    const ratio = contrastRatio(themeColor(theme, '--color-text-hi'), bg);
+  test(`„Nie umiem" (danger): etykieta ≥ 4,5:1 na wypełnieniu — motyw ${theme}`, () => {
+    // Przycisk: wypełnienie tokenem danger, tekst accent-ink.
+    const ratio = contrastRatio(themeColor(theme, '--color-accent-ink'), themeColor(theme, '--color-danger'));
     assert.ok(ratio >= AA_TEXT, `${theme}: ${ratio.toFixed(2)}:1`);
   });
 
