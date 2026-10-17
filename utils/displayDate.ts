@@ -5,12 +5,16 @@
  * Surowy ISO-string w wierszu zestawu był długim, niełamliwym ciągiem — na telefonie
  * wypychał układ poza ekran. Tekst, którego nie da się odczytać jako daty, wraca bez zmian.
  */
-export function formatDisplayDateValue(value: unknown, locale: string = 'pl-PL'): string {
+export function formatDisplayDateValue(
+  value: unknown,
+  locale: string = 'pl-PL',
+  month: 'long' | 'short' = 'long'
+): string {
   if (value === null || value === undefined || value === '') return '';
   const fmt = (d: Date) =>
     Number.isNaN(d.getTime())
       ? ''
-      : d.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+      : d.toLocaleDateString(locale, { day: 'numeric', month, year: 'numeric' });
 
   if (value instanceof Date) return fmt(value);
   if (typeof value === 'string') {

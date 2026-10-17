@@ -30,7 +30,7 @@ import PuzzleExercise from './PuzzleExercise';
 import StudentLessonPanel from './StudentLessonPanel';
 import StudentHomeworkPanelSection from './StudentHomeworkPanelSection';
 import StudentTestsPanelSection from './StudentTestsPanelSection';
-import StudentVocabPreview from './StudentVocabPreview';
+import FlashcardSetsScreen from '../flashcards/FlashcardSetsScreen';
 import PracticeSessionsSection from './PracticeSessionsSection';
 import StudentHeroHeader from './StudentHeroHeader';
 import StudentToolBar, { StudentTool } from './StudentToolBar';
@@ -77,8 +77,18 @@ interface TodayScreenProps {
   onOpenTests?: (testId?: string) => void;
   /** Wejście we wspólny brudnopis z lektorem. */
   onOpenScratchpad?: () => void;
-  /** Wejście we własne zestawy słownictwa i fiszki. */
-  onOpenVocabulary?: () => void;
+  /**
+   * Uchwyty widoku „Moje Listy Słów” osadzonego w zakładce „Słownictwo”. Bez nich (np. podgląd
+   * lektora) zakładki nie ma: `FlashcardContext` czyta konto zalogowanego, nie podglądanego kursanta.
+   */
+  vocabulary?: Pick<React.ComponentProps<typeof FlashcardSetsScreen>, 'onStudySet' | 'onEditSet' | 'onStatsSet' | 'onPresentSet' | 'onNavigate'>;
+  /** Panel otwiera się od razu na „Moich zasobach” w podanej zakładce (wejścia do słownictwa). */
+  initialResourceTab?: 'homework' | 'tests' | 'vocabulary';
+  /**
+   * Panel „Moje zasoby → Słownictwo” otworzył się / zamknął. Dashboard robi z tego osobne MIEJSCE panelu
+   * (`flashcard-sets`), żeby „wstecz” przeglądarki i powrót z nauki trafiały z powrotem do zakładki.
+   */
+  onVocabularyOpenChange?: (open: boolean) => void;
   /** Podgląd panelu konkretnego kursanta (lektor). Bez zapisu powtórek. */
   studentId?: string;
   onStudySet?: (setId: string) => void;
@@ -86,15 +96,6 @@ interface TodayScreenProps {
 }
 
 /** Ile elementów wchodzi do jednej sesji. */
-/**
- * Odchudzenie panelu ucznia: moduł Słownictwo (i skrót do fiszek AI) schowany
- * z widoku kursanta — kursant widzi wyłącznie prace domowe i dostęp do
- * współdzielonych notatek lekcyjnych. Kod modułu zostaje nietknięty, tylko
- * schowany za flagą (nie usunięty), żeby dało się go łatwo przywrócić.
- * Odwrócenie: jedna zmiana tej stałej na `true`.
- */
-const SHOW_STUDENT_VOCABULARY_MODULE = false;
-
 const SESSION_MAX = 10;
 
 /** Po tylu nieudanych próbach na TYM SAMYM elemencie proponujemy układankę. */
@@ -132,7 +133,9 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
   onOpenHomework,
   onOpenTests,
   onOpenScratchpad,
-  onOpenVocabulary,
+  vocabulary,
+  initialResourceTab,
+  onVocabularyOpenChange,
   studentId,
   onStudySet,
   onPracticeAI,
@@ -207,8 +210,19 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
    * Jeden naraz i domyślnie żaden: panel ma się otwierać na spisie
    * możliwości, nie na treści, której kursant w tej chwili nie szukał.
    */
-  const [openTool, setOpenTool] = useState<string | null>(null);
-  const [resourceSubTab, setResourceSubTab] = useState<'homework' | 'tests' | 'vocabulary'>('homework');
+  const [openTool, setOpenTool] = useState<string | null>(initialResourceTab ? 'resources' : null);
+  const [resourceSubTab, setResourceSubTab] = useState<'homework' | 'tests' | 'vocabulary'>(initialResourceTab ?? 'homework');
+  // Zmiana `initialResourceTab` na już zamontowanym panelu (np. powiadomienie „Nowy materiał”) otwiera zakładkę.
+  useEffect(() => {
+    if (!initialResourceTab) return;
+    setOpenTool('resources');
+    setResourceSubTab(initialResourceTab);
+  }, [initialResourceTab]);
+  const vocabularyOpen = openTool === 'resources' && resourceSubTab === 'vocabulary';
+  useEffect(() => {
+    onVocabularyOpenChange?.(vocabularyOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vocabularyOpen]);
   const [historySubTab, setHistorySubTab] = useState<'lessons' | 'practice'>('lessons');
 
   const L =
@@ -243,7 +257,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
             scratchpadDesc: 'Wspólny brudnopis z lektorem',
             homework: 'Moje zadania',
             tests: 'Moje testy',
-            vocabulary: 'Moje słownictwo',
+            vocabulary: 'Słownictwo',
             lessons: 'Wcześniejsze lekcje',
             practice: 'Historia ćwiczeń',
             extraPractice: 'Praktyka dodatkowa',
@@ -280,7 +294,7 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
             scratchpadDesc: 'Shared notes with tutor',
             homework: 'My tasks',
             tests: 'My tests',
-            vocabulary: 'My word lists',
+            vocabulary: 'Vocabulary',
             lessons: 'Earlier lessons',
             practice: 'Practice history',
             extraPractice: 'Extra practice',
@@ -716,7 +730,9 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                     >
                       {L.tools.tests}
                     </button>
-                    {SHOW_STUDENT_VOCABULARY_MODULE && (
+                    {/* Zakładka „Słownictwo": FlashcardContext czyta konto zalogowanego,
+                        więc w podglądzie lektora (cudzy kursant) jej nie ma. */}
+                    {vocabulary && !isPreview && (
                       <button
                         type="button"
                         onClick={() => setResourceSubTab('vocabulary')}
@@ -759,26 +775,9 @@ const TodayScreen: React.FC<TodayScreenProps> = ({
                       onOpenTests={onOpenTests || (() => {})}
                     />
                   )}
-                  {SHOW_STUDENT_VOCABULARY_MODULE && resourceSubTab === 'vocabulary' && (
-                    <div className="p-3 sm:p-4 space-y-3">
-                      {onOpenVocabulary && (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 p-3 rounded-xl bg-white/[0.03] border border-line-soft">
-                          <div className="text-xs text-text-2 leading-relaxed">
-                            {language === 'pl'
-                              ? 'Przeglądaj słownictwo z lekcji i trenuj fiszki w dedykowanym module.'
-                              : 'Browse lesson vocabulary and practice flashcards in full view.'}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={onOpenVocabulary}
-                            className="shrink-0 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-black font-semibold text-xs hover:brightness-110 active:scale-95 transition-all cursor-pointer"
-                          >
-                            <span>{language === 'pl' ? 'Otwórz fiszki' : 'Open flashcards'}</span>
-                            <ArrowRight size={13} />
-                          </button>
-                        </div>
-                      )}
-                      <StudentVocabPreview studentId={targetId} />
+                  {vocabulary && !isPreview && resourceSubTab === 'vocabulary' && (
+                    <div className="p-3 sm:p-4">
+                      <FlashcardSetsScreen embedded {...vocabulary} />
                     </div>
                   )}
                 </div>

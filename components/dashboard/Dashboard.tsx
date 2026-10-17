@@ -38,7 +38,6 @@ import { GeneratedLessonScenario } from '../../types';
 import { buildStudentTourSteps, buildTeacherTourSteps } from './tourSteps';
 
 import TodayScreen from './TodayScreen';
-import StudentVocabPreview from './StudentVocabPreview';
 import { HOMEWORK_ENGINE_V2, isModuleVisible } from '../../config/featureFlags';
 import StudentTestsScreen from '../tests/StudentTestsScreen';
 import AdminStatsScreen from '../admin/AdminStatsScreen';
@@ -88,6 +87,26 @@ interface PersistedPanelState {
   activeTestId: string | null;
   homeworkFilterStatus: string | null;
 }
+
+/**
+ * Dokąd wraca „Wróć” z nauki fiszek. Obok stanu w pamięci trzymamy to w `sessionStorage`, żeby F5 (i
+ * automatyczne przeładowanie po nowej wersji aplikacji) w trakcie nauki nie zgubiło zakładki „Słownictwo”.
+ */
+const STUDY_RETURN_KEY = 'cribro_study_return_view';
+const readStudyReturn = (): View => {
+  try {
+    return sessionStorage.getItem(STUDY_RETURN_KEY) === 'flashcard-sets' ? 'flashcard-sets' : 'dashboard';
+  } catch {
+    return 'dashboard';
+  }
+};
+const persistStudyReturn = (target: View): void => {
+  try {
+    sessionStorage.setItem(STUDY_RETURN_KEY, target);
+  } catch {
+    // zablokowany storage — po F5 powrót na pulpit
+  }
+};
 
 const readPersistedPanelState = (): Partial<PersistedPanelState> => {
   try {
@@ -189,6 +208,8 @@ const Dashboard: React.FC = () => {
   // mechanizm, obsługujący nawigację w obrębie tej samej sesji SPA, nie F5.
   const [restoredPanelState] = useState(readInitialPanelState);
   const [view, setView] = useState<View>(restoredPanelState.view || 'dashboard');
+  // Dokąd wraca „Wróć” z nauki zestawu: do zakładki „Słownictwo”, jeśli kursant wszedł stamtąd.
+  const [studyReturnView, setStudyReturnView] = useState<View>(() => readStudyReturn());
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isDesktopCollapsed, setIsDesktopCollapsed] = useState(() => {
     try {
@@ -366,6 +387,11 @@ const Dashboard: React.FC = () => {
   const handleBackToDashboard = () => goBackOr(() => handleNavigate('dashboard'));
 
   const handleNavigate = (newView: View, extra?: any) => {
+    if (newView === 'flashcard-study') {
+      const target: View = extra?.returnTo ?? 'dashboard';
+      setStudyReturnView(target);
+      persistStudyReturn(target);
+    }
     setActiveSetIds(Array.isArray(extra?.setIds) && extra.setIds.length > 1 ? extra.setIds : null);
     let newSetId = activeSetId;
     if (extra && (extra.setId || extra.activeSetId)) {
@@ -511,6 +537,49 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [language, user?.streakCount, words, difficultWords, dueWords]);
 
+  /*
+   * „Moje Listy Słów”: jeden zestaw uchwytów dla zakładki „Słownictwo” w „Moich zasobach” i dla
+   * widoku `flashcard-sets` (alias tej samej zakładki). Powrót z nauki, edycji i statystyk wraca tam.
+   */
+  const vocabularyHandlers = {
+    onStudySet: (setId: string) => {
+      (window as any)._initialStudyMode = 'flashcards';
+      handleNavigate('flashcard-study', { setId, returnTo: 'flashcard-sets' });
+    },
+    onEditSet: (setId: string) => handleNavigate('flashcard-edit', { setId }),
+    onStatsSet: (setId: string) => handleNavigate('flashcard-stats', { setId }),
+    onPresentSet: (setId: string) => handleNavigate('presentation', { setId }),
+    onNavigate: (v: any, extra?: any) => {
+      if (extra && (extra.setId || extra.activeSetId)) {
+        setActiveSetId(extra.setId || extra.activeSetId);
+      }
+      setView(v as View);
+    },
+  };
+
+  const studentPanelProps = {
+    /* Otwarcie zakładki „Słownictwo” = miejsce `flashcard-sets`; zamknięcie = pulpit. */
+    onVocabularyOpenChange: (open: boolean) => {
+      if (open && view !== 'flashcard-sets') handleNavigate('flashcard-sets');
+      else if (!open && view === 'flashcard-sets') handleNavigate('dashboard');
+    },
+    onOpenFreePractice: () => handleNavigate('free-practice'),
+    onOpenHomework: (taskId?: string) =>
+      handleNavigate('homework', taskId ? { taskId } : undefined),
+    onOpenTests: (testId?: string) =>
+      handleNavigate('tests', testId ? { testId } : undefined),
+    onStudySet: (setId: string) => {
+      (window as any)._initialStudyMode = 'flashcards';
+      handleNavigate('flashcard-study', { setId });
+    },
+    onPracticeAI: (setId: string) => handleNavigate('ai-generator', { setId }),
+    /* Kursant dostaje DOKŁADNIE ten sam adres, co lektor — jeden link do
+       jednego dokumentu. */
+    onOpenScratchpad: () => openScratchpadTab(user?.id ? `sp_${user.id}` : null),
+    /* Zakładka „Słownictwo” w „Moich zasobach”. */
+    vocabulary: vocabularyHandlers,
+  };
+
   const renderContent = () => {
     if (view === 'student-stats') {
       if (isTeacher) {
@@ -580,36 +649,18 @@ const Dashboard: React.FC = () => {
       return <StudentTestsScreen initialTestId={activeTestId || undefined} onBack={() => handleNavigate('dashboard')} />;
     }
     if (view === 'flashcard-sets') {
-      return (
-        <FlashcardSetsScreen 
-          onStudySet={(setId) => {
-            (window as any)._initialStudyMode = 'flashcards';
-            handleNavigate('flashcard-study', { setId });
-          }} 
-          onEditSet={(setId) => {
-            handleNavigate('flashcard-edit', { setId });
-          }} 
-          onStatsSet={(setId) => {
-            handleNavigate('flashcard-stats', { setId });
-          }} 
-          onPresentSet={(setId) => {
-            handleNavigate('presentation', { setId });
-          }} 
-          onNavigate={(v: any, extra?: any) => {
-            if (extra && (extra.setId || extra.activeSetId)) {
-              setActiveSetId(extra.setId || extra.activeSetId);
-            }
-            setView(v as View);
-          }}
-        />
-      );
+      // Kursant: ta sama zakładka „Słownictwo” w „Moich zasobach” (jedno miejsce na słownictwo).
+      if (!isTeacher) {
+        return <TodayScreen {...studentPanelProps} initialResourceTab="vocabulary" />;
+      }
+      return <FlashcardSetsScreen {...vocabularyHandlers} />;
     }
     if (view === 'flashcard-study') {
       return <FlashcardStudyScreen 
         setId={activeSetId || ''} 
         setIds={activeSetIds ?? undefined}
         initialMode={(window as any)._initialStudyMode} 
-        onBack={() => handleNavigate('dashboard')} 
+        onBack={() => handleNavigate(studyReturnView)} 
         onNavigate={(v: any, extra?: any) => {
           if (extra?.freeLaunch) {
             setFreeLaunch(extra.freeLaunch);
@@ -896,30 +947,8 @@ const Dashboard: React.FC = () => {
         );
       }
 
-      const panelProps = {
-        onOpenFreePractice: () => handleNavigate('free-practice'),
-        onOpenHomework: (taskId?: string) =>
-          handleNavigate('homework', taskId ? { taskId } : undefined),
-        onOpenTests: (testId?: string) =>
-          handleNavigate('tests', testId ? { testId } : undefined),
-        onStudySet: (setId: string) => {
-          (window as any)._initialStudyMode = 'flashcards';
-          handleNavigate('flashcard-study', { setId });
-        },
-        onPracticeAI: (setId: string) => handleNavigate('ai-generator', { setId }),
-        /* Kursant dostaje DOKŁADNIE ten sam adres, co lektor — jeden link do
-           jednego dokumentu. */
-        onOpenScratchpad: () => openScratchpadTab(user?.id ? `sp_${user.id}` : null),
-        /*
-         * Wejście do własnego słownictwa. Dotąd istniało WYŁĄCZNIE w menu
-         * bocznym, więc po jego zdjęciu nie byłoby do niego żadnej drogi —
-         * a to jeden z trzech ekranów, po które kursant wraca sam z siebie.
-         */
-        onOpenVocabulary: () => handleNavigate('flashcard-sets'),
-      };
-
       // Fallback obsługuje wyłącznie panel własny kursanta
-      return <TodayScreen {...panelProps} />;
+      return <TodayScreen {...studentPanelProps} />;
     }
 
     return <AIExerciseGeneratorScreen 

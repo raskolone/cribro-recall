@@ -25,7 +25,7 @@ interface FlashcardContextType {
   getSessionResults: (sessionId: string) => Promise<SessionResult[]>;
 }
 
-const FlashcardContext = createContext<FlashcardContextType | undefined>(undefined);
+export const FlashcardContext = createContext<FlashcardContextType | undefined>(undefined);
 
 export const FlashcardProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [sets, setSets] = useState<FlashcardSet[]>([]);

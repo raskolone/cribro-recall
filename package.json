@@ -11,6 +11,8 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test": "tsx --test tests/*.test.ts tests/*.test.tsx",
+    "test:browser": "node scripts/browser/vocabulary-layout.mjs && node scripts/browser/vocabulary-return.mjs",
+    "test:browser:flow": "node scripts/browser/vocabulary-return.mjs",
     "migrate:notion": "tsx scripts/migrate-notion-archive.ts",
     "dev:emulated": "VITE_USE_EMULATORS=1 vite",
     "emulators": "PATH=\"/opt/homebrew/opt/openjdk/bin:$PATH\" firebase emulators:start --project demo-cribro --only firestore,auth",

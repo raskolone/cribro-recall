@@ -19,8 +19,11 @@ test('komentarz lektora i tytuły zestawów łamią się zamiast wypychać ukła
   assert.ok(feedbackLines.length >= 2);
   for (const l of feedbackLines) assert.match(l, /\[overflow-wrap:anywhere\]/);
   assert.match(src('components/dashboard/StudentHomeworkGradedModal.tsx'), /whitespace-pre-wrap break-words \[overflow-wrap:anywhere\]/);
-  assert.match(src('components/flashcards/FlashcardSetsScreen.tsx'), /className="min-w-0 text-lg font-bold/);
-  assert.match(src('components/flashcards/FlashcardSetsScreen.tsx'), /flex-1 min-w-0 max-sm:w-full/);
+  const sets = src('components/flashcards/FlashcardSetsScreen.tsx');
+  // lista: tytuł zajmuje wolne miejsce i się skraca; siatka: 2 linie z łamaniem długich wyrazów
+  assert.match(sets, /className="min-w-0 text-base font-bold[^"]*truncate"/);
+  assert.match(sets, /<div className="min-w-0 flex-1">/);
+  assert.match(sets, /line-clamp-2 break-words \[overflow-wrap:anywhere\]/);
 });
 
 test('data lekcji w zestawie nie jest wypisywana jako surowy tekst z bazy', () => {

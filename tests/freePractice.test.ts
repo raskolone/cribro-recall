@@ -357,7 +357,11 @@ test('Dashboard: jedno menu dla kursanta — pulpit i skróty „Przećwicz w zd
   assert.doesNotMatch(block, /taskId|specialTasks/);
   // generator bez trybu zostaje dla lektora
   assert.match(src, /view !== 'extra-practice' && view !== 'ai-generator'/);
-  assert.match(src, /<FlashcardStudyScreen[\s\S]{0,200}onBack=\{\(\) => handleNavigate\('dashboard'\)\}/);
+  // powrót z nauki: domyślnie pulpit; z zakładki „Słownictwo” (returnTo) — z powrotem do niej
+  assert.match(src, /<FlashcardStudyScreen[\s\S]{0,200}onBack=\{\(\) => handleNavigate\(studyReturnView\)\}/);
+  assert.match(src, /useState<View>\(\(\) => readStudyReturn\(\)\)/);
+  assert.match(src, /=== 'flashcard-sets' \? 'flashcard-sets' : 'dashboard'/);
+  assert.match(src, /const target: View = extra\?\.returnTo \?\? 'dashboard';/);
 });
 
 test('nagłówek kursanta: kafelek pracy domowej i filtr „do zrobienia" bez zmian, wejście w obu stanach z jednego komponentu', () => {
