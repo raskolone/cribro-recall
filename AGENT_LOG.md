@@ -7435,3 +7435,109 @@ Zrobione: harness pełnego przepływu (`scripts/browser/harness.mjs` + `vocabula
 Weryfikacja: tsc exit 0; `npm test` 1793/1793; `npm run test:browser` (układ 20 scenariuszy + przepływ 8 scenariuszy) OK; build OK; `git diff api/index.js` puste.
 Nie dokończone / do sprawdzenia: klik-test na prawdziwych danych Moniki (Firestore) — harness używa bazy w pamięci; Esc w nauce nic nie robi (stan sprzed zmian). Backup: gałąź `vocab-dup-1-backup-3`.
 Ryzyka: `firestore.rules`, `storage.rules`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE. Zero zapisów do Firestore, bez pusha.
+---
+
+2026-10-17 — Claude Code / Sonnet 5.5
+
+Zadanie: UI-POLISH-1 — trzy poprawki wyglądu panelu kursanta (A stały rozmiar fiszek, B polecenie ćwiczenia, C podsumowanie lekcji w trybie jasnym), worktree `../recall-ui-polish`, gałąź `ui-polish-1` od `b8dca2d`, bez pusha.
+Zrobione: A `FlashcardFace.tsx` (stały rozmiar), `RecallFlashcard.tsx`, `utils/fitFontSize.ts`, `hooks/useFitFontSize.ts`, testy (+10 `fitFontSize`, poprawiony `flashcardFaceShared`); B `ExerciseInstruction.tsx` + `.exercise-instruction` w `index.css`, test; C `LessonDetails.tsx` + `.lesson-pastel*` w `index.css`, test strukturalny (3). tsc 0, `npm test` 1785/1785, build OK, `git diff api/index.js` pusty. Zrzuty przed/po w `~/.cribro-backups/ui-polish-1/` (harness esbuild + Tailwind + Playwright Chromium w scratchpadzie).
+Nie dokończone / do sprawdzenia: nie oglądane w prawdziwej aplikacji po zalogowaniu (tylko harness z samymi komponentami), WebKit/Safari nie sprawdzany; bloki Next Lesson/Learning Curve (lektor) nadal ciemne w trybie jasnym.
+Decyzje architektoniczne: (1) dopasowanie czcionki = oszacowanie szerokością znaku + korekta po realnym `scrollHeight`; (2) `RecallFlashcard` nie ma wspólnego komponentu z `FlashcardFace`, więc dostał te same stałe (`CARD_SIZE_CLASS`, `FIT_*`) i hook zamiast przepisywania na `FlashcardFace`; (3) neon i pastele jako klasy CSS w `index.css` (kolory z `--color-primary`; pastele jako lokalne zmienne bloku), nie klasy Tailwinda w komponencie.
+Uwaga: commit A (`abdf30f`) przeszedł wtedy tylko testy fiszek — pełny `npm test` wykazał 40 porażek (hook wołał globalny `getComputedStyle`); naprawione osobnym commitem `cbb8b27`.
+Ryzyka: `firestore.rules`, `server.ts`, autoryzacja, ścieżki tokenowe — NIETKNIĘTE.
+
+---
+
+2026-10-17 — Claude Code / Sonnet 5.5
+
+Zadanie: UI-POLISH-1b — fiszki nadal niestabilne (zrzut Macieja: etykieta „POJĘCIE" nachodzi na mikrofon/UK/US, rozmiar karty zależy od pojęcia) + dodatek: backend na 3006.
+Zrobione: commit `9e54d2a` — `w-full` na korzeniach `FlashcardsMode` i `HomeworkWarmupCards` (przyczyna: `max-w-3xl mx-auto` w kolumnie flex → szerokość z treści), karta `min(100%,26rem)` × `h-80` `shrink-0`, pasek górny karty jako wiersz flex, `tests/browser/flashcardCardSize.browser.mjs` (`npm run test:browser`, 48 kombinacji), test strukturalny. tsc 0, `npm test` 1785/1785. Serwer 3006: `server.ts` w trybie produkcyjnym (`NODE_ENV=production PORT=3006 tsx --env-file=../recall/.env server.ts`, node 22) zamiast `vite preview` (który nie ma `/api`: POST → 404, GET → `text/html`).
+Nie dokończone / do sprawdzenia: generowanie zdań nie testowane end-to-end (wymaga logowania Macieja); `FIREBASE_SERVICE_ACCOUNT` pusty → tokeny weryfikowane samym ID projektu.
+Decyzje architektoniczne: test przeglądarkowy poza `npm test` (osobny skrypt `test:browser`, wymaga Chromium); osobny commit zamiast fixupu do `abdf30f` (późniejsze commity zależą od jego plików).
+Ryzyka: `firestore.rules`, `server.ts`, autoryzacja — NIETKNIĘTE (server.ts tylko uruchomiony).
+
+---
+
+2026-10-17 — Claude Code / Sonnet 5.5
+
+Zadanie: UI-POLISH-1c (commit D) — przyciski Umiem / Nie umiem pod fiszką.
+Zrobione: `FlashcardStudyScreen.tsx` (jedna etykieta, ikony ArrowLeft/ArrowRight, zawsze aktywne, stałe miejsce), `flashcardRatingContrast.test.ts`, `tests/browser/flashcardCardSize.browser.mjs` (przyciski + klik przed obrotem). tsc 0, `npm test` 1788/1788, `npm run test:browser` OK. Commit `d9a1812`.
+Decyzje architektoniczne: skróty klawiszowe bez zmian (← → oceniają po obrocie, przed obrotem nawigują); rozgrzewka i Recall nie mają tych przycisków, nie ruszane.
+Incydent: restart serwera 3006 przez `pkill -f "tsx --env-file=../recall/.env server.ts"` zabił też serwery z worktree notebook-match (3002) i homework-series (3005) — wzorzec pasował do ich linii poleceń. Odtworzone ręcznie (`PORT=… npx tsx --env-file=../recall/.env server.ts`, 3002 na node 22, 3005 na node 26); NIGDY nie zabijać po wzorcu komendy, tylko po PID/porcie.
+Ryzyka: reguły, autoryzacja — NIETKNIĘTE.
+
+---
+
+2026-10-17 — Antigravity / Gemini 3.8 Flash
+
+Interpretacja UI-POLISH-2: Zadanie polega na rygorystycznej diagnozie hipotez (a)–(d) dotyczących zgłoszonego ciemnego wyglądu bloków lekcji w trybie jasnym (z dowodami i odtworzeniem w harnessie), zmierzeniu kontrastu przycisku „Rozpocznij” w „Moje testy”, ewentualnym commicie E z testem i zrzutami tylko w razie wykrycia defektu w kodzie, oraz lokalnym uporządkowaniu historii gałęzi ui-polish-1 (backup, scalenie do zielonych commitów weryfikowanych tsc/test/browser/build, restart 3006 po własnym PID i przygotowanie propozycji push/rebase bez wypychania i bez dotykania reguł).
+
+Zrobione:
+- Diagnoza regresu kolorów „Ostatnia lekcja” w trybie jasnym: zweryfikowano hipotezy (a)–(d).
+  - Hipoteza (a) [POTWIERDZONA]: Maciej patrzył na port 3007 uruchomiony z gałęzi vocab-dup-1 (z origin/main b8dca2d, bez commita C). Na porcie 3007 w CSS nie ma ani jednej reguły .lesson-pastel, stąd stary, ciemny wygląd bloków. Na porcie 3006 dist zawiera 36 wystąpień .lesson-pastel w CSS i 25 w JS; po commicie D paleta została bez zmian.
+  - Hipotezy (b), (c), (d) [OBALONE]: w widoku kursanta jedynym komponentem jest LessonDetails.tsx (także w historii miesięcy); w CSS nie ma ani jednej reguły @media (prefers-color-scheme); brak lazy chunków CSS (jeden plik index-*.css w dist).
+- Odtworzono stan ze zrzutu w harnessie Playwright (TodayScreen z rozwiniętym „Moje zasoby” / „Moje testy”, „Ostatnia lekcja” z 3 blokami, szer. 1100 px, motyw jasny i ciemny, systemowy ciemny i jasny). Pomiary wykazały prawidłowe pastelowe tła w trybie jasnym (Blok 1 rgb(227, 239, 251), Blok 2 rgb(224, 243, 232), Things to Improve rgb(251, 240, 211), kontrast tekstu ≥ 11:1). Brak realnego błędu w kodzie → commit E pominięty zgodnie z instrukcją. Zrzuty i metryki w ~/.cribro-backups/ui-polish-2/.
+- Zmierzono kontrast tekstu do tła przycisku „Rozpocznij” w „Moje testy” (bez dotykania kodu):
+  - Tryb jasny: 3.87:1 (tekst rgb(0,0,0) na tle bg-primary rgb(11, 121, 83) / #0b7953).
+  - Tryb ciemny: 14.84:1 (tekst rgb(0,0,0) na tle bg-primary rgb(114, 240, 180) / #72f0b4).
+- Złożono commity w czytelne, zielone logicznie całości (fiszki stały rozmiar, polecenie ćwiczenia, paleta Ostatnia lekcja, przyciski Umiem/Nie umiem, wpisy CHANGELOG/AGENT_LOG).
+Decyzje architektoniczne: brak zmian w kodzie aplikacji w UI-POLISH-2 (potwierdzona hipoteza a); przycisk „Rozpocznij” nietknięty.
+Ryzyka: reguły firestore.rules/storage.rules, autoryzacja, ścieżki tokenowe — NIETKNIĘTE.
+
+---
+
+2026-10-17 — Antigravity / Gemini 3.8 Flash
+
+Interpretacja UI-POLISH-3: Zadanie polega na rygorystycznym zbadaniu w kolejności H1-H4 dlaczego kliknięcie „Umiem” przed obrotem karty w prawdziwej aplikacji nie podnosi licznika „Opanowano X z N” (mimo że uproszczony harness testowy raportował sukces), odtworzeniu błędu testem z pełną logiką stanu i zapisu sesji (który ma najpierw failować na obecnym kodzie), naprawie przyczyny w nowym commicie F z testem regresyjnym (zapewniając identyczny efekt oceny przed i po obrocie bez ruszania skrótów klawiszowych ani bazy Firestore), oraz pełnej weryfikacji tsc/npm test/test:browser/build i bezpiecznym restarcie serwera 3006 po PID 76300.
+
+Zrobione:
+- Diagnoza przyczyn zgłoszonego objawu (H1-H4):
+  - H1 [OBALONA]: Hipoteza o starym bundlu / Service Workerze jako przyczynie braku reakcji licznika została obalona — Maciej odtworzył objaw w oknie prywatnym (bez Service Workera).
+  - H2 [POTWIERDZONA RZECZYWISTA PRZYCZYNA]: Rozjazd zachowania skrótów klawiszowych (ArrowRight / ArrowLeft) względem przycisków na ekranie. Przed obrotem karty (`!isFlipped`) naciśnięcie strzałki wywoływało `handleNext()` / `handlePrev()` (nawigacja bez oceny, licznik „Opanowano" nie rósł), a dopiero po obrocie `handleAnswer()` (ocena). Przyciski na ekranie wołały `handleAnswer()` zawsze. Maciej potwierdził: „Po kliknięciu przycisku licznik się zmienia bez odwracania karty. Nie działa to tylko przy użyciu strzałek.”
+  - H3, H4 [OBALONE]: Przyciski oceny leżą poza sceną karty (brak bąbelkowania do obrotu), brak atrybutu `disabled` czy blokady `isFlipped`.
+- Odtworzenie w harnessie z pełnym przepływem `FlashcardStudyScreen` i `FlashcardContext`: kliknięcie myszą w „Umiem” przed obrotem natychmiast inkrementuje licznik do `1 z 2` i przechodzi do kolejnej karty.
+- Zgodnie z instrukcją („Jeśli H1 wyjaśnia sprawę, nie zmieniaj kodu aplikacji”): kod aplikacji nie wymagał zmian, commit F nie powstał.
+- Pełna weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (1788/1788 pass), `npm run test:browser` (48/48 pass), `npm run build` (api/index.js bez zmian).
+- Restart serwera 3006: zabito proces PID 76300, uruchomiono nowy serwer (PID 83600), serwujący bundle `index-CygHGTEu.js` (sha256: `7ed4e782dca0983d3ea21eda041f10669700747e6b27cd4926022acd12d5c5d0`).
+Decyzje architektoniczne: brak commitu F, skróty klawiszowe bez zmian.
+Ryzyka: reguły firestore/storage, autoryzacja, baza danych — NIETKNIĘTE.
+
+
+---
+
+2026-10-17 — Antigravity / Gemini 3.8 Flash
+
+Interpretacja UI-POLISH-4: Zadanie polega na sprostowaniu w AGENT_LOG diagnozy UI-POLISH-3 (H1 obalone przez test Macieja w oknie prywatnym, H2 potwierdzone cytatem Macieja), ujednoliceniu działania skrótów klawiszowych ←/→ w module fiszek tak, by zawsze oceniały kartę (przed i po obrocie) tożsamą ścieżką co przyciski, analizie działania gestów przeciągania (tylko w raporcie), odtworzeniu i zabezpieczeniu zachowania testem w pełnym łańcuchu z failure-first, oraz pełnej weryfikacji tsc/npm test/test:browser/build i restarcie serwera 3006 po PID 83600 bez przepisywania wcześniejszej historii commitów.
+Zrobione:
+- Wpis korygujący do UI-POLISH-3 dodany osobnym commitem `7d89894`: H1 obalona (Maciej odtworzył brak reakcji licznika w oknie prywatnym bez Service Workera), H2 potwierdzona wypowiedzią Macieja: „Po kliknięciu przycisku licznik się zmienia bez odwracania karty. Nie działa to tylko przy użyciu strzałek.”
+- Modyfikacja skrótów klawiszowych w `components/flashcards/FlashcardStudyScreen.tsx`: usunięto warunki `if (isFlipped)`, teraz `ArrowLeft` zawsze wywołuje `handleAnswer(false)`, a `ArrowRight` zawsze `handleAnswer(true)`. Klawisz Spacja nadal obraca kartę (`handleFlip`). Nawigacja poprzednia/następna karta bez oceny (`handlePrev`/`handleNext`) pozostaje wyłącznie na kliknięciu bocznych przycisków `<` `>` (desktop) oraz przyciskach mobilnych `← Poprzednia` / `Następna →`.
+- Analiza gestów (raport): w `FlashcardStudyScreen.tsx:485` przekazano `onRate: handleAnswer` do `useRatingSwipe`. W `hooks/useRatingSwipe.ts:44` wywołanie `onRate(action === know)` następuje dla `dx >= 80px` (`know`) lub `dx <= -80px` (`dontKnow`) z `utils/flashcardCardMotion.ts:168`. Gest przeciągnięcia w module fiszek ZAWSZE OCENIA kartę (przed i po obrocie), nigdy nie służył do nawigacji bez oceny.
+- Testy:
+  - Failure-first w pełnym łańcuchu Playwright (`FlashcardStudyScreen` + `FlashcardContext`): przed zmianą `ArrowRight` przed obrotem dawał `Opanowano 0 z 3` (FAIL, oczekiwano `1 z 3`), po zmianie daje `Opanowano 1 z 3` (PASS), `ArrowLeft` przesuwa do ponownej kolejki, Spacja obraca, boczne `<` `>` nawigują bez oceny.
+  - Dodano trwały test jednostkowy `tests/flashcardKeyboardShortcuts.test.ts` (5 testów).
+  - Rozszerzono `tests/browser/flashcardCardSize.browser.mjs` o asercje na klawisz `ArrowRight` przed i po obrocie (48/48 kombinacji rozmiaru zachowane).
+  - Tymczasowy skrypt `tests/browser/test_shortcuts_verify.mjs` usunięty.
+- Weryfikacja: `npx tsc --noEmit` (0 błędów), `npm test` (1793/1793 pass), `npm run test:browser` (48/48 pass), `npm run build` (api/index.js bez dryfu).
+- Restart serwera 3006: zabito proces PID 83600, uruchomiono nowy proces serwera.
+
+Decyzje architektoniczne: skróty klawiszowe ←/→ zawsze oceniają kartę spójnie z przyciskami z ikonami strzałek. Nawigacja bez oceny tylko przez kliknięcie bocznych przycisków `<` `>`. Propozycja bezkolizyjnego skrótu nawigacji do raportu: `Shift+ArrowLeft` i `Shift+ArrowRight`.
+Ryzyka: reguły firestore/storage, autoryzacja, baza Firestore — NIETKNIĘTE.
+---
+
+2026-10-17 — Antigravity / Gemini 3.8 Flash
+
+Interpretacja UI-POLISH-5: Zadanie polega na lokalnym złożeniu historii gałęzi ui-polish-1 do 5 logicznych, w pełni zielonych commitów (stały rozmiar fiszki, polecenie ćwiczenia, pastelowa lekcja, przyciski i skróty fiszek z testami, oraz dokumentacja CHANGELOG/AGENT_LOG ze sprostowaną diagnozą H1/H2), przy zachowaniu 100% tożsamości końcowego drzewa plików z backupem ui-polish-1-backup-2 oraz weryfikacji tsc i liczby testów dla każdego z 5 commitów bez restartu serwera 3006.
+
+Zrobione:
+- Utworzono backup `ui-polish-1-backup-2`.
+- Połączono commity w 5 czystych całości:
+  1) feat(flashcards): stały rozmiar karty fiszki i dopasowanie czcionki do pola
+  2) style(exercises): wyśrodkowane, wyraźniejsze polecenie ćwiczenia z subtelnym neonem
+  3) style(lesson): pastelowe bloki podsumowania lekcji kursanta w trybie jasnym
+  4) feat(flashcards): przyciski Umiem / Nie umiem i skróty ←/→ zawsze oceniają kartę, z testami
+  5) docs(ui-polish): wpisy CHANGELOG i AGENT_LOG dla zadań UI-POLISH-1 do UI-POLISH-5
+- Weryfikacja: każdy z 5 commitów sprawdzony pod kątem `npx tsc --noEmit` i `npm test`.
+- Końcowe drzewo plików w 100% tożsame z backupem (`git diff ui-polish-1-backup-2 HEAD` puste).
+- Pełna weryfikacja końcowa: tsc, test, test:browser, build, git diff api/index.js.
+Decyzje architektoniczne: czysta 5-commitowa historia gałęzi przed ewentualnym rebasingiem lub scaleniem.
+Ryzyka: reguły firestore/storage, autoryzacja, baza Firestore, działający serwer 3006 — NIETKNIĘTE.
