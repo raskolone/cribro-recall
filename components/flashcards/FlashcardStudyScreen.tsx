@@ -575,7 +575,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
   if (!currentCard) return null;
 
   return (
-    <div className="max-w-3xl mx-auto space-y-8 px-4 sm:px-0">
+    <div className="w-full max-w-3xl mx-auto space-y-8 px-4 sm:px-0">
       <div className="flex items-center justify-between">
         <button onClick={() => { showConfirm(
             t('flashcards.confirmQuitTitle') || 'Zakończ', 
@@ -613,7 +613,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
         <button 
           onClick={handlePrev} 
           disabled={queueState.queue.length <= 1}
-          className={`hidden md:flex p-4 rounded-full transition-colors ${queueState.queue.length <= 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
+          className={`hidden md:flex shrink-0 p-4 rounded-full transition-colors ${queueState.queue.length <= 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
         </button>
@@ -666,7 +666,7 @@ const FlashcardsMode = ({ cards: initialCards, setId, multi, onBack, saveSession
         <button 
           onClick={handleNext} 
           disabled={queueState.queue.length <= 1}
-          className={`hidden md:flex p-4 rounded-full transition-colors ${queueState.queue.length <= 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
+          className={`hidden md:flex shrink-0 p-4 rounded-full transition-colors ${queueState.queue.length <= 1 ? 'text-base-300 cursor-not-allowed' : 'text-content hover:bg-base-300'}`}
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
         </button>

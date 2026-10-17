@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Volume2, RotateCw, Check, HelpCircle, XCircle } from 'lucide-react';
 import { RecallCard, RecallRating } from '../../types/recall';
+import { useFitFontSize } from '../../hooks/useFitFontSize';
+import { CARD_SIZE_CLASS, FIT_MAX_REM, FIT_MIN_REM } from '../flashcards/FlashcardFace';
 
 interface RecallFlashcardProps {
   card: RecallCard;
@@ -15,6 +17,15 @@ export const RecallFlashcard: React.FC<RecallFlashcardProps> = ({
 }) => {
   const [isFlipped, setIsFlipped] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+
+  // Stały rozmiar karty (CARD_SIZE_CLASS z FlashcardFace); główny tekst dopasowuje czcionkę do pola.
+  const frontBox = useRef<HTMLDivElement>(null);
+  const frontText = useRef<HTMLHeadingElement>(null);
+  const backBox = useRef<HTMLDivElement>(null);
+  const backText = useRef<HTMLHeadingElement>(null);
+  const fit = { maxRem: FIT_MAX_REM, minRem: FIT_MIN_REM };
+  const frontSize = useFitFontSize(frontBox, frontText, card.term, fit);
+  const backSize = useFitFontSize(backBox, backText, card.translation, fit);
 
   const handleSpeak = (e: React.MouseEvent, text: string) => {
     e.stopPropagation();
@@ -46,7 +57,7 @@ export const RecallFlashcard: React.FC<RecallFlashcardProps> = ({
     <div className="w-full max-w-xl mx-auto flex flex-col items-center">
       {/* 3D Flashcard Container */}
       <div
-        className="w-full h-80 sm:h-96 cursor-pointer select-none perspective-1000 group"
+        className={`${CARD_SIZE_CLASS} mx-auto cursor-pointer select-none perspective-1000 group`}
         onClick={handleFlip}
         role="button"
         tabIndex={0}
@@ -87,8 +98,9 @@ export const RecallFlashcard: React.FC<RecallFlashcardProps> = ({
             </div>
 
             {/* Central Term & Context */}
-            <div className="flex flex-col items-center text-center my-auto px-2">
-              <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-slate-50 tracking-tight leading-snug">
+            <div ref={frontBox} className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto my-2">
+             <div className="flex flex-col items-center text-center my-auto px-2">
+              <h2 ref={frontText} style={{ fontSize: frontSize !== undefined ? `${frontSize}px` : `${FIT_MAX_REM}rem` }} className="font-black text-slate-50 tracking-tight leading-tight break-words max-w-full">
                 {card.term}
               </h2>
 
@@ -105,6 +117,7 @@ export const RecallFlashcard: React.FC<RecallFlashcardProps> = ({
                   </p>
                 </div>
               )}
+             </div>
             </div>
 
             {/* Hint to Flip */}
@@ -134,11 +147,12 @@ export const RecallFlashcard: React.FC<RecallFlashcardProps> = ({
             </div>
 
             {/* Translation Content */}
-            <div className="flex flex-col items-center text-center my-auto px-2">
+            <div ref={backBox} className="flex flex-col flex-1 min-h-0 w-full overflow-y-auto my-2">
+             <div className="flex flex-col items-center text-center my-auto px-2">
               <p className="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-1">
                 {card.term}
               </p>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-emerald-400 leading-snug">
+              <h2 ref={backText} style={{ fontSize: backSize !== undefined ? `${backSize}px` : `${FIT_MAX_REM}rem` }} className="font-extrabold text-emerald-400 leading-tight break-words max-w-full">
                 {card.translation}
               </h2>
 
@@ -147,6 +161,7 @@ export const RecallFlashcard: React.FC<RecallFlashcardProps> = ({
                   {card.contextSentence}
                 </p>
               )}
+             </div>
             </div>
 
             {/* Back Hint */}

@@ -60,3 +60,12 @@ test('odlot i snap-back przechodzą przez wspólne parametry (overwrite, clearPr
   assert.equal((mode.match(/\.\.\.ratingExitVars\(isCorrect, window\.innerWidth, prefersReducedMotion\(\)\),\s*onComplete: proceed/g) || []).length, 1);
   assert.ok(!/gsap\.to\(cardContainerRef\.current, \{ x: 0, rotation: 0/.test(mode));
 });
+
+// Korzeń ekranu to `max-w-3xl mx-auto` w kolumnie flex: bez `w-full` jego szerokość (a z nią `100%`
+// karty) zależy od długości pojęcia. Pełny pomiar: `npm run test:browser`.
+test('korzenie ekranów z kartą mają w-full (szerokość nie zależy od treści)', () => {
+  const warmup = readFileSync(new URL('../components/dashboard/HomeworkWarmupCards.tsx', import.meta.url), 'utf8');
+  assert.match(mode, /className="w-full max-w-3xl mx-auto space-y-8/);
+  assert.match(warmup, /className="w-full max-w-3xl mx-auto px-4 py-5 space-y-6/);
+  assert.match(face, /CARD_SIZE_CLASS = 'w-\[min\(100%,26rem\)\] h-80 shrink-0/);
+});

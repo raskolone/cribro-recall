@@ -18,10 +18,12 @@ import { render, cleanup } from '@testing-library/react';
 import '../i18n';
 import FlashcardFace, {
   ACTIONS_CLASS,
+  HEADER_CLASS,
   BACK_BODY_CLASS,
   BACK_CLASS,
   BACK_LABEL_CLASS,
   FACE_BASE_CLASS,
+  CARD_SIZE_CLASS,
   FRONT_BODY_CLASS,
   FRONT_CLASS,
   FRONT_LABEL_CLASS,
@@ -71,21 +73,29 @@ test('przód i tył: te same klasy kontenera, etykiety i treści w module i w ro
   assert.deepEqual(wuLabels, modLabels);
 });
 
-test('klasy wspólnej karty: jedna komórka siatki, min-h, tokeny motywu, zawijanie, róg na akcje', () => {
+test('klasy wspólnej karty: jedna komórka siatki, stały rozmiar, tokeny motywu, zawijanie, róg na akcje', () => {
   const { container } = renderModuleStyle();
   const front = container.querySelector('[data-face="front"]')!;
   const back = container.querySelector('[data-face="back"]')!;
   assert.ok(classes(front).includes('liquid-glass-card'));
   assert.ok(has(front, FACE_BASE_CLASS) && has(front, FRONT_CLASS));
   assert.ok(has(back, FACE_BASE_CLASS) && has(back, BACK_CLASS));
-  assert.ok(has(front, 'col-start-1 row-start-1 min-h-[240px] sm:min-h-[300px]'));
+  assert.ok(has(front, 'col-start-1 row-start-1'));
+  // Stały rozmiar: ten sam dla obu stron, bez min-h zależnego od treści.
+  assert.ok(has(front, CARD_SIZE_CLASS) && has(back, CARD_SIZE_CLASS));
+  assert.ok(CARD_SIZE_CLASS.includes('w-[min(100%,26rem)]') && CARD_SIZE_CLASS.includes('h-80'));
+  assert.ok(!classes(front).some((c) => /^min-h-\[(240|300)px\]$/.test(c)));
   assert.ok(!classes(front).includes('absolute'), 'bez position:absolute');
   assert.ok(has(front.querySelector('.font-mono')!, FRONT_LABEL_CLASS));
   assert.ok(has(back.querySelector('.font-mono')!, BACK_LABEL_CLASS));
   assert.ok(has(front.querySelector('div.font-bold')!, FRONT_BODY_CLASS));
   assert.ok(has(back.querySelector('div.font-bold')!, BACK_BODY_CLASS));
   assert.ok(FRONT_BODY_CLASS.includes('break-words') && FRONT_BODY_CLASS.includes('text-text-hi'));
-  assert.ok(has(front.firstElementChild!, ACTIONS_CLASS));
+  // Pasek górny: etykieta po lewej, przyciski po prawej, w jednym wierszu flex (bez absolute).
+  const header = front.firstElementChild!;
+  assert.ok(has(header, HEADER_CLASS) && !HEADER_CLASS.includes('flex-wrap') && !HEADER_CLASS.includes('absolute'));
+  assert.equal(header.firstElementChild, front.querySelector('.font-mono'));
+  assert.ok(has(header.lastElementChild!, ACTIONS_CLASS));
   assert.equal((front.getAttribute('style') ?? '').includes('backface-visibility: hidden'), true);
   assert.equal((back.getAttribute('style') ?? '').includes('rotateY(180deg)'), true);
 });

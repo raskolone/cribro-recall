@@ -318,7 +318,7 @@ export const HomeworkWarmupCards: React.FC<HomeworkWarmupCardsProps> = ({ cards,
       ref={rootRef}
       aria-label={i18n.t('Fiszki rozgrzewki')}
       data-testid="warmup-cards-root"
-      className="max-w-3xl mx-auto px-4 py-5 space-y-6 animate-in fade-in duration-300"
+      className="w-full max-w-3xl mx-auto px-4 py-5 space-y-6 animate-in fade-in duration-300"
     >
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/15 border border-primary/35 text-primary text-xs font-bold uppercase tracking-wider">
