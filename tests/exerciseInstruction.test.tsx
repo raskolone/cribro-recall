@@ -36,7 +36,11 @@ for (const [type, item, expected] of items) {
     assert.equal(label!.textContent, i18n.t((EXERCISE_INSTRUCTION_KEYS as any)[expected]));
     assert.ok(!container.textContent!.includes('POLECENIE Z MODELU'));
     assert.match(label!.className, /text-text-hi/);
-    assert.match(label!.className, /text-base/);
+    // Wyśrodkowane, większe, półgruby krój; neon w klasie .exercise-instruction (index.css).
+    assert.match(label!.className, /\btext-lg\b/);
+    assert.match(label!.className, /\btext-center\b/);
+    assert.match(label!.className, /\bfont-semibold\b/);
+    assert.match(label!.className, /\bexercise-instruction\b/);
   });
 }
 
@@ -71,4 +75,13 @@ test('CSS: .mc-gap i .game-tile mają min. wysokość dotyku (≥ 56 px kafelek)
   const css = readFileSync('index.css', 'utf8');
   assert.match(css, /\.mc-gap\s*\{/);
   assert.match(css, /\.game-tile \{[^}]*min-height: 3\.5rem/s);
+});
+
+test('neon polecenia: statyczny, z tokenów motywu, bez animacji i bez surowych kolorów', () => {
+  const css = readFileSync('index.css', 'utf8');
+  const start = css.indexOf('.exercise-instruction {');
+  const block = css.slice(start, css.indexOf('\n}\n', css.indexOf('.exercise-instruction {', start + 30)) + 3);
+  assert.ok(start > 0 && block.includes('box-shadow') && block.includes('text-shadow'));
+  assert.match(block, /var\(--color-primary\)/);
+  assert.doesNotMatch(block, /animation|transition|@keyframes|#[0-9a-f]{3,8}\b|rgba?\(/i);
 });

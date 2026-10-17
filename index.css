@@ -2478,3 +2478,24 @@ tr.liquid-glass-hover:hover {
 :root[data-theme="light"] .pad-img-attachment button:hover {
   color: var(--color-text-hi);
 }
+
+
+/* ── POLECENIE ĆWICZENIA (components/ui/ExerciseInstruction.tsx) ──
+   Subtelny, STATYCZNY neon w kolorze akcentu: obwódka + poświata pudełka i delikatna poświata
+   tekstu, wszystko z tokenu --color-primary (w trybie jasnym ciemniejszy zielony), bez animacji.
+   Tekst zostaje w text-hi na surface-flat, więc kontrast nie zależy od poświaty. W trybie jasnym
+   poświata jest słabsza: ciemny tekst na jasnym tle nie potrzebuje blasku, a mocny rozmywałby krawędzie. */
+.exercise-instruction {
+  border: 1.5px solid color-mix(in srgb, var(--color-primary) 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 14%, transparent),
+    0 0 18px color-mix(in srgb, var(--color-primary) 24%, transparent);
+  text-shadow: 0 0 12px color-mix(in srgb, var(--color-primary) 32%, transparent);
+}
+:root:is(.light, [data-theme="light"]) .exercise-instruction {
+  border-color: color-mix(in srgb, var(--color-primary) 60%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--color-primary) 10%, transparent),
+    0 0 12px color-mix(in srgb, var(--color-primary) 18%, transparent);
+  text-shadow: none;
+}

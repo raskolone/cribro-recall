@@ -4,14 +4,15 @@ import { EXERCISE_INSTRUCTION_KEYS, type InstructionType } from '../../utils/exe
 
 /**
  * Osobna, wyraźna etykieta polecenia nad treścią zadania. Tekst z i18n (utils/exerciseInstruction.ts),
- * kolory z tokenów (text-hi na surface-flat, obwódka line-strong — kontrast AA w obu motywach),
- * czcionka ≥ 16 px, pogrubiona; akcent po lewej to ozdoba, polecenie niesie sam tekst.
+ * wyśrodkowany, półgruby, kolor z tokenu text-hi na surface-flat (kontrast AA w obu motywach).
+ * Statyczny, subtelny neon w kolorze akcentu (.exercise-instruction w index.css, tokeny motywu,
+ * bez animacji) to ozdoba — polecenie niesie sam tekst.
  */
 const ExerciseInstruction: React.FC<{ type: InstructionType; icon?: React.ReactNode; className?: string }> = ({ type, icon, className }) => (
   <p
     data-testid="exercise-instruction"
     data-instruction-type={type}
-    className={`flex items-center gap-2.5 rounded-xl border-2 border-line-strong border-l-[6px] border-l-primary bg-surface-flat px-3.5 py-2.5 text-base sm:text-lg font-extrabold leading-snug text-text-hi ${className ?? ''}`}
+    className={`exercise-instruction flex items-center justify-center gap-2.5 rounded-xl bg-surface-flat px-4 py-3 text-center text-lg sm:text-xl font-semibold leading-snug text-text-hi ${className ?? ''}`}
   >
     {icon && <span aria-hidden="true" className="shrink-0 text-primary">{icon}</span>}
     <span>{i18n.t(EXERCISE_INSTRUCTION_KEYS[type])}</span>
